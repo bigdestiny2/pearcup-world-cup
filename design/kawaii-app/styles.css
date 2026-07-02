@@ -772,23 +772,105 @@ h2 {
   padding: 13px;
 }
 
-.momentum-track {
-  position: relative;
-  height: 82px;
-  overflow: hidden;
-  border-radius: var(--radius);
-  background:
-    linear-gradient(90deg, rgba(217, 75, 66, 0.1), transparent 50%, rgba(8, 125, 92, 0.12)),
-    repeating-linear-gradient(90deg, rgba(20, 23, 27, 0.08) 0 1px, transparent 1px 42px),
-    #f5faf8;
+.momentum-card {
+  display: grid;
+  grid-template-rows: auto auto auto;
+  gap: 10px;
 }
 
-.momentum-track i {
-  position: absolute;
-  bottom: 12px;
-  width: 10px;
+.momentum-chart {
+  position: relative;
+  aspect-ratio: 18 / 7;
+  min-height: 122px;
+  overflow: hidden;
+  border: 1px solid rgba(63, 196, 168, 0.22);
+  border-radius: 16px;
+  background:
+    radial-gradient(140% 100% at 100% 0%, rgba(111, 224, 200, 0.24), transparent 55%),
+    linear-gradient(90deg, rgba(255, 143, 192, 0.12), rgba(255, 255, 255, 0.78) 44%, rgba(63, 196, 168, 0.18)),
+    #f7fffc;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.momentum-chart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.momentum-grid line {
+  stroke: rgba(74, 59, 87, 0.1);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.momentum-band {
+  fill: rgba(63, 196, 168, 0.18);
+}
+
+.momentum-area {
+  fill: rgba(63, 196, 168, 0.2);
+}
+
+.momentum-line {
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 5px 5px rgba(43, 169, 143, 0.28));
+  vector-effect: non-scaling-stroke;
+}
+
+.momentum-points circle {
+  fill: var(--card);
+  stroke: var(--green);
+  stroke-width: 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.momentum-axis {
+  fill: var(--muted);
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+
+.momentum-axis.is-right {
+  text-anchor: end;
+  fill: var(--green-deep);
+}
+
+.momentum-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.momentum-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.momentum-meta span:last-child {
+  text-align: right;
+}
+
+.momentum-meta strong {
+  min-width: 46px;
+  padding: 3px 8px;
   border-radius: 999px;
-  background: linear-gradient(180deg, var(--green), #20a779);
+  background: rgba(63, 196, 168, 0.16);
+  color: var(--green-deep);
+  text-align: center;
+  line-height: 1.2;
 }
 
 .timeline-list,
@@ -975,7 +1057,8 @@ h2 {
 .pool-card {
   min-height: 210px;
   display: grid;
-  align-content: space-between;
+  grid-template-rows: auto auto auto;
+  align-content: stretch;
   gap: 18px;
   position: relative;
   overflow: hidden;
@@ -1067,6 +1150,7 @@ h2 {
   min-height: 58px;
   display: grid;
   gap: 3px;
+  min-width: 0;
   padding: 9px;
   border: 1px solid rgba(185, 197, 192, 0.72);
   border-radius: var(--radius);
@@ -1088,6 +1172,10 @@ h2 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.pool-footer .primary-button {
+  min-width: 112px;
 }
 
 .avatar-stack {
@@ -1813,6 +1901,11 @@ h2 {
   font-weight: 820;
 }
 
+.scorebug strong {
+  white-space: nowrap;
+  word-spacing: .12em;
+}
+
 .pitch {
   position: relative;
   height: 310px;
@@ -2514,6 +2607,16 @@ h2 {
     justify-self: start;
   }
 
+  .topbar-right {
+    width: 100%;
+    justify-self: stretch;
+    justify-content: flex-end;
+  }
+
+  .profile-chip {
+    max-width: 220px;
+  }
+
   .topnav {
     width: 100%;
   }
@@ -2610,10 +2713,37 @@ h2 {
 @media (max-width: 720px) {
   .topbar {
     padding: 12px;
+    gap: 12px;
   }
 
   .topnav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .topbar-right {
+    gap: 8px;
+  }
+
+  .profile-chip {
+    min-width: 0;
+    width: min(216px, calc(100% - 56px));
+    max-width: min(216px, calc(100% - 56px));
+    flex: 0 1 auto;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 9px;
+    padding: 5px 12px 5px 5px;
+  }
+
+  .profile-chip svg {
+    width: 44px;
+    height: 52px;
+  }
+
+  .wallet-chip {
+    min-width: 46px;
+    min-height: 42px;
+    justify-content: center;
+    padding: 0 12px;
   }
 
   .screen {
@@ -2667,13 +2797,22 @@ h2 {
 
   .live-team,
   .live-team.is-away {
-    justify-content: start;
+    width: min(260px, 100%);
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr);
+    justify-content: center;
+    justify-items: start;
+    margin-inline: auto;
     text-align: left;
   }
 
   .score-core {
-    justify-items: start;
-    padding-left: 66px;
+    justify-items: center;
+    padding-left: 0;
+  }
+
+  .momentum-chart {
+    min-height: 118px;
   }
 
   .live-stat-grid {

@@ -1021,6 +1021,64 @@ function livePanelSnapshot () {
   return { st, live, home, away, status, events }
 }
 
+function renderMomentumChart (snap, lead, momentum) {
+  const clamp = value => Math.max(10, Math.min(96, value))
+  const diff = Math.abs(snap.home.goals - snap.away.goals)
+  const possession = snap.st && Number.isFinite(Number(snap.st.possession)) ? Number(snap.st.possession) : 55 + diff * 4
+  const leadBias = lead === snap.home ? possession - 50 : 50 - possession
+  const eventBoost = snap.events.slice(0, 6).reduce((boost, ev) => {
+    const weight = ev.type === 'goal' ? 12 : ev.type === 'shot' ? 7 : ev.type === 'corner' ? 5 : 3
+    return boost + (ev.team === lead.name ? weight : -weight / 2)
+  }, 0)
+  const base = [32, 38, 46, 43, 54, 61, 58, 69, 74, 71, 82, 78, 88, 92]
+  const values = base.map((value, index) => {
+    const progress = index / Math.max(1, base.length - 1)
+    return clamp(value + leadBias * 0.45 + eventBoost * 0.16 + momentum * 0.24 * progress)
+  })
+  const width = 360
+  const top = 22
+  const bottom = 126
+  const chartHeight = bottom - top
+  const left = 18
+  const step = (width - left * 2) / Math.max(1, values.length - 1)
+  const points = values.map((value, index) => {
+    const x = left + step * index
+    const y = bottom - (value / 100) * chartHeight
+    return { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)) }
+  })
+  const line = points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ')
+  const area = `${line} L ${points[points.length - 1].x} ${bottom} L ${points[0].x} ${bottom} Z`
+  const grid = [25, 50, 75].map(tick => {
+    const y = Number((bottom - (tick / 100) * chartHeight).toFixed(1))
+    return `<line x1="${left}" y1="${y}" x2="${width - left}" y2="${y}"></line>`
+  }).join('')
+  const bars = points.map((point, index) => index % 2 === 0
+    ? `<rect class="momentum-band" x="${Number((point.x - 4).toFixed(1))}" y="${point.y}" width="8" height="${Number((bottom - point.y).toFixed(1))}" rx="4"></rect>`
+    : '').join('')
+  const aria = `${lead.name} momentum plus ${momentum}, ${snap.home.name} ${snap.home.goals} to ${snap.away.goals} ${snap.away.name}`
+
+  return `
+    <div class="momentum-chart" role="img" aria-label="${escapeHtml(aria)}">
+      <svg viewBox="0 0 ${width} 150" aria-hidden="true" focusable="false">
+        <g class="momentum-grid">${grid}</g>
+        <path class="momentum-area" d="${area}"></path>
+        <g>${bars}</g>
+        <path class="momentum-line" d="${line}"></path>
+        <g class="momentum-points">
+          ${points.filter((_, index) => index % 3 === 1 || index === points.length - 1).map(point => `<circle cx="${point.x}" cy="${point.y}" r="4"></circle>`).join('')}
+        </g>
+        <text class="momentum-axis" x="${left}" y="16">Pressure</text>
+        <text class="momentum-axis is-right" x="${width - left}" y="16">${escapeHtml(lead.name)}</text>
+      </svg>
+    </div>
+    <div class="momentum-meta">
+      <span>${escapeHtml(snap.home.name)}</span>
+      <strong>+${momentum}</strong>
+      <span>${escapeHtml(snap.away.name)}</span>
+    </div>
+  `
+}
+
 function renderLivePanel (tab) {
   const snap = livePanelSnapshot()
 
@@ -1149,7 +1207,6 @@ function renderLivePanel (tab) {
   const lead = snap.home.goals >= snap.away.goals ? snap.home : snap.away
   const diff = Math.abs(snap.home.goals - snap.away.goals)
   const momentum = 6 + diff * 8
-  const bars = [42, 66, 52, 78, 38].map((h, i) => lead === snap.away ? [38, 78, 52, 66, 42][i] : h)
   const evText = ev => {
     const t = ev.type
     const verb = t === 'goal' ? 'find the net' : t === 'save' ? 'are denied by a save' : t === 'shot' ? 'threaten with a shot' : t === 'corner' ? 'win a corner' : `see a ${t}`
@@ -1166,9 +1223,7 @@ function renderLivePanel (tab) {
           <p class="eyebrow">Momentum</p>
           <strong>${escapeHtml(lead.name)} +${momentum}</strong>
         </div>
-        <div class="momentum-track">
-          ${bars.map((h, i) => `<i style="left:${18 + i * 16}%;height:${h}%"></i>`).join('')}
-        </div>
+        ${renderMomentumChart(snap, lead, momentum)}
       </article>
       <article class="live-card timeline-card">
         <div class="rail-header">
