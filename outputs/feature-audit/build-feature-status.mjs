@@ -22,6 +22,7 @@ function gitValue (args, fallback) {
 
 const gitCommit = gitValue(['rev-parse', '--short', 'HEAD'], 'unknown')
 const gitBranch = gitValue(['branch', '--show-current'], 'unknown')
+const integrationCommit = '84044b3'
 
 const statusOptions = ['Integrated', 'Ready for Test', 'Needs Fix', 'Fixed', 'Deferred', 'Blocked']
 const manualStatusOptions = ['Not Run', 'Passed', 'Passed (Smoke)', 'Failed', 'Blocked', 'Partial']
@@ -1172,6 +1173,54 @@ const stories = [
   }
 ]
 
+const storyTestOverrides = {
+  'US-001': { manual: 'Passed', notes: 'Manual browser batches on isolated ports passed clean boot and no console errors.' },
+  'US-003': { manual: 'Passed', notes: 'Reload restored username, Japan team selection, and theme on isolated origin 4178.' },
+  'US-007': { manual: 'Passed', notes: 'Username field accepted codex_tester in browser batch A1.' },
+  'US-008': { manual: 'Passed', notes: 'Japan team card became selected and persisted through reload.' },
+  'US-009': { manual: 'Passed', notes: 'Save routed to Home and profile chip showed codex_tester / Japan.' },
+  'US-010': { manual: 'Passed', notes: 'First-run Kawaii theme selection applied and closed the picker.' },
+  'US-011': { manual: 'Passed', notes: 'Wallet chip and wallet panel rendered 500 USDT starting balance.' },
+  'US-012': { manual: 'Passed', notes: 'Fund 50 changed wallet balance from 500 to 550 USDT.' },
+  'US-013': { manual: 'Passed', notes: 'Collect payouts moved 120 USDT pending payout into balance and marked All collected.' },
+  'US-015': { manual: 'Passed', notes: 'Live key, match id, and proxy persisted while simulated-feed mode remained disabled.' },
+  'US-016': { manual: 'Passed', notes: 'Blank API-key test returned Add your API key first.' },
+  'US-017': { manual: 'Passed', notes: 'Home hero/live area rendered match labels in browser batch A2.' },
+  'US-018': { manual: 'Passed', notes: 'Overview, Stats, Rooms, Games, and QVAC tabs all activated with content.' },
+  'US-019': { manual: 'Passed', notes: 'Home rendered four pool cards and four pool CTAs.' },
+  'US-020': { manual: 'Passed', notes: 'Scoped live fixture CTA opened Watch with Brazil vs Norway.' },
+  'US-021': { manual: 'Passed', notes: 'Leaderboard panel rendered expected player/prize rows.' },
+  'US-022': { manual: 'Passed', notes: 'Bracket pool selector and bracket board rendered.' },
+  'US-023': { manual: 'Passed', notes: 'Focused pool-entry check on port 4179 debited wallet 500 -> 475 and marked $25 pool entered.' },
+  'US-024': { manual: 'Passed', notes: 'Entrants list included codex_tester after pool entry.' },
+  'US-025': { manual: 'Passed', notes: 'All 15 bracket picks were selectable with exact forced board clicks and visible as picked.' },
+  'US-026': { manual: 'Passed', notes: 'Changing r16-1 cleared qf-1, sf-1, and final dependent picks.' },
+  'US-027': { manual: 'Passed', notes: 'Reset cleared all picked team rows.' },
+  'US-028': { manual: 'Passed', notes: 'Incomplete submit reported 14 picks left and did not complete the bracket.' },
+  'US-029': { manual: 'Passed', notes: 'Completed bracket submit showed $25 bracket submitted for codex_tester.' },
+  'US-030': { manual: 'Passed', notes: 'Bracket audit, Tether, runtime, and QVAC panels were present after entry/picks.' },
+  'US-032': { manual: 'Passed', notes: 'Watch TV surface rendered scorebug, pitch, and stats.' },
+  'US-033': { manual: 'Passed', notes: 'Spanish language tab activated and commentary feed rendered.' },
+  'US-034': { manual: 'Partial', notes: 'Simulated feed updated score/stats/commentary. API-only source/live board is intentionally hidden in sim mode and still needs API/relay pass.' },
+  'US-035': { manual: 'Passed', notes: 'Chat form appended Testing watch chat to the room feed.' },
+  'US-036': { manual: 'Passed', notes: 'Voice toggle set the live voice state on the control.' },
+  'US-037': { manual: 'Passed', notes: 'Invite button opened room share bar with pear watch link.' },
+  'US-039': { manual: 'Passed', notes: 'Reaction button created a reaction pop in the reaction layer.' },
+  'US-042': { manual: 'Passed', notes: 'Games lobby rendered quick match, four AI challenge buttons, and audit panels.' },
+  'US-043': { manual: 'Passed', notes: 'Practice vs AI started without wallet debit and exposed the six-zone aim grid.' },
+  'US-044': { manual: 'Passed', notes: 'Staked Kaito challenge modal accepted, debited 25 USDT, and started a match.' },
+  'US-045': { manual: 'Passed', notes: 'Friend invite and join-code modals opened with room link/code UI. Two-client convergence remains covered by automated tests.' },
+  'US-046': { manual: 'Passed', notes: 'Aim-zone kick resolved with banner and HUD update.' },
+  'US-047': { manual: 'Passed', notes: 'Slower kick sequence progressed HUD through Round 5 of 5.' },
+  'US-048': { manual: 'Passed', notes: 'Shootout reached over state with Back to lobby and Rematch controls.' },
+  'US-052': { manual: 'Passed', notes: 'Resolver, sync, and replay panels existed after shootout.' },
+  'US-065': { manual: 'Passed', notes: 'Mobile viewport 390x844 activated all primary screens with no page-level horizontal overflow.' }
+}
+
+for (const story of stories) {
+  if (storyTestOverrides[story.id]) Object.assign(story, storyTestOverrides[story.id])
+}
+
 const testRunHeaders = [
   'Run ID',
   'Date',
@@ -1228,6 +1277,61 @@ const testRuns = [
     evidence: 'All top-nav buttons were unique, all screens activated, expected panels existed, no boot banner, no console errors.',
     stories: 'US-001, US-002, US-006, US-017, US-022, US-032, US-042, US-052, US-070',
     notes: 'Server: python3 -m http.server 4175 --bind 127.0.0.1 --directory design/kawaii-app.'
+  },
+  {
+    id: 'TR-005',
+    date: today,
+    tester: 'Codex',
+    scope: 'Profile, Home, wallet, and live settings browser batches',
+    command: 'In-app browser on isolated ports 4178/4179: theme/profile persistence, Home tabs, wallet fund/collect, live setting save/test, fixture CTA',
+    result: 'Passed',
+    evidence: 'All targeted assertions passed; no browser console errors recorded.',
+    stories: 'US-001, US-003, US-007 to US-013, US-015 to US-021, US-023, US-024',
+    notes: 'Screen-share permissions were not exercised in this run.'
+  },
+  {
+    id: 'TR-006',
+    date: today,
+    tester: 'Codex',
+    scope: 'Bracket board and pool browser batch',
+    command: 'In-app browser on isolated port 4178/4179: pool entry, incomplete submit, reset, 15 picks, downstream clear, completed submit',
+    result: 'Passed',
+    evidence: 'Pool entry debited 500 -> 475 on focused check; bracket board required exact forced clicks because normal automation click waited on offscreen board rows.',
+    stories: 'US-022 to US-030',
+    notes: 'Forced clicks were limited to exact bracket team-row selectors after count verification.'
+  },
+  {
+    id: 'TR-007',
+    date: today,
+    tester: 'Codex',
+    scope: 'Watch party browser batch',
+    command: 'In-app browser on isolated port 4179/4181: Watch screen, language tab, chat, voice, invite, reaction, fixture CTA',
+    result: 'Partial',
+    evidence: 'Interactive Watch flows passed. Simulated feed updates stats/commentary; API-only source/live board remains hidden by design and needs API/relay pass.',
+    stories: 'US-020, US-032 to US-037, US-039',
+    notes: 'Screen share was not clicked because it can trigger browser permission prompts.'
+  },
+  {
+    id: 'TR-008',
+    date: today,
+    tester: 'Codex',
+    scope: 'Penalty Clash browser batch',
+    command: 'In-app browser on isolated ports 4179/4180/4181: practice match, staked challenge, friend invite/join modals, shootout completion',
+    result: 'Passed',
+    evidence: 'Practice kept wallet unchanged; staked challenge debited 25 USDT; shootout reached over state; friend invite/join modals rendered.',
+    stories: 'US-042 to US-048, US-052',
+    notes: 'Two-client friend match convergence remains covered by automated worker/P2P tests.'
+  },
+  {
+    id: 'TR-009',
+    date: today,
+    tester: 'Codex',
+    scope: 'Responsive browser sanity',
+    command: 'In-app browser viewport 390x844 across Home, Bracket, Watch, Games, Profile',
+    result: 'Passed',
+    evidence: 'All primary screens activated with clientWidth 375 and scrollWidth 375; no page-level horizontal overflow.',
+    stories: 'US-065',
+    notes: 'Topbar wraps tall on mobile but did not overlap content or create horizontal overflow.'
   }
 ]
 
@@ -1476,7 +1580,7 @@ dashboard.getRange('A5:H12').values = [
   ['Manual not run', null, 'Rows still awaiting manual behavior testing.', 'Kawaii syntax', 'Passed', 'All staged JS/CJS files parsed', 'Retest after each fix.', 'Manual Test'],
   ['Manual passed/smoke', null, 'Rows with Passed or Passed (Smoke).', 'Browser smoke', 'Passed', 'Top nav screens active; no boot banner; no console errors', 'Deep workflow testing.', 'Manual Test'],
   ['Open defects', null, 'Defects with Open or In Progress status.', 'Pear audit', 'Passed', '68 passed, 0 blocking, 0 warnings', 'Document every defect found.', 'Defects'],
-  ['Fixes awaiting retest', null, 'User stories or defects marked Retest Needed.', 'Integration commit', gitCommit, 'Merged tested WDK/QVAC runtime into Kawaii app', 'Commit fixes and repeat gate.', 'Fix/Retest'],
+  ['Fixes awaiting retest', null, 'User stories or defects marked Retest Needed.', 'Integration commit', integrationCommit, 'Merged tested WDK/QVAC runtime into Kawaii app', 'Commit fixes and repeat gate.', 'Fix/Retest'],
   ['P0 stories', null, 'Release-blocking stories and integrity gates.', 'Server', 'Running', 'Static preview at http://127.0.0.1:4175/', 'Use for browser loop.', 'Manual Test'],
   ['Stories needing fix', null, 'User stories marked Needs Fix.', 'Canonical workbook', 'Created', 'This workbook is the single tracker for feature status, test results, defects, fixes, and retests.', 'Fill Defect Log during testing.', 'Defects']
 ]
