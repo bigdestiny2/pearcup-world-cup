@@ -2,33 +2,38 @@
 
 PearCup is the World Cup bracket, watch party, and P2P minigame app being built for the Pear ecosystem.
 
+> **👉 Active development lives in [`design/kawaii-app/`](design/kawaii-app/)** — the
+> canonical Kawaii build (themed UI, AI avatars, real P2P penalty matches, matchmaking,
+> shared watch party). Start there. See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the
+> module map, dev workflow, and Pear packaging gotchas, and
+> [`design/kawaii-app/RELEASE.md`](design/kawaii-app/RELEASE.md) for stage/release.
+
 ## Folder Map
 
-- `app/` - current runnable static prototype.
+- `design/kawaii-app/` - **canonical build** (self-contained Pear app: own `package.json`, `index.cjs`, P2P modules).
+- `app/` - earlier base prototype; QVAC/WDK hardening ports FROM here INTO the kawaii build.
 - `docs/` - full technical specification, Pear runtime boundary, and architecture notes.
-- `index.cjs` - Pear Runtime entrypoint.
-- `package.json` - Pear app manifest, scripts, and launch metadata.
-- `scripts/` - local preview helpers.
+- `index.cjs` / `package.json` / `scripts/` - base-app Pear entrypoint, manifest, preview helpers.
 
-## Run Locally
-
-From this folder:
+## Run Locally (canonical build)
 
 ```sh
-npm run preview
+cd design/kawaii-app
+npm install          # restores git-ignored node_modules (required before pear stage)
+pear run --dev .     # Pear desktop window with live local files
 ```
 
-Then open:
-
-```txt
-http://127.0.0.1:4174/
-```
-
-With Pear CLI/runtime installed:
+Plain-browser UI preview (no P2P/hyperswarm):
 
 ```sh
-npm install
-npm run dev
+python3 -m http.server 4180 --directory design/kawaii-app   # http://localhost:4180
+```
+
+### Base app (`app/`)
+
+```sh
+npm run preview   # http://127.0.0.1:4174/
+npm install && npm run dev   # with Pear CLI/runtime
 ```
 
 ## Test
