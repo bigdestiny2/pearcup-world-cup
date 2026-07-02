@@ -60,6 +60,7 @@ body {
 
 body {
   margin: 0;
+  overflow-x: clip;
   background:
     radial-gradient(900px 500px at 90% -5%, #ffe3f3, transparent 60%),
     radial-gradient(700px 500px at -5% 105%, #dff8f1, transparent 60%),
@@ -257,6 +258,7 @@ input:focus-visible {
 
 .screens {
   min-width: 0;
+  overflow-x: clip;
 }
 
 .screen {
@@ -755,6 +757,7 @@ h2 {
 .room-dashboard,
 .qvac-dashboard,
 .game-live-preview {
+  min-width: 0;
   display: grid;
   grid-template-columns: 1.1fr 1fr 0.9fr;
   gap: 12px;
@@ -776,11 +779,13 @@ h2 {
 }
 
 .live-card {
+  min-width: 0;
   min-height: 154px;
   padding: 13px;
 }
 
 .momentum-card {
+  overflow: hidden;
   display: grid;
   grid-template-rows: auto auto auto;
   gap: 10px;
@@ -788,8 +793,11 @@ h2 {
 
 .momentum-chart {
   position: relative;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 0;
   aspect-ratio: 18 / 7;
-  min-height: 122px;
   overflow: hidden;
   border: 1px solid rgba(63, 196, 168, 0.22);
   border-radius: 16px;
@@ -2820,10 +2828,6 @@ h2 {
   .score-core {
     justify-items: center;
     padding-left: 0;
-  }
-
-  .momentum-chart {
-    min-height: 118px;
   }
 
   .live-stat-grid {
