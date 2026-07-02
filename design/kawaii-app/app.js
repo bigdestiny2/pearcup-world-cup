@@ -2603,6 +2603,15 @@ async function resolvePenaltyRound (roundOverride) {
     diveZone: round.dive,
     releaseTick: round.keeperTick
   }
+  const expectedRound = PearCupCore.createPenaltyClashRound({
+    gameId,
+    roundIndex,
+    shooter,
+    keeper,
+    shooterInput,
+    keeperInput
+  })
+  const payoutRecipients = payoutRecipientForResolvedRound(round, expectedRound)
   const eventStore = PearCupStorageSim.createEventStore({
     backend: PearCupStorageSim.createMemoryBackend(),
     rootId: 'pearcup-demo',
@@ -2655,6 +2664,30 @@ async function resolvePenaltyRound (roundOverride) {
     actorId: keeper.id,
     payload: { gameId, roundId, playerId: keeper.id, input: keeperInput, nonce: 'keeper-nonce' }
   })
+  await worker.dispatchAsync({
+    type: 'game:submitRoundStateHash',
+    actorId: shooter.id,
+    payload: {
+      gameId,
+      roundId,
+      roundIndex,
+      playerId: shooter.id,
+      stateHash: expectedRound.stateHash,
+      resolverVersion: expectedRound.resolverVersion
+    }
+  })
+  await worker.dispatchAsync({
+    type: 'game:submitRoundStateHash',
+    actorId: keeper.id,
+    payload: {
+      gameId,
+      roundId,
+      roundIndex,
+      playerId: keeper.id,
+      stateHash: expectedRound.stateHash,
+      resolverVersion: expectedRound.resolverVersion
+    }
+  })
   const settlementResult = await settlementService.settleGameRoundWithReceipt({
     gameId,
     roundIndex,
@@ -2663,7 +2696,8 @@ async function resolvePenaltyRound (roundOverride) {
     keeper,
     escrowId: escrowEvent.payload.escrowId,
     qvacActorId: qvacActor,
-    wdkActorId: tetherActor
+    wdkActorId: tetherActor,
+    payoutRecipients
   }, {
     actorId: 'settlement-worker'
   })
@@ -2685,6 +2719,33 @@ async function resolvePenaltyRound (roundOverride) {
     replayEvents = replayWorker.events().length
     replayMatched = replayView.eventRoot === localView.eventRoot
   }
+  const heldReason = settlementSummary.settlementEvent && settlementSummary.settlementEvent.payload && settlementSummary.settlementEvent.payload.reason ||
+    settlementSummary.roundEvent && settlementSummary.roundEvent.payload && settlementSummary.roundEvent.payload.reason ||
+    settlementResult.receiptReason ||
+    'Settlement held pending trusted evidence'
+  const qvacAttestation = settlementSummary.attestationEvent && settlementSummary.attestationEvent.payload
+    ? settlementSummary.attestationEvent.payload
+    : {
+        attestationId: 'pending-qvac-attestation',
+        ruling: settlementSummary.status || 'held',
+        rationale: heldReason,
+        gameId,
+        roundId,
+        winnerUserId: null,
+        participantUserIds: [shooter.id, keeper.id]
+      }
+  const tetherPayout = settlementSummary.settlementEvent && settlementSummary.settlementEvent.payload
+    ? settlementSummary.settlementEvent.payload
+    : {
+        status: settlementSummary.status || 'held',
+        reason: heldReason,
+        gameId,
+        roundId,
+        escrowId: escrowEvent.payload.escrowId,
+        disputeId: 'held-settlement',
+        amount: escrowEvent.payload.amount,
+        asset: escrowEvent.payload.asset
+      }
   const topic = PearCupTransportSim.gameTopic(gameId)
   const topicBus = PearCupTransportSim.createTopicBus({ topic })
   topicBus.joinPeer('host', worker)
@@ -2705,9 +2766,9 @@ async function resolvePenaltyRound (roundOverride) {
     dive: round.dive,
     power: round.power,
     curve: round.curve,
-    qvacAttestation: settlementSummary.attestationEvent.payload,
+    qvacAttestation,
     tetherEscrow: escrowEvent.payload,
-    tetherPayout: settlementSummary.settlementEvent.payload,
+    tetherPayout,
     settlementSummary,
     settlementReceipt: settlementResult.receipt,
     settlementReceiptEvent: settlementResult.receiptEvent,
@@ -2882,6 +2943,19 @@ function buildKickRound (aim, powerPct) {
   }
 }
 
+function payoutRecipientForResolvedRound (round, resolved) {
+  if (!round) return {}
+  const resolvedWinner = resolved && PearCupCore.winnerUserIdForRoundResult
+    ? PearCupCore.winnerUserIdForRoundResult(resolved)
+    : null
+  const outcome = resolved && resolved.outcome || round.plannedOutcome
+  const winnerId = resolvedWinner || (outcome === 'goal'
+    ? gameUserId(round.shooter)
+    : gameUserId(round.keeper))
+  if (!winnerId) return {}
+  return { [winnerId]: demoPayoutAddress(winnerId) }
+}
+
 function readPowerPct () {
   const fill = $('#shootPowerFill')
   const track = $('#shootPowerTrack')
@@ -2965,13 +3039,7 @@ function ensureShootoutDom () {
   if (again && !again.dataset.bound) {
     again.dataset.bound = '1'
     again.addEventListener('click', () => {
-      // Peer match: "New match" returns to the lobby to invite/host again.
-      if (state.match && state.match.peer && window.PearCupPeerMatch) { PearCupPeerMatch.leave(); return }
-      const stake = state.match && state.match.stake || 0
-      if (stake > 0 && !debitWallet(stake, `Rematch stake vs ${state.match.opponent.name}`)) {
-        showToast('Not enough balance to rematch'); leaveMatch(); return
-      }
-      ensureShootout(true); hideOverlay(); renderGames()
+      restartShootout({ message: '' })
     })
   }
   const back = $('#backToLobby')
@@ -3107,7 +3175,14 @@ async function takeKick (zone) {
         keeperEl.classList.add(divePos.x < 50 ? 'dive-left' : divePos.x > 50 ? 'dive-right' : 'dive-mid')
       }
     })
-    try { result = await resolvePenaltyRound(round) } catch (err) { result = null }
+    try {
+      result = await resolvePenaltyRound(round)
+    } catch (err) {
+      console.warn('penalty settlement failed', err)
+      renderSettlementError($('#gameResolver'), err, 'Penalty settlement blocked')
+      showToast('Settlement evidence blocked — check resolver panel')
+      result = null
+    }
     const outcome = result ? result.outcome : round.plannedOutcome
     // The resolver inputs were shaped to reproduce plannedOutcome — flag drift loudly.
     if (result && result.outcome !== round.plannedOutcome) console.warn('kick outcome drift', { planned: round.plannedOutcome, settled: result.outcome, round })
@@ -3343,6 +3418,27 @@ function leaveMatch () {
   persist()
   hideOverlay()
   renderGames()
+}
+
+function restartShootout ({ blockActiveStake = false, message = 'New penalty shootout — pick your corners!' } = {}) {
+  // Peer match: starting over mid-room would desync the two clients, so leave cleanly.
+  if (state.match && state.match.peer && window.PearCupPeerMatch) { PearCupPeerMatch.leave(); return false }
+  const stake = state.match && state.match.stake || 0
+  const so = ensureShootout()
+  if (stake > 0 && blockActiveStake && so.phase !== 'over') {
+    showToast('Finish this staked match before starting a rematch')
+    return false
+  }
+  if (stake > 0 && !debitWallet(stake, `Rematch stake vs ${state.match.opponent.name}`)) {
+    showToast('Not enough balance to rematch')
+    leaveMatch()
+    return false
+  }
+  ensureShootout(true)
+  hideOverlay()
+  renderGames()
+  if (message) showToast(message)
+  return true
 }
 
 async function renderGames () {
@@ -3604,12 +3700,7 @@ function bindEvents () {
   })
 
   $('#spectateGame').addEventListener('click', () => {
-    // Restarting mid-peer-match would desync the two clients — leave cleanly instead.
-    if (window.PearCupPeerMatch && PearCupPeerMatch.isActive()) { PearCupPeerMatch.leave(); return }
-    ensureShootout(true)
-    hideOverlay()
-    renderGames()
-    showToast('New penalty shootout — pick your corners!')
+    restartShootout({ blockActiveStake: true })
   })
 
   $('#chatForm').addEventListener('submit', event => {
