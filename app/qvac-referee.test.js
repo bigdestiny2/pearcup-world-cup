@@ -1,0 +1,252 @@
+const assert = require('node:assert/strict')
+const test = require('node:test')
+const core = require('./core.js')
+const {
+  createQvacCompletionCommentaryAdapter,
+  createQvacCompletionRefereeAdapter,
+  normalizeReview,
+  commentaryPrompt,
+  roundReviewPrompt,
+  poolReviewPrompt
+} = require('./qvac-referee.js')
+
+const gameId = 'pc-qvac-ref'
+const shooter = { id: 'user-captain', username: 'captain', teamId: 'br' }
+const keeper = { id: 'user-vera', username: 'vera', teamId: 'no' }
+const roundResult = core.createPenaltyClashRound({
+  gameId,
+  roundIndex: 0,
+  shooter,
+  keeper,
+  shooterInput: { role: 'shooter', aimZone: 'right-high', powerBand: 3, curveBand: 1, releaseTick: 42 },
+  keeperInput: { role: 'keeper', diveZone: 'right-high', releaseTick: 43 }
+})
+
+test('QVAC referee prompt carries deterministic evidence only', () => {
+  const prompt = roundReviewPrompt(roundResult)
+
+  assert.equal(prompt.length, 2)
+  assert.match(prompt[0].content, /Return strict JSON/)
+  assert.match(prompt[0].content, /uncertain/)
+  assert.match(prompt[1].content, /shooterCommitment/)
+  assert.match(prompt[1].content, /winnerUserId/)
+  assert.match(prompt[1].content, /participantUserIds/)
+  assert.match(prompt[1].content, /stateHash/)
+})
+
+test('QVAC completion adapter seals a verified referee attestation', async () => {
+  const adapter = createQvacCompletionRefereeAdapter({
+    modelId: 'qvac-test-model',
+    client: async ({ history }) => {
+      assert.match(history[1].content, /verify_penalty_clash_round/)
+      return '{"ruling":"verified","confidence":0.91,"rationale":"Evidence packet matches the resolver output."}'
+    }
+  })
+
+  const attestation = await adapter.attestRound({ roundResult })
+
+  assert.equal(attestation.ruling, 'save')
+  assert.equal(attestation.review.ruling, 'verified')
+  assert.equal(attestation.review.modelId, 'qvac-test-model')
+  assert.equal(attestation.confidence, 0.91)
+  assert.ok(attestation.signature.startsWith('0x'))
+})
+
+test('QVAC completion adapter disputes malformed round referee output', async () => {
+  const adapter = createQvacCompletionRefereeAdapter({
+    client: async () => 'I think it looks fine, but not JSON.'
+  })
+
+  const attestation = await adapter.attestRound({ roundResult })
+
+  assert.equal(attestation.ruling, 'disputed')
+  assert.equal(attestation.review.ruling, 'disputed')
+  assert.match(attestation.review.rationale, /valid referee ruling/)
+  assert.throws(() => {
+    core.releaseTetherWdkEscrow({
+      escrow: core.createTetherWdkEscrowIntent({ gameId, players: [shooter.id, keeper.id], amount: 5 }),
+      attestation,
+      winnerUserId: keeper.id
+    })
+  }, /Disputed QVAC attestation/)
+})
+
+test('QVAC disputed review holds settlement even when deterministic evidence exists', async () => {
+  const adapter = createQvacCompletionRefereeAdapter({
+    client: {
+      completion () {
+        return {
+          tokenStream: ['{"ruling":"disputed",', '"confidence":0.22,', '"rationale":"Source evidence hash mismatch."}']
+        }
+      }
+    }
+  })
+
+  const attestation = await adapter.attestRound({ roundResult })
+
+  assert.equal(attestation.ruling, 'disputed')
+  assert.equal(attestation.review.rationale, 'Source evidence hash mismatch.')
+  assert.throws(() => {
+    core.releaseTetherWdkEscrow({
+      escrow: core.createTetherWdkEscrowIntent({ gameId, players: [shooter.id, keeper.id], amount: 5 }),
+      attestation,
+      winnerUserId: keeper.id
+    })
+  }, /Disputed QVAC attestation/)
+})
+
+test('QVAC completion adapter disputes pool output without explicit ruling', async () => {
+  const confirmedEntries = [
+    {
+      paymentId: 'payment-captain',
+      poolId: 'pool-qvac-ref',
+      entryId: 'entry-captain',
+      userId: shooter.id,
+      username: shooter.username,
+      amount: 25,
+      asset: 'USDT',
+      status: 'confirmed'
+    },
+    {
+      paymentId: 'payment-vera',
+      poolId: 'pool-qvac-ref',
+      entryId: 'entry-vera',
+      userId: keeper.id,
+      username: keeper.username,
+      amount: 25,
+      asset: 'USDT',
+      status: 'confirmed'
+    }
+  ]
+  const poolResult = core.createBracketPoolSettlementResult({
+    poolId: 'pool-qvac-ref',
+    confirmedEntries,
+    winnerUserIds: [shooter.id],
+    officialResults: { champion: 'Brazil' }
+  })
+  const adapter = createQvacCompletionRefereeAdapter({
+    client: async () => '{"confidence":0.99,"rationale":"Evidence appears complete."}'
+  })
+
+  const attestation = await adapter.attestPoolSettlement({ poolResult })
+
+  assert.equal(attestation.ruling, 'disputed')
+  assert.equal(attestation.review.ruling, 'disputed')
+  assert.throws(() => {
+    core.createTetherWdkPoolPayout({
+      poolId: 'pool-qvac-ref',
+      confirmedEntries,
+      winnerUserIds: [shooter.id],
+      attestation
+    })
+  }, /Disputed QVAC pool attestation/)
+})
+
+test('QVAC pool prompt binds official results hash and worker source mode', () => {
+  const confirmedEntries = [
+    {
+      paymentId: 'payment-captain',
+      poolId: 'pool-qvac-prompt',
+      entryId: 'entry-captain',
+      userId: shooter.id,
+      username: shooter.username,
+      amount: 25,
+      asset: 'USDT',
+      status: 'confirmed'
+    }
+  ]
+  const poolResult = core.createBracketPoolSettlementResult({
+    poolId: 'pool-qvac-prompt',
+    confirmedEntries,
+    winnerUserIds: [shooter.id],
+    officialResults: { champion: 'Brazil' },
+    sourceEventIds: ['evt-payment', 'evt-official-results'],
+    sourceEventMode: 'worker-log'
+  })
+  const prompt = poolReviewPrompt(poolResult)
+
+  assert.match(prompt[0].content, /official results snapshot evidence/)
+  assert.match(prompt[1].content, /sourceBracketSubmissionIds/)
+  assert.match(prompt[1].content, /bracketScoreboardHash/)
+  assert.match(prompt[1].content, /officialResultsHash/)
+  assert.match(prompt[1].content, /sourceEventMode/)
+  assert.match(prompt[1].content, /worker-log/)
+})
+
+test('QVAC commentary prompt grounds multilingual output in match events and stats', () => {
+  const prompt = commentaryPrompt({
+    matchId: 'match-brazil-norway',
+    language: 'pt',
+    clock: '64:10',
+    recentEvents: [{
+      eventId: 'evt-shot',
+      matchId: 'match-brazil-norway',
+      clock: '64:10',
+      type: 'shot',
+      teamId: 'br'
+    }],
+    currentStats: {
+      matchId: 'match-brazil-norway',
+      clock: '64:10',
+      score: { br: 2, no: 1 },
+      shots: { br: 12, no: 6 }
+    },
+    roomPickDistribution: { br: 2, no: 1 }
+  })
+
+  assert.match(prompt[0].content, /Do not invent/)
+  assert.match(prompt[0].content, /language PT/)
+  assert.match(prompt[1].content, /generate_grounded_match_commentary/)
+  assert.match(prompt[1].content, /evt-shot/)
+  assert.match(prompt[1].content, /roomPickDistribution/)
+})
+
+test('QVAC completion commentary adapter creates grounded segments', async () => {
+  const adapter = createQvacCompletionCommentaryAdapter({
+    modelId: 'qvac-commentary-test',
+    commentatorId: 'qvac-commentary-ref',
+    client: async ({ history }) => {
+      assert.match(history[1].content, /generate_grounded_match_commentary/)
+      return '{"text":"Brasil pressure is rising from the latest shot.","confidence":0.88}'
+    }
+  })
+  const segment = await adapter.generateSegment({
+    matchId: 'match-brazil-norway',
+    language: 'EN',
+    clock: '64:10',
+    recentEvents: [{
+      eventId: 'evt-shot',
+      matchId: 'match-brazil-norway',
+      clock: '64:10',
+      type: 'shot',
+      teamId: 'br'
+    }],
+    currentStats: {
+      matchId: 'match-brazil-norway',
+      clock: '64:10',
+      score: { br: 2, no: 1 }
+    },
+    roomPickDistribution: { br: 2, no: 1 }
+  })
+
+  assert.equal(segment.matchId, 'match-brazil-norway')
+  assert.equal(segment.language, 'EN')
+  assert.equal(segment.commentatorId, 'qvac-commentary-ref')
+  assert.equal(segment.modelId, 'qvac-commentary-test')
+  assert.equal(segment.confidence, 0.88)
+  assert.deepEqual(segment.sourceEventIds, ['evt-shot'])
+  assert.ok(segment.segmentId)
+})
+
+test('QVAC review normalization clamps confidence and extracts JSON from text', () => {
+  const review = normalizeReview('Sure:\n{"ruling":"verified","confidence":4,"rationale":"ok"}')
+
+  assert.equal(review.ruling, 'verified')
+  assert.equal(review.confidence, 1)
+  assert.equal(review.rationale, 'ok')
+
+  const missingRuling = normalizeReview('Sure:\n{"confidence":0.9,"rationale":"looks okay"}')
+  assert.equal(missingRuling.ruling, 'disputed')
+  assert.equal(missingRuling.confidence, 0.9)
+  assert.equal(missingRuling.rationale, 'looks okay')
+})

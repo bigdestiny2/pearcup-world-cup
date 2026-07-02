@@ -1,0 +1,89 @@
+{
+  "name": "pearcup-world-cup",
+  "version": "0.1.0",
+  "description": "World Cup bracket pools, watch parties, multilingual QVAC commentary, and P2P soccer minigames for Pear.",
+  "type": "commonjs",
+  "main": "index.cjs",
+  "license": "MIT",
+  "pear": {
+    "name": "pearcup-world-cup",
+    "pre": "pear-electron/pre",
+    "gui": {
+      "main": "app/index.html",
+      "width": 1360,
+      "height": 900,
+      "minWidth": 1024,
+      "minHeight": 760,
+      "backgroundColor": "#f4f7f2"
+    },
+    "stage": {
+      "include": [
+        "/index.cjs",
+        "/package.json",
+        "/app/index.html",
+        "/app/styles.css",
+        "/app/core.js",
+        "/app/adapters.js",
+        "/app/qvac-referee.js",
+        "/app/tether-wdk-bridge.js",
+        "/app/runtime-settings.js",
+        "/app/runtime-config.js",
+        "/app/worker-sim.js",
+        "/app/worker-client.js",
+        "/app/worker-bridge-protocol.js",
+        "/app/pear-worker.cjs",
+        "/app/worker-runtime.js",
+        "/app/settlement-receipts.js",
+        "/app/settlement-service.js",
+        "/app/transport-sim.js",
+        "/app/storage-sim.js",
+        "/app/sdk-runtime.js",
+        "/app/live-readiness.js",
+        "/app/trusted-path-preflight.js",
+        "/app/live-launch-audit.js",
+        "/app/app.js",
+        "/config/pearcup.runtime.example.json"
+      ],
+      "ignore": [
+        "/.git",
+        "/.claude",
+        "/coverage",
+        "/config/pearcup.runtime.json",
+        "/design",
+        "/docs",
+        "/app/*.test.js",
+        "/scripts"
+      ]
+    }
+  },
+  "scripts": {
+    "dev": "pear run --dev .",
+    "dev:devtools": "pear run --dev --devtools .",
+    "preview": "node scripts/serve.mjs --port 4174",
+    "try:preview": "node scripts/serve.mjs --port 4174",
+    "preflight:sdk": "node scripts/preflight-sdk.mjs",
+    "preflight:worker": "node scripts/preflight-worker-runtime.mjs",
+    "preflight:trusted-path": "node scripts/preflight-trusted-path.mjs",
+    "config:live": "node scripts/live-config.mjs",
+    "config:live:print": "node scripts/live-config.mjs --print",
+    "doctor:live": "node scripts/live-readiness.mjs",
+    "audit:launch": "node scripts/live-launch-audit.mjs",
+    "audit:pear-browser": "node scripts/pear-browser-compat.mjs",
+    "test": "node --test app/core.test.js app/adapters.test.js app/runtime-config.test.js app/runtime-settings.test.js app/storage-sim.test.js app/worker-sim.test.js app/worker-client.test.js app/worker-bridge-protocol.test.js app/pear-worker.test.js app/worker-runtime.test.js app/settlement-receipts.test.js app/settlement-service.test.js app/trusted-path-preflight.test.js app/live-readiness.test.js app/live-launch-audit.test.js app/pear-browser-compat.test.js app/transport-sim.test.js app/qvac-referee.test.js app/tether-wdk-bridge.test.js app/sdk-runtime.test.js",
+    "check": "npm test && npm run audit:pear-browser -- --require-pass && node --check app/core.js && node --check app/adapters.js && node --check app/runtime-config.js && node --check app/runtime-settings.js && node --check app/storage-sim.js && node --check app/worker-sim.js && node --check app/worker-client.js && node --check app/worker-bridge-protocol.js && node --check app/pear-worker.cjs && node --check app/worker-runtime.js && node --check app/settlement-receipts.js && node --check app/settlement-service.js && node --check app/trusted-path-preflight.js && node --check app/live-readiness.js && node --check app/live-launch-audit.js && node --check app/pear-browser-compat.js && node --check app/transport-sim.js && node --check app/qvac-referee.js && node --check app/tether-wdk-bridge.js && node --check app/sdk-runtime.js && node --check app/app.js && node --check scripts/serve.mjs && node --check scripts/preflight-sdk.mjs && node --check scripts/preflight-worker-runtime.mjs && node --check scripts/preflight-trusted-path.mjs && node --check scripts/live-readiness.mjs && node --check scripts/live-config.mjs && node --check scripts/live-launch-audit.mjs && node --check scripts/pear-browser-compat.mjs",
+    "link:new": "pear touch",
+    "stage": "pear stage \"$PEAR_LINK\" .",
+    "release": "pear release \"$PEAR_LINK\"",
+    "seed": "pear seed \"$PEAR_LINK\""
+  },
+  "dependencies": {
+    "pear-bridge": "^1.2.5",
+    "pear-electron": "^1.7.28"
+  },
+  "optionalDependencies": {
+    "@qvac/sdk": "^0.14.0",
+    "@tetherto/wdk": "^1.0.0-beta.12",
+    "@tetherto/wdk-wallet-btc": "^1.0.0-beta.10",
+    "@tetherto/wdk-wallet-evm": "^1.0.0-beta.14"
+  }
+}

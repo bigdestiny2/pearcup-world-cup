@@ -1,0 +1,1884 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PearCup · Free Kick Clash</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Quicksand:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+    <style>
+      /* ============================================================
+         PEARCUP · FREE KICK CLASH v2
+         Perspective goal scene. Live trajectory preview. Particle
+         trails. Impact effects. Skill callouts. Same deterministic
+         resolver + P2P pipeline contract as v1.
+         ============================================================ */
+      :root {
+        --bg:        #1b0e22;
+        --bg-2:      #2a1640;
+        --panel:     rgba(255,255,255,0.06);
+        --line:      rgba(255,255,255,0.1);
+        --line-2:    rgba(255,255,255,0.2);
+        --ink:       #fff5fb;
+        --ink-dim:   #e7c9ee;
+        --ink-mute:  #a98ab8;
+        --sakura:    #ff9bd6;
+        --sakura-2:  #ff6fc0;
+        --lilac:     #c9a8ff;
+        --lilac-2:   #9c7ee0;
+        --sky:       #9bd4ff;
+        --sky-2:     #6cb8f0;
+        --mint:      #a8f0d4;
+        --mint-2:    #6cd9b0;
+        --gold:      #ffe08a;
+        --gold-2:    #f5c44a;
+        --rose:      #ff7aa8;
+        --r:         18px;
+        --r-lg:      28px;
+        --shadow:    0 24px 60px rgba(43,15,60,0.55);
+        --glow-s:    0 0 24px rgba(255,155,214,0.45);
+        --glow-l:    0 0 24px rgba(201,168,255,0.4);
+        --mono:      "JetBrains Mono", ui-monospace, monospace;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        font-family: "Quicksand", system-ui, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(1200px 700px at 15% 0%, rgba(255,155,214,0.22) 0%, transparent 50%),
+          radial-gradient(1000px 800px at 90% 100%, rgba(156,126,224,0.28) 0%, transparent 55%),
+          var(--bg);
+        background-attachment: fixed;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+      .petals { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+      .petal {
+        position: absolute; top: -20px; width: 12px; height: 12px;
+        background: radial-gradient(circle at 30% 30%, #ffd1ec, #ff9bd6);
+        border-radius: 50% 0 50% 50%; opacity: 0.6;
+        animation: fall linear infinite;
+      }
+      @keyframes fall {
+        0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
+        10% { opacity: 0.6; }
+        90% { opacity: 0.6; }
+        100% { transform: translateY(110vh) rotate(540deg); opacity: 0; }
+      }
+      .shell { position: relative; z-index: 1; max-width: 1320px; margin: 0 auto; padding: 0 24px 96px; }
+
+      /* ---------- HEADER ---------- */
+      .header { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px 0; margin-bottom: 24px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+      .brand { display: inline-flex; align-items: center; gap: 14px; }
+      .brand-mark { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px; background: linear-gradient(145deg, rgba(255,155,214,0.4), rgba(201,168,255,0.3)); border: 1px solid rgba(255,255,255,0.25); box-shadow: var(--glow-s); }
+      .brand-mark svg { width: 24px; height: 24px; }
+      .brand-name { font-family: "Baloo 2", cursive; font-weight: 800; font-size: 22px; background: linear-gradient(90deg, var(--sakura), var(--lilac)); -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1; }
+      .brand-sub { font-size: 10px; letter-spacing: 0.3em; color: var(--ink-mute); text-transform: uppercase; font-weight: 600; }
+      .back-link { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid var(--line-2); color: var(--ink-dim); text-decoration: none; font-size: 12px; font-weight: 600; transition: all .2s; }
+      .back-link:hover { color: var(--sakura); border-color: var(--sakura); }
+
+      /* ---------- LAYOUT ---------- */
+      .game-layout { display: grid; grid-template-columns: 1.5fr 1fr; gap: 22px; align-items: start; }
+      @media (max-width: 1080px) { .game-layout { grid-template-columns: 1fr; } }
+
+      .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 20px; box-shadow: var(--shadow); position: relative; overflow: hidden; backdrop-filter: blur(10px); }
+      .eyebrow { font-family: "Baloo 2", cursive; font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--sakura); margin: 0 0 6px; font-weight: 700; }
+      h1, h2, h3 { font-family: "Baloo 2", cursive; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 10px; }
+      h2 { font-size: 18px; } h3 { font-size: 14px; }
+
+      /* ---------- SCOREBOARD ---------- */
+      .scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; gap: 14px; align-items: center; padding: 14px 20px; border-radius: var(--r); background: rgba(255,255,255,0.06); border: 1px solid var(--line-2); margin-bottom: 16px; box-shadow: var(--glow-l); }
+      .sb-team { display: flex; align-items: center; gap: 10px; }
+      .sb-team.r { flex-direction: row-reverse; text-align: right; }
+      .sb-team .ava { width: 38px; height: 38px; }
+      .sb-team .nm { font-family: "Baloo 2", cursive; font-weight: 700; font-size: 14px; }
+      .momentum { font-size: 13px; opacity: 0; transition: opacity .4s; display: inline-block; transform-origin: bottom center; }
+      .momentum.hot { opacity: 1; animation: flameFlicker .6s ease-in-out infinite alternate; }
+      @keyframes flameFlicker { 0% { transform: scale(1) rotate(-4deg); filter: drop-shadow(0 0 4px #ffb347); } 100% { transform: scale(1.18) rotate(4deg); filter: drop-shadow(0 0 8px #ff7a3d); } }
+      .sb-team .sub { font-size: 9px; color: var(--ink-mute); letter-spacing: 0.15em; text-transform: uppercase; font-weight: 600; }
+      .role { font-size: 9px; padding: 2px 7px; border-radius: 999px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; display: inline-block; margin-top: 2px; }
+      .role.shoot { background: var(--sakura); color: #fff; }
+      .role.keep { background: var(--sky); color: #1b3a55; }
+      .sb-core { text-align: center; }
+      .sb-core .round-lbl { font-size: 9px; color: var(--lilac); letter-spacing: 0.25em; font-weight: 700; text-transform: uppercase; }
+      .sb-core .pts { font-family: "Baloo 2", cursive; font-size: 28px; font-weight: 800; line-height: 1; background: linear-gradient(90deg, var(--sakura), var(--lilac)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .kick-track { display: flex; gap: 4px; justify-content: center; margin-top: 4px; }
+      .kick { width: 14px; height: 14px; border-radius: 4px; background: rgba(255,255,255,0.08); border: 1px solid var(--line-2); }
+      .kick.in { background: var(--mint); border-color: var(--mint); box-shadow: 0 0 6px var(--mint); }
+      .kick.out { background: var(--rose); border-color: var(--rose); }
+      .kick.cur { background: var(--gold); border-color: var(--gold); animation: pulse 1s infinite; }
+      @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(1.15)} }
+
+      /* ---------- STAGE (perspective scene) ---------- */
+      .stage-wrap { position: relative; }
+      .stage {
+        position: relative; border-radius: var(--r-lg); overflow: hidden;
+        background: linear-gradient(180deg, #1a0e28 0%, #160a20 40%, #12261c 65%, #0a1a12 100%);
+        border: 1px solid var(--line-2); box-shadow: var(--shadow);
+        aspect-ratio: 16 / 11; user-select: none; cursor: crosshair;
+      }
+      .stage-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .stage-overlay { position: absolute; inset: 0; pointer-events: none; }
+
+      /* phase indicator + skill callouts */
+      .phase-pill { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); padding: 6px 16px; border-radius: 999px; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border: 1px solid var(--line-2); font-family: "Baloo 2", cursive; font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--sakura); box-shadow: var(--glow-s); transition: all .3s; z-index: 5; }
+      .skill-callout { position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%) scale(0.3); font-family: "Baloo 2", cursive; font-weight: 800; font-size: 38px; opacity: 0; pointer-events: none; text-shadow: 0 0 24px currentColor, 0 2px 6px rgba(0,0,0,0.6); transition: all .5s cubic-bezier(0.2,1.6,0.3,1); z-index: 10; letter-spacing: 0.02em; white-space: nowrap; }
+      .skill-callout.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      .result-flash { position: absolute; top: 48%; left: 50%; transform: translate(-50%, -50%) scale(0.5); font-family: "Baloo 2", cursive; font-size: 64px; font-weight: 800; opacity: 0; pointer-events: none; text-shadow: 0 0 36px currentColor, 0 3px 8px rgba(0,0,0,0.7); transition: all .55s cubic-bezier(0.2,1.4,0.4,1); z-index: 11; }
+      .result-flash.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      .result-flash.goal { color: var(--mint); }
+      .result-flash.saved { color: var(--sky); }
+      .result-flash.miss, .result-flash.post { color: var(--rose); }
+      .result-flash.wall_blocked { color: var(--gold); }
+
+      /* screen flash overlay for impacts */
+      .screen-flash { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .15s; z-index: 8; }
+      .screen-flash.goal { background: radial-gradient(circle at 50% 45%, rgba(168,240,212,0.4), transparent 60%); }
+      .screen-flash.saved { background: radial-gradient(circle at 50% 45%, rgba(155,212,255,0.35), transparent 60%); }
+      .screen-flash.miss, .screen-flash.post { background: radial-gradient(circle at 50% 45%, rgba(255,122,168,0.3), transparent 60%); }
+      .screen-flash.wall_blocked { background: radial-gradient(circle at 50% 45%, rgba(255,224,138,0.35), transparent 60%); }
+      .screen-flash.flash { opacity: 1; transition: opacity 0s; }
+
+      /* ---------- CONTROLS ---------- */
+      .controls-panel { margin-top: 16px; }
+      .mode-tabs { display: flex; gap: 5px; padding: 4px; border-radius: 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--line); width: fit-content; margin-bottom: 14px; }
+      .mode-tab { padding: 7px 13px; border-radius: 9px; border: 0; cursor: pointer; background: transparent; color: var(--ink-mute); font-family: "Baloo 2", cursive; font-weight: 700; font-size: 11px; letter-spacing: 0.05em; transition: all .2s; }
+      .mode-tab.active { background: var(--lilac); color: #fff; box-shadow: var(--glow-l); }
+
+      .phase-tracker { display: flex; gap: 6px; margin-bottom: 16px; }
+      .phase-dot { flex: 1; height: 5px; border-radius: 999px; background: rgba(255,255,255,0.08); transition: background .3s; }
+      .phase-dot.active { background: var(--sakura); box-shadow: 0 0 8px var(--sakura); }
+      .phase-dot.done { background: var(--mint); }
+
+      .control-block { margin-bottom: 16px; }
+      .control-block:last-child { margin-bottom: 0; }
+      .control-label { display: flex; justify-content: space-between; align-items: center; font-family: "Baloo 2", cursive; font-size: 11px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 7px; }
+      .control-label .val { color: var(--sakura); font-family: var(--mono); font-size: 12px; }
+      .control-label .val.locked { color: var(--gold); }
+      .helper { font-size: 11px; color: var(--ink-mute); line-height: 1.45; margin-top: 6px; }
+      .helper b { color: var(--sakura); font-weight: 600; }
+
+      /* power meter — single oscillating bar, click to lock */
+      .meter-bar { position: relative; height: 32px; border-radius: 10px; background: rgba(0,0,0,0.35); border: 1px solid var(--line-2); overflow: hidden; box-shadow: inset 0 2px 5px rgba(0,0,0,0.4); cursor: pointer; }
+      .meter-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, var(--mint), var(--gold) 55%, var(--rose)); border-radius: 9px 0 0 9px; }
+      .meter-marker { position: absolute; top: -2px; bottom: -2px; width: 3px; background: #fff; box-shadow: 0 0 8px #fff; }
+      .meter-sweet { position: absolute; top: 0; bottom: 0; background: rgba(168,240,212,0.2); border-left: 1px dashed var(--mint); border-right: 1px dashed var(--mint); }
+      .meter-bar.locked .meter-marker { background: var(--gold); box-shadow: 0 0 12px var(--gold); }
+
+      /* curve slider */
+      .curve-row { display: flex; align-items: center; gap: 10px; }
+      .curve-slider { flex: 1; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: linear-gradient(90deg, var(--sky), rgba(255,255,255,0.1) 50%, var(--sakura)); outline: none; cursor: pointer; }
+      .curve-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(180deg, #fff, var(--lilac)); border: 2px solid var(--lilac-2); box-shadow: var(--glow-l); cursor: pointer; }
+      .curve-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: linear-gradient(180deg, #fff, var(--lilac)); border: 2px solid var(--lilac-2); cursor: pointer; }
+      .curve-tick { font-family: var(--mono); font-size: 10px; color: var(--ink-mute); width: 24px; text-align: center; }
+
+      /* timing approach */
+      .approach { position: relative; height: 38px; border-radius: 10px; background: rgba(0,0,0,0.35); border: 1px solid var(--line-2); overflow: hidden; cursor: pointer; box-shadow: inset 0 2px 5px rgba(0,0,0,0.4); }
+      .approach-track { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(255,122,168,0.18), transparent 28%, transparent 72%, rgba(255,122,168,0.18)); }
+      .approach-sweet { position: absolute; top: 0; bottom: 0; background: rgba(168,240,212,0.28); border-left: 2px solid var(--mint); border-right: 2px solid var(--mint); }
+      .approach-runner { position: absolute; top: 0; bottom: 0; width: 4px; background: #fff; box-shadow: 0 0 10px #fff; }
+      .approach.locked .approach-runner { background: var(--gold); box-shadow: 0 0 12px var(--gold); }
+
+      /* ---------- BUTTONS ---------- */
+      .btn { --c1: var(--sakura); --c2: var(--sakura-2); --glow: var(--glow-s); position: relative; display: inline-flex; align-items: center; gap: 9px; border: 1px solid rgba(255,255,255,0.25); cursor: pointer; padding: 11px 20px; font-family: "Baloo 2", cursive; font-weight: 700; font-size: 13px; color: #fff; border-radius: 999px; background: linear-gradient(180deg, var(--c1), var(--c2)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -3px 0 rgba(0,0,0,0.12), 0 5px 16px rgba(0,0,0,0.25), var(--glow); transition: transform .15s cubic-bezier(0.2,0.9,0.3,1.3), box-shadow .15s, opacity .15s; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+      .btn:hover:not(:disabled) { transform: translateY(-2px) scale(1.02); }
+      .btn:active:not(:disabled) { transform: translateY(1px) scale(0.98); }
+      .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+      .btn.lilac { --c1: var(--lilac); --c2: var(--lilac-2); --glow: var(--glow-l); }
+      .btn.sky { --c1: var(--sky); --c2: var(--sky-2); color: #1b3a55; text-shadow: none; }
+      .btn.mint { --c1: var(--mint); --c2: var(--mint-2); color: #1b4a35; text-shadow: none; }
+      .btn.ghost { background: rgba(255,255,255,0.06); color: var(--ink-dim); border: 1px solid var(--line-2); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06); text-shadow: none; }
+      .btn.ghost:hover:not(:disabled) { color: var(--sakura); border-color: var(--sakura); }
+      .btn.sm { padding: 8px 14px; font-size: 11px; }
+      .btn .ic { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .actions { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 14px; }
+
+      /* ---------- KEEPER CONTROLS ---------- */
+      .keeper-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+      .keeper-cell { padding: 10px 4px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--line); text-align: center; cursor: pointer; transition: all .2s; font-family: "Baloo 2", cursive; font-weight: 700; font-size: 11px; color: var(--ink-dim); }
+      .keeper-cell:hover { border-color: var(--sky); color: var(--sky); transform: translateY(-1px); }
+      .keeper-cell.active { background: linear-gradient(180deg, var(--sky), var(--sky-2)); color: #1b3a55; border-color: var(--sky); box-shadow: 0 0 14px rgba(155,212,255,0.4); }
+      .keeper-cell .icon { font-size: 18px; display: block; margin-bottom: 2px; }
+      .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--line); }
+      .toggle-row .lb { font-family: "Baloo 2", cursive; font-weight: 700; font-size: 12px; }
+      .toggle { width: 44px; height: 24px; border-radius: 999px; background: rgba(0,0,0,0.4); border: 1px solid var(--line-2); position: relative; cursor: pointer; transition: background .2s; }
+      .toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--ink-mute); transition: all .2s; }
+      .toggle.on { background: var(--mint-2); }
+      .toggle.on::after { left: 22px; background: var(--mint); box-shadow: 0 0 8px var(--mint); }
+
+      /* shot type selector */
+      .shot-type { flex: 1; padding: 10px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--line); text-align: center; cursor: pointer; transition: all .2s; font-family: "Baloo 2", cursive; font-weight: 700; font-size: 12px; color: var(--ink-dim); }
+      .shot-type:hover { border-color: var(--sakura); color: var(--sakura); }
+      .shot-type.active { background: linear-gradient(180deg, var(--sakura), var(--sakura-2)); color: #fff; border-color: var(--sakura); box-shadow: var(--glow-s); }
+      .shot-type .shot-icon { font-size: 16px; margin-right: 4px; }
+
+      /* replay viewer */
+      .replay-bar { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+      .replay-slider { flex: 1; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: rgba(0,0,0,0.4); border: 1px solid var(--line); outline: none; cursor: pointer; }
+      .replay-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(180deg, #fff, var(--gold)); border: 2px solid var(--gold-2); box-shadow: 0 0 8px var(--gold); cursor: pointer; }
+      .replay-slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: linear-gradient(180deg, #fff, var(--gold)); border: 2px solid var(--gold-2); cursor: pointer; }
+      .replay-play { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--gold-2); background: linear-gradient(180deg, rgba(255,224,138,0.25), rgba(201,168,255,0.15)); color: var(--gold); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+      .replay-play:hover { background: linear-gradient(180deg, rgba(255,224,138,0.4), rgba(201,168,255,0.25)); box-shadow: 0 0 10px rgba(255,224,138,0.4); }
+      .replay-play.playing { color: var(--mint); border-color: var(--mint-2); }
+      .replay-list { max-height: 120px; overflow-y: auto; margin-top: 8px; }
+      .replay-list::-webkit-scrollbar { width: 3px; }
+      .replay-list::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 3px; }
+      .replay-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--line); margin-bottom: 4px; cursor: pointer; transition: all .2s; font-size: 11px; }
+      .replay-item:hover { border-color: var(--lilac); background: rgba(201,168,255,0.08); }
+      .replay-item.active { border-color: var(--gold); background: rgba(255,224,138,0.1); }
+      .replay-item .ri-round { font-family: var(--mono); color: var(--lilac); width: 36px; }
+      .replay-item .ri-outcome { font-family: "Baloo 2", cursive; font-weight: 700; }
+      .replay-item .ri-outcome.goal { color: var(--mint); }
+      .replay-item .ri-outcome.saved, .replay-item .ri-outcome.wall_blocked, .replay-item .ri-outcome.post, .replay-item .ri-outcome.miss { color: var(--rose); }
+      .replay-item .ri-shot { font-family: var(--mono); color: var(--ink-mute); margin-left: auto; font-size: 10px; }
+
+      /* sound toggle */
+      .icon-btn-sm { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid var(--line-2); color: var(--ink-dim); cursor: pointer; font-size: 11px; font-weight: 600; transition: all .2s; }
+      .icon-btn-sm:hover { color: var(--sakura); border-color: var(--sakura); }
+      .icon-btn-sm.on { color: var(--mint); border-color: var(--mint); }
+
+      /* ---------- PIPELINE ---------- */
+      .pipeline { display: flex; flex-direction: column; gap: 8px; }
+      .pipe-step { display: grid; grid-template-columns: 32px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--line); transition: all .35s; opacity: 0.45; }
+      .pipe-step.active { opacity: 1; border-color: var(--sakura); background: rgba(255,155,214,0.08); box-shadow: var(--glow-s); }
+      .pipe-step.done { opacity: 1; border-color: var(--mint); background: rgba(168,240,212,0.06); }
+      .pipe-step.error { opacity: 1; border-color: var(--rose); }
+      .pipe-icon { width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; background: rgba(255,255,255,0.06); border: 1px solid var(--line-2); font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--ink-mute); }
+      .pipe-step.active .pipe-icon { background: var(--sakura); color: #fff; border-color: var(--sakura); }
+      .pipe-step.done .pipe-icon { background: var(--mint); color: #1b4a35; border-color: var(--mint); }
+      .pipe-title { font-family: "Baloo 2", cursive; font-weight: 700; font-size: 12px; }
+      .pipe-sub { font-size: 10px; color: var(--ink-mute); margin-top: 1px; font-family: var(--mono); word-break: break-all; }
+      .pipe-tag { font-family: var(--mono); font-size: 9px; padding: 2px 7px; border-radius: 5px; background: rgba(255,255,255,0.06); color: var(--ink-mute); letter-spacing: 0.1em; }
+      .pipe-step.active .pipe-tag { background: rgba(255,155,214,0.2); color: var(--sakura); }
+      .pipe-step.done .pipe-tag { background: rgba(168,240,212,0.2); color: var(--mint); }
+
+      /* ---------- LOG / HISTORY / STATUS ---------- */
+      .event-log { max-height: 200px; overflow-y: auto; font-family: var(--mono); font-size: 10px; line-height: 1.55; padding: 10px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--line); }
+      .event-log::-webkit-scrollbar { width: 3px; }
+      .event-log::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 3px; }
+      .event-line { padding: 1px 0; color: var(--ink-dim); }
+      .event-line .ts { color: var(--lilac); margin-right: 5px; }
+      .event-line .tag { color: var(--sakura); }
+      .event-line .hash { color: var(--gold); }
+      .history { display: flex; gap: 6px; flex-wrap: wrap; }
+      .hist-pill { padding: 4px 10px; border-radius: 999px; font-family: var(--mono); font-size: 10px; font-weight: 600; border: 1px solid var(--line-2); background: rgba(255,255,255,0.04); color: var(--ink-dim); }
+      .hist-pill.goal { background: rgba(168,240,212,0.15); border-color: var(--mint); color: var(--mint); }
+      .hist-pill.saved, .hist-pill.wall_blocked, .hist-pill.post, .hist-pill.miss { background: rgba(255,122,168,0.12); border-color: var(--rose); color: var(--rose); }
+      .stat-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 11px; }
+      .stat-row .lb { color: var(--ink-mute); }
+      .stat-row .vl { font-family: var(--mono); color: var(--ink); font-weight: 600; }
+      .stat-row .vl.ok { color: var(--mint); }
+      .stat-row .vl.warn { color: var(--gold); }
+
+      /* ---------- WINNER ---------- */
+      .winner-overlay { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(27,14,34,0.88); backdrop-filter: blur(20px); opacity: 0; pointer-events: none; transition: opacity .4s; }
+      .winner-overlay.show { opacity: 1; pointer-events: auto; }
+      .winner-card { text-align: center; padding: 36px 54px; background: linear-gradient(180deg, rgba(255,155,214,0.2), rgba(201,168,255,0.15)); border: 1px solid var(--line-2); border-radius: var(--r-lg); box-shadow: var(--shadow), var(--glow-s); transform: scale(0.8); transition: transform .5s cubic-bezier(0.2,1.4,0.4,1); }
+      .winner-overlay.show .winner-card { transform: scale(1); }
+      .winner-crown { font-size: 56px; margin-bottom: 6px; }
+      .winner-title { font-family: "Baloo 2", cursive; font-size: 42px; font-weight: 800; margin: 0 0 6px; background: linear-gradient(90deg, var(--gold), var(--sakura)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .winner-sub { font-size: 13px; color: var(--ink-dim); margin-bottom: 20px; }
+      .winner-payout { font-family: var(--mono); font-size: 12px; color: var(--mint); padding: 8px 16px; border-radius: 999px; background: rgba(168,240,212,0.1); border: 1px solid rgba(168,240,212,0.3); margin-bottom: 20px; }
+    </style>
+  </head>
+  <body>
+    <div class="petals" id="petals"></div>
+    <div class="shell">
+      <!-- HEADER -->
+      <div class="header">
+        <div class="brand">
+          <span class="brand-mark">
+            <svg viewBox="0 0 32 32" fill="none">
+              <defs><linearGradient id="bg1" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#ff9bd6"/><stop offset="1" stop-color="#c9a8ff"/></linearGradient></defs>
+              <path d="M16 3c5 0 9 4 9 9 0 2-1 4-2 6l-7 11-7-11c-1-2-2-4-2-6 0-5 4-9 9-9Z" fill="url(#bg1)"/>
+              <circle cx="16" cy="12" r="5" fill="#fff" opacity="0.9"/>
+            </svg>
+          </span>
+          <div>
+            <div class="brand-name">PearCup</div>
+            <div class="brand-sub">Free Kick Clash</div>
+          </div>
+        </div>
+        <a class="back-link" href="00-gallery.html">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          All specs
+        </a>
+      </div>
+
+      <!-- GAME LAYOUT -->
+      <div class="game-layout">
+        <!-- LEFT -->
+        <div>
+          <!-- SCOREBOARD -->
+          <div class="scoreboard">
+            <div class="sb-team">
+              <svg class="ava" viewBox="0 0 100 100"><ellipse cx="50" cy="58" rx="28" ry="30" fill="#ffe8d6"/><path d="M22 50 Q20 20 50 20 Q80 20 78 50 Q70 38 50 38 Q30 38 22 50 Z" fill="#ff9bd6"/><ellipse cx="40" cy="56" rx="6" ry="8" fill="#3a1a4a"/><ellipse cx="60" cy="56" rx="6" ry="8" fill="#3a1a4a"/><circle cx="42" cy="53" r="2.5" fill="#fff"/><circle cx="62" cy="53" r="2.5" fill="#fff"/></svg>
+              <div><div class="nm">Kai_07 <span class="momentum" id="momentumA">🔥</span></div><div class="sub">Brazil</div><span class="role shoot" id="roleA">Shoot</span></div>
+            </div>
+            <div class="sb-core">
+              <div class="round-lbl" id="roundLbl">Round 1 · Best of 5</div>
+              <div class="pts" id="scorePts">0 - 0</div>
+              <div class="kick-track" id="kickTrack"></div>
+            </div>
+            <div class="sb-team r">
+              <svg class="ava" viewBox="0 0 100 100"><ellipse cx="50" cy="58" rx="28" ry="30" fill="#ffe8d6"/><path d="M22 50 Q20 20 50 20 Q80 20 78 50 Q70 38 50 38 Q30 38 22 50 Z" fill="#c9a8ff"/><ellipse cx="40" cy="56" rx="6" ry="8" fill="#3a1a4a"/><ellipse cx="60" cy="56" rx="6" ry="8" fill="#3a1a4a"/><circle cx="42" cy="53" r="2.5" fill="#fff"/><circle cx="62" cy="53" r="2.5" fill="#fff"/></svg>
+              <div><div class="nm">NyxRunner <span class="momentum" id="momentumB">🔥</span></div><div class="sub">Norway</div><span class="role keep" id="roleB">Keep</span></div>
+            </div>
+          </div>
+
+          <!-- STAGE -->
+          <div class="stage-wrap">
+            <div class="stage" id="stage">
+              <svg class="stage-svg" id="stageSvg" viewBox="0 0 640 440" preserveAspectRatio="xMidYMid meet">
+                <defs>
+                  <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                  <filter id="softglow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                  <linearGradient id="netGrad" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff" stop-opacity="0.18"/><stop offset="1" stop-color="#fff" stop-opacity="0.05"/></linearGradient>
+                  <radialGradient id="spotlight" cx="0.5" cy="0.2" r="0.6"><stop stop-color="rgba(255,224,138,0.12)"/><stop offset="1" stop-color="transparent"/></radialGradient>
+                </defs>
+
+                <!-- spotlight wash -->
+                <rect x="0" y="0" width="640" height="440" fill="url(#spotlight)"/>
+
+                <!-- crowd silhouettes (top band) -->
+                <g id="crowd" opacity="0.4"></g>
+
+                <!-- pitch ground plane (perspective trapezoid) -->
+                <polygon points="40,380 600,380 520,260 120,260" fill="#1a3a26" stroke="rgba(168,240,212,0.15)" stroke-width="1"/>
+                <!-- pitch grid lines (perspective) -->
+                <g stroke="rgba(168,240,212,0.08)" stroke-width="0.8" fill="none">
+                  <line x1="120" y1="260" x2="520" y2="260"/>
+                  <line x1="100" y1="290" x2="540" y2="290"/>
+                  <line x1="80" y1="325" x2="560" y2="325"/>
+                  <line x1="60" y1="360" x2="580" y2="360"/>
+                  <!-- vertical lines converging -->
+                  <line x1="200" y1="380" x2="240" y2="260"/>
+                  <line x1="320" y1="380" x2="320" y2="260"/>
+                  <line x1="440" y1="380" x2="400" y2="260"/>
+                </g>
+                <!-- penalty box -->
+                <polygon points="160,360 480,360 440,270 200,270" fill="none" stroke="rgba(168,240,212,0.18)" stroke-width="1.2"/>
+
+                <!-- GOAL FRAME (perspective trapezoid: near edge wider) -->
+                <g id="goalFrame">
+                  <!-- net background -->
+                  <polygon points="180,150 460,150 440,260 200,260" fill="url(#netGrad)" stroke="none"/>
+                  <!-- net mesh -->
+                  <g stroke="rgba(255,255,255,0.12)" stroke-width="0.5" fill="none">
+                    <line x1="180" y1="180" x2="460" y2="180"/>
+                    <line x1="185" y1="210" x2="455" y2="210"/>
+                    <line x1="190" y1="240" x2="450" y2="240"/>
+                    <line x1="220" y1="150" x2="215" y2="260"/>
+                    <line x1="260" y1="150" x2="258" y2="260"/>
+                    <line x1="300" y1="150" x2="300" y2="260"/>
+                    <line x1="340" y1="150" x2="342" y2="260"/>
+                    <line x1="380" y1="150" x2="384" y2="260"/>
+                    <line x1="420" y1="150" x2="425" y2="260"/>
+                  </g>
+                  <!-- posts (near = bottom of viewBox, thicker) -->
+                  <line x1="200" y1="260" x2="180" y2="150" stroke="#fff" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+                  <line x1="440" y1="260" x2="460" y2="150" stroke="#fff" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+                  <line x1="180" y1="150" x2="460" y2="150" stroke="#fff" stroke-width="4" stroke-linecap="round" filter="url(#glow)"/>
+                </g>
+
+                <!-- net bulge effect (shown on goal) -->
+                <g id="netBulge" opacity="0"></g>
+
+                <!-- defensive wall -->
+                <g id="wallGroup"></g>
+
+                <!-- Keeper -->
+                <g id="keeperGroup"></g>
+
+                <!-- Ball (starts at penalty spot) -->
+                <g id="ballGroup">
+                  <circle cx="320" cy="350" r="9" fill="#fff" stroke="#3a1a4a" stroke-width="1.5" filter="url(#glow)"/>
+                </g>
+
+                <!-- Ball trail (particles) -->
+                <g id="trailGroup"></g>
+
+                <!-- Petal burst on impact -->
+                <g id="burstGroup"></g>
+
+                <!-- Live trajectory preview (during aim phase) -->
+                <path id="previewPath" d="" fill="none" stroke="#ff9bd6" stroke-width="2" stroke-dasharray="3 5" opacity="0" stroke-linecap="round"/>
+                <!-- Final trajectory (on resolve) -->
+                <path id="trajPath" d="" fill="none" stroke="#ffe08a" stroke-width="2.5" stroke-dasharray="4 4" opacity="0" stroke-linecap="round" filter="url(#softglow)"/>
+
+                <!-- Aim reticle -->
+                <g id="aimReticle" opacity="0">
+                  <circle cx="0" cy="0" r="16" fill="none" stroke="#ff9bd6" stroke-width="2" filter="url(#glow)"/>
+                  <line x1="0" y1="-22" x2="0" y2="22" stroke="#ff9bd6" stroke-width="1.5"/>
+                  <line x1="-22" y1="0" x2="22" y2="0" stroke="#ff9bd6" stroke-width="1.5"/>
+                </g>
+              </svg>
+              <div class="stage-overlay">
+                <div class="phase-pill" id="phasePill">Aim</div>
+                <div class="skill-callout" id="skillCallout"></div>
+                <div class="result-flash" id="resultFlash"></div>
+                <div class="screen-flash" id="screenFlash"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CONTROLS -->
+          <div class="panel controls-panel">
+            <div class="mode-tabs">
+              <button class="mode-tab active" data-mode="bot">vs Bot Keeper</button>
+              <button class="mode-tab" data-mode="hotseat">Hot-seat 2P</button>
+            </div>
+
+            <div class="phase-tracker" id="phaseTracker">
+              <div class="phase-dot active" data-phase="aim"></div>
+              <div class="phase-dot" data-phase="power"></div>
+              <div class="phase-dot" data-phase="timing"></div>
+            </div>
+
+            <div id="shooterControls">
+              <div class="control-block">
+                <div class="control-label"><span>1 · Aim &amp; shot type</span><span class="val" id="aimVal">click goal</span></div>
+                <div class="helper">Click inside the goal to aim. Then pick a <b>shot type</b> and (for curve) bend it around the wall — the dashed sakura path previews your trajectory.</div>
+                <div class="shot-type-row" style="display: flex; gap: 6px; margin-top: 8px; margin-bottom: 8px;">
+                  <div class="shot-type active" data-shot="curve" id="shotCurve">
+                    <span class="shot-icon">⟲</span> Curve
+                  </div>
+                  <div class="shot-type" data-shot="knuckle" id="shotKnuckle">
+                    <span class="shot-icon">≈</span> Knuckle
+                  </div>
+                </div>
+                <div id="curveWrap">
+                  <div class="curve-row">
+                    <span class="curve-tick">L</span>
+                    <input type="range" class="curve-slider" id="curveSlider" min="-50" max="50" value="0" />
+                    <span class="curve-tick">R</span>
+                  </div>
+                </div>
+                <div class="helper" id="knuckleNote" style="display: none; color: var(--gold);">Knuckleball: zero curve, unpredictable flutter. <b>High risk</b> — keeper can't read it, but neither can you.</div>
+              </div>
+              <div class="control-block">
+                <div class="control-label"><span>2 · Power (click to lock)</span><span class="val" id="powerVal">—</span></div>
+                <div class="meter-bar" id="powerBar">
+                  <div class="meter-sweet" style="left: 58%; width: 18%;"></div>
+                  <div class="meter-fill" id="powerFill" style="width: 0%;"></div>
+                  <div class="meter-marker" id="powerMarker" style="left: 0%;"></div>
+                </div>
+                <div class="helper"><b>Mint zone</b> = clean power. Red zone = risky (harder strike, bigger timing penalty).</div>
+              </div>
+              <div class="control-block">
+                <div class="control-label"><span>3 · Run-up timing (click to strike)</span><span class="val" id="timingVal">—</span></div>
+                <div class="approach" id="approachBar">
+                  <div class="approach-track"></div>
+                  <div class="approach-sweet" style="left: 44%; width: 12%;"></div>
+                  <div class="approach-runner" id="approachRunner" style="left: 0%;"></div>
+                </div>
+                <div class="helper">Time the run-up. <b>Mint contact zone</b> = perfect strike. Mistimed = aim drifts + power sapped.</div>
+              </div>
+              <div class="actions">
+                <button class="btn" id="strikeBtn" disabled>
+                  <svg class="ic" viewBox="0 0 24 24"><path d="M12 2 L20 6 L20 12 C20 17 16 21 12 22 C8 21 4 17 4 12 L4 6 Z"/></svg>
+                  Strike!
+                </button>
+                <button class="btn ghost sm" id="resetInputsBtn">Reset</button>
+              </div>
+            </div>
+
+            <!-- KEEPER (hot-seat) -->
+            <div id="keeperControls" style="display: none;">
+              <h3 style="margin-bottom: 12px;">~ Keeper turn (pass device) ~</h3>
+              <div class="control-block">
+                <div class="control-label"><span>Wall placement (visible to shooter)</span></div>
+                <div class="keeper-grid" id="wallSideGrid" style="grid-template-columns: repeat(2, 1fr);">
+                  <div class="keeper-cell active" data-wallside="left"><span class="icon">←</span>Left wall</div>
+                  <div class="keeper-cell" data-wallside="right"><span class="icon">→</span>Right wall</div>
+                </div>
+                <div class="helper" style="margin-top: 6px;">Wall blocks the near-post side. <b>Shooter sees this</b> and must aim around it.</div>
+              </div>
+              <div class="control-block">
+                <div class="control-label"><span>Dive target</span></div>
+                <div class="keeper-grid" id="diveGrid">
+                  <div class="keeper-cell" data-dive="10"><span class="icon">↙</span>Far L</div>
+                  <div class="keeper-cell" data-dive="30"><span class="icon">←</span>L</div>
+                  <div class="keeper-cell active" data-dive="50"><span class="icon">•</span>Center</div>
+                  <div class="keeper-cell" data-dive="70"><span class="icon">→</span>R</div>
+                  <div class="keeper-cell" data-dive="90"><span class="icon">↘</span>Far R</div>
+                </div>
+              </div>
+              <div class="toggle-row" style="margin-bottom: 12px;">
+                <span class="lb">Wall jumps (block high)</span>
+                <div class="toggle" id="wallJumpToggle"></div>
+              </div>
+              <div class="control-block">
+                <div class="control-label"><span>Reaction timing (click to commit)</span><span class="val" id="reactVal">—</span></div>
+                <div class="approach" id="reactBar">
+                  <div class="approach-track"></div>
+                  <div class="approach-sweet" style="left: 38%; width: 14%;"></div>
+                  <div class="approach-runner" id="reactRunner" style="left: 0%;"></div>
+                </div>
+                <div class="helper">Commit reaction early to dive faster. <b>Mint zone</b> = sharp reflexes.</div>
+              </div>
+              <div class="actions">
+                <button class="btn sky" id="keeperCommitBtn" disabled>
+                  <svg class="ic" viewBox="0 0 24 24"><path d="M12 2 L20 6 L20 12 C20 17 16 21 12 22 C8 21 4 17 4 12 L4 6 Z"/></svg>
+                  Commit dive
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT -->
+        <div>
+          <div class="panel" style="margin-bottom: 16px;">
+            <div class="eyebrow">~ Trusted settlement ~</div>
+            <h2>P2P pipeline</h2>
+            <div class="pipeline" id="pipeline"></div>
+          </div>
+          <div class="panel" style="margin-bottom: 16px;">
+            <div class="eyebrow">~ Runtime gates ~</div>
+            <h2>Match status</h2>
+            <div class="stat-row"><span class="lb">Resolver</span><span class="vl">free-kick-v1</span></div>
+            <div class="stat-row"><span class="lb">Topic</span><span class="vl" id="gameTopic">—</span></div>
+            <div class="stat-row"><span class="lb">Peers</span><span class="vl ok">2 / 2</span></div>
+            <div class="stat-row"><span class="lb">Event root</span><span class="vl" id="eventRoot">—</span></div>
+            <div class="stat-row"><span class="lb">QVAC lane</span><span class="vl ok">Ready</span></div>
+            <div class="stat-row"><span class="lb">WDK escrow</span><span class="vl warn" id="wdkStatus">Locked · demo</span></div>
+            <div class="stat-row"><span class="lb">Stake</span><span class="vl">5.00 USDT</span></div>
+            <div class="stat-row" style="margin-top: 8px;">
+              <span class="lb">Sound</span>
+              <span class="icon-btn-sm on" id="soundToggle">🔊 On</span>
+            </div>
+          </div>
+          <div class="panel" style="margin-bottom: 16px;">
+            <div class="eyebrow">~ Round history ~</div>
+            <h2>This match</h2>
+            <div class="history" id="history"></div>
+          </div>
+          <div class="panel" style="margin-bottom: 16px;">
+            <div class="eyebrow">~ Replay viewer ~</div>
+            <h2>Scrub past kicks</h2>
+            <div class="replay-list" id="replayList"><div class="helper" style="margin:0;">No rounds yet. Play a kick, then scrub it here.</div></div>
+            <div class="replay-bar" id="replayBar" style="display: none;">
+              <input type="range" class="replay-slider" id="replaySlider" min="0" max="100" value="0" />
+              <span class="val" id="replayFrame" style="font-family: var(--mono); font-size: 10px; color: var(--gold); width: 36px; text-align: right;">0%</span>
+              <button class="replay-play" id="replayPlayBtn" title="Play/pause replay">▶</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="eyebrow">~ Append-only log ~</div>
+            <h2>Worker stream</h2>
+            <div class="event-log" id="eventLog"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="winner-overlay" id="winnerOverlay">
+      <div class="winner-card">
+        <div class="winner-crown">👑</div>
+        <h2 class="winner-title" id="winnerTitle">Kai_07 wins!</h2>
+        <div class="winner-sub" id="winnerSub">Best of 5 · 3 - 1</div>
+        <div class="winner-payout" id="winnerPayout">WDK escrow released · 5.00 USDT</div>
+        <div class="actions" style="justify-content: center;">
+          <button class="btn mint" onclick="newMatch()">New match</button>
+          <button class="btn ghost" onclick="closeWinner()">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    /* ============================================================
+       RESOLVER — free-kick-v1 (unchanged contract from v1)
+       Plus a power-accuracy tradeoff: high power amplifies timing error.
+       ============================================================ */
+    const RESOLVER_VERSION = 'free-kick-v1';
+    function canonicalJson(v) {
+      if (Array.isArray(v)) return `[${v.map(canonicalJson).join(',')}]`;
+      if (v && typeof v === 'object') return `{${Object.keys(v).sort().map(k => `${JSON.stringify(k)}:${canonicalJson(v[k])}`).join(',')}}`;
+      return JSON.stringify(v);
+    }
+    function hash32(s) { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return h >>> 0; }
+    function deterministicHash(v) {
+      const t = typeof v === 'string' ? v : canonicalJson(v);
+      const fwd = hash32(t).toString(16).padStart(8, '0');
+      const rev = hash32(t.split('').reverse().join('')).toString(16).padStart(8, '0');
+      return `0x${fwd}${rev}`;
+    }
+    function createCommitment({ gameId, roundId, playerId, input, nonce }) { return deterministicHash({ gameId, roundId, playerId, input, nonce }); }
+    function verifyCommitment({ commitment, gameId, roundId, playerId, input, nonce }) { return commitment === createCommitment({ gameId, roundId, playerId, input, nonce }); }
+
+    // Seeded PRNG from a hex string (deterministic knuckleball flutter)
+    function seededRandom(seedHex) {
+      let s = 0;
+      for (let i = 2; i < seedHex.length; i++) s = (Math.imul(s, 31) + seedHex.charCodeAt(i)) | 0;
+      return function () { s = (Math.imul(s, 1103515245) + 12345) | 0; return ((s >>> 16) & 0x7fff) / 0x7fff; };
+    }
+
+    function resolveFreeKick(shooterInput, keeperInput, roundSeed) {
+      const timingDrift = shooterInput.releaseTick - 50;
+      const timingError = Math.abs(timingDrift);
+
+      const powerStress = 1 + (shooterInput.power / 100) * 0.6;
+      const effectivePower = Math.max(0, shooterInput.power * (1 - (timingError / 250) * powerStress));
+      const timingAimDrift = timingDrift * 0.25 * (shooterInput.power / 100);
+
+      // ---- Knuckleball: zero curve, seeded flutter from roundSeed ----
+      const isKnuckle = shooterInput.shotType === 'knuckle';
+      // p1/p2/p3 are hoisted to function scope so the trajectory loop below can reuse them
+      let curveEffect, flutterOffset, p1 = 0, p2 = 0, p3 = 0;
+      if (isKnuckle) {
+        curveEffect = 0;
+        // flutter: 3 sine waves at different frequencies, seeded by roundSeed
+        const rng = seededRandom(roundSeed || 'fallback');
+        p1 = rng() * Math.PI * 2;
+        p2 = rng() * Math.PI * 2;
+        p3 = rng() * Math.PI * 2;
+        const amp = 14 + (effectivePower / 100) * 10;  // stronger = wilder flutter
+        flutterOffset = Math.sin(p1) * amp * 0.5 + Math.sin(p2 * 1.7) * amp * 0.3 + Math.sin(p3 * 2.3) * amp * 0.2;
+      } else {
+        curveEffect = shooterInput.curve * 0.5 * (effectivePower / 100);
+        flutterOffset = 0;
+      }
+
+      const finalX = shooterInput.aimX + timingAimDrift + curveEffect + flutterOffset;
+      const finalY = shooterInput.aimY + (effectivePower < 50 ? -8 : 0);
+      const onTarget = finalX >= 8 && finalX <= 92 && finalY >= 0 && finalY <= 82;
+
+      // ---- Wall: keeper picks which side (left or right). Public info. ----
+      const wallSide = keeperInput.wallSide || 'left';
+      const wallXStart = wallSide === 'left' ? 12 : 50;
+      const wallXEnd   = wallSide === 'left' ? 50 : 88;
+      const wallTopY = keeperInput.wallJump ? 55 : 40;
+      const wallBlocked = finalX >= wallXStart && finalX <= wallXEnd && finalY <= wallTopY;
+
+      const reactionError = Math.abs(keeperInput.diveTick - 45);
+      const reach = Math.max(8, 20 - reactionError * 0.18);
+      const keeperFinalX = keeperInput.positionX + (keeperInput.diveX - keeperInput.positionX) * (1 - reactionError / 120);
+      // Knuckleballs are harder to read → keeper reach reduced
+      const keeperReach = isKnuckle ? reach * 0.7 : reach;
+      const keeperSaves = Math.abs(finalX - keeperFinalX) <= keeperReach && finalY <= 60;
+
+      let outcome;
+      if (!onTarget) {
+        const nearFrame = (Math.abs(finalX - 8) < 3.5 || Math.abs(finalX - 92) < 3.5 || Math.abs(finalY - 82) < 3.5);
+        outcome = nearFrame ? 'post' : 'miss';
+      } else if (wallBlocked) outcome = 'wall_blocked';
+      else if (keeperSaves) outcome = 'saved';
+      else outcome = 'goal';
+
+      // ---- Trajectory with flutter for knuckleballs ----
+      const startX = 50, startY = 0;
+      const trajectory = [];
+      for (let i = 0; i <= 16; i++) {
+        const t = i / 16;
+        const linX = startX + (finalX - startX) * t;
+        const curveBend = curveEffect * Math.sin(t * Math.PI);
+        let flutterBend = 0;
+        if (isKnuckle) {
+          // flutter builds mid-flight, peaks around 60% then settles
+          const envelope = Math.sin(t * Math.PI) * (t > 0.2 ? 1 : t / 0.2);
+          flutterBend = (Math.sin(p1 + t * 9) + Math.sin(p2 + t * 13) * 0.6) * envelope * 8;
+        }
+        const linY = startY + (finalY - startY) * t;
+        trajectory.push({ x: linX + curveBend * 0.6 + flutterBend, y: linY, t });
+      }
+      return { finalX, finalY, effectivePower, timingDrift, timingError, curveEffect, flutterOffset, isKnuckle, outcome, trajectory, reach: keeperReach, keeperFinalX, wallTopY, wallSide };
+    }
+
+    function createFreeKickRound({ gameId, roundId, shooter, keeper, shooterInput, keeperInput, shooterNonce, keeperNonce }) {
+      const shooterCommitment = createCommitment({ gameId, roundId, playerId: shooter.id, input: shooterInput, nonce: shooterNonce });
+      const keeperCommitment = createCommitment({ gameId, roundId, playerId: keeper.id, input: keeperInput, nonce: keeperNonce });
+      const roundSeed = deterministicHash({ gameId, roundId, shooterCommitment, keeperCommitment });
+      const resolution = resolveFreeKick(shooterInput, keeperInput, roundSeed);
+      const stateHash = deterministicHash({ resolverVersion: RESOLVER_VERSION, gameId, roundId, roundSeed, shooterInput, keeperInput, outcome: resolution.outcome });
+      const sourceEventIds = [
+        deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: shooter.id, commitment: shooterCommitment }),
+        deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: keeper.id, commitment: keeperCommitment }),
+        deterministicHash({ type: 'GameInputRevealed', roundId, playerId: shooter.id, input: shooterInput }),
+        deterministicHash({ type: 'GameInputRevealed', roundId, playerId: keeper.id, input: keeperInput }),
+        deterministicHash({ type: 'GameRoundResolved', roundId, stateHash })
+      ];
+      return { gameId, roundId, resolverVersion: RESOLVER_VERSION, shooter, keeper, shooterInput, keeperInput, shooterCommitment, keeperCommitment, shooterNonce, keeperNonce, roundSeed, ...resolution, outcome: resolution.outcome, stateHash, sourceEventIds };
+    }
+    function createQvacAttestation({ roundResult, refereeId = 'qvac-demo-ref' }) {
+      const ok = Boolean(roundResult && roundResult.stateHash && roundResult.sourceEventIds && roundResult.sourceEventIds.length >= 5);
+      const ruling = ok ? roundResult.outcome : 'disputed';
+      const stateHash = ok ? roundResult.stateHash : deterministicHash({ reason: 'missing-evidence' });
+      const attestationId = deterministicHash({ refereeId, gameId: roundResult.gameId, roundId: roundResult.roundId, ruling, stateHash });
+      const signature = deterministicHash({ attestationId, refereeId, ruling, stateHash, sourceEventIds: ok ? roundResult.sourceEventIds : [] });
+      return { attestationId, refereeId, gameId: roundResult.gameId, roundId: roundResult.roundId, resolverVersion: RESOLVER_VERSION, ruling, stateHash, sourceEventIds: ok ? roundResult.sourceEventIds : [], confidence: ok ? 0.98 : 0.34, signature };
+    }
+    function createWdkEscrow({ gameId, players, amount = 5, asset = 'USDT' }) { return { escrowId: deterministicHash({ gameId, players, amount, asset }), gameId, players, amount, asset, status: 'locked' }; }
+    function releaseWdkEscrow({ escrow, attestation, winnerUserId }) {
+      if (!attestation || !attestation.signature) throw new Error('QVAC attestation required');
+      if (attestation.ruling === 'disputed') throw new Error('Disputed attestation cannot release');
+      return { payoutId: deterministicHash({ escrowId: escrow.escrowId, attestationId: attestation.attestationId, winnerUserId }), escrowId: escrow.escrowId, winnerUserId, amount: escrow.amount, asset: escrow.asset, status: 'prepared', qvacAttestationId: attestation.attestationId };
+    }
+
+    /* ============================================================
+       GAME STATE
+       ============================================================ */
+    const state = {
+      mode: 'bot', gameId: 'fk-' + Math.random().toString(36).slice(2, 8),
+      round: 1, maxRounds: 5, scoreA: 0, scoreB: 0, kicksA: [], kicksB: [],
+      streakA: 0, streakB: 0,
+      shooterIsA: true, phase: 'aim',
+      aim: null, power: null, curve: 0, timing: null, shotType: 'curve', placementTier: null,
+      keeperDive: 50, keeperReact: null, keeperWallJump: false, keeperWallSide: 'left',
+      shooterNonce: '', keeperNonce: '', botKeeperInput: null,
+      currentRoundResult: null, escrow: null, eventLog: [],
+      suddenDeath: false, matchOver: false,
+      powerAnim: null, timingAnim: null, reactAnim: null, replayAnim: null,
+      roundHistory: [],
+      audioCtx: null, soundOn: true
+    };
+    state.escrow = createWdkEscrow({ gameId: state.gameId, players: ['Kai_07', 'NyxRunner'], amount: 5 });
+
+    /* ============================================================
+       COORD MAPPING
+       Input 0-100 → goal frame in SVG (perspective trapezoid)
+       Near edge (y=0 input) at svg y=260, far edge (y=100) at svg y=150
+       Left/right posts converge: near x 200/440, far x 180/460
+       ============================================================ */
+    function mapPoint(inX, inY) {
+      // inY: 0 = goal line (near, bottom), 100 = crossbar (far, top)
+      const nearY = 260, farY = 150;
+      const nearLeft = 200, nearRight = 440;
+      const farLeft = 180, farRight = 460;
+      const t = inY / 100;
+      const leftX = nearLeft + (farLeft - nearLeft) * t;
+      const rightX = nearRight + (farRight - nearRight) * t;
+      const svgX = leftX + (rightX - leftX) * (inX / 100);
+      const svgY = nearY + (farY - nearY) * t;
+      return { x: svgX, y: svgY };
+    }
+    function unmapPoint(svgX, svgY) {
+      // invert: solve for t from y, then x
+      const nearY = 260, farY = 150;
+      const t = (svgY - nearY) / (farY - nearY);
+      const tt = Math.max(0, Math.min(1, t));
+      const nearLeft = 200, nearRight = 440;
+      const farLeft = 180, farRight = 460;
+      const leftX = nearLeft + (farLeft - nearLeft) * tt;
+      const rightX = nearRight + (farRight - nearRight) * tt;
+      const inX = ((svgX - leftX) / (rightX - leftX)) * 100;
+      const inY = tt * 100;
+      return { x: Math.max(0, Math.min(100, inX)), y: Math.max(0, Math.min(100, inY)) };
+    }
+
+    /* ============================================================
+       SVG DRAWING — perspective scene
+       ============================================================ */
+    const $ = id => document.getElementById(id);
+
+    function drawCrowd() {
+      const g = $('crowd');
+      let html = '';
+      const colors = ['#ff9bd6', '#c9a8ff', '#9bd4ff', '#ffe08a', '#a8f0d4'];
+      for (let i = 0; i < 60; i++) {
+        const x = 20 + Math.random() * 600;
+        const y = 20 + Math.random() * 80;
+        const r = 4 + Math.random() * 5;
+        const c = colors[Math.floor(Math.random() * colors.length)];
+        html += `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" opacity="${0.3 + Math.random() * 0.4}"/>`;
+      }
+      g.innerHTML = html;
+    }
+
+    function drawWall(wallJump, wallSide = 'left') {
+      const g = $('wallGroup');
+      g.innerHTML = '';
+      // wall covers near-post side based on keeper's chosen side
+      const positions = wallSide === 'left' ? [18, 28, 38, 47] : [53, 62, 72, 82];
+      positions.forEach((px, i) => {
+        const p = mapPoint(px, 5);
+        const scale = 1.0;
+        const jumpOffset = wallJump ? -16 : 0;
+        const rot = wallJump ? (i % 2 === 0 ? -8 : 8) : 0;
+        g.innerHTML += `
+          <g transform="translate(${p.x}, ${p.y + jumpOffset}) scale(${scale}) rotate(${rot})">
+            <ellipse cx="0" cy="8" rx="11" ry="14" fill="#9c7ee0" stroke="#fff" stroke-width="1.2" opacity="0.92" filter="url(#softglow)"/>
+            <circle cx="0" cy="-8" r="8" fill="#ffe8d6" stroke="#fff" stroke-width="1.2"/>
+            <ellipse cx="-2.5" cy="-9" rx="1.8" ry="2.5" fill="#3a1a4a"/>
+            <ellipse cx="2.5" cy="-9" rx="1.8" ry="2.5" fill="#3a1a4a"/>
+            ${wallJump ? `<path d="M-4 -3 Q0 -8 4 -3" stroke="#3a1a4a" stroke-width="1.2" fill="none"/>` : `<path d="M-2 -2 Q0 0 2 -2" stroke="#c5306a" stroke-width="1" fill="none"/>`}
+            <ellipse cx="-5" cy="-8" r="2" fill="#ff9bd6" opacity="0.5"/>
+            <ellipse cx="5" cy="-8" r="2" fill="#ff9bd6" opacity="0.5"/>
+          </g>`;
+      });
+    }
+
+    function drawKeeper(positionX, diveX, t) {
+      const g = $('keeperGroup');
+      g.innerHTML = '';
+      const startP = mapPoint(positionX, 30);
+      const endP = mapPoint(diveX, 15);
+      const cx = startP.x + (endP.x - startP.x) * t;
+      const cy = startP.y + (endP.y - startP.y) * t - t * 6;
+      const rot = (diveX < positionX ? -1 : 1) * t * 40;
+      const scale = 1.0;
+      g.innerHTML = `
+        <g transform="translate(${cx}, ${cy}) scale(${scale}) rotate(${rot})">
+          <ellipse cx="0" cy="0" rx="16" ry="22" fill="#9bd4ff" stroke="#fff" stroke-width="1.5" filter="url(#softglow)"/>
+          <circle cx="0" cy="-22" r="12" fill="#ffe8d6" stroke="#fff" stroke-width="1.3"/>
+          <ellipse cx="-3.5" cy="-23" rx="2.5" ry="3" fill="#3a1a4a"/>
+          <ellipse cx="3.5" cy="-23" rx="2.5" ry="3" fill="#3a1a4a"/>
+          <circle cx="-3" cy="-24" r="0.8" fill="#fff"/>
+          <circle cx="4" cy="-24" r="0.8" fill="#fff"/>
+          <path d="M-3 -16 Q0 -13 3 -16" stroke="#c5306a" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+          <ellipse cx="-5" cy="-19" r="2.5" fill="#ff9bd6" opacity="0.5"/>
+          <ellipse cx="5" cy="-19" r="2.5" fill="#ff9bd6" opacity="0.5"/>
+          <ellipse cx="-17" cy="${-6 - t * 8}" rx="5" ry="5" fill="#fff" stroke="#9bd4ff" stroke-width="1.8" filter="url(#glow)"/>
+          <ellipse cx="17" cy="${-6 - t * 8}" rx="5" ry="5" fill="#fff" stroke="#9bd4ff" stroke-width="1.8" filter="url(#glow)"/>
+        </g>`;
+    }
+
+    function drawBall(x, y, scale = 1) {
+      const r = 9 * scale;
+      $('ballGroup').innerHTML = `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" stroke="#3a1a4a" stroke-width="1.5" filter="url(#glow)"/>`;
+    }
+
+    function drawAimReticle(inX, inY, locked) {
+      const p = mapPoint(inX, inY);
+      const color = locked ? '#ffe08a' : '#ff9bd6';
+      $('aimReticle').innerHTML = `
+        <circle cx="${p.x}" cy="${p.y}" r="16" fill="none" stroke="${color}" stroke-width="2" filter="url(#glow)"/>
+        <line x1="${p.x}" y1="${p.y - 22}" x2="${p.x}" y2="${p.y + 22}" stroke="${color}" stroke-width="1.5"/>
+        <line x1="${p.x - 22}" y1="${p.y}" x2="${p.x + 22}" y2="${p.y}" stroke="${color}" stroke-width="1.5"/>`;
+      $('aimReticle').setAttribute('opacity', '1');
+    }
+
+    // live preview path during aim
+    function updatePreviewPath() {
+      if (!state.aim) { $('previewPath').setAttribute('opacity', '0'); return; }
+      // simulate trajectory with current aim + curve + estimated power (mid)
+      const estPower = state.power || 70;
+      const fakeInput = { aimX: state.aim.x, aimY: state.aim.y, power: estPower, curve: state.shotType === 'knuckle' ? 0 : state.curve, releaseTick: 50, shotType: state.shotType };
+      // preview uses a deterministic placeholder seed so the live path is stable until strike
+      const res = resolveFreeKick(fakeInput, { positionX: 50, diveX: 50, diveTick: 45, wallJump: false, wallSide: state.keeperWallSide || 'left' }, 'preview-seed');
+      const pts = res.trajectory.map(p => mapPoint(p.x, p.y));
+      const startP = mapPoint(50, -15);  // ball spot slightly below goal line
+      const allPts = [{ x: 320, y: 350 }, ...pts];  // from actual ball position
+      const d = allPts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+      $('previewPath').setAttribute('d', d);
+      // knuckle preview gets a dotted/dashed look to telegraph the wobble
+      $('previewPath').setAttribute('stroke-dasharray', state.shotType === 'knuckle' ? '4 5' : '6 6');
+      $('previewPath').setAttribute('opacity', '0.6');
+    }
+
+    /* ============================================================
+       PHASE + UI HELPERS
+       ============================================================ */
+    function setPhase(p, label) {
+      state.phase = p;
+      $('phasePill').textContent = label || p;
+      // phase tracker dots
+      const order = ['aim', 'power', 'timing'];
+      const idx = order.indexOf(p);
+      document.querySelectorAll('.phase-dot').forEach((d, i) => {
+        d.classList.remove('active', 'done');
+        if (i < idx) d.classList.add('done');
+        else if (i === idx) d.classList.add('active');
+      });
+    }
+
+    function log(tag, msg, hash) {
+      const ts = new Date().toLocaleTimeString('en-US', { hour12: false });
+      state.eventLog.push({ ts, tag, msg, hash });
+      const el = $('eventLog');
+      const line = document.createElement('div');
+      line.className = 'event-line';
+      line.innerHTML = `<span class="ts">${ts}</span><span class="tag">[${tag}]</span> ${msg}${hash ? ` <span class="hash">${hash.slice(0,12)}…</span>` : ''}`;
+      el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    // build pipeline DOM
+    const PIPE_STEPS = [
+      ['commit', '01', 'Commit inputs', 'Both players hash inputs + nonce'],
+      ['reveal', '02', 'Reveal & verify', 'Inputs revealed, commitments checked'],
+      ['resolve', '03', 'Deterministic resolve', 'free-kick-v1 computes outcome'],
+      ['sync', '04', 'Topic convergence', 'Peers merge logs, compare roots'],
+      ['qvac', '05', 'QVAC attestation', 'Referee signs ruling over stateHash'],
+      ['wdk', '06', 'WDK escrow release', 'Payout prepared for winner']
+    ];
+    (function buildPipeline() {
+      const p = $('pipeline');
+      p.innerHTML = PIPE_STEPS.map(([key, num, title, sub]) => `
+        <div class="pipe-step" data-step="${key}">
+          <div class="pipe-icon">${num}</div>
+          <div><div class="pipe-title">${title}</div><div class="pipe-sub" id="pipeSub_${key}">${sub}</div></div>
+          <span class="pipe-tag" id="pipeTag_${key}">IDLE</span>
+        </div>`).join('');
+    })();
+    function setPipeStep(step, status, sub) {
+      const el = document.querySelector(`.pipe-step[data-step="${step}"]`);
+      if (!el) return;
+      el.classList.remove('active', 'done', 'error');
+      if (status) el.classList.add(status);
+      const tag = $(`pipeTag_${step}`);
+      if (tag) tag.textContent = status === 'done' ? 'OK' : status === 'active' ? 'RUN' : status === 'error' ? 'FAIL' : 'IDLE';
+      if (sub) { const s = $(`pipeSub_${step}`); if (s) s.textContent = sub; }
+    }
+    function resetPipeline() { PIPE_STEPS.forEach(([k]) => setPipeStep(k, null)); }
+
+    function updateScoreboard() {
+      $('scorePts').textContent = `${state.scoreA} - ${state.scoreB}`;
+      $('roundLbl').textContent = state.suddenDeath ? `Sudden death · R${state.round}` : `Round ${state.round} · Best of ${state.maxRounds}`;
+      const track = $('kickTrack');
+      track.innerHTML = '';
+      const total = state.suddenDeath ? state.round : state.maxRounds;
+      for (let i = 0; i < total; i++) {
+        const k = document.createElement('span');
+        k.className = 'kick';
+        if (i < state.kicksA.length) k.classList.add(state.kicksA[i] === 'goal' ? 'in' : 'out');
+        else if (i === state.round - 1 && state.shooterIsA) k.classList.add('cur');
+        track.appendChild(k);
+      }
+      $('roleA').textContent = state.shooterIsA ? 'Shoot' : 'Keep';
+      $('roleA').className = 'role ' + (state.shooterIsA ? 'shoot' : 'keep');
+      $('roleB').textContent = state.shooterIsA ? 'Keep' : 'Shoot';
+      $('roleB').className = 'role ' + (state.shooterIsA ? 'keep' : 'shoot');
+      const hist = $('history');
+      hist.innerHTML = '';
+      const all = [];
+      state.kicksA.forEach((k, i) => all.push({ r: i + 1, who: 'A', k }));
+      state.kicksB.forEach((k, i) => all.push({ r: i + 1, who: 'B', k }));
+      all.sort((a, b) => a.r - b.r || (a.who === 'B' ? 1 : -1)).forEach(h => {
+        const p = document.createElement('span');
+        p.className = 'hist-pill ' + h.k;
+        p.textContent = `R${h.r} ${h.who}: ${h.k.replace('_', ' ')}`;
+        hist.appendChild(p);
+      });
+      $('gameTopic').textContent = `pearcup:v1:game:${state.gameId}`;
+      $('eventRoot').textContent = state.currentRoundResult ? state.currentRoundResult.stateHash.slice(0, 16) + '…' : '—';
+    }
+
+    function showSkillCallout(text, color) {
+      const el = $('skillCallout');
+      el.textContent = text;
+      el.style.color = color || 'var(--gold)';
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 1100);
+    }
+
+    // Placement quality — how tight is the aim to a post or the crossbar?
+    // Tight placements are riskier (easier to hit the post) but reward style.
+    function assessPlacement(aimX, aimY) {
+      const postDist = Math.min(Math.abs(aimX - 8), Math.abs(aimX - 92));
+      const barDist = Math.abs(aimY - 82);
+      // top-corner: high Y and near a post
+      const isTopCorner = aimY > 60 && postDist < 12;
+      const isNearPost = postDist < 8;
+      const isUnderBar = barDist < 12 && aimY > 55;
+      if (isTopCorner && postDist < 6) return { tier: 'top', label: 'TOP CORNER!', color: 'var(--mint)' };
+      if (isTopCorner) return { tier: 'corner', label: 'TIGHT CORNER', color: 'var(--gold)' };
+      if (isNearPost) return { tier: 'risky', label: 'RISKY PLACEMENT', color: 'var(--rose)' };
+      if (isUnderBar) return { tier: 'high', label: 'UNDER THE BAR', color: 'var(--gold)' };
+      return null;
+    }
+
+    function showResultFlash(outcome) {
+      const el = $('resultFlash');
+      el.className = 'result-flash ' + outcome;
+      const labels = { goal: 'GOAL!', saved: 'SAVED!', miss: 'MISS!', post: 'POST!', wall_blocked: 'BLOCKED!' };
+      el.textContent = labels[outcome] || outcome.toUpperCase();
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 2000);
+      // screen flash
+      const sf = $('screenFlash');
+      sf.className = 'screen-flash ' + outcome + ' flash';
+      setTimeout(() => sf.classList.remove('flash'), 200);
+    }
+
+    // petal burst on impact
+    function petalBurst(x, y, color) {
+      const g = $('burstGroup');
+      const colors = color === 'goal' ? ['#a8f0d4', '#ffe08a', '#fff'] : color === 'saved' ? ['#9bd4ff', '#c9a8ff', '#fff'] : ['#ff7aa8', '#ff9bd6', '#fff'];
+      let html = '';
+      for (let i = 0; i < 14; i++) {
+        const angle = (i / 14) * Math.PI * 2;
+        const dist = 30 + Math.random() * 40;
+        const dx = Math.cos(angle) * dist;
+        const dy = Math.sin(angle) * dist;
+        const c = colors[i % colors.length];
+        const sz = 3 + Math.random() * 4;
+        html += `<circle cx="${x}" cy="${y}" r="${sz}" fill="${c}" opacity="0.9">
+          <animate attributeName="cx" from="${x}" to="${x + dx}" dur="0.8s" fill="freeze"/>
+          <animate attributeName="cy" from="${y}" to="${y + dy}" dur="0.8s" fill="freeze"/>
+          <animate attributeName="opacity" from="0.9" to="0" dur="0.8s" fill="freeze"/>
+          <animate attributeName="r" from="${sz}" to="0" dur="0.8s" fill="freeze"/>
+        </circle>`;
+      }
+      g.innerHTML = html;
+      setTimeout(() => { g.innerHTML = ''; }, 900);
+    }
+
+    // net bulge on goal
+    function netBulge(x, y) {
+      const g = $('netBulge');
+      g.innerHTML = `
+        <ellipse cx="${x}" cy="${y}" rx="30" ry="20" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5">
+          <animate attributeName="rx" from="5" to="35" dur="0.4s" fill="freeze"/>
+          <animate attributeName="ry" from="3" to="22" dur="0.4s" fill="freeze"/>
+          <animate attributeName="opacity" from="1" to="0" dur="0.6s" fill="freeze"/>
+        </ellipse>`;
+      g.setAttribute('opacity', '1');
+      setTimeout(() => { g.innerHTML = ''; g.setAttribute('opacity', '0'); }, 700);
+    }
+
+    /* ============================================================
+       SOUND ENGINE — Web Audio API synth (no assets)
+       strike · net ripple · goal cheer · save · wall thud · miss · post
+       ============================================================ */
+    function audioCtx() {
+      if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
+      return state.audioCtx;
+    }
+    function envGain(ctx, t0, peak, attack, decay) {
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(peak, t0 + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + attack + decay);
+      return g;
+    }
+    function playStrike(power, isKnuckle) {
+      if (!state.soundOn) return;
+      const ctx = audioCtx(); const t0 = ctx.currentTime;
+      // body: noise burst (leather-on-ball)
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.12, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass';
+      lp.frequency.value = 600 + power * 8;
+      const g = envGain(ctx, t0, 0.5, 0.002, 0.1);
+      src.connect(lp).connect(g).connect(ctx.destination); src.start(t0); src.stop(t0 + 0.13);
+      // thump: sine pitch-drop
+      const osc = ctx.createOscillator(); osc.type = 'sine';
+      osc.frequency.setValueAtTime(180 + power * 1.5, t0);
+      osc.frequency.exponentialRampToValueAtTime(60, t0 + 0.12);
+      const og = envGain(ctx, t0, 0.45, 0.002, 0.13);
+      osc.connect(og).connect(ctx.destination); osc.start(t0); osc.stop(t0 + 0.15);
+      // knuckle: add a high airy whistle
+      if (isKnuckle) {
+        const w = ctx.createOscillator(); w.type = 'triangle';
+        w.frequency.setValueAtTime(2200, t0);
+        w.frequency.linearRampToValueAtTime(1600, t0 + 0.2);
+        const wg = envGain(ctx, t0, 0.06, 0.01, 0.22);
+        w.connect(wg).connect(ctx.destination); w.start(t0); w.stop(t0 + 0.25);
+      }
+    }
+    function playNet() {
+      if (!state.soundOn) return;
+      const ctx = audioCtx(); const t0 = ctx.currentTime;
+      // ripple: filtered noise swish
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.25, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 1.5);
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 2;
+      const g = envGain(ctx, t0, 0.32, 0.005, 0.22);
+      src.connect(bp).connect(g).connect(ctx.destination); src.start(t0); src.stop(t0 + 0.26);
+    }
+    function playCheer() {
+      if (!state.soundOn) return;
+      const ctx = audioCtx(); const t0 = ctx.currentTime;
+      // crowd cheer: dense noise swell with bandpass
+      const dur = 1.1;
+      const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) {
+        const swell = Math.sin(Math.PI * (i / d.length));
+        d[i] = (Math.random() * 2 - 1) * swell * 0.7;
+      }
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 0.8;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(0.42, t0 + 0.18); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      src.connect(bp).connect(g).connect(ctx.destination); src.start(t0); src.stop(t0 + dur);
+      // horn stab
+      const osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 330;
+      const og = envGain(ctx, t0, 0.12, 0.02, 0.35); osc.connect(og).connect(ctx.destination); osc.start(t0); osc.stop(t0 + 0.4);
+    }
+    function playSave() {
+      if (!state.soundOn) return;
+      const ctx = audioCtx(); const t0 = ctx.currentTime;
+      // glove parry: soft thud + palm slap
+      const osc = ctx.createOscillator(); osc.type = 'sine';
+      osc.frequency.setValueAtTime(220, t0); osc.frequency.exponentialRampToValueAtTime(80, t0 + 0.1);
+      const g = envGain(ctx, t0, 0.4, 0.002, 0.11);
+      osc.connect(g).connect(ctx.destination); osc.start(t0); osc.stop(t0 + 0.12);
+      const buf = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate);
+      const dd = buf.getChannelData(0); for (let i = 0; i < dd.length; i++) dd[i] = (Math.random() * 2 - 1) * (1 - i / dd.length);
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500;
+      const sg = envGain(ctx, t0 + 0.01, 0.3, 0.002, 0.07);
+      src.connect(lp).connect(sg).connect(ctx.destination); src.start(t0); src.stop(t0 + 0.09);
+    }
+    function playWall() {
+      if (!state.soundOn) return;
+      const ctx = audioCtx(); const t0 = ctx.currentTime;
+      // wall thud: dull low boom
+      const osc = ctx.createOscillator(); osc.type = 'sine';
+      osc.frequency.setValueAtTime(120, t0); osc.frequency.exponentialRampToValueAtTime(45, t0 + 0.15);
+      const g = envGain(ctx, t0, 0.55, 0.002, 0.18);
+      osc.connect(g).connect(ctx.destination); osc.start(t0); osc.stop(t0 + 0.2);
+    }
+    function playMiss() {
+      if (!state.soundOn) return;
+      const ctx = audioCtx(); const t0 = ctx.currentTime;
+      // miss: disappointed groan (falling sawtooth) + sparse crowd murmur
+      const osc = ctx.createOscillator(); osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(300, t0); osc.frequency.exponentialRampToValueAtTime(150, t0 + 0.4);
+      const g = envGain(ctx, t0, 0.1, 0.05, 0.4); osc.connect(g).connect(ctx.destination); osc.start(t0); osc.stop(t0 + 0.45);
+    }
+    function playPost() {
+      if (!state.soundOn) return;
+      const ctx = audioCtx(); const t0 = ctx.currentTime;
+      // post ping: bright metallic ring with decay
+      const osc = ctx.createOscillator(); osc.type = 'triangle';
+      osc.frequency.setValueAtTime(1800, t0);
+      const g = envGain(ctx, t0, 0.35, 0.002, 0.5);
+      osc.connect(g).connect(ctx.destination); osc.start(t0); osc.stop(t0 + 0.55);
+      // second harmonic
+      const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = 2650;
+      const g2 = envGain(ctx, t0, 0.15, 0.002, 0.35); o2.connect(g2).connect(ctx.destination); o2.start(t0); o2.stop(t0 + 0.4);
+    }
+    function playOutcomeSound(outcome, power, isKnuckle) {
+      // net + cheer on goal, glove on save, thud on wall, ping on post, groan on miss
+      if (outcome === 'goal') { playNet(); setTimeout(playCheer, 90); }
+      else if (outcome === 'saved') playSave();
+      else if (outcome === 'wall_blocked') playWall();
+      else if (outcome === 'post') playPost();
+      else playMiss();
+    }
+    // UI tick — a soft, short blip when a meter locks
+    function playTick(locked) {
+      if (!state.soundOn) return;
+      const ctx = audioCtx(); const t0 = ctx.currentTime;
+      const osc = ctx.createOscillator(); osc.type = 'square';
+      osc.frequency.setValueAtTime(locked ? 880 : 440, t0);
+      osc.frequency.exponentialRampToValueAtTime(locked ? 1320 : 220, t0 + 0.04);
+      const g = envGain(ctx, t0, 0.08, 0.001, 0.05);
+      osc.connect(g).connect(ctx.destination); osc.start(t0); osc.stop(t0 + 0.07);
+    }
+    // Referee whistle — short trill at match/round start
+    function playWhistle() {
+      if (!state.soundOn) return;
+      const ctx = audioCtx(); const t0 = ctx.currentTime;
+      const osc = ctx.createOscillator(); osc.type = 'sine';
+      osc.frequency.setValueAtTime(2100, t0);
+      // warble for a referee-pea effect
+      const lfo = ctx.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 28;
+      const lfoGain = ctx.createGain(); lfoGain.gain.value = 180;
+      lfo.connect(lfoGain).connect(osc.frequency);
+      const g = envGain(ctx, t0, 0.18, 0.01, 0.32);
+      osc.connect(g).connect(ctx.destination); osc.start(t0); lfo.start(t0);
+      osc.stop(t0 + 0.35); lfo.stop(t0 + 0.35);
+    }
+
+    /* ============================================================
+       INPUT FLOW — 3 fluid phases
+       Phase 1: Aim (click goal) + curve slider (live preview) → auto-advance to power
+       Phase 2: Power (oscillating, click to lock) → auto-advance to timing
+       Phase 3: Timing (oscillating, click to lock) → enable Strike button
+       ============================================================ */
+    const stage = $('stage');
+
+    // --- PHASE 1: AIM ---
+    stage.addEventListener('click', (e) => {
+      if (state.phase !== 'aim') return;
+      const rect = stage.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width;
+      const py = (e.clientY - rect.top) / rect.height;
+      const svgX = px * 640, svgY = py * 440;
+      // accept clicks within goal frame bounds
+      if (svgY < 130 || svgY > 270 || svgX < 170 || svgX > 470) return;
+      const { x, y } = unmapPoint(svgX, svgY);
+      state.aim = { x, y };
+      $('aimVal').textContent = `(${x.toFixed(0)}, ${y.toFixed(0)})`;
+      $('aimVal').classList.add('locked');
+      drawAimReticle(x, y, false);
+      // placement quality callout — rewards risky tight-corner aims with style
+      const place = assessPlacement(x, y);
+      state.placementTier = place ? place.tier : null;
+      if (place) setTimeout(() => showSkillCallout(place.label, place.color), 120);
+      updatePreviewPath();
+      // auto-advance to power after a brief beat
+      setTimeout(() => {
+        if (state.phase === 'aim' && state.aim) {
+          setPhase('power', 'Power');
+          startPowerMeter();
+        }
+      }, 350);
+    });
+
+    // curve slider — live updates preview
+    $('curveSlider').addEventListener('input', (e) => {
+      state.curve = parseInt(e.target.value);
+      $('aimVal').textContent = state.aim ? `(${state.aim.x.toFixed(0)}, ${state.aim.y.toFixed(0)}) · curve ${state.curve > 0 ? '+' : ''}${state.curve}` : 'click goal';
+      if (state.aim) updatePreviewPath();
+    });
+
+    // --- SHOT TYPE TOGGLE: curve ↔ knuckle ---
+    document.querySelectorAll('.shot-type').forEach(el => el.addEventListener('click', () => {
+      document.querySelectorAll('.shot-type').forEach(x => x.classList.remove('active'));
+      el.classList.add('active');
+      state.shotType = el.dataset.shot;
+      const isKnuckle = state.shotType === 'knuckle';
+      $('curveWrap').style.display = isKnuckle ? 'none' : 'block';
+      $('knuckleNote').style.display = isKnuckle ? 'block' : 'none';
+      if (isKnuckle) {
+        state.curve = 0;
+        $('curveSlider').value = 0;
+      }
+      if (state.aim) updatePreviewPath();
+    }));
+
+    // --- PHASE 2: POWER ---
+    function startPowerMeter() {
+      let dir = 1, val = 0;
+      const fill = $('powerFill'), marker = $('powerMarker');
+      $('powerBar').classList.remove('locked');
+      function tick() {
+        val += dir * 2.0;
+        if (val >= 100) { val = 100; dir = -1; }
+        if (val <= 0) { val = 0; dir = 1; }
+        fill.style.width = val + '%';
+        marker.style.left = val + '%';
+        state.powerAnim = requestAnimationFrame(tick);
+      }
+      tick();
+    }
+    $('powerBar').addEventListener('click', () => {
+      if (state.phase !== 'power') return;
+      cancelAnimationFrame(state.powerAnim);
+      const left = parseFloat($('powerMarker').style.left);
+      state.power = Math.round(left);
+      $('powerVal').textContent = state.power + '%';
+      $('powerVal').classList.add('locked');
+      $('powerBar').classList.add('locked');
+      playTick(true);
+      // skill callout for power
+      if (state.power >= 58 && state.power <= 76) showSkillCallout('GREAT POWER', 'var(--mint)');
+      else if (state.power > 90) showSkillCallout('MAX POWER', 'var(--rose)');
+      updatePreviewPath();
+      setPhase('timing', 'Timing');
+      startTimingMeter();
+    });
+
+    // --- PHASE 3: TIMING ---
+    function startTimingMeter() {
+      let dir = 1, val = 0;
+      const runner = $('approachRunner');
+      $('approach').classList.remove('locked');
+      function tick() {
+        val += dir * 1.5;
+        if (val >= 100) { val = 100; dir = -1; }
+        if (val <= 0) { val = 0; dir = 1; }
+        runner.style.left = val + '%';
+        state.timingAnim = requestAnimationFrame(tick);
+      }
+      tick();
+    }
+    $('approachBar').addEventListener('click', () => {
+      if (state.phase !== 'timing') return;
+      cancelAnimationFrame(state.timingAnim);
+      const left = parseFloat($('approachRunner').style.left);
+      state.timing = Math.round(left);
+      $('timingVal').textContent = state.timing + ' / 100';
+      $('timingVal').classList.add('locked');
+      $('approach').classList.add('locked');
+      $('approachRunner').classList.add('locked');
+      playTick(true);
+      // skill callout for timing
+      const drift = Math.abs(state.timing - 50);
+      if (drift < 6) showSkillCallout('PERFECT TIMING', 'var(--mint)');
+      else if (drift < 14) showSkillCallout('CLEAN CONTACT', 'var(--gold)');
+      $('strikeBtn').disabled = false;
+      setPhase('ready', 'Ready');
+    });
+
+    $('resetInputsBtn').addEventListener('click', resetShooterInputs);
+    function resetShooterInputs() {
+      state.aim = null; state.power = null; state.curve = 0; state.timing = null; state.shotType = 'curve'; state.placementTier = null;
+      cancelAnimationFrame(state.powerAnim); cancelAnimationFrame(state.timingAnim);
+      ['aimVal', 'powerVal', 'timingVal'].forEach(id => { const el = $(id); el.textContent = id === 'aimVal' ? 'click goal' : '—'; el.classList.remove('locked'); });
+      $('curveSlider').value = 0;
+      // reset shot-type toggle to curve
+      document.querySelectorAll('.shot-type').forEach(x => x.classList.toggle('active', x.dataset.shot === 'curve'));
+      $('curveWrap').style.display = 'block';
+      $('knuckleNote').style.display = 'none';
+      $('powerFill').style.width = '0%'; $('powerMarker').style.left = '0%';
+      $('approachRunner').style.left = '0%'; $('approachRunner').classList.remove('locked');
+      $('powerBar').classList.remove('locked'); $('approach').classList.remove('locked');
+      $('aimReticle').setAttribute('opacity', '0');
+      $('previewPath').setAttribute('opacity', '0');
+      $('strikeBtn').disabled = true;
+      setPhase('aim', 'Aim');
+    }
+
+    /* ============================================================
+       STRIKE → COMMIT → KEEPER → REVEAL → RESOLVE → SETTLE
+       ============================================================ */
+    $('strikeBtn').addEventListener('click', () => {
+      if (state.phase !== 'ready') return;
+      state.shooterNonce = 'n-' + Math.random().toString(36).slice(2, 10);
+      const shooter = { id: state.shooterIsA ? 'Kai_07' : 'NyxRunner' };
+      const roundId = `fk-${state.round}`;
+      const shooterInput = { aimX: state.aim.x, aimY: state.aim.y, power: state.power, curve: state.shotType === 'knuckle' ? 0 : state.curve, releaseTick: state.timing, shotType: state.shotType };
+      const commitment = createCommitment({ gameId: state.gameId, roundId, playerId: shooter.id, input: shooterInput, nonce: state.shooterNonce });
+      log('COMMIT', `${shooter.id} committed ${state.shotType} kick (nonce hidden)`, commitment);
+      playStrike(state.power, state.shotType === 'knuckle');
+      setPipeStep('commit', 'active', `shooter hash: ${commitment.slice(0,10)}…`);
+      $('strikeBtn').disabled = true;
+      $('previewPath').setAttribute('opacity', '0');
+      setTimeout(() => {
+        setPipeStep('commit', 'done', `${shooter.id} commitment sealed`);
+        if (state.mode === 'bot') runBotKeeper(shooterInput);
+        else showKeeperControls();
+      }, 600);
+    });
+
+    // --- BOT KEEPER: smarter AI with adaptive difficulty ---
+    // The bot sharpens when the human player is ahead (rubber-band so matches
+    // stay tense) and eases off when the human trails. Capped so it's always beatable.
+    function botDifficulty(shooterInput) {
+      const humanIsA = state.shooterIsA; // human is always the shooter in bot mode
+      const humanScore = humanIsA ? state.scoreA : state.scoreB;
+      const botScore = humanIsA ? state.scoreB : state.scoreA;
+      const lead = humanScore - botScore; // +ve: human ahead, bot sharpens
+      // read chance: 0.40 baseline → up to 0.62 when human leads by 2+, down to 0.30 when trailing
+      const readChance = Math.max(0.30, Math.min(0.62, 0.40 + lead * 0.11));
+      // reaction: tighter (closer to sweet 45) when ahead, looser when trailing
+      const reactFloor = Math.max(30, 35 - lead * 2.5);   // lower = sharper
+      const reactCeil = Math.min(60, 57 - lead * 2.5);    // tighter ceiling when ahead
+      // aim-reading noise shrinks when the bot is sharp
+      const noiseScale = Math.max(10, 30 - lead * 6);
+      return { readChance, reactFloor, reactCeil, noiseScale, lead };
+    }
+    function runBotKeeper(shooterInput) {
+      setPhase('keeper', 'Keeper reading…');
+      const diff = botDifficulty(shooterInput);
+      // Bot sometimes "reads" the aim, sometimes guesses
+      const reads = Math.random() < diff.readChance;
+      let diveX, stance;
+      if (reads) {
+        // bias dive toward shooter's aim, with noise (less noise when sharp)
+        const noise = (Math.random() - 0.5) * diff.noiseScale;
+        diveX = Math.max(5, Math.min(95, shooterInput.aimX + noise));
+        stance = Math.max(20, Math.min(80, diveX * 0.6 + 50 * 0.4));
+      } else {
+        const guess = Math.random();
+        if (guess < 0.3) { stance = 25; diveX = 15; }
+        else if (guess < 0.6) { stance = 50; diveX = 50; }
+        else { stance = 75; diveX = 85; }
+      }
+      // Wall side tactic: 55% cover the side the shooter is aiming at (challenge),
+      // 45% cover the opposite side to bait a shot over the wall — shooter must read it.
+      const aimSide = shooterInput.aimX < 50 ? 'left' : 'right';
+      const wallSide = Math.random() < 0.55 ? aimSide : (aimSide === 'left' ? 'right' : 'left');
+      // Knuckleballs unsettle the keeper → reduce effective reaction
+      const reactBase = diff.reactFloor + Math.random() * (diff.reactCeil - diff.reactFloor);
+      const reactTick = shooterInput.shotType === 'knuckle' ? Math.min(62, reactBase + 6) : reactBase;
+      const wallJump = Math.random() < 0.45;
+      state.botKeeperInput = { positionX: Math.round(stance), diveX: Math.round(diveX), diveTick: Math.round(reactTick), wallJump, wallSide };
+      const keeper = { id: state.shooterIsA ? 'NyxRunner' : 'Kai_07' };
+      const roundId = `fk-${state.round}`;
+      const commitment = createCommitment({ gameId: state.gameId, roundId, playerId: keeper.id, input: state.botKeeperInput, nonce: 'bot-nonce' });
+      const leadTag = diff.lead > 0 ? ` · sharp (+${diff.lead})` : diff.lead < 0 ? ` · easing (${diff.lead})` : '';
+      log('COMMIT', `${keeper.id} (bot) committed dive · wall ${wallSide}${shooterInput.shotType === 'knuckle' ? ' · rattled by knuckle' : ''}${leadTag}`, commitment);
+      setTimeout(() => {
+        setPipeStep('commit', 'done', 'both commitments sealed · 2/2');
+        drawWall(wallJump, wallSide);
+        drawKeeper(state.botKeeperInput.positionX, state.botKeeperInput.positionX, 0);
+        revealAndResolve();
+      }, 700);
+    }
+
+    // --- HOT-SEAT KEEPER ---
+    function showKeeperControls() {
+      $('shooterControls').style.display = 'none';
+      $('keeperControls').style.display = 'block';
+      setPhase('keeper', 'Keeper turn');
+      state.keeperReact = null; state.keeperDive = 50; state.keeperWallJump = false; state.keeperWallSide = 'left';
+      $('reactVal').textContent = '—'; $('reactVal').classList.remove('locked');
+      $('reactRunner').style.left = '0%'; $('reactRunner').classList.remove('locked');
+      $('reactBar').classList.remove('locked');
+      $('wallJumpToggle').classList.remove('on');
+      document.querySelectorAll('#wallSideGrid .keeper-cell').forEach(c => c.classList.toggle('active', c.dataset.wallside === 'left'));
+      document.querySelectorAll('#diveGrid .keeper-cell').forEach(c => c.classList.toggle('active', c.dataset.dive === '50'));
+      $('keeperCommitBtn').disabled = true;
+      startReactMeter();
+    }
+    function startReactMeter() {
+      let dir = 1, val = 0;
+      const runner = $('reactRunner');
+      function tick() {
+        val += dir * 1.7;
+        if (val >= 100) { val = 100; dir = -1; }
+        if (val <= 0) { val = 0; dir = 1; }
+        runner.style.left = val + '%';
+        state.reactAnim = requestAnimationFrame(tick);
+      }
+      tick();
+    }
+    document.querySelectorAll('#diveGrid .keeper-cell').forEach(c => c.addEventListener('click', () => {
+      document.querySelectorAll('#diveGrid .keeper-cell').forEach(x => x.classList.remove('active'));
+      c.classList.add('active');
+      state.keeperDive = parseInt(c.dataset.dive);
+    }));
+    // wall-side picker (hot-seat keeper)
+    document.querySelectorAll('#wallSideGrid .keeper-cell').forEach(c => c.addEventListener('click', () => {
+      document.querySelectorAll('#wallSideGrid .keeper-cell').forEach(x => x.classList.remove('active'));
+      c.classList.add('active');
+      state.keeperWallSide = c.dataset.wallside;
+      drawWall(state.keeperWallJump, state.keeperWallSide);
+    }));
+    $('wallJumpToggle').addEventListener('click', () => {
+      state.keeperWallJump = !state.keeperWallJump;
+      $('wallJumpToggle').classList.toggle('on', state.keeperWallJump);
+      drawWall(state.keeperWallJump, state.keeperWallSide);
+    });
+    $('reactBar').addEventListener('click', () => {
+      if (state.phase !== 'keeper') return;
+      cancelAnimationFrame(state.reactAnim);
+      const left = parseFloat($('reactRunner').style.left);
+      state.keeperReact = Math.round(left);
+      $('reactVal').textContent = state.keeperReact + ' / 100';
+      $('reactVal').classList.add('locked');
+      $('reactRunner').classList.add('locked');
+      $('reactBar').classList.add('locked');
+      playTick(true);
+      $('keeperCommitBtn').disabled = false;
+    });
+    $('keeperCommitBtn').addEventListener('click', () => {
+      const keeperInput = { positionX: 50, diveX: state.keeperDive, diveTick: state.keeperReact, wallJump: state.keeperWallJump, wallSide: state.keeperWallSide };
+      const keeper = { id: state.shooterIsA ? 'NyxRunner' : 'Kai_07' };
+      const roundId = `fk-${state.round}`;
+      state.keeperNonce = 'n-' + Math.random().toString(36).slice(2, 10);
+      const commitment = createCommitment({ gameId: state.gameId, roundId, playerId: keeper.id, input: keeperInput, nonce: state.keeperNonce });
+      log('COMMIT', `${keeper.id} committed dive · wall ${state.keeperWallSide}`, commitment);
+      $('keeperCommitBtn').disabled = true;
+      setTimeout(() => {
+        setPipeStep('commit', 'done', 'both commitments sealed · 2/2');
+        drawWall(keeperInput.wallJump, keeperInput.wallSide);
+        drawKeeper(50, 50, 0);
+        revealAndResolve();
+      }, 500);
+    });
+
+    // --- REVEAL + RESOLVE ---
+    function revealAndResolve() {
+      setPhase('reveal', 'Revealing…');
+      setPipeStep('reveal', 'active', 'decrypting commitments…');
+      const shooter = { id: state.shooterIsA ? 'Kai_07' : 'NyxRunner' };
+      const keeper = { id: state.shooterIsA ? 'NyxRunner' : 'Kai_07' };
+      const shooterInput = { aimX: state.aim.x, aimY: state.aim.y, power: state.power, curve: state.shotType === 'knuckle' ? 0 : state.curve, releaseTick: state.timing, shotType: state.shotType };
+      const keeperInput = state.mode === 'bot' ? state.botKeeperInput : { positionX: 50, diveX: state.keeperDive, diveTick: state.keeperReact, wallJump: state.keeperWallJump, wallSide: state.keeperWallSide };
+      const roundId = `fk-${state.round}`;
+      log('REVEAL', `${shooter.id} → aim(${shooterInput.aimX.toFixed(0)},${shooterInput.aimY.toFixed(0)}) pow ${shooterInput.power} ${shooterInput.shotType === 'knuckle' ? 'KNUCKLE' : 'curve ' + shooterInput.curve} tick ${shooterInput.releaseTick}`);
+      log('REVEAL', `${keeper.id} → dive ${keeperInput.diveX} react ${keeperInput.diveTick} wall ${keeperInput.wallSide}${keeperInput.wallJump ? '+jump' : ''}`);
+      setTimeout(() => {
+        setPipeStep('reveal', 'done', 'commitments verified · OK');
+        setPipeStep('resolve', 'active', 'running free-kick-v1 resolver…');
+        const roundResult = createFreeKickRound({ gameId: state.gameId, roundId, shooter, keeper, shooterInput, keeperInput, shooterNonce: state.shooterNonce, keeperNonce: state.mode === 'bot' ? 'bot-nonce' : state.keeperNonce });
+        state.currentRoundResult = roundResult;
+        log('RESOLVE', `outcome=${roundResult.outcome} finalX=${roundResult.finalX.toFixed(1)} effPow=${roundResult.effectivePower.toFixed(0)}`, roundResult.stateHash);
+        setTimeout(() => {
+          setPipeStep('resolve', 'done', `stateHash: ${roundResult.stateHash.slice(0,12)}…`);
+          setPipeStep('sync', 'active', 'merging event logs…');
+          setTimeout(() => {
+            setPipeStep('sync', 'done', '2/2 peers · roots match');
+            animateTrajectory(roundResult, () => runSettlement(roundResult));
+          }, 600);
+        }, 500);
+      }, 450);
+    }
+
+    /* ============================================================
+       TRAJECTORY ANIMATION — perspective, particle trail, impact
+       ============================================================ */
+    function animateTrajectory(roundResult, cb) {
+      setPhase('resolved', 'Resolved');
+      drawAimReticle(roundResult.finalX, roundResult.finalY, true);
+      const pts = roundResult.trajectory.map(p => mapPoint(p.x, p.y));
+      const allPts = [{ x: 320, y: 350 }, ...pts];
+      const pathD = allPts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+      const trajPath = $('trajPath');
+      trajPath.setAttribute('d', pathD);
+      trajPath.setAttribute('opacity', '0.85');
+
+      const totalLen = trajPath.getTotalLength();
+      let progress = 0;
+      const dur = 850;
+      const t0 = performance.now();
+      const keeperInput = roundResult.keeperInput;
+      let lastTrailT = 0;
+      function step(now) {
+        progress = Math.min(1, (now - t0) / dur);
+        const pt = trajPath.getPointAtLength(progress * totalLen);
+        // perspective scaling: ball gets smaller as it goes "into" the goal (up the screen)
+        const scale = 1.0 - progress * 0.35;
+        drawBall(pt.x, pt.y, scale);
+        drawKeeper(keeperInput.positionX, keeperInput.diveX, progress);
+        // particle trail
+        if (now - lastTrailT > 30) {
+          lastTrailT = now;
+          const tg = $('trailGroup');
+          const r = 3 * scale;
+          const trailColor = roundResult.curveEffect > 5 ? '#ff9bd6' : roundResult.curveEffect < -5 ? '#9bd4ff' : '#ffe08a';
+          const trail = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          trail.setAttribute('cx', pt.x); trail.setAttribute('cy', pt.y); trail.setAttribute('r', r);
+          trail.setAttribute('fill', trailColor); trail.setAttribute('opacity', '0.7');
+          trail.style.transition = 'opacity 0.6s, r 0.6s';
+          tg.appendChild(trail);
+          requestAnimationFrame(() => { trail.setAttribute('opacity', '0'); trail.setAttribute('r', '0.5'); });
+          setTimeout(() => trail.remove(), 650);
+        }
+        if (progress < 1) requestAnimationFrame(step);
+        else {
+          // impact
+          const finalP = pts[pts.length - 1];
+          const outcome = roundResult.outcome;
+          if (outcome === 'goal') {
+            netBulge(finalP.x, finalP.y);
+            petalBurst(finalP.x, finalP.y, 'goal');
+          } else if (outcome === 'saved' || outcome === 'wall_blocked') {
+            petalBurst(finalP.x, finalP.y, 'saved');
+          } else {
+            petalBurst(finalP.x, finalP.y, 'miss');
+          }
+          playOutcomeSound(outcome, roundResult.effectivePower, roundResult.isKnuckle);
+          showResultFlash(outcome);
+          // reinforce placement quality on a goal — the risky aim paid off
+          if (outcome === 'goal' && state.placementTier === 'top') {
+            setTimeout(() => showSkillCallout('TOP CORNER!', 'var(--mint)'), 600);
+          } else if (outcome === 'goal' && state.placementTier === 'corner') {
+            setTimeout(() => showSkillCallout('TIGHT CORNER!', 'var(--gold)'), 600);
+          } else if (outcome === 'post' && state.placementTier) {
+            setTimeout(() => showSkillCallout('SO CLOSE!', 'var(--rose)'), 600);
+          }
+          recordKick(outcome);
+          cb();
+        }
+      }
+      requestAnimationFrame(step);
+    }
+
+    function recordKick(outcome) {
+      const goal = outcome === 'goal';
+      if (state.shooterIsA) {
+        state.kicksA.push(outcome);
+        if (goal) { state.scoreA++; state.streakA++; state.streakB = 0; }
+        else { state.streakA = 0; }
+      } else {
+        state.kicksB.push(outcome);
+        if (goal) { state.scoreB++; state.streakB++; state.streakA = 0; }
+        else { state.streakB = 0; }
+      }
+      // snapshot for replay viewer — full trajectory + inputs + outcome
+      if (state.currentRoundResult) {
+        state.roundHistory.push({
+          round: state.round,
+          shooter: state.shooterIsA ? 'Kai_07' : 'NyxRunner',
+          keeper: state.shooterIsA ? 'NyxRunner' : 'Kai_07',
+          shooterInput: state.currentRoundResult.shooterInput,
+          keeperInput: state.currentRoundResult.keeperInput,
+          outcome,
+          finalX: state.currentRoundResult.finalX,
+          finalY: state.currentRoundResult.finalY,
+          trajectory: state.currentRoundResult.trajectory,
+          shotType: state.currentRoundResult.shooterInput.shotType || 'curve',
+          wallSide: state.currentRoundResult.keeperInput.wallSide || 'left',
+          curveEffect: state.currentRoundResult.curveEffect,
+          stateHash: state.currentRoundResult.stateHash
+        });
+      }
+      updateScoreboard();
+      renderReplayList();
+      updateMomentum();
+    }
+
+    /* ============================================================
+       MOMENTUM — streak flame on the shooter with 2+ consecutive goals
+       ============================================================ */
+    function updateMomentum() {
+      const aFlame = $('momentumA'), bFlame = $('momentumB');
+      if (aFlame) aFlame.classList.toggle('hot', state.streakA >= 2);
+      if (bFlame) bFlame.classList.toggle('hot', state.streakB >= 2);
+    }
+
+    /* ============================================================
+       REPLAY VIEWER — scrub through past rounds
+       ============================================================ */
+    let activeReplay = null;   // index into roundHistory, or null
+    function renderReplayList() {
+      const list = $('replayList');
+      if (!state.roundHistory.length) {
+        list.innerHTML = '<div class="helper" style="margin:0;">No rounds yet. Play a kick, then scrub it here.</div>';
+        $('replayBar').style.display = 'none';
+        return;
+      }
+      list.innerHTML = state.roundHistory.map((r, i) => {
+        const shotLabel = r.shotType === 'knuckle' ? 'KNK' : (r.curveEffect > 5 ? 'R-curl' : r.curveEffect < -5 ? 'L-curl' : 'flat');
+        return `<div class="replay-item ${i === activeReplay ? 'active' : ''}" data-replay="${i}">
+          <span class="ri-round">R${r.round}</span>
+          <span class="ri-outcome ${r.outcome}">${r.outcome.replace('_',' ')}</span>
+          <span class="ri-shot">${shotLabel}</span>
+        </div>`;
+      }).join('');
+      list.querySelectorAll('.replay-item').forEach(el => el.addEventListener('click', () => {
+        activeReplay = parseInt(el.dataset.replay);
+        renderReplayList();
+        showReplayScrubber(activeReplay);
+      }));
+    }
+    function showReplayScrubber(idx) {
+      const r = state.roundHistory[idx];
+      if (!r) return;
+      stopReplayAutoplay();
+      $('replayBar').style.display = 'flex';
+      $('replaySlider').value = 0;
+      $('replayFrame').textContent = '0%';
+      renderReplayFrame(idx, 0);
+      // dim live scene overlays so the replay reads clearly
+      $('previewPath').setAttribute('opacity', '0');
+      $('aimReticle').setAttribute('opacity', '0');
+    }
+    // render a frozen frame of the replay at progress 0..1
+    function renderReplayFrame(idx, progress) {
+      const r = state.roundHistory[idx];
+      if (!r) return;
+      // wall + keeper at committed positions
+      drawWall(r.keeperInput.wallJump, r.wallSide);
+      // keeper interpolated to dive target by progress
+      drawKeeper(r.keeperInput.positionX, r.keeperInput.diveX, progress);
+      // trajectory path up to progress
+      const pts = r.trajectory.map(p => mapPoint(p.x, p.y));
+      const startP = { x: 320, y: 350 };
+      const allPts = [startP, ...pts];
+      const trajPath = $('trajPath');
+      trajPath.setAttribute('d', allPts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' '));
+      trajPath.setAttribute('opacity', '0.55');
+      // ball at the progress point along the path
+      const totalLen = trajPath.getTotalLength();
+      const pt = trajPath.getPointAtLength(progress * totalLen);
+      const scale = 1.0 - progress * 0.35;
+      drawBall(pt.x, pt.y, scale);
+      // aim reticle on the final landing spot
+      drawAimReticle(r.finalX, r.finalY, true);
+    }
+    $('replaySlider').addEventListener('input', (e) => {
+      if (activeReplay === null) return;
+      // manual scrub cancels any auto-play
+      stopReplayAutoplay();
+      const pct = parseInt(e.target.value);
+      $('replayFrame').textContent = pct + '%';
+      renderReplayFrame(activeReplay, pct / 100);
+    });
+
+    // --- REPLAY AUTO-PLAY ---
+    // Animates the selected round's trajectory in real-time, mirroring the live kick.
+    function stopReplayAutoplay() {
+      if (state.replayAnim) { cancelAnimationFrame(state.replayAnim); state.replayAnim = null; }
+      const btn = $('replayPlayBtn');
+      btn.textContent = '▶';
+      btn.classList.remove('playing');
+    }
+    function startReplayAutoplay() {
+      if (activeReplay === null) return;
+      const btn = $('replayPlayBtn');
+      btn.textContent = '⏸';
+      btn.classList.add('playing');
+      const dur = 850;  // same as the live kick
+      let t0 = performance.now();
+      // resume from current slider position
+      const startPct = parseInt($('replaySlider').value) / 100;
+      t0 -= startPct * dur;
+      function step(now) {
+        let progress = Math.min(1, (now - t0) / dur);
+        const pct = Math.round(progress * 100);
+        $('replaySlider').value = pct;
+        $('replayFrame').textContent = pct + '%';
+        renderReplayFrame(activeReplay, progress);
+        if (progress < 1) {
+          state.replayAnim = requestAnimationFrame(step);
+        } else {
+          state.replayAnim = null;
+          // loop back to start after a brief hold so it feels like a replay loop
+          setTimeout(() => {
+            if (activeReplay !== null && !state.replayAnim) {
+              $('replaySlider').value = 0;
+              $('replayFrame').textContent = '0%';
+              renderReplayFrame(activeReplay, 0);
+            }
+          }, 900);
+          stopReplayAutoplay();
+        }
+      }
+      state.replayAnim = requestAnimationFrame(step);
+    }
+    $('replayPlayBtn').addEventListener('click', () => {
+      if (activeReplay === null) return;
+      if (state.replayAnim) stopReplayAutoplay();
+      else {
+        // if at the end, restart from 0
+        if (parseInt($('replaySlider').value) >= 100) {
+          $('replaySlider').value = 0;
+          $('replayFrame').textContent = '0%';
+          renderReplayFrame(activeReplay, 0);
+        }
+        startReplayAutoplay();
+      }
+    });
+
+    /* ============================================================
+       SETTLEMENT
+       ============================================================ */
+    function runSettlement(roundResult) {
+      setPipeStep('qvac', 'active', 'QVAC reviewing evidence…');
+      log('QVAC', 'referee building attestation');
+      setTimeout(() => {
+        const attestation = createQvacAttestation({ roundResult });
+        log('QVAC', `ruling=${attestation.ruling} conf=${attestation.confidence}`, attestation.attestationId);
+        setPipeStep('qvac', 'done', `signed · ruling=${attestation.ruling}`);
+        setPipeStep('wdk', 'active', 'preparing escrow release…');
+        setTimeout(() => {
+          const winnerUserId = roundResult.outcome === 'goal'
+            ? (state.shooterIsA ? 'Kai_07' : 'NyxRunner')
+            : (state.shooterIsA ? 'NyxRunner' : 'Kai_07');
+          try {
+            const payout = releaseWdkEscrow({ escrow: state.escrow, attestation, winnerUserId });
+            log('WDK', `released → ${winnerUserId} · ${payout.amount} ${payout.asset}`, payout.payoutId);
+            setPipeStep('wdk', 'done', `payout · ${winnerUserId} · ${payout.amount} ${payout.asset}`);
+            $('wdkStatus').textContent = 'Released';
+            $('wdkStatus').className = 'vl ok';
+            setTimeout(nextRound, 1300);
+          } catch (err) {
+            log('WDK', `ERROR: ${err.message}`);
+            setPipeStep('wdk', 'error', err.message);
+          }
+        }, 700);
+      }, 800);
+    }
+
+    /* ============================================================
+       ROUND FLOW
+       ============================================================ */
+    function nextRound() {
+      const aDone = state.kicksA.length, bDone = state.kicksB.length;
+      if (state.round >= state.maxRounds && aDone >= state.maxRounds && bDone >= state.maxRounds) {
+        if (state.scoreA === state.scoreB) state.suddenDeath = true;
+        else { endMatch(); return; }
+      }
+      if (state.suddenDeath && aDone >= state.round && bDone >= state.round && state.scoreA !== state.scoreB) {
+        endMatch(); return;
+      }
+      state.round++;
+      state.shooterIsA = !state.shooterIsA;
+      state.currentRoundResult = null;
+      activeReplay = null;
+      stopReplayAutoplay();
+      $('replayBar').style.display = 'none';
+      resetPipeline();
+      $('trajPath').setAttribute('opacity', '0');
+      $('aimReticle').setAttribute('opacity', '0');
+      $('previewPath').setAttribute('opacity', '0');
+      drawBall(320, 350, 1);
+      drawWall(false);
+      drawKeeper(50, 50, 0);
+      $('shooterControls').style.display = 'block';
+      $('keeperControls').style.display = 'none';
+      resetShooterInputs();
+      updateScoreboard();
+      updateMomentum();
+      playWhistle();
+      log('ROUND', `--- Round ${state.round} · ${state.shooterIsA ? 'Kai_07' : 'NyxRunner'} shoots ---`);
+    }
+
+    function endMatch() {
+      state.matchOver = true;
+      const winner = state.scoreA > state.scoreB ? 'Kai_07' : 'NyxRunner';
+      $('winnerTitle').textContent = `${winner} wins!`;
+      $('winnerSub').textContent = `${state.suddenDeath ? 'Sudden death' : 'Best of ' + state.maxRounds} · ${state.scoreA} - ${state.scoreB}`;
+      $('winnerPayout').textContent = `WDK escrow released · ${state.escrow.amount}.00 ${state.escrow.asset} → ${winner}`;
+      $('winnerOverlay').classList.add('show');
+      log('MATCH', `${winner} wins · ${state.scoreA}-${state.scoreB}`);
+    }
+    function closeWinner() { $('winnerOverlay').classList.remove('show'); }
+    function newMatch() {
+      closeWinner();
+      state.gameId = 'fk-' + Math.random().toString(36).slice(2, 8);
+      state.round = 1; state.scoreA = 0; state.scoreB = 0; state.kicksA = []; state.kicksB = [];
+      state.streakA = 0; state.streakB = 0;
+      state.shooterIsA = true; state.suddenDeath = false; state.matchOver = false;
+      state.currentRoundResult = null;
+      state.roundHistory = []; activeReplay = null;
+      stopReplayAutoplay();
+      state.escrow = createWdkEscrow({ gameId: state.gameId, players: ['Kai_07', 'NyxRunner'], amount: 5 });
+      $('wdkStatus').textContent = 'Locked · demo'; $('wdkStatus').className = 'vl warn';
+      $('eventLog').innerHTML = '';
+      resetPipeline();
+      $('trajPath').setAttribute('opacity', '0');
+      $('aimReticle').setAttribute('opacity', '0');
+      $('previewPath').setAttribute('opacity', '0');
+      drawBall(320, 350, 1);
+      drawWall(false);
+      drawKeeper(50, 50, 0);
+      $('shooterControls').style.display = 'block';
+      $('keeperControls').style.display = 'none';
+      resetShooterInputs();
+      renderReplayList();
+      $('replayBar').style.display = 'none';
+      updateScoreboard();
+      updateMomentum();
+      playWhistle();
+      log('MATCH', `new game ${state.gameId} · escrow locked`);
+    }
+
+    /* ============================================================
+       MODE TOGGLE + INIT
+       ============================================================ */
+    document.querySelectorAll('.mode-tab').forEach(t => t.addEventListener('click', () => {
+      document.querySelectorAll('.mode-tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      state.mode = t.dataset.mode;
+    }));
+
+    $('soundToggle').addEventListener('click', () => {
+      state.soundOn = !state.soundOn;
+      $('soundToggle').textContent = state.soundOn ? '🔊 On' : '🔇 Off';
+      $('soundToggle').classList.toggle('on', state.soundOn);
+      if (state.soundOn) audioCtx(); // unlock audio on user gesture
+    });
+
+    (function() {
+      const wrap = $('petals');
+      for (let i = 0; i < 14; i++) {
+        const p = document.createElement('div');
+        p.className = 'petal';
+        p.style.left = Math.random() * 100 + '%';
+        p.style.animationDuration = (8 + Math.random() * 10) + 's';
+        p.style.animationDelay = (-Math.random() * 18) + 's';
+        p.style.transform = 'scale(' + (0.6 + Math.random() * 0.8) + ')';
+        p.style.opacity = (0.4 + Math.random() * 0.4);
+        wrap.appendChild(p);
+      }
+    })();
+
+    drawCrowd();
+    drawWall(false);
+    drawKeeper(50, 50, 0);
+    drawBall(320, 350, 1);
+    updateScoreboard();
+    setPhase('aim', 'Aim');
+    playWhistle();
+    log('MATCH', `new game ${state.gameId} · escrow locked · 5 USDT`);
+    log('SYS', `resolver=free-kick-v1 · topic=pearcup:v1:game:${state.gameId}`);
+    </script>
+  </body>
+</html>

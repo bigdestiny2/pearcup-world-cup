@@ -1,0 +1,1125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PearCup · Sakura Stadium</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      /* ============================================================
+         PEARCUP · SPEC 03 — SAKURA STADIUM
+         Pastel magical. Glassy 3D pills, soft glow, floating petals.
+         ============================================================ */
+      :root {
+        --bg:        #1b0e22;
+        --bg-2:      #2a1640;
+        --panel:     rgba(255,255,255,0.06);
+        --panel-2:   rgba(255,255,255,0.04);
+        --line:      rgba(255,255,255,0.1);
+        --line-2:    rgba(255,255,255,0.2);
+        --ink:       #fff5fb;
+        --ink-dim:   #e7c9ee;
+        --ink-mute:  #a98ab8;
+        --sakura:    #ff9bd6;
+        --sakura-2:  #ff6fc0;
+        --lilac:     #c9a8ff;
+        --lilac-2:   #9c7ee0;
+        --sky:       #9bd4ff;
+        --sky-2:     #6cb8f0;
+        --mint:      #a8f0d4;
+        --mint-2:    #6cd9b0;
+        --gold:      #ffe08a;
+        --gold-2:    #f5c44a;
+        --rose:      #ff7aa8;
+        --r:         18px;
+        --r-lg:      28px;
+        --shadow:    0 24px 60px rgba(43,15,60,0.55);
+        --glow-s:    0 0 24px rgba(255,155,214,0.45);
+        --glow-l:    0 0 24px rgba(201,168,255,0.4);
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        font-family: "Quicksand", system-ui, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(1200px 700px at 15% 0%, rgba(255,155,214,0.25) 0%, transparent 50%),
+          radial-gradient(1000px 800px at 90% 100%, rgba(156,126,224,0.3) 0%, transparent 55%),
+          radial-gradient(800px 600px at 50% 50%, rgba(155,212,255,0.12) 0%, transparent 60%),
+          var(--bg);
+        background-attachment: fixed;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+      /* floating petals */
+      .petals { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+      .petal {
+        position: absolute; top: -20px;
+        width: 14px; height: 14px;
+        background: radial-gradient(circle at 30% 30%, #ffd1ec, #ff9bd6);
+        border-radius: 50% 0 50% 50%;
+        opacity: 0.7;
+        animation: fall linear infinite;
+      }
+      @keyframes fall {
+        0% { transform: translateY(-20px) rotate(0deg); opacity: 0; }
+        10% { opacity: 0.7; }
+        90% { opacity: 0.7; }
+        100% { transform: translateY(110vh) rotate(540deg); opacity: 0; }
+      }
+      .shell { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 0 24px 96px; }
+
+      /* ---------- TOPBAR ---------- */
+      .topbar {
+        position: sticky; top: 0; z-index: 20;
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        gap: 22px;
+        padding: 18px 0;
+        margin-bottom: 36px;
+        backdrop-filter: blur(20px) saturate(150%);
+        background: linear-gradient(180deg, rgba(27,14,34,0.85), rgba(27,14,34,0.3));
+        border-bottom: 1px solid var(--line);
+      }
+      .brand { display: inline-flex; align-items: center; gap: 14px; }
+      .brand-mark {
+        width: 48px; height: 48px;
+        display: grid; place-items: center;
+        border-radius: 16px;
+        background: linear-gradient(145deg, rgba(255,155,214,0.4), rgba(201,168,255,0.3));
+        border: 1px solid rgba(255,255,255,0.25);
+        box-shadow: var(--glow-s), inset 0 1px 0 rgba(255,255,255,0.3);
+        position: relative;
+      }
+      .brand-mark::after {
+        content: ""; position: absolute; inset: 6px;
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,0.3);
+        animation: pulse-ring 3s ease-in-out infinite;
+      }
+      @keyframes pulse-ring { 0%,100%{opacity:.3; transform:scale(.92)} 50%{opacity:1; transform:scale(1)} }
+      .brand-mark svg { width: 24px; height: 24px; }
+      .brand-name {
+        font-family: "Baloo 2", cursive;
+        font-weight: 800;
+        font-size: 24px;
+        letter-spacing: 0.01em;
+        background: linear-gradient(90deg, var(--sakura), var(--lilac));
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent;
+        line-height: 1;
+      }
+      .brand-sub { font-size: 11px; letter-spacing: 0.3em; color: var(--ink-mute); text-transform: uppercase; font-weight: 600; }
+
+      .nav {
+        display: inline-grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 4px;
+        padding: 6px;
+        border-radius: 20px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid var(--line);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+      }
+      .nav button {
+        position: relative;
+        border: 0; cursor: pointer;
+        background: transparent;
+        color: var(--ink-dim);
+        font-family: "Baloo 2", cursive;
+        font-weight: 700;
+        font-size: 13px;
+        padding: 10px 18px;
+        border-radius: 14px;
+        transition: color .25s, transform .2s;
+      }
+      .nav button:hover { color: var(--sakura); transform: translateY(-1px); }
+      .nav button.is-active {
+        color: #fff;
+        background: linear-gradient(180deg, rgba(255,155,214,0.4), rgba(201,168,255,0.3));
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,0.4),
+          inset 0 -2px 0 rgba(255,111,192,0.4),
+          0 4px 16px rgba(255,155,214,0.3);
+      }
+
+      .chip {
+        display: inline-grid;
+        grid-template-columns: 48px 1fr;
+        gap: 12px;
+        align-items: center;
+        padding: 6px 18px 6px 6px;
+        border-radius: 18px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid var(--line-2);
+        box-shadow: var(--glow-s);
+      }
+      .chip .ava { width: 48px; height: 48px; }
+      .chip-name { font-family: "Baloo 2", cursive; font-weight: 700; font-size: 15px; }
+      .chip-team { font-size: 11px; color: var(--sakura); letter-spacing: 0.15em; text-transform: uppercase; font-weight: 600; }
+
+      /* ---------- BUTTONS (glassy 3D pills) ---------- */
+      .btn {
+        --c1: var(--sakura); --c2: var(--sakura-2); --glow: var(--glow-s);
+        position: relative;
+        display: inline-flex; align-items: center; gap: 10px;
+        border: 1px solid rgba(255,255,255,0.25); cursor: pointer;
+        padding: 12px 22px;
+        font-family: "Baloo 2", cursive;
+        font-weight: 700;
+        font-size: 14px;
+        color: #fff;
+        border-radius: 999px;
+        background: linear-gradient(180deg, var(--c1), var(--c2));
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,0.5),
+          inset 0 -3px 0 rgba(0,0,0,0.12),
+          0 6px 18px rgba(0,0,0,0.25),
+          var(--glow);
+        transition: transform .15s cubic-bezier(0.2,0.9,0.3,1.3), box-shadow .15s;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      }
+      .btn:hover { transform: translateY(-2px) scale(1.02); }
+      .btn:active {
+        transform: translateY(1px) scale(0.98);
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,0.3),
+          inset 0 -1px 0 rgba(0,0,0,0.12),
+          0 2px 8px rgba(0,0,0,0.25),
+          var(--glow);
+      }
+      .btn.lilac { --c1: var(--lilac); --c2: var(--lilac-2); --glow: var(--glow-l); }
+      .btn.sky   { --c1: var(--sky);  --c2: var(--sky-2); color: #1b3a55; text-shadow: none; }
+      .btn.mint  { --c1: var(--mint); --c2: var(--mint-2); color: #1b4a35; text-shadow: none; }
+      .btn.ghost {
+        background: rgba(255,255,255,0.06);
+        color: var(--ink-dim);
+        border: 1px solid var(--line-2);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
+        text-shadow: none;
+      }
+      .btn.ghost:hover { color: var(--sakura); border-color: var(--sakura); }
+      .btn .ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .btn-sm { padding: 9px 16px; font-size: 12px; }
+
+      /* ---------- SCREENS ---------- */
+      .screen { display: none; animation: floatIn .55s cubic-bezier(0.2,0.8,0.3,1.2) both; }
+      .screen.is-active { display: block; }
+      @keyframes floatIn { from { opacity: 0; transform: translateY(18px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+      .eyebrow {
+        font-family: "Baloo 2", cursive;
+        font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase;
+        color: var(--sakura); margin: 0 0 8px;
+        font-weight: 700;
+      }
+      h1, h2 {
+        font-family: "Baloo 2", cursive;
+        font-weight: 800; letter-spacing: -0.01em;
+        margin: 0 0 18px;
+      }
+      h1 { font-size: 44px; line-height: 1.05; }
+      h2 { font-size: 28px; }
+      .heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--r-lg);
+        padding: 26px;
+        box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+      }
+      .panel::before {
+        content: ""; position: absolute; inset: 0; pointer-events: none;
+        border-radius: var(--r-lg);
+        background: linear-gradient(135deg, rgba(255,155,214,0.08), transparent 40%, transparent 60%, rgba(201,168,255,0.08));
+      }
+      .panel > * { position: relative; }
+
+      /* ---------- ONBOARDING ---------- */
+      .onboard { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; }
+      .field-label { display: block; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-mute); margin: 0 0 8px; font-weight: 700; }
+      .input {
+        width: 100%; padding: 14px 18px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid var(--line-2);
+        border-radius: 14px;
+        color: var(--ink);
+        font: inherit; font-size: 15px;
+        transition: border-color .2s, box-shadow .2s;
+      }
+      .input::placeholder { color: var(--ink-mute); }
+      .input:focus { outline: none; border-color: var(--sakura); box-shadow: 0 0 0 3px rgba(255,155,214,0.18), var(--glow-s); }
+      .user-row { display: flex; gap: 12px; margin-bottom: 26px; }
+      .user-row .input { flex: 1; }
+
+      .team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px,1fr)); gap: 12px; }
+      .team {
+        position: relative;
+        cursor: pointer;
+        padding: 14px 10px;
+        border-radius: 18px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid var(--line);
+        text-align: center;
+        transition: transform .2s, border-color .2s, box-shadow .2s, background .2s;
+      }
+      .team:hover { transform: translateY(-3px); border-color: var(--sakura); box-shadow: var(--glow-s); }
+      .team.is-pick {
+        border-color: var(--sakura);
+        background: linear-gradient(180deg, rgba(255,155,214,0.25), rgba(201,168,255,0.15));
+        box-shadow: var(--glow-s), inset 0 0 0 1px var(--sakura);
+        transform: translateY(-2px);
+      }
+      .team .flag { font-size: 30px; display: block; margin-bottom: 4px; }
+      .team .nm { font-family: "Baloo 2", cursive; font-size: 14px; font-weight: 700; }
+
+      .ava-stage {
+        background:
+          radial-gradient(circle at 50% 35%, rgba(255,155,214,0.3), transparent 65%),
+          linear-gradient(180deg, rgba(201,168,255,0.18), rgba(27,14,34,0.6));
+        border-radius: var(--r-lg);
+        border: 1px solid var(--line-2);
+        padding: 30px;
+        text-align: center;
+        position: relative; overflow: hidden;
+        box-shadow: var(--shadow), var(--glow-l);
+      }
+      .ava-stage::after {
+        content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px;
+        background: linear-gradient(90deg, transparent, var(--sakura), var(--lilac), transparent);
+        animation: scan 4s linear infinite;
+      }
+      @keyframes scan { 0%{transform:translateY(0)} 100%{transform:translateY(320px)} }
+      .ava-big { width: 200px; height: 220px; margin: 0 auto 16px; display: block; animation: floaty 4s ease-in-out infinite; }
+      @keyframes floaty { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-12px) rotate(2deg)} }
+      .kit-row { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
+      .swatch { width: 32px; height: 32px; border-radius: 10px; border: 1px solid var(--line-2); box-shadow: inset 0 1px 0 rgba(255,255,255,0.3); }
+
+      /* ---------- HOME ---------- */
+      .home { display: grid; grid-template-columns: 1.6fr 1fr; gap: 28px; align-items: start; }
+      .live {
+        display: grid; grid-template-columns: 1fr auto 1fr; gap: 20px; align-items: center;
+        padding: 24px; border-radius: var(--r); margin-bottom: 18px;
+        background: linear-gradient(135deg, rgba(255,155,214,0.18), rgba(201,168,255,0.15));
+        border: 1px solid var(--line-2);
+        position: relative; overflow: hidden;
+      }
+      .live::before {
+        content: "● LIVE"; position: absolute; top: 12px; right: 14px;
+        font-family: "Baloo 2", cursive; font-size: 11px; letter-spacing: 0.2em; font-weight: 800;
+        color: var(--rose);
+        animation: blink 1.6s ease-in-out infinite;
+      }
+      @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.4} }
+      .live-team { display: flex; align-items: center; gap: 14px; }
+      .live-team.r { flex-direction: row-reverse; text-align: right; }
+      .live-team .flag { font-size: 40px; filter: drop-shadow(0 4px 12px rgba(255,155,214,0.4)); }
+      .live-team .nm { font-family: "Baloo 2", cursive; font-weight: 700; font-size: 18px; }
+      .live-team .sub { font-size: 11px; color: var(--ink-mute); letter-spacing: 0.1em; font-weight: 600; }
+      .live-core { text-align: center; }
+      .live-core .min { font-family: "Baloo 2", cursive; color: var(--sakura); font-size: 14px; letter-spacing: 0.15em; }
+      .live-core .score { font-family: "Baloo 2", cursive; font-size: 44px; font-weight: 800; line-height: 1; margin: 4px 0; background: linear-gradient(90deg, var(--sakura), var(--lilac)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+      .meter { margin-top: 18px; }
+      .meter .lbl { display: flex; justify-content: space-between; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-mute); margin-bottom: 6px; font-weight: 700; }
+      .meter .bar { height: 10px; border-radius: 999px; background: rgba(0,0,0,0.3); overflow: hidden; position: relative; box-shadow: inset 0 1px 2px rgba(0,0,0,0.3); }
+      .meter .bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--sakura), var(--lilac)); box-shadow: 0 0 12px rgba(255,155,214,0.5); position: relative; }
+      .meter .bar i.sky { background: linear-gradient(90deg, var(--sky), var(--lilac)); box-shadow: 0 0 12px rgba(155,212,255,0.5); }
+      .meter .bar i.mint { background: linear-gradient(90deg, var(--mint), var(--sky)); box-shadow: 0 0 12px rgba(168,240,212,0.5); }
+      .meter .bar i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent); animation: shimmer 2.5s linear infinite; }
+      @keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+
+      .pool-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; margin-top: 16px; }
+      .pool {
+        padding: 18px; border-radius: var(--r);
+        background: rgba(255,255,255,0.05);
+        border: 1px solid var(--line);
+        cursor: pointer; transition: transform .2s, border-color .2s, box-shadow .2s;
+      }
+      .pool:hover { transform: translateY(-3px); border-color: var(--lilac); box-shadow: var(--glow-l); }
+      .pool .amt { font-family: "Baloo 2", cursive; font-size: 30px; font-weight: 800; line-height: 1; background: linear-gradient(90deg, var(--gold), var(--sakura)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .pool .lb { font-size: 12px; color: var(--ink-dim); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; font-weight: 700; }
+      .pool .meta { font-size: 12px; color: var(--ink-mute); margin-top: 8px; }
+
+      .rail-list .item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 0; border-bottom: 1px solid var(--line);
+      }
+      .rail-list .item:last-child { border-bottom: 0; }
+      .rail-list .flag { font-size: 24px; }
+      .rail-list .nm { font-weight: 600; font-size: 14px; }
+      .rail-list .tm { font-size: 11px; color: var(--ink-mute); margin-left: auto; font-family: "Baloo 2", cursive; }
+
+      .leader-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
+      .leader-rank { font-family: "Baloo 2", cursive; font-size: 18px; color: var(--lilac); width: 26px; font-weight: 800; }
+      .leader-nm { font-weight: 600; font-size: 13px; flex: 1; }
+      .leader-pts { font-family: "Baloo 2", cursive; color: var(--gold); font-weight: 800; font-size: 15px; }
+
+      .signal-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; border-bottom: 1px dashed var(--line); }
+      .signal-row:last-child { border-bottom: 0; }
+      .signal-row strong { color: var(--mint); font-family: "Baloo 2", cursive; }
+
+      /* ---------- BRACKET ---------- */
+      .bracket-actions { display: flex; gap: 12px; }
+      .bracket-board {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 28px;
+        align-items: stretch;
+        overflow-x: auto; padding-bottom: 10px;
+      }
+      .round { display: flex; flex-direction: column; justify-content: space-around; gap: 18px; }
+      .round-title { font-family: "Baloo 2", cursive; font-size: 13px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--lilac); text-align: center; margin-bottom: 4px; font-weight: 800; }
+      .match {
+        padding: 14px; border-radius: var(--r);
+        background: rgba(255,255,255,0.05);
+        border: 1px solid var(--line-2);
+        position: relative;
+        min-width: 180px;
+      }
+      .match::before {
+        content: ""; position: absolute; left: -14px; top: 50%; width: 14px; height: 1px;
+        background: var(--sakura); opacity: 0.4;
+      }
+      .round:first-child .match::before { display: none; }
+      .slot { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+      .slot.is-pick { background: linear-gradient(90deg, rgba(255,155,214,0.25), transparent); box-shadow: inset 0 0 0 1px rgba(255,155,214,0.4); }
+      .slot.win { color: var(--gold); font-weight: 700; }
+      .slot .flag { font-size: 20px; }
+      .slot .nm { flex: 1; }
+      .slot .sc { font-family: "Baloo 2", cursive; color: var(--ink-mute); font-size: 14px; }
+      .slot.win .sc { color: var(--gold); }
+      .match-divider { height: 1px; background: var(--line); margin: 4px 0; }
+
+      .settle-banner {
+        margin-bottom: 24px; padding: 16px 20px;
+        border-radius: var(--r);
+        background: linear-gradient(90deg, rgba(168,240,212,0.18), transparent);
+        border: 1px solid rgba(168,240,212,0.4);
+        display: flex; align-items: center; gap: 14px;
+        box-shadow: 0 0 24px rgba(168,240,212,0.2);
+      }
+      .settle-banner .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 12px var(--mint); animation: pulse-ring 1.8s infinite; }
+      .settle-banner .tx { flex: 1; font-size: 13px; }
+      .settle-banner .tx strong { color: var(--mint); }
+
+      /* ---------- WATCH ---------- */
+      .watch { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; align-items: start; }
+      .stadium {
+        position: relative;
+        border-radius: var(--r-lg);
+        overflow: hidden;
+        border: 1px solid var(--line-2);
+        background:
+          radial-gradient(ellipse at 50% 100%, rgba(168,240,212,0.25), transparent 60%),
+          linear-gradient(180deg, #2a1640 0%, #1b0e22 60%, #1a2a22 60%, #0e1a14 100%);
+        min-height: 360px;
+        box-shadow: var(--shadow);
+      }
+      /* glowing pitch grid */
+      .stadium::before {
+        content: ""; position: absolute; inset: 0;
+        background:
+          linear-gradient(rgba(168,240,212,0.12) 1px, transparent 1px) 0 0 / 100% 36px,
+          linear-gradient(90deg, rgba(168,240,212,0.12) 1px, transparent 1px) 0 0 / 64px 100%;
+        mask-image: linear-gradient(180deg, transparent, #000 30%, #000 70%, transparent);
+      }
+      .stadium::after {
+        content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 50%;
+        background: radial-gradient(ellipse at 50% 100%, rgba(168,240,212,0.2), transparent 70%);
+      }
+      .scorebug {
+        position: absolute; top: 16px; left: 16px;
+        padding: 8px 16px; border-radius: 999px;
+        background: rgba(255,255,255,0.1); backdrop-filter: blur(10px);
+        border: 1px solid var(--line-2);
+        font-family: "Baloo 2", cursive; font-size: 13px; font-weight: 700;
+      }
+      .scorebug strong { color: var(--gold); }
+      .pitch-anim { position: absolute; inset: 0; }
+      .ball-anim {
+        position: absolute; width: 14px; height: 14px; border-radius: 50%;
+        background: #fff; box-shadow: 0 0 18px #fff, 0 0 4px var(--sakura);
+        top: 70%; left: 10%;
+        animation: ballRun 4s ease-in-out infinite;
+      }
+      @keyframes ballRun {
+        0%   { left: 10%; top: 70%; }
+        25%  { left: 40%; top: 35%; }
+        50%  { left: 65%; top: 65%; }
+        75%  { left: 85%; top: 30%; }
+        100% { left: 10%; top: 70%; }
+      }
+      .player-dot {
+        position: absolute; width: 18px; height: 18px; border-radius: 50%;
+        border: 2px solid #fff;
+      }
+      .pd1 { background: var(--sakura); top: 50%; left: 30%; animation: floaty 3s ease-in-out infinite; box-shadow: var(--glow-s); }
+      .pd2 { background: var(--sky); top: 40%; left: 55%; animation: floaty 3.5s ease-in-out infinite reverse; box-shadow: 0 0 12px var(--sky); }
+      .pd3 { background: var(--sky); top: 60%; left: 70%; animation: floaty 2.8s ease-in-out infinite; box-shadow: 0 0 12px var(--sky); }
+
+      .stats-strip { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-top: 16px; }
+
+      .lang-tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+      .lang-tab {
+        padding: 6px 14px; border-radius: 999px;
+        background: rgba(255,255,255,0.05); border: 1px solid var(--line);
+        font-size: 12px; letter-spacing: 0.1em; color: var(--ink-dim); cursor: pointer; font-weight: 600;
+        transition: all .2s;
+      }
+      .lang-tab.is-active { background: linear-gradient(180deg, var(--sakura), var(--sakura-2)); color: #fff; border-color: var(--sakura); box-shadow: var(--glow-s); }
+
+      .feed { max-height: 220px; overflow-y: auto; padding-right: 6px; }
+      .feed::-webkit-scrollbar { width: 4px; }
+      .feed::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 4px; }
+      .cmt { padding: 10px 0; border-bottom: 1px dashed var(--line); font-size: 13px; line-height: 1.5; }
+      .cmt .who { color: var(--sakura); font-weight: 700; font-size: 11px; letter-spacing: 0.1em; }
+      .cmt .ts { color: var(--ink-mute); font-family: "Baloo 2", cursive; font-size: 11px; float: right; }
+
+      .chat-feed { max-height: 200px; overflow-y: auto; padding-right: 6px; }
+      .chat-msg { padding: 8px 0; font-size: 13px; }
+      .chat-msg .who { color: var(--lilac); font-weight: 700; font-size: 12px; }
+      .chat-form { display: flex; gap: 8px; margin-top: 12px; }
+      .chat-form .input { padding: 12px 14px; }
+
+      /* ---------- GAMES (Penalty Clash) ---------- */
+      .game { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; align-items: start; }
+      .penalty-stage {
+        position: relative; height: 380px;
+        border-radius: var(--r-lg); overflow: hidden;
+        background:
+          radial-gradient(ellipse at 50% 100%, rgba(168,240,212,0.3), transparent 60%),
+          linear-gradient(180deg, #2a1640 0%, #1b0e22 55%, #1a2a22 55%, #0e1a14 100%);
+        border: 1px solid var(--line-2);
+        box-shadow: var(--shadow);
+      }
+      .goal-frame {
+        position: absolute; left: 50%; top: 22%; transform: translateX(-50%);
+        width: 70%; height: 50%;
+        border: 3px solid #fff;
+        border-bottom: 0;
+        border-radius: 8px 8px 0 0;
+        box-shadow: 0 0 30px rgba(168,240,212,0.5), inset 0 0 30px rgba(168,240,212,0.1);
+      }
+      .goal-frame::before, .goal-frame::after {
+        content: ""; position: absolute; background: rgba(255,255,255,0.6);
+      }
+      .goal-frame::before { left: 33%; top: 0; bottom: 0; width: 1px; }
+      .goal-frame::after  { left: 66%; top: 0; bottom: 0; width: 1px; }
+      .pen-keeper {
+        position: absolute; left: 50%; top: 38%; transform: translateX(-50%);
+        width: 80px; height: 100px;
+        animation: keeperDive 2.4s ease-in-out infinite;
+      }
+      @keyframes keeperDive {
+        0%,100% { transform: translateX(-50%) translateY(0); }
+        30%     { transform: translateX(-110%) translateY(10px) rotate(-6deg); }
+        70%     { transform: translateX(-10%) translateY(10px) rotate(6deg); }
+      }
+      .pen-shooter {
+        position: absolute; left: 50%; bottom: 6%; transform: translateX(-50%);
+        width: 80px; height: 100px;
+      }
+      .pen-ball {
+        position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%);
+        width: 16px; height: 16px; border-radius: 50%;
+        background: #fff; box-shadow: 0 0 16px #fff, 0 0 4px var(--sakura);
+        animation: ballKick 2.4s ease-in-out infinite;
+      }
+      @keyframes ballKick {
+        0% { left: 50%; bottom: 8%; opacity: 1; }
+        40% { left: 72%; bottom: 55%; opacity: 1; }
+        41% { opacity: 0; }
+        100% { opacity: 0; left: 72%; bottom: 55%; }
+      }
+
+      .scoreboard {
+        display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: center;
+        padding: 18px 22px; border-radius: var(--r);
+        background: rgba(255,255,255,0.06); border: 1px solid var(--line-2);
+        margin-bottom: 18px;
+        box-shadow: var(--glow-l);
+      }
+      .sb-team { display: flex; align-items: center; gap: 12px; }
+      .sb-team.r { flex-direction: row-reverse; text-align: right; }
+      .sb-team .ava { width: 48px; height: 48px; }
+      .sb-team .nm { font-family: "Baloo 2", cursive; font-weight: 700; font-size: 15px; }
+      .sb-team .sub { font-size: 11px; color: var(--ink-mute); }
+      .sb-core { text-align: center; }
+      .sb-core .round { font-size: 11px; color: var(--lilac); letter-spacing: 0.25em; font-weight: 700; }
+      .sb-core .pts { font-family: "Baloo 2", cursive; font-size: 36px; font-weight: 800; line-height: 1; background: linear-gradient(90deg, var(--sakura), var(--lilac)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .kick-track { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
+      .kick { width: 18px; height: 18px; border-radius: 6px; background: rgba(255,255,255,0.08); border: 1px solid var(--line-2); }
+      .kick.in { background: var(--mint); border-color: var(--mint); box-shadow: 0 0 10px var(--mint); }
+      .kick.out { background: var(--rose); border-color: var(--rose); }
+      .kick.cur { background: var(--gold); border-color: var(--gold); animation: pulse-ring 1s infinite; }
+
+      .game-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-top: 18px; }
+      .gc { padding: 16px; border-radius: var(--r); background: rgba(255,255,255,0.05); border: 1px solid var(--line); }
+      .gc h4 { margin: 0 0 8px; font-family: "Baloo 2", cursive; font-size: 12px; letter-spacing: 0.15em; color: var(--sakura); text-transform: uppercase; }
+      .gc p { margin: 0; font-size: 12px; color: var(--ink-dim); line-height: 1.5; }
+      .gc .stat { font-family: "Baloo 2", cursive; font-size: 24px; font-weight: 800; color: var(--ink); display: block; margin-bottom: 4px; }
+
+      .int-panel { padding: 18px; border-radius: var(--r); background: rgba(255,255,255,0.05); border: 1px solid var(--line); margin-bottom: 14px; }
+      .int-panel h4 { margin: 0 0 12px; font-family: "Baloo 2", cursive; font-size: 12px; letter-spacing: 0.15em; color: var(--lilac); text-transform: uppercase; }
+      .int-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 13px; }
+      .int-row .lb { color: var(--ink-dim); }
+      .int-row .vl { font-family: "Baloo 2", cursive; font-weight: 700; }
+      .int-row .vl.ok { color: var(--mint); }
+      .int-row .vl.warn { color: var(--gold); }
+      .int-row .vl.lock { color: var(--ink-mute); }
+
+      .toast {
+        position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+        padding: 14px 24px; border-radius: 999px;
+        background: linear-gradient(180deg, var(--sakura), var(--sakura-2));
+        color: #fff; font-family: "Baloo 2", cursive; font-size: 14px; font-weight: 700;
+        border: 1px solid rgba(255,255,255,0.3);
+        box-shadow: var(--glow-s), 0 12px 30px rgba(0,0,0,0.4);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        opacity: 0; pointer-events: none; transition: all .4s cubic-bezier(0.2,0.8,0.3,1.2);
+        z-index: 100;
+      }
+      .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+      @media (max-width: 980px) {
+        .onboard, .home, .watch, .game { grid-template-columns: 1fr; }
+        .topbar { grid-template-columns: 1fr; gap: 14px; }
+        .nav { grid-template-columns: repeat(5, 1fr); width: 100%; }
+        .bracket-board { grid-template-columns: repeat(2,1fr); }
+        h1 { font-size: 32px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="petals" id="petals"></div>
+    <div class="shell">
+      <!-- ================= TOPBAR ================= -->
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">
+            <svg viewBox="0 0 32 32" fill="none">
+              <defs><linearGradient id="bg3" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#ff9bd6"/><stop offset="1" stop-color="#c9a8ff"/></linearGradient></defs>
+              <path d="M16 3c5 0 9 4 9 9 0 2-1 4-2 6l-7 11-7-11c-1-2-2-4-2-6 0-5 4-9 9-9Z" fill="url(#bg3)"/>
+              <circle cx="16" cy="12" r="5" fill="#fff" opacity="0.9"/>
+            </svg>
+          </span>
+          <div>
+            <div class="brand-name">PearCup</div>
+            <div class="brand-sub">Sakura Stadium</div>
+          </div>
+        </div>
+
+        <nav class="nav" id="nav">
+          <button type="button" data-view="onboarding">Profile</button>
+          <button type="button" data-view="home" class="is-active">Home</button>
+          <button type="button" data-view="bracket">Bracket</button>
+          <button type="button" data-view="watch">Watch</button>
+          <button type="button" data-view="games">Games</button>
+        </nav>
+
+        <div class="chip">
+          <!-- chibi mascot avatar -->
+          <svg class="ava" viewBox="0 0 100 100" aria-hidden="true">
+            <defs><linearGradient id="ch1" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ff9bd6"/><stop offset="1" stop-color="#c9a8ff"/></linearGradient></defs>
+            <circle cx="50" cy="50" r="48" fill="rgba(255,255,255,0.06)"/>
+            <ellipse cx="50" cy="58" rx="28" ry="30" fill="#ffe8d6"/>
+            <path d="M22 50 Q20 20 50 20 Q80 20 78 50 Q70 38 50 38 Q30 38 22 50 Z" fill="url(#ch1)"/>
+            <!-- big starry eyes -->
+            <ellipse cx="40" cy="56" rx="6" ry="8" fill="#3a1a4a"/>
+            <ellipse cx="60" cy="56" rx="6" ry="8" fill="#3a1a4a"/>
+            <circle cx="42" cy="53" r="2.5" fill="#fff"/>
+            <circle cx="62" cy="53" r="2.5" fill="#fff"/>
+            <circle cx="38" cy="58" r="1" fill="#fff"/>
+            <circle cx="58" cy="58" r="1" fill="#fff"/>
+            <!-- tiny smile -->
+            <path d="M44 70 Q50 74 56 70" stroke="#c5306a" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <!-- blush -->
+            <circle cx="34" cy="66" r="4" fill="#ff9bd6" opacity="0.6"/>
+            <circle cx="66" cy="66" r="4" fill="#ff9bd6" opacity="0.6"/>
+            <!-- star clip -->
+            <path d="M70 30 L72 35 L77 35 L73 39 L74 44 L70 41 L66 44 L67 39 L63 35 L68 35 Z" fill="#ffe08a"/>
+          </svg>
+          <div>
+            <div class="chip-name">Kai_07</div>
+            <div class="chip-team">Brazil</div>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <!-- ================= ONBOARDING ================= -->
+        <section class="screen" id="onboarding">
+          <div class="heading">
+            <div>
+              <p class="eyebrow">~ Welcome ~</p>
+              <h1>Pick your little striker</h1>
+            </div>
+          </div>
+          <div class="onboard">
+            <div class="panel">
+              <label class="field-label" for="un">Your name</label>
+              <div class="user-row">
+                <input class="input" id="un" maxlength="18" placeholder="enter your name" value="Kai_07" />
+                <button class="btn" type="button" onclick="toast('Welcome to the cup!')">
+                  <svg class="ic" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
+                  Enter
+                </button>
+              </div>
+              <label class="field-label">Choose nation</label>
+              <div class="team-grid" id="teamGrid">
+                <div class="team is-pick"><span class="flag">🇧🇷</span><span class="nm">Brazil</span></div>
+                <div class="team"><span class="flag">🇦🇷</span><span class="nm">Argentina</span></div>
+                <div class="team"><span class="flag">🇫🇷</span><span class="nm">France</span></div>
+                <div class="team"><span class="flag">🇯🇵</span><span class="nm">Japan</span></div>
+                <div class="team"><span class="flag">🇪🇸</span><span class="nm">Spain</span></div>
+                <div class="team"><span class="flag">🇩🇪</span><span class="nm">Germany</span></div>
+                <div class="team"><span class="flag">🇵🇹</span><span class="nm">Portugal</span></div>
+                <div class="team"><span class="flag">🇳🇴</span><span class="nm">Norway</span></div>
+              </div>
+            </div>
+
+            <aside class="ava-stage">
+              <svg class="ava-big" viewBox="0 0 200 220" aria-hidden="true">
+                <defs>
+                  <linearGradient id="ch2" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#ff9bd6"/><stop offset="1" stop-color="#c9a8ff"/></linearGradient>
+                  <radialGradient id="halo" cx="0.5" cy="0.4" r="0.5"><stop stop-color="#ff9bd6" stop-opacity="0.4"/><stop offset="1" stop-color="#ff9bd6" stop-opacity="0"/></radialGradient>
+                </defs>
+                <circle cx="100" cy="100" r="90" fill="url(#halo)"/>
+                <circle cx="100" cy="100" r="70" fill="none" stroke="#c9a8ff" stroke-width="0.5" opacity="0.5"/>
+                <!-- chibi body -->
+                <ellipse cx="100" cy="120" rx="50" ry="56" fill="#ffe8d6"/>
+                <!-- hair -->
+                <path d="M50 100 Q44 50 100 50 Q156 50 150 100 Q140 80 100 80 Q60 80 50 100 Z" fill="url(#ch2)"/>
+                <!-- side hair tufts -->
+                <ellipse cx="48" cy="108" rx="10" ry="20" fill="url(#ch2)"/>
+                <ellipse cx="152" cy="108" rx="10" ry="20" fill="url(#ch2)"/>
+                <!-- big sparkly eyes -->
+                <ellipse cx="80" cy="112" rx="11" ry="15" fill="#3a1a4a"/>
+                <ellipse cx="120" cy="112" rx="11" ry="15" fill="#3a1a4a"/>
+                <circle cx="83" cy="108" r="4.5" fill="#fff"/>
+                <circle cx="123" cy="108" r="4.5" fill="#fff"/>
+                <circle cx="77" cy="116" r="2" fill="#fff"/>
+                <circle cx="117" cy="116" r="2" fill="#fff"/>
+                <circle cx="84" cy="120" r="1" fill="#ffe08a"/>
+                <circle cx="124" cy="120" r="1" fill="#ffe08a"/>
+                <!-- blush -->
+                <ellipse cx="68" cy="128" rx="8" ry="5" fill="#ff9bd6" opacity="0.6"/>
+                <ellipse cx="132" cy="128" rx="8" ry="5" fill="#ff9bd6" opacity="0.6"/>
+                <!-- smile -->
+                <path d="M90 138 Q100 144 110 138" stroke="#c5306a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+                <!-- star hair clip -->
+                <path d="M70 76 L73 83 L80 83 L74 88 L76 95 L70 91 L64 95 L66 88 L60 83 L67 83 Z" fill="#ffe08a"/>
+                <!-- jersey -->
+                <path d="M58 184 Q58 168 78 164 L100 174 L122 164 Q142 168 142 184 L142 220 L58 220 Z" fill="#ffe08a"/>
+                <path d="M58 184 Q58 168 78 164 L100 174 L122 164 Q142 168 142 184 L142 220 L58 220 Z" fill="#ff9bd6" opacity="0.5"/>
+                <circle cx="100" cy="195" r="4" fill="#c9a8ff"/>
+                <!-- little arms -->
+                <ellipse cx="56" cy="180" rx="8" ry="14" fill="#ffe8d6" transform="rotate(-15 56 180)"/>
+                <ellipse cx="144" cy="180" rx="8" ry="14" fill="#ffe8d6" transform="rotate(15 144 180)"/>
+              </svg>
+              <div style="font-family:'Baloo 2',cursive; font-weight:800; font-size:24px; letter-spacing:0.02em; background:linear-gradient(90deg,var(--sakura),var(--lilac)); -webkit-background-clip:text; background-clip:text; color:transparent;">Kai_07</div>
+              <div style="font-size:11px; color:var(--sakura); letter-spacing:0.3em; margin-top:4px; font-weight:600; text-transform:uppercase;">Brazil · Striker</div>
+              <div class="kit-row">
+                <span class="swatch" style="background:linear-gradient(180deg,#ffe08a,#f5c44a)"></span>
+                <span class="swatch" style="background:linear-gradient(180deg,#ff9bd6,#ff6fc0)"></span>
+                <span class="swatch" style="background:linear-gradient(180deg,#c9a8ff,#9c7ee0)"></span>
+              </div>
+              <div style="font-size:11px; color:var(--ink-mute); margin-top:10px; letter-spacing:0.15em;">Home kit · no.10</div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ================= HOME ================= -->
+        <section class="screen is-active" id="home">
+          <div class="heading">
+            <div>
+              <p class="eyebrow">~ Match center ~</p>
+              <h1>Live cup hub</h1>
+            </div>
+            <button class="btn lilac" type="button" onclick="go('watch')">
+              <svg class="ic" viewBox="0 0 24 24"><path d="M8 5v14l11-7Z"/></svg>
+              Watch
+            </button>
+          </div>
+          <div class="home">
+            <div class="panel">
+              <div class="live">
+                <div class="live-team">
+                  <span class="flag">🇧🇷</span>
+                  <div><div class="nm">Brazil</div><div class="sub">58% possession</div></div>
+                </div>
+                <div class="live-core">
+                  <div class="min">64'</div>
+                  <div class="score">2 - 1</div>
+                </div>
+                <div class="live-team r">
+                  <span class="flag">🇳🇴</span>
+                  <div><div class="nm">Norway</div><div class="sub">counter threat</div></div>
+                </div>
+              </div>
+
+              <div class="meter">
+                <div class="lbl"><span>Brazil</span><span>Possession</span><span>Norway</span></div>
+                <div class="bar"><i style="width:58%"></i></div>
+              </div>
+              <div class="meter">
+                <div class="lbl"><span>12</span><span>Shots</span><span>6</span></div>
+                <div class="bar"><i class="sky" style="width:67%"></i></div>
+              </div>
+              <div class="meter">
+                <div class="lbl"><span>High</span><span>Threat</span><span>Low</span></div>
+                <div class="bar"><i class="mint" style="width:74%"></i></div>
+              </div>
+
+              <div class="heading" style="margin-top:32px; margin-bottom:14px;">
+                <h2 style="margin:0; font-size:22px;">Prize brackets</h2>
+                <span class="eyebrow" style="margin:0">~ Pools ~</span>
+              </div>
+              <div class="pool-grid">
+                <div class="pool">
+                  <div class="amt">$25</div>
+                  <div class="lb">Bronze pool</div>
+                  <div class="meta">142 entries · 38 peers</div>
+                </div>
+                <div class="pool">
+                  <div class="amt">$100</div>
+                  <div class="lb">Silver pool</div>
+                  <div class="meta">68 entries · settles QF</div>
+                </div>
+                <div class="pool">
+                  <div class="amt">$500</div>
+                  <div class="lb">Gold pool</div>
+                  <div class="meta">21 entries · locked</div>
+                </div>
+                <div class="pool">
+                  <div class="amt">$2K</div>
+                  <div class="lb">Diamond pool</div>
+                  <div class="meta">4 entries · invite only</div>
+                </div>
+              </div>
+            </div>
+
+            <aside class="panel">
+              <div class="eyebrow">~ Today ~</div>
+              <h2 style="font-size:22px; margin-top:6px;">Fixtures</h2>
+              <div class="rail-list">
+                <div class="item"><span class="flag">🇧🇷</span><div><div class="nm">Brazil vs Norway</div><div class="tm" style="color:var(--rose)">LIVE 64'</div></div></div>
+                <div class="item"><span class="flag">🇦🇷</span><div><div class="nm">Argentina vs Japan</div><div class="tm">19:00</div></div></div>
+                <div class="item"><span class="flag">🇫🇷</span><div><div class="nm">France vs Spain</div><div class="tm">21:30</div></div></div>
+                <div class="item"><span class="flag">🇩🇪</span><div><div class="nm">Germany vs Portugal</div><div class="tm">00:00</div></div></div>
+              </div>
+
+              <div class="eyebrow" style="margin-top:22px;">~ Leaderboard ~</div>
+              <div class="leader-row"><span class="leader-rank">1</span><svg width="32" height="32" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="rgba(255,224,138,0.2)" stroke="#ffe08a" stroke-width="2"/><circle cx="50" cy="50" r="18" fill="#ffe08a"/></svg><span class="leader-nm">NyxRunner</span><span class="leader-pts">2,840</span></div>
+              <div class="leader-row"><span class="leader-rank">2</span><svg width="32" height="32" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="rgba(155,212,255,0.2)" stroke="#9bd4ff" stroke-width="2"/><circle cx="50" cy="50" r="18" fill="#9bd4ff"/></svg><span class="leader-nm">VoltageX</span><span class="leader-pts">2,610</span></div>
+              <div class="leader-row"><span class="leader-rank">3</span><svg width="32" height="32" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="rgba(255,155,214,0.2)" stroke="#ff9bd6" stroke-width="2"/><circle cx="50" cy="50" r="18" fill="#ff9bd6"/></svg><span class="leader-nm">Kai_07</span><span class="leader-pts">2,495</span></div>
+
+              <div class="eyebrow" style="margin-top:22px;">~ Pear signal ~</div>
+              <div class="signal-row"><span>Peers</span><strong>38</strong></div>
+              <div class="signal-row"><span>Core lag</span><strong>0.4s</strong></div>
+              <div class="signal-row"><span>QVAC lane</span><strong>Ready</strong></div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ================= BRACKET ================= -->
+        <section class="screen" id="bracket">
+          <div class="heading">
+            <div>
+              <p class="eyebrow" style="color:var(--gold)">~ $25 Bronze pool ~</p>
+              <h1>Knockout picks</h1>
+            </div>
+            <div class="bracket-actions">
+              <button class="btn ghost btn-sm" onclick="toast('Picks cleared')">
+                <svg class="ic" viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6M6 17A8 8 0 0 0 18 7M18 7h-4M18 7v4"/></svg>
+                Reset
+              </button>
+              <button class="btn btn-sm" onclick="toast('Picks submitted!')">
+                <svg class="ic" viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
+                Submit
+              </button>
+            </div>
+          </div>
+
+          <div class="settle-banner">
+            <span class="dot"></span>
+            <div class="tx"><strong>Settlement ready</strong> — 18 of 18 round-of-16 matches confirmed. Replay root <code style="color:var(--lilac)">0x7A3F…B2E1</code></div>
+            <button class="btn mint btn-sm">Receipt</button>
+          </div>
+
+          <div class="panel">
+            <div class="bracket-board">
+              <div class="round">
+                <div class="round-title">Round of 16</div>
+                <div class="match">
+                  <div class="slot is-pick win"><span class="flag">🇧🇷</span><span class="nm">Brazil</span><span class="sc">3</span></div>
+                  <div class="match-divider"></div>
+                  <div class="slot"><span class="flag">🇰🇷</span><span class="nm">Korea</span><span class="sc">1</span></div>
+                </div>
+                <div class="match">
+                  <div class="slot is-pick win"><span class="flag">🇯🇵</span><span class="nm">Japan</span><span class="sc">2</span></div>
+                  <div class="match-divider"></div>
+                  <div class="slot"><span class="flag">🇲🇽</span><span class="nm">Mexico</span><span class="sc">0</span></div>
+                </div>
+              </div>
+              <div class="round">
+                <div class="round-title">Quarter-finals</div>
+                <div class="match">
+                  <div class="slot is-pick"><span class="flag">🇧🇷</span><span class="nm">Brazil</span><span class="sc">—</span></div>
+                  <div class="match-divider"></div>
+                  <div class="slot"><span class="flag">🇯🇵</span><span class="nm">Japan</span><span class="sc">—</span></div>
+                </div>
+                <div class="match">
+                  <div class="slot"><span class="flag">🇦🇷</span><span class="nm">Argentina</span><span class="sc">—</span></div>
+                  <div class="match-divider"></div>
+                  <div class="slot"><span class="flag">🇫🇷</span><span class="nm">France</span><span class="sc">—</span></div>
+                </div>
+              </div>
+              <div class="round">
+                <div class="round-title">Semi-finals</div>
+                <div class="match">
+                  <div class="slot"><span class="flag">🇧🇷</span><span class="nm">Brazil</span><span class="sc">—</span></div>
+                  <div class="match-divider"></div>
+                  <div class="slot"><span class="flag">🇦🇷</span><span class="nm">Argentina</span><span class="sc">—</span></div>
+                </div>
+              </div>
+              <div class="round">
+                <div class="round-title">Final</div>
+                <div class="match">
+                  <div class="slot is-pick"><span class="flag">🇧🇷</span><span class="nm">Brazil</span><span class="sc">—</span></div>
+                  <div class="match-divider"></div>
+                  <div class="slot"><span class="flag">?</span><span class="nm">TBD</span><span class="sc">—</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= WATCH ================= -->
+        <section class="screen" id="watch">
+          <div class="heading">
+            <div>
+              <p class="eyebrow">~ Watch party ~</p>
+              <h1>Brazil vs Norway</h1>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button class="btn lilac btn-sm" onclick="go('games')">
+                <svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                Challenge
+              </button>
+              <button class="btn ghost btn-sm" onclick="toast('Voice channel joined')">
+                <svg class="ic" viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3ZM5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>
+                Voice
+              </button>
+            </div>
+          </div>
+
+          <div class="watch">
+            <div>
+              <div class="stadium">
+                <div class="scorebug"><strong>64'</strong> · Brazil 2 - 1 Norway</div>
+                <div class="pitch-anim">
+                  <div class="player-dot pd1"></div>
+                  <div class="player-dot pd2"></div>
+                  <div class="player-dot pd3"></div>
+                  <div class="ball-anim"></div>
+                </div>
+              </div>
+
+              <div class="stats-strip">
+                <div class="panel" style="padding:14px">
+                  <div style="font-size:10px; letter-spacing:0.2em; color:var(--ink-mute); text-transform:uppercase; font-weight:700;">Possession</div>
+                  <div style="font-family:'Baloo 2',cursive; font-size:22px; font-weight:800; margin-top:4px;">58 / 42</div>
+                  <div class="meter" style="margin-top:8px"><div class="bar"><i style="width:58%"></i></div></div>
+                </div>
+                <div class="panel" style="padding:14px">
+                  <div style="font-size:10px; letter-spacing:0.2em; color:var(--ink-mute); text-transform:uppercase; font-weight:700;">Shots</div>
+                  <div style="font-family:'Baloo 2',cursive; font-size:22px; font-weight:800; margin-top:4px;">12 / 6</div>
+                  <div class="meter" style="margin-top:8px"><div class="bar"><i class="sky" style="width:67%"></i></div></div>
+                </div>
+                <div class="panel" style="padding:14px">
+                  <div style="font-size:10px; letter-spacing:0.2em; color:var(--ink-mute); text-transform:uppercase; font-weight:700;">Threat</div>
+                  <div style="font-family:'Baloo 2',cursive; font-size:22px; font-weight:800; margin-top:4px; color:var(--sakura);">High</div>
+                  <div class="meter" style="margin-top:8px"><div class="bar"><i class="mint" style="width:74%"></i></div></div>
+                </div>
+              </div>
+            </div>
+
+            <aside>
+              <div class="panel" style="margin-bottom:18px;">
+                <div class="eyebrow">~ QVAC Commentary ~</div>
+                <h2 style="font-size:20px; margin:6px 0 14px;">Live feed</h2>
+                <div class="lang-tabs">
+                  <span class="lang-tab is-active">EN</span>
+                  <span class="lang-tab">PT</span>
+                  <span class="lang-tab">JA</span>
+                  <span class="lang-tab">ES</span>
+                </div>
+                <div class="feed">
+                  <div class="cmt"><span class="ts">64'</span><span class="who">SYS</span> Brazil win the ball back in midfield. Vinicius drives forward.</div>
+                  <div class="cmt"><span class="ts">62'</span><span class="who">GOAL</span> Brazil 2-1. Curling finish into the top corner.</div>
+                  <div class="cmt"><span class="ts">58'</span><span class="who">SYS</span> Norway substitution. Haaland comes off.</div>
+                  <div class="cmt"><span class="ts">51'</span><span class="who">CARD</span> Yellow for Diaz. Free kick Norway.</div>
+                  <div class="cmt"><span class="ts">45'</span><span class="who">SYS</span> Half time. 1-1 at the break.</div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <div class="eyebrow">~ Room chat ~</div>
+                <h2 style="font-size:20px; margin:6px 0 14px;">38 peers</h2>
+                <div class="chat-feed">
+                  <div class="chat-msg"><span class="who">NyxRunner:</span> that curl was INSANE</div>
+                  <div class="chat-msg"><span class="who">VoltageX:</span> told you Brazil takes this</div>
+                  <div class="chat-msg"><span class="who">HaalandFan:</span> norway still has 26 mins</div>
+                  <div class="chat-msg"><span class="who">Kai_07:</span> 2-1 final calling it</div>
+                </div>
+                <form class="chat-form" onsubmit="event.preventDefault(); toast('Message sent!')">
+                  <input class="input" placeholder="Message the room" maxlength="120" />
+                  <button class="btn btn-sm" type="submit"><svg class="ic" viewBox="0 0 24 24"><path d="M4 12 20 4l-4 16-4-6-8-2Z"/></svg></button>
+                </form>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ================= GAMES ================= -->
+        <section class="screen" id="games">
+          <div class="heading">
+            <div>
+              <p class="eyebrow">~ P2P minigame ~</p>
+              <h1>Penalty Clash</h1>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button class="btn ghost btn-sm" onclick="toast('Spectating peer match')">
+                <svg class="ic" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                Spectate
+              </button>
+              <button class="btn btn-sm" onclick="toast('Goal! Keeper dives the wrong way!')">
+                <svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                Next kick
+              </button>
+            </div>
+          </div>
+
+          <div class="game">
+            <div>
+              <div class="scoreboard">
+                <div class="sb-team">
+                  <svg class="ava" viewBox="0 0 100 100"><ellipse cx="50" cy="58" rx="28" ry="30" fill="#ffe8d6"/><path d="M22 50 Q20 20 50 20 Q80 20 78 50 Q70 38 50 38 Q30 38 22 50 Z" fill="#ff9bd6"/><ellipse cx="40" cy="56" rx="6" ry="8" fill="#3a1a4a"/><ellipse cx="60" cy="56" rx="6" ry="8" fill="#3a1a4a"/><circle cx="42" cy="53" r="2.5" fill="#fff"/><circle cx="62" cy="53" r="2.5" fill="#fff"/></svg>
+                  <div><div class="nm">Kai_07</div><div class="sub">Brazil</div></div>
+                </div>
+                <div class="sb-core">
+                  <div class="round">ROUND 4 / 5</div>
+                  <div class="pts">3 - 2</div>
+                  <div class="kick-track">
+                    <span class="kick in"></span><span class="kick out"></span><span class="kick in"></span><span class="kick in"></span><span class="kick"></span>
+                  </div>
+                </div>
+                <div class="sb-team r">
+                  <svg class="ava" viewBox="0 0 100 100"><ellipse cx="50" cy="58" rx="28" ry="30" fill="#ffe8d6"/><path d="M22 50 Q20 20 50 20 Q80 20 78 50 Q70 38 50 38 Q30 38 22 50 Z" fill="#c9a8ff"/><ellipse cx="40" cy="56" rx="6" ry="8" fill="#3a1a4a"/><ellipse cx="60" cy="56" rx="6" ry="8" fill="#3a1a4a"/><circle cx="42" cy="53" r="2.5" fill="#fff"/><circle cx="62" cy="53" r="2.5" fill="#fff"/></svg>
+                  <div><div class="nm">NyxRunner</div><div class="sub">Norway</div></div>
+                </div>
+              </div>
+
+              <div class="penalty-stage">
+                <div class="goal-frame"></div>
+                <svg class="pen-keeper" viewBox="0 0 80 100"><ellipse cx="40" cy="22" rx="14" ry="16" fill="#ffe8d6"/><path d="M26 20 Q28 6 40 6 Q52 6 54 20 L50 26 Q44 16 40 16 Q36 16 30 26 Z" fill="#c9a8ff"/><ellipse cx="34" cy="22" rx="2.5" ry="3.5" fill="#3a1a4a"/><ellipse cx="46" cy="22" rx="2.5" ry="3.5" fill="#3a1a4a"/><rect x="28" y="36" width="24" height="36" rx="8" fill="#c9a8ff"/><rect x="18" y="40" width="10" height="28" rx="5" fill="#c9a8ff"/><rect x="52" y="40" width="10" height="28" rx="5" fill="#c9a8ff"/><rect x="30" y="72" width="8" height="24" rx="3" fill="#3a1a4a"/><rect x="42" y="72" width="8" height="24" rx="3" fill="#3a1a4a"/></svg>
+                <svg class="pen-shooter" viewBox="0 0 80 100"><ellipse cx="40" cy="22" rx="14" ry="16" fill="#ffe8d6"/><path d="M26 20 Q28 6 40 6 Q52 6 54 20 L50 26 Q44 16 40 16 Q36 16 30 26 Z" fill="#ff9bd6"/><ellipse cx="34" cy="22" rx="2.5" ry="3.5" fill="#3a1a4a"/><ellipse cx="46" cy="22" rx="2.5" ry="3.5" fill="#3a1a4a"/><rect x="28" y="36" width="24" height="36" rx="8" fill="#ff9bd6"/><rect x="18" y="40" width="10" height="28" rx="5" fill="#ff9bd6"/><rect x="52" y="40" width="10" height="28" rx="5" fill="#ff9bd6"/><rect x="30" y="72" width="8" height="24" rx="3" fill="#3a1a4a"/><rect x="42" y="72" width="8" height="24" rx="3" fill="#3a1a4a"/></svg>
+                <div class="pen-ball"></div>
+              </div>
+
+              <div class="game-cards">
+                <div class="gc"><h4>Resolver</h4><span class="stat">12ms</span><p>QVAC verdict latency on last kick</p></div>
+                <div class="gc"><h4>Sync</h4><span class="stat">38/38</span><p>Peers converged on round state</p></div>
+                <div class="gc"><h4>Replay</h4><span class="stat">0x4F2A</span><p>Append-only root, 1.2s drift</p></div>
+              </div>
+            </div>
+
+            <aside>
+              <div class="int-panel">
+                <h4>~ Pear runtime ~</h4>
+                <div class="int-row"><span class="lb">Renderer</span><span class="vl ok">Ready</span></div>
+                <div class="int-row"><span class="lb">Worker</span><span class="vl ok">Ready</span></div>
+                <div class="int-row"><span class="lb">Topic converge</span><span class="vl ok">0.4s</span></div>
+                <div class="int-row"><span class="lb">Core replays</span><span class="vl">14</span></div>
+              </div>
+              <div class="int-panel">
+                <h4>~ Tether WDK ~</h4>
+                <div class="int-row"><span class="lb">SDK loaded</span><span class="vl warn">Pending</span></div>
+                <div class="int-row"><span class="lb">Escrow</span><span class="vl lock">Locked</span></div>
+                <div class="int-row"><span class="lb">Compliance gate</span><span class="vl lock">Locked</span></div>
+                <div class="int-row"><span class="lb">Payout prep</span><span class="vl lock">Locked</span></div>
+              </div>
+              <div class="int-panel">
+                <h4>~ QVAC referee ~</h4>
+                <div class="int-row"><span class="lb">Lane</span><span class="vl ok">Ready</span></div>
+                <div class="int-row"><span class="lb">Rounds settled</span><span class="vl">3 / 5</span></div>
+                <div class="int-row"><span class="lb">Pool settle</span><span class="vl warn">Queued</span></div>
+              </div>
+              <div class="int-panel">
+                <h4>~ Minigame leaderboard ~</h4>
+                <div class="leader-row"><span class="leader-rank">1</span><span class="leader-nm">NyxRunner</span><span class="leader-pts">820</span></div>
+                <div class="leader-row"><span class="leader-rank">2</span><span class="leader-nm">VoltageX</span><span class="leader-pts">740</span></div>
+                <div class="leader-row"><span class="leader-rank">3</span><span class="leader-nm">Kai_07</span><span class="leader-pts">690</span></div>
+              </div>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+      // spawn petals
+      (function() {
+        const wrap = document.getElementById('petals');
+        for (let i = 0; i < 18; i++) {
+          const p = document.createElement('div');
+          p.className = 'petal';
+          p.style.left = Math.random() * 100 + '%';
+          p.style.animationDuration = (8 + Math.random() * 10) + 's';
+          p.style.animationDelay = (-Math.random() * 18) + 's';
+          p.style.transform = 'scale(' + (0.6 + Math.random() * 0.8) + ')';
+          p.style.opacity = (0.4 + Math.random() * 0.4);
+          wrap.appendChild(p);
+        }
+      })();
+
+      function go(view) {
+        document.querySelectorAll('.nav button').forEach(b => b.classList.toggle('is-active', b.dataset.view === view));
+        document.querySelectorAll('.screen').forEach(s => s.classList.toggle('is-active', s.id === view));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      document.getElementById('nav').addEventListener('click', e => {
+        const b = e.target.closest('button[data-view]'); if (!b) return;
+        go(b.dataset.view);
+      });
+      document.getElementById('teamGrid').addEventListener('click', e => {
+        const t = e.target.closest('.team'); if (!t) return;
+        document.querySelectorAll('.team').forEach(x => x.classList.remove('is-pick'));
+        t.classList.add('is-pick');
+      });
+      document.querySelectorAll('.lang-tab').forEach(t => t.addEventListener('click', () => {
+        t.parentElement.querySelectorAll('.lang-tab').forEach(x => x.classList.remove('is-active'));
+        t.classList.add('is-active');
+      }));
+      let toastTimer;
+      function toast(msg) {
+        const el = document.getElementById('toast');
+        el.textContent = msg;
+        el.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+      }
+    </script>
+  </body>
+</html>

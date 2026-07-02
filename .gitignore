@@ -1,0 +1,12 @@
+# dependencies (root + design/kawaii-app self-contained install)
+node_modules/
+
+# local runtime config (may hold API keys / SDK paths) — only the .example is tracked
+config/pearcup.runtime.json
+
+# machine-local editor/agent settings
+.claude/settings.local.json
+
+# os / misc
+.DS_Store
+*.log

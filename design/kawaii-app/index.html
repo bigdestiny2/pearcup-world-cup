@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:* pear:; object-src 'none'; base-uri 'none'">
+    <title>PearCup Prototype</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <button class="brand" type="button" data-view="home" aria-label="Open lobby">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" role="img">
+              <path d="M16 3c5 0 9 4 9 9 0 2-1 4-2 6l-7 11-7-11c-1-2-2-4-2-6 0-5 4-9 9-9Z" fill="currentColor"/>
+              <circle cx="16" cy="12" r="5" fill="#fff"/>
+            </svg>
+          </span>
+          <span>PearCup</span>
+        </button>
+
+        <nav class="topnav" aria-label="Primary">
+          <button type="button" data-view="onboarding">Profile</button>
+          <button type="button" data-view="home">Home</button>
+          <button type="button" data-view="bracket">Bracket</button>
+          <button type="button" data-view="watch">Watch</button>
+          <button type="button" data-view="games">Games</button>
+        </nav>
+
+        <div class="topbar-right">
+          <button class="theme-btn" id="themeBtn" type="button" aria-label="Change theme" title="Change theme">
+            <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.7-.8 1.7-1.7 0-.4-.2-.8-.5-1.1-.3-.3-.5-.7-.5-1.1 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-3.9-4-7.4-9-7.4Z"/><circle cx="7.5" cy="11.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="8" r="1.3" fill="currentColor" stroke="none"/><circle cx="16.5" cy="11.5" r="1.3" fill="currentColor" stroke="none"/></svg>
+          </button>
+          <button class="wallet-chip" id="walletChip" type="button" data-view="onboarding" aria-label="Open wallet"></button>
+          <div class="profile-chip" id="profileChip" aria-live="polite"></div>
+        </div>
+      </header>
+
+      <main class="screens">
+        <section class="screen is-active" id="onboarding" aria-labelledby="onboardingTitle">
+          <div class="onboarding-layout">
+            <div class="team-picker">
+              <div class="section-heading">
+                <p class="eyebrow">Start</p>
+                <h1 id="onboardingTitle">Choose your country</h1>
+              </div>
+              <label class="field-label" for="usernameInput">Username</label>
+              <div class="username-row">
+                <input id="usernameInput" maxlength="18" autocomplete="nickname" placeholder="your handle">
+                <button class="primary-button" id="saveProfile" type="button">
+                  <span class="button-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
+                  </span>
+                  Enter
+                </button>
+              </div>
+              <div class="team-grid" id="teamGrid"></div>
+            </div>
+
+            <aside class="avatar-preview" aria-label="Avatar preview">
+              <div class="avatar-stage" id="avatarPreview"></div>
+              <div class="kit-card">
+                <span class="kit-swatch" id="primarySwatch"></span>
+                <span class="kit-swatch" id="secondarySwatch"></span>
+                <span class="kit-swatch" id="accentSwatch"></span>
+                <div>
+                  <p class="kit-country" id="kitCountry">Brazil</p>
+                  <p class="kit-subtitle" id="kitSubtitle">Home jersey generated</p>
+                </div>
+              </div>
+              <div id="walletManage"></div>
+              <div id="liveDataSettings"></div>
+              <div id="themeSwitcher"></div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen" id="home" aria-labelledby="homeTitle">
+          <div class="home-layout">
+            <div class="home-main">
+              <div class="section-heading compact home-titlebar">
+                <div>
+                  <p class="eyebrow">Match center</p>
+                  <h1 id="homeTitle">Live cup hub</h1>
+                </div>
+                <button class="primary-button" type="button" data-view="watch">
+                  <span class="button-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7Z"/></svg>
+                  </span>
+                  Watch
+                </button>
+              </div>
+              <section class="live-command" aria-label="Live match dashboard">
+                <div class="live-scoreline">
+                  <div class="live-team">
+                    <span class="score-flag" id="heroHomeFlag">🇧🇷</span>
+                    <div>
+                      <strong id="heroHomeName">Brazil</strong>
+                      <span id="heroHomeSub">58% possession</span>
+                    </div>
+                  </div>
+                  <div class="score-core">
+                    <span id="heroClock">64'</span>
+                    <strong id="heroScore">2 - 1</strong>
+                    <em id="heroState">Live</em>
+                  </div>
+                  <div class="live-team is-away">
+                    <span class="score-flag" id="heroAwayFlag">🇳🇴</span>
+                    <div>
+                      <strong id="heroAwayName">Norway</strong>
+                      <span id="heroAwaySub">Counter threat high</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="live-menu" id="liveMenu" aria-label="Live menu"></div>
+                <div class="live-detail" id="liveDetail"></div>
+              </section>
+
+              <div class="section-heading compact pool-heading">
+                <div>
+                  <p class="eyebrow">Pools</p>
+                  <h2>Prize brackets</h2>
+                </div>
+              </div>
+              <div class="pool-grid" id="poolGrid"></div>
+            </div>
+
+            <aside class="activity-rail">
+              <div class="rail-header">
+                <p class="eyebrow">Live</p>
+                <strong>Today</strong>
+              </div>
+              <div id="homeFixtures"></div>
+              <div class="leader-panel" id="leaderPanel"></div>
+              <div class="signal-panel" id="signalPanel">
+                <div class="rail-header">
+                  <p class="eyebrow">Pear</p>
+                  <strong>Room signal</strong>
+                </div>
+                <div class="signal-row">
+                  <span>Peers</span>
+                  <strong>38</strong>
+                </div>
+                <div class="signal-row">
+                  <span>Core lag</span>
+                  <strong>0.4s</strong>
+                </div>
+                <div class="signal-row">
+                  <span>Ref status</span>
+                  <strong>Ready</strong>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen" id="bracket" aria-labelledby="bracketTitle">
+          <div class="section-heading compact bracket-title">
+            <p class="eyebrow" id="bracketTierLabel">Brackets</p>
+            <h1 id="bracketTitle">Enter a World Cup bracket</h1>
+          </div>
+
+          <p class="bracket-step">1 · Select a bracket to enter</p>
+          <div class="pool-select" id="bracketPoolSelect"></div>
+
+          <div class="bracket-entered">
+            <p class="bracket-step">2 · Who's entered <span class="step-sub" id="enteredCount"></span></p>
+            <div class="entered-avatars" id="bracketEntrants"></div>
+          </div>
+
+          <div class="picks-head">
+            <p class="bracket-step">3 · Make your picks <span class="step-sub" id="picksRemaining"></span></p>
+            <div class="bracket-actions">
+              <button class="secondary-button" type="button" id="resetPicks">
+                <span class="button-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6M6 17A8 8 0 0 0 18 7M18 7h-4M18 7v4"/></svg>
+                </span>
+                Reset
+              </button>
+              <button class="primary-button" type="button" id="submitPicks">
+                <span class="button-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
+                </span>
+                Submit picks
+              </button>
+            </div>
+          </div>
+          <div class="bracket-board" id="bracketBoard"></div>
+
+          <div class="audit-accordion">
+            <p class="audit-heading">4 · Statistics &amp; audit</p>
+            <details class="audit-drop">
+              <summary><span class="audit-ico">📊</span> Pool statistics <span class="audit-chevron" aria-hidden="true">⌄</span></summary>
+              <div class="audit-body audit-grid" id="bracketStats"></div>
+            </details>
+            <details class="audit-drop">
+              <summary><span class="audit-ico">💸</span> Entries &amp; payouts <span class="audit-chevron" aria-hidden="true">⌄</span></summary>
+              <div class="audit-body" id="bracketEntriesPanel"></div>
+            </details>
+            <details class="audit-drop">
+              <summary><span class="audit-ico">🛡️</span> Settlement audit <span class="audit-chevron" aria-hidden="true">⌄</span></summary>
+              <div class="audit-body" id="bracketAudit"></div>
+            </details>
+          </div>
+        </section>
+
+        <section class="screen" id="watch" aria-labelledby="watchTitle">
+          <div class="watch-layout">
+            <div class="watch-room">
+              <div class="room-topline">
+                <div class="section-heading compact">
+                  <p class="eyebrow">Watch party <span class="live-badge" id="tvLive"><i></i>LIVE</span></p>
+                  <h1 id="watchTitle">Brazil vs Norway</h1>
+                </div>
+                <div class="room-controls">
+                  <button class="secondary-button compact-action" type="button" id="shareGameBtn">
+                    <span class="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13"/></svg>
+                    </span>
+                    Invite
+                  </button>
+                  <button class="icon-button" id="voiceToggle" type="button" aria-label="Toggle voice chat">
+                    <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3ZM5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>
+                  </button>
+                  <button class="icon-button" id="shareScreenBtn" type="button" aria-label="Share your screen to the room">
+                    <svg viewBox="0 0 24 24"><path d="M4 6h16v12H4zM9 21h6"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="room-share-bar" id="roomShareBar" hidden></div>
+
+              <div class="stadium">
+                <div class="stadium-tv">
+                  <video id="shareVideo" class="share-video" playsinline muted hidden></video>
+                  <div class="share-badge" id="shareBadge" hidden></div>
+                  <div class="scorebug">
+                    <span id="tvClock">64'</span>
+                    <strong id="tvScore">Brazil 2 - 1 Norway</strong>
+                  </div>
+                  <div class="pitch" id="tvPitch">
+                    <div class="ball"></div>
+                    <div class="run run-a"></div>
+                    <div class="run run-b"></div>
+                    <div class="player-dot dot-a"></div>
+                    <div class="player-dot dot-b"></div>
+                    <div class="player-dot dot-c"></div>
+                  </div>
+                  <div class="tv-liveboard" id="tvLiveBoard" hidden></div>
+                  <div class="tv-flash" id="tvFlash" aria-hidden="true"></div>
+                  <div class="reaction-layer" id="reactionLayer" aria-hidden="true"></div>
+                </div>
+              </div>
+
+              <div class="watch-reactions" id="watchReactions" aria-label="Send a reaction">
+                <span class="wr-label" id="wrPeers">Just you</span>
+                <div class="wr-buttons">
+                  <button type="button" data-react="⚽">⚽</button>
+                  <button type="button" data-react="🔥">🔥</button>
+                  <button type="button" data-react="😱">😱</button>
+                  <button type="button" data-react="👏">👏</button>
+                  <button type="button" data-react="💚">💚</button>
+                </div>
+              </div>
+
+              <div class="live-source" id="liveSource" hidden></div>
+              <div class="stats-strip" id="watchStats"></div>
+
+              <div class="watch-party" id="watchPickBoard" aria-label="Watch party couches"></div>
+            </div>
+
+            <aside class="watch-side">
+              <div class="commentary-panel">
+                <div class="rail-header">
+                  <p class="eyebrow">QVAC</p>
+                  <strong>Commentary</strong>
+                </div>
+                <div class="language-tabs" id="languageTabs"></div>
+                <div class="commentary-feed" id="commentaryFeed"></div>
+              </div>
+
+              <div class="chat-panel">
+                <div class="rail-header">
+                  <p class="eyebrow">Room</p>
+                  <strong>Chat</strong>
+                </div>
+                <div class="chat-feed" id="chatFeed"></div>
+                <form class="chat-form" id="chatForm">
+                  <input id="chatInput" maxlength="120" placeholder="Message the room">
+                  <button class="icon-button" type="submit" aria-label="Send message">
+                    <svg viewBox="0 0 24 24"><path d="M4 12 20 4l-4 16-4-6-8-2Z"/></svg>
+                  </button>
+                </form>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen" id="games" aria-labelledby="gamesTitle">
+          <div class="games-layout">
+            <div class="game-arena">
+              <div class="game-header">
+                <div class="section-heading compact">
+                  <p class="eyebrow">P2P minigame</p>
+                  <h1 id="gamesTitle">Penalty Clash</h1>
+                </div>
+                <div class="game-actions">
+                  <button class="secondary-button" type="button" id="spectateGame">
+                    <span class="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </span>
+                    Spectate
+                  </button>
+                  <button class="primary-button" type="button" id="advanceGameRound">
+                    <span class="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </span>
+                    Next kick
+                  </button>
+                </div>
+              </div>
+
+              <div class="game-lobby" id="gameLobby"></div>
+
+              <div class="game-scoreboard" id="gameScoreboard"></div>
+
+              <div class="penalty-stage" id="penaltyStage" aria-label="Penalty Clash replay">
+                <div class="goal-frame" aria-hidden="true">
+                  <span></span><span></span><span></span>
+                </div>
+                <div class="penalty-line" aria-hidden="true"></div>
+                <div class="penalty-avatar penalty-keeper" id="gameKeeper"></div>
+                <div class="penalty-avatar penalty-shooter" id="gameShooter"></div>
+                <div class="penalty-ball" id="gameBall" aria-hidden="true"></div>
+              </div>
+
+              <div class="game-lower">
+                <article class="game-card" id="gameResolver"></article>
+                <section class="integration-panel" id="gameLeaderboard"></section>
+              </div>
+
+              <div class="audit-accordion">
+                <p class="audit-heading">Match audit &amp; payments</p>
+                <details class="audit-drop">
+                  <summary><span class="audit-ico">💸</span> Payments &amp; escrow <span class="audit-chevron" aria-hidden="true">⌄</span></summary>
+                  <div class="audit-body">
+                    <section class="integration-panel" id="tetherPanel"></section>
+                  </div>
+                </details>
+                <details class="audit-drop">
+                  <summary><span class="audit-ico">🛡️</span> Trust &amp; settlement <span class="audit-chevron" aria-hidden="true">⌄</span></summary>
+                  <div class="audit-body audit-grid">
+                    <section class="integration-panel" id="runtimePanel"></section>
+                    <section class="integration-panel" id="qvacRefPanel"></section>
+                  </div>
+                </details>
+                <details class="audit-drop">
+                  <summary><span class="audit-ico">🔗</span> P2P sync &amp; replay log <span class="audit-chevron" aria-hidden="true">⌄</span></summary>
+                  <div class="audit-body audit-grid">
+                    <article class="game-card" id="gameSync"></article>
+                    <article class="game-card" id="gameReplay"></article>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./core.js"></script>
+    <script src="./adapters.js"></script>
+    <script src="./qvac-referee.js"></script>
+    <script src="./tether-wdk-bridge.js"></script>
+    <script src="./runtime-settings.js"></script>
+    <script src="./runtime-config.js"></script>
+    <script src="./worker-sim.js"></script>
+    <script src="./worker-client.js"></script>
+    <script src="./worker-runtime.js"></script>
+    <script src="./settlement-receipts.js"></script>
+    <script src="./settlement-service.js"></script>
+    <script src="./transport-sim.js"></script>
+    <script src="./storage-sim.js"></script>
+    <script src="./app.js"></script>
+    <script src="./peer-net.js"></script>
+    <script src="./peer-match.js"></script>
+    <script src="./peer-lobby.js"></script>
+    <script src="./watch-sync.js"></script>
+  </body>
+</html>

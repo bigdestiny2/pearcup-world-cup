@@ -1,0 +1,32 @@
+{
+  "sdkPackages": {
+    "qvac": {
+      "enabled": false,
+      "modelExport": "LLAMA_3_2_1B_INST_Q4_0",
+      "preloadedModelId": "",
+      "modelId": "qvac-pearcup-referee",
+      "autoUnload": true,
+      "preflightLoadModel": false
+    },
+    "tetherWdk": {
+      "enabled": false,
+      "seedPhrase": "",
+      "assets": ["usdt-evm"],
+      "evmProvider": "",
+      "evmChainId": 1,
+      "btcNetwork": "bitcoin",
+      "payoutAccountIndex": 0,
+      "defaultPayoutAddress": "",
+      "payoutRecipients": {},
+      "broadcastPayouts": false,
+      "quotePayouts": true,
+      "skipInitialBalanceProbe": false
+    }
+  },
+  "compliance": {
+    "realMoneyEnabled": false,
+    "kycVerified": false,
+    "jurisdictionAllowed": false,
+    "responsiblePlayAccepted": false
+  }
+}

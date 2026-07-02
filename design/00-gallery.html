@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PearCup — Design Spec Gallery</title>
+    <style>
+      :root {
+        --ink: #0d0f1a;
+        --paper: #f6f3ec;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+      body {
+        font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(1200px 600px at 10% -10%, #2b1f5e 0%, transparent 55%),
+          radial-gradient(1000px 700px at 110% 110%, #0a3d4a 0%, transparent 50%),
+          #06070f;
+        min-height: 100vh;
+        padding: 56px 28px 96px;
+      }
+      .wrap { max-width: 1180px; margin: 0 auto; }
+      .eyebrow {
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        font-size: 12px;
+        font-weight: 700;
+        color: #7df9ff;
+        margin: 0 0 14px;
+      }
+      h1 {
+        margin: 0 0 14px;
+        font-size: clamp(40px, 6vw, 72px);
+        line-height: 1.02;
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        color: #fff;
+        text-shadow: 0 6px 40px rgba(125, 249, 255, 0.25);
+      }
+      .lede {
+        max-width: 720px;
+        color: #c3c7e0;
+        font-size: 18px;
+        line-height: 1.55;
+        margin: 0 0 48px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 24px;
+      }
+      .card {
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        position: relative;
+        border-radius: 22px;
+        overflow: hidden;
+        min-height: 360px;
+        padding: 26px 26px 24px;
+        border: 1px solid rgba(255,255,255,0.08);
+        background: #11132a;
+        transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
+                    border-color 0.35s, box-shadow 0.35s;
+      }
+      .card:hover {
+        transform: translateY(-6px) rotateX(2deg);
+        border-color: rgba(125, 249, 255, 0.45);
+        box-shadow: 0 30px 60px rgba(0,0,0,0.5),
+                    0 0 0 1px rgba(125,249,255,0.15);
+      }
+      .card .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        font-weight: 700;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.06);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: #c9cfe6;
+      }
+      .card h2 {
+        margin: 22px 0 10px;
+        font-size: 30px;
+        font-weight: 900;
+        letter-spacing: -0.01em;
+        color: #fff;
+      }
+      .card p {
+        margin: 0 0 18px;
+        color: #a7accc;
+        font-size: 15px;
+        line-height: 1.5;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 5px 10px;
+        border-radius: 999px;
+        margin-right: 6px;
+        margin-top: 6px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: #cfd4ee;
+      }
+      .art {
+        position: absolute;
+        inset: auto -40px -50px auto;
+        width: 240px;
+        height: 240px;
+        opacity: 0.9;
+        transform: rotate(-8deg);
+        pointer-events: none;
+      }
+      /* per-card themes */
+      .c-neo {
+        background:
+          radial-gradient(420px 220px at 80% 0%, rgba(255,0,128,0.35), transparent 60%),
+          radial-gradient(420px 260px at 0% 110%, rgba(0,229,255,0.32), transparent 60%),
+          #0a0b1e;
+      }
+      .c-neo .tag { color: #ff4fa3; border-color: rgba(255,79,163,0.4); }
+      .c-shonen {
+        background:
+          radial-gradient(420px 240px at 100% 0%, rgba(255,196,0,0.32), transparent 60%),
+          radial-gradient(420px 240px at 0% 110%, rgba(255,90,30,0.35), transparent 60%),
+          #1a0d05;
+      }
+      .c-shonen .tag { color: #ffcf3d; border-color: rgba(255,207,61,0.45); }
+      .c-sakura {
+        background:
+          radial-gradient(420px 240px at 100% 0%, rgba(255,150,210,0.4), transparent 60%),
+          radial-gradient(420px 240px at 0% 110%, rgba(120,180,255,0.35), transparent 60%),
+          #1b0e22;
+      }
+      .c-sakura .tag { color: #ff9bd6; border-color: rgba(255,155,214,0.45); }
+
+      .foot {
+        margin-top: 56px;
+        color: #6c7099;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .foot a { color: #7df9ff; text-decoration: none; }
+      .foot a:hover { text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <p class="eyebrow">PearCup · Design exploration</p>
+      <h1>Three anime directions<br/>for the World Cup app.</h1>
+      <p class="lede">
+        Each spec is a fully self-contained, open-in-browser HTML file you can
+        click into. They all share the same PearCup structure — onboarding,
+        home hub, bracket, watch party, minigame — re-skinned into a distinct
+        anime aesthetic with 3D buttons, motion, and little character avatars.
+      </p>
+
+      <div class="grid">
+        <a class="card c-neo" href="01-neo-tokyo-strikers.html">
+          <span class="tag">Spec 01 · Dark cyberpunk</span>
+          <h2>Neo-Tokyo Strikers</h2>
+          <p>Midnight neon, holographic pitch lines, magenta/cyan duotone. Glow-rimmed 3D buttons that press in like arcade keys. Avatars are sharp-eyed idol-mecha hybrids.</p>
+          <span class="pill">Glow buttons</span>
+          <span class="pill">Holo pitch</span>
+          <span class="pill">Duotone</span>
+          <svg class="art" viewBox="0 0 240 240" fill="none">
+            <circle cx="120" cy="120" r="92" stroke="#00e5ff" stroke-width="2" opacity="0.5"/>
+            <circle cx="120" cy="120" r="62" stroke="#ff4fa3" stroke-width="2" opacity="0.6"/>
+            <path d="M120 28 L120 212 M28 120 L212 120" stroke="#7df9ff" stroke-width="1" opacity="0.4"/>
+            <circle cx="120" cy="120" r="14" fill="#ff4fa3"/>
+          </svg>
+        </a>
+
+        <a class="card c-shonen" href="02-shonen-pitch.html">
+          <span class="tag">Spec 02 · Manga action</span>
+          <h2>Shonen Pitch</h2>
+          <p>Bold ink outlines, halftone speed lines, blazing yellow + red energy. Chunky candy 3D buttons with a satisfying bounce. Avatars are spiky-haired strikers with fierce grins.</p>
+          <span class="pill">Speed lines</span>
+          <span class="pill">Chunky 3D</span>
+          <span class="pill">Ink outline</span>
+          <svg class="art" viewBox="0 0 240 240" fill="none">
+            <path d="M40 200 L120 40 L200 200 Z" fill="#ffcf3d" stroke="#1a0d05" stroke-width="6"/>
+            <path d="M120 90 L120 180" stroke="#1a0d05" stroke-width="6"/>
+            <circle cx="120" cy="200" r="12" fill="#ff5a1e" stroke="#1a0d05" stroke-width="6"/>
+          </svg>
+        </a>
+
+        <a class="card c-sakura" href="03-sakura-stadium.html">
+          <span class="tag">Spec 03 · Pastel magical</span>
+          <h2>Sakura Stadium</h2>
+          <p>Soft pinks, twilight lavender, glassy 3D pills with inner glow. Floating petals and gentle parallax. Avatars are chibi mascots with starry eyes and round cheeks.</p>
+          <span class="pill">Glass 3D</span>
+          <span class="pill">Petals</span>
+          <span class="pill">Chibi</span>
+          <svg class="art" viewBox="0 0 240 240" fill="none">
+            <circle cx="120" cy="120" r="80" fill="#ff9bd6" opacity="0.4"/>
+            <circle cx="120" cy="120" r="50" fill="#ffd1ec"/>
+            <circle cx="105" cy="112" r="6" fill="#5a2a55"/>
+            <circle cx="135" cy="112" r="6" fill="#5a2a55"/>
+            <path d="M105 135 Q120 148 135 135" stroke="#5a2a55" stroke-width="3" fill="none" stroke-linecap="round"/>
+          </svg>
+        </a>
+      </div>
+
+      <p class="foot">
+        Open any spec to see the full app shell — onboarding → home → bracket → watch → games — with that direction applied.
+        Built from <code>app/index.html</code> structure. Browse the rest of the project at <a href="../README.md">../README.md</a>.
+      </p>
+
+      <h2 style="font-family:'Inter',sans-serif; font-size:22px; font-weight:800; color:#fff; margin:56px 0 8px; letter-spacing:-0.01em;">Playable prototype</h2>
+      <p style="color:#a7accc; font-size:15px; margin:0 0 28px;">Full interactive minigame built on the real deterministic resolver pattern from <code style="background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">app/core.js</code>.</p>
+
+      <div class="grid" style="grid-template-columns: 1fr;">
+        <a class="card c-sakura" href="04-free-kick-clash.html">
+          <span class="tag">Interactive · Kawaii Cup</span>
+          <h2>Free Kick Clash</h2>
+          <p>Actually playable. Aim, power, curve, and timing inputs feed a deterministic <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">free-kick-v1</code> resolver. Watch the full P2P pipeline fire in real time: commit → reveal → resolve → topic converge → QVAC attestation → WDK escrow release. Best-of-5 with sudden death. Bot keeper or hot-seat 2P.</p>
+          <span class="pill">Deterministic resolver</span>
+          <span class="pill">Commit/reveal</span>
+          <span class="pill">QVAC + WDK</span>
+          <span class="pill">Best of 5</span>
+          <svg class="art" viewBox="0 0 240 240" fill="none">
+            <rect x="40" y="60" width="160" height="100" rx="4" stroke="#ff9bd6" stroke-width="2"/>
+            <line x1="40" y1="100" x2="200" y2="100" stroke="#ff9bd6" stroke-width="1" opacity="0.5"/>
+            <line x1="120" y1="60" x2="120" y2="160" stroke="#ff9bd6" stroke-width="1" opacity="0.5"/>
+            <circle cx="120" cy="200" r="10" fill="#fff"/>
+            <path d="M120 200 Q140 140 170 110" stroke="#ffe08a" stroke-width="2" stroke-dasharray="4 4" fill="none"/>
+            <circle cx="170" cy="110" r="6" fill="#ffe08a"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </body>
+</html>

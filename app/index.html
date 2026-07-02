@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:* pear:; object-src 'none'; base-uri 'none'">
+    <title>PearCup Prototype</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <button class="brand" type="button" data-view="home" aria-label="Open lobby">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" role="img">
+              <path d="M16 3c5 0 9 4 9 9 0 2-1 4-2 6l-7 11-7-11c-1-2-2-4-2-6 0-5 4-9 9-9Z" fill="currentColor"/>
+              <circle cx="16" cy="12" r="5" fill="#fff"/>
+            </svg>
+          </span>
+          <span>PearCup</span>
+        </button>
+
+        <nav class="topnav" aria-label="Primary">
+          <button type="button" data-view="onboarding">Profile</button>
+          <button type="button" data-view="home">Home</button>
+          <button type="button" data-view="bracket">Bracket</button>
+          <button type="button" data-view="watch">Watch</button>
+          <button type="button" data-view="games">Games</button>
+        </nav>
+
+        <div class="profile-chip" id="profileChip" aria-live="polite"></div>
+      </header>
+
+      <main class="screens">
+        <section class="screen is-active" id="onboarding" aria-labelledby="onboardingTitle">
+          <div class="onboarding-layout">
+            <div class="team-picker">
+              <div class="section-heading">
+                <p class="eyebrow">Start</p>
+                <h1 id="onboardingTitle">Choose your country</h1>
+              </div>
+              <label class="field-label" for="usernameInput">Username</label>
+              <div class="username-row">
+                <input id="usernameInput" maxlength="18" autocomplete="nickname" placeholder="your handle">
+                <button class="primary-button" id="saveProfile" type="button">
+                  <span class="button-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
+                  </span>
+                  Enter
+                </button>
+              </div>
+              <div class="team-grid" id="teamGrid"></div>
+            </div>
+
+            <aside class="avatar-preview" aria-label="Avatar preview">
+              <div class="avatar-stage" id="avatarPreview"></div>
+              <div class="kit-card">
+                <span class="kit-swatch" id="primarySwatch"></span>
+                <span class="kit-swatch" id="secondarySwatch"></span>
+                <span class="kit-swatch" id="accentSwatch"></span>
+                <div>
+                  <p class="kit-country" id="kitCountry">Brazil</p>
+                  <p class="kit-subtitle" id="kitSubtitle">Home jersey generated</p>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen" id="home" aria-labelledby="homeTitle">
+          <div class="home-layout">
+            <div class="home-main">
+              <div class="section-heading compact home-titlebar">
+                <div>
+                  <p class="eyebrow">Match center</p>
+                  <h1 id="homeTitle">Live cup hub</h1>
+                </div>
+                <button class="primary-button" type="button" data-view="watch">
+                  <span class="button-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7Z"/></svg>
+                  </span>
+                  Watch
+                </button>
+              </div>
+              <section class="live-command" aria-label="Live match dashboard">
+                <div class="live-scoreline">
+                  <div class="live-team">
+                    <span class="score-flag">🇧🇷</span>
+                    <div>
+                      <strong>Brazil</strong>
+                      <span>58% possession</span>
+                    </div>
+                  </div>
+                  <div class="score-core">
+                    <span>64'</span>
+                    <strong>2 - 1</strong>
+                    <em>Live</em>
+                  </div>
+                  <div class="live-team is-away">
+                    <span class="score-flag">🇳🇴</span>
+                    <div>
+                      <strong>Norway</strong>
+                      <span>Counter threat high</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="live-menu" id="liveMenu" aria-label="Live menu"></div>
+                <div class="live-detail" id="liveDetail"></div>
+              </section>
+
+              <div class="section-heading compact pool-heading">
+                <div>
+                  <p class="eyebrow">Pools</p>
+                  <h2>Prize brackets</h2>
+                </div>
+              </div>
+              <div class="pool-grid" id="poolGrid"></div>
+            </div>
+
+            <aside class="activity-rail">
+              <div class="rail-header">
+                <p class="eyebrow">Live</p>
+                <strong>Today</strong>
+              </div>
+              <div id="homeFixtures"></div>
+              <div class="leader-panel" id="leaderPanel"></div>
+              <div class="signal-panel" id="signalPanel">
+                <div class="rail-header">
+                  <p class="eyebrow">Pear</p>
+                  <strong>Room signal</strong>
+                </div>
+                <div class="signal-row">
+                  <span>Peers</span>
+                  <strong>38</strong>
+                </div>
+                <div class="signal-row">
+                  <span>Core lag</span>
+                  <strong>0.4s</strong>
+                </div>
+                <div class="signal-row">
+                  <span>QVAC lane</span>
+                  <strong>Ready</strong>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen" id="bracket" aria-labelledby="bracketTitle">
+          <div class="bracket-header">
+            <div class="section-heading compact">
+              <p class="eyebrow" id="bracketTierLabel">$25 Pool</p>
+              <h1 id="bracketTitle">Knockout picks</h1>
+            </div>
+            <div class="bracket-actions">
+              <button class="secondary-button" type="button" id="resetPicks">
+                <span class="button-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6M6 17A8 8 0 0 0 18 7M18 7h-4M18 7v4"/></svg>
+                </span>
+                Reset
+              </button>
+              <button class="primary-button" type="button" id="submitPicks">
+                <span class="button-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
+                </span>
+                Submit
+              </button>
+            </div>
+          </div>
+          <div class="bracket-settlement-panel" id="bracketSettlementPanel"></div>
+          <div class="bracket-board" id="bracketBoard"></div>
+        </section>
+
+        <section class="screen" id="watch" aria-labelledby="watchTitle">
+          <div class="watch-layout">
+            <div class="watch-room">
+              <div class="room-topline">
+                <div class="section-heading compact">
+                  <p class="eyebrow">Watch party</p>
+                  <h1 id="watchTitle">Brazil vs Norway</h1>
+                </div>
+                <div class="room-controls">
+                  <button class="primary-button compact-action" type="button" data-view="games">
+                    <span class="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </span>
+                    Challenge
+                  </button>
+                  <button class="icon-button" id="voiceToggle" type="button" aria-label="Toggle voice chat">
+                    <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3ZM5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>
+                  </button>
+                  <button class="icon-button is-live" id="streamToggle" type="button" aria-label="Streaming to room TV">
+                    <svg viewBox="0 0 24 24"><path d="M4 6h16v12H4zM9 21h6"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="watch-pick-board" id="watchPickBoard" aria-label="Watch party picks"></div>
+
+              <div class="stadium">
+                <div class="stadium-tv">
+                  <div class="scorebug">
+                    <span>64'</span>
+                    <strong>Brazil 2 - 1 Norway</strong>
+                  </div>
+                  <div class="pitch">
+                    <div class="ball"></div>
+                    <div class="run run-a"></div>
+                    <div class="run run-b"></div>
+                    <div class="player-dot dot-a"></div>
+                    <div class="player-dot dot-b"></div>
+                    <div class="player-dot dot-c"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="stats-strip">
+                <div class="stat-meter">
+                  <span>Possession</span>
+                  <div class="meter"><i style="width:58%"></i></div>
+                  <strong>58 / 42</strong>
+                </div>
+                <div class="stat-meter">
+                  <span>Shots</span>
+                  <div class="meter"><i style="width:67%"></i></div>
+                  <strong>12 / 6</strong>
+                </div>
+                <div class="stat-meter">
+                  <span>Threat</span>
+                  <div class="meter"><i style="width:74%"></i></div>
+                  <strong>High</strong>
+                </div>
+              </div>
+            </div>
+
+            <aside class="watch-side">
+              <div class="commentary-panel">
+                <div class="rail-header">
+                  <p class="eyebrow">QVAC</p>
+                  <strong>Commentary</strong>
+                </div>
+                <div class="language-tabs" id="languageTabs"></div>
+                <div class="commentary-feed" id="commentaryFeed"></div>
+              </div>
+
+              <div class="chat-panel">
+                <div class="rail-header">
+                  <p class="eyebrow">Room</p>
+                  <strong>Chat</strong>
+                </div>
+                <div class="chat-feed" id="chatFeed"></div>
+                <form class="chat-form" id="chatForm">
+                  <input id="chatInput" maxlength="120" placeholder="Message the room">
+                  <button class="icon-button" type="submit" aria-label="Send message">
+                    <svg viewBox="0 0 24 24"><path d="M4 12 20 4l-4 16-4-6-8-2Z"/></svg>
+                  </button>
+                </form>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen" id="games" aria-labelledby="gamesTitle">
+          <div class="games-layout">
+            <div class="game-arena">
+              <div class="game-header">
+                <div class="section-heading compact">
+                  <p class="eyebrow">P2P minigame</p>
+                  <h1 id="gamesTitle">Penalty Clash</h1>
+                </div>
+                <div class="game-actions">
+                  <button class="secondary-button" type="button" id="spectateGame">
+                    <span class="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </span>
+                    Spectate
+                  </button>
+                  <button class="primary-button" type="button" id="advanceGameRound">
+                    <span class="button-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                    </span>
+                    Next kick
+                  </button>
+                </div>
+              </div>
+
+              <div class="game-scoreboard" id="gameScoreboard"></div>
+
+              <div class="penalty-stage" id="penaltyStage" aria-label="Penalty Clash replay">
+                <div class="goal-frame" aria-hidden="true">
+                  <span></span><span></span><span></span>
+                </div>
+                <div class="penalty-line" aria-hidden="true"></div>
+                <div class="penalty-avatar penalty-keeper" id="gameKeeper"></div>
+                <div class="penalty-avatar penalty-shooter" id="gameShooter"></div>
+                <div class="penalty-ball" id="gameBall" aria-hidden="true"></div>
+              </div>
+
+              <div class="game-detail-grid">
+                <article class="game-card" id="gameResolver"></article>
+                <article class="game-card" id="gameSync"></article>
+                <article class="game-card" id="gameReplay"></article>
+              </div>
+            </div>
+
+            <aside class="game-side">
+              <section class="integration-panel" id="runtimePanel"></section>
+              <section class="integration-panel" id="tetherPanel"></section>
+              <section class="integration-panel" id="qvacRefPanel"></section>
+              <section class="integration-panel" id="gameLeaderboard"></section>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./core.js"></script>
+    <script src="./adapters.js"></script>
+    <script src="./qvac-referee.js"></script>
+    <script src="./tether-wdk-bridge.js"></script>
+    <script src="./runtime-settings.js"></script>
+    <script src="./runtime-config.js"></script>
+    <script src="./worker-sim.js"></script>
+    <script src="./worker-client.js"></script>
+    <script src="./worker-runtime.js"></script>
+    <script src="./settlement-receipts.js"></script>
+    <script src="./settlement-service.js"></script>
+    <script src="./transport-sim.js"></script>
+    <script src="./storage-sim.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
