@@ -6,11 +6,15 @@
   const SETTLEMENT_LOCKED_CODE = 'PEARCUP_SETTLEMENT_LOCKED'
   const prizeCommandTypes = new Set([
     'wdk:createGameEscrow',
+    'wdk:refundGameEscrow',
     'wdk:createEntryIntent',
     'wdk:confirmEntryIntent',
     'wdk:reconcileEntryIntent',
+    'wdk:refundEntryIntent',
     'payout:declareRecipient',
     'game:resolveRound',
+    'game:submitRoundStateHash',
+    'game:recordForfeit',
     'results:recordOfficialSnapshot',
     'pool:resolveSettlement',
     'qvac:refereeAttest',
@@ -120,6 +124,37 @@
     return opts.actorId || fallback
   }
 
+  function receiptEvidenceStatus (summary = {}) {
+    const settlementType = summary.roundEvent || summary.type === 'TrustedGameSettlementCompleted' || summary.type === 'TrustedGameSettlementHeld'
+      ? 'game-round'
+      : summary.poolResultEvent || summary.type === 'TrustedPoolSettlementCompleted' || summary.type === 'TrustedPoolSettlementHeld'
+        ? 'bracket-pool'
+        : 'unknown'
+    const resultEvent = summary.roundEvent || summary.poolResultEvent || null
+    const expectedQvacType = settlementType === 'game-round'
+      ? 'QvacRefereeAttestationCreated'
+      : settlementType === 'bracket-pool'
+        ? 'QvacPoolSettlementAttestationCreated'
+        : null
+    const allowedWdkTypes = settlementType === 'game-round'
+      ? new Set(['TetherWdkEscrowReleased', 'TetherWdkEscrowDisputed', 'TetherWdkEscrowRefunded'])
+      : settlementType === 'bracket-pool'
+        ? new Set(['TetherWdkPoolPayoutPrepared', 'TetherWdkPoolPayoutDisputed'])
+        : new Set()
+    const missing = []
+    if (settlementType === 'unknown') missing.push('settlement type')
+    if (!resultEvent) missing.push('settlement result event')
+    if (!summary.attestationEvent || summary.attestationEvent.type !== expectedQvacType) missing.push('QVAC attestation event')
+    if (!summary.settlementEvent || !allowedWdkTypes.has(summary.settlementEvent.type)) missing.push('WDK settlement event')
+    return {
+      ok: missing.length === 0,
+      missing,
+      reason: missing.length
+        ? `Settlement receipt requires ${missing.join(', ')} before recording`
+        : null
+    }
+  }
+
   function createGuardedSettlementService ({
     workerRuntime,
     settings,
@@ -174,6 +209,14 @@
       })
     }
 
+    function refundGameEscrow (payload, opts = {}) {
+      return dispatchPrizeCommand({
+        type: 'wdk:refundGameEscrow',
+        actorId: commandActor(opts, 'tether-wdk'),
+        payload
+      })
+    }
+
     function createEntryIntent (payload, opts = {}) {
       return dispatchPrizeCommand({
         type: 'wdk:createEntryIntent',
@@ -194,6 +237,22 @@
       return dispatchPrizeCommand({
         type: 'wdk:reconcileEntryIntent',
         actorId: commandActor(opts, 'tether-wdk'),
+        payload
+      })
+    }
+
+    function refundEntryIntent (payload, opts = {}) {
+      return dispatchPrizeCommand({
+        type: 'wdk:refundEntryIntent',
+        actorId: commandActor(opts, 'tether-wdk'),
+        payload
+      })
+    }
+
+    function recordOfficialResultsSnapshot (payload, opts = {}) {
+      return dispatchPrizeCommand({
+        type: 'results:recordOfficialSnapshot',
+        actorId: commandActor(opts, payload && (payload.sourceActorId || payload.officialResultsSourceActorId) ? payload.sourceActorId || payload.officialResultsSourceActorId : 'official-results-feed'),
         payload
       })
     }
@@ -273,6 +332,17 @@
           existing: true
         }
       }
+      const evidence = receiptEvidenceStatus(summary)
+      if (!evidence.ok) {
+        return {
+          receipt: null,
+          receiptEvent: null,
+          existing: false,
+          held: true,
+          reason: evidence.reason,
+          missing: evidence.missing
+        }
+      }
       const receipt = createSettlementReceipt(summary, {
         ...opts,
         eventRoot: opts.eventRoot || (workerView && workerView.eventRoot) || null
@@ -300,7 +370,10 @@
         summary,
         receipt: recorded.receipt,
         receiptEvent: recorded.receiptEvent,
-        existingReceipt: recorded.existing
+        existingReceipt: recorded.existing,
+        receiptHeld: recorded.held === true,
+        receiptReason: recorded.reason || null,
+        receiptMissing: recorded.missing || []
       }
     }
 
@@ -315,7 +388,10 @@
         summary,
         receipt: recorded.receipt,
         receiptEvent: recorded.receiptEvent,
-        existingReceipt: recorded.existing
+        existingReceipt: recorded.existing,
+        receiptHeld: recorded.held === true,
+        receiptReason: recorded.reason || null,
+        receiptMissing: recorded.missing || []
       }
     }
 
@@ -329,9 +405,12 @@
       status,
       assertLive: (action) => assertLiveSettlementReady(status(), action),
       createGameEscrow,
+      refundGameEscrow,
       createEntryIntent,
       confirmEntryIntent,
       reconcileEntryIntent,
+      refundEntryIntent,
+      recordOfficialResultsSnapshot,
       declarePayoutRecipient,
       settleGameRound,
       settleBracketPool,

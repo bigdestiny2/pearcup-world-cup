@@ -117,6 +117,24 @@
     }
   }
 
+  function createQvacSdkCommentaryAdapter (opts = {}) {
+    if (!qvacRefereeFactory || typeof qvacRefereeFactory.createQvacCompletionCommentaryAdapter !== 'function') {
+      throw new Error('PearCupQvacReferee is required for QVAC commentary adapter creation')
+    }
+    const client = createQvacSdkCompletionClient(opts)
+    const adapter = qvacRefereeFactory.createQvacCompletionCommentaryAdapter({
+      client,
+      modelId: opts.modelId || 'qvac-sdk-local-commentary',
+      commentatorId: opts.commentatorId || 'qvac-sdk-commentary'
+    })
+    return {
+      ...adapter,
+      async close () {
+        if (typeof client.close === 'function') await client.close()
+      }
+    }
+  }
+
   function toBaseUnits (amount, decimals) {
     const [whole, frac = ''] = String(amount).split('.')
     const fracPadded = (frac + '0'.repeat(decimals)).slice(0, decimals)
@@ -461,6 +479,7 @@
   const api = {
     createQvacSdkCompletionClient,
     createQvacSdkRefereeAdapter,
+    createQvacSdkCommentaryAdapter,
     createTetherWdkPackageProcessor,
     createTetherWdkPackageAdapter,
     toBaseUnits

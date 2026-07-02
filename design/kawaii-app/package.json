@@ -30,11 +30,14 @@
         "/runtime-config.js",
         "/worker-sim.js",
         "/worker-client.js",
+        "/worker-bridge-protocol.js",
+        "/pear-worker.cjs",
         "/worker-runtime.js",
         "/settlement-receipts.js",
         "/settlement-service.js",
         "/transport-sim.js",
         "/storage-sim.js",
+        "/sdk-runtime.js",
         "/app.js",
         "/peer-net.js",
         "/peer-match.js",
@@ -64,5 +67,11 @@
     "hyperswarm": "^4.0.0",
     "hypercore-crypto": "^3.0.0",
     "b4a": "^1.6.0"
+  },
+  "optionalDependencies": {
+    "@qvac/sdk": "^0.14.0",
+    "@tetherto/wdk": "^1.0.0-beta.12",
+    "@tetherto/wdk-wallet-btc": "^1.0.0-beta.10",
+    "@tetherto/wdk-wallet-evm": "^1.0.0-beta.14"
   }
 }

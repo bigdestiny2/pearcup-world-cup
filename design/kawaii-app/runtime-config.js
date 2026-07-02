@@ -6,8 +6,9 @@
   const packageSdkFactory = root.PearCupSdkRuntime || (typeof require !== 'undefined' ? safeRequire('./sdk-runtime.js') : null)
 
   const qvacRequiredMethods = ['attestRound', 'attestPoolSettlement']
+  const qvacCommentaryRequiredMethods = ['generateSegment']
   const tetherWdkRequiredMethods = ['createGameEscrow', 'releaseGameEscrow', 'createEntryIntent', 'confirmEntryIntent', 'createPoolPayout']
-  const tetherWdkOptionalMethods = ['reconcileEntryIntent', 'disputeGameEscrow', 'refundEntryIntent']
+  const tetherWdkOptionalMethods = ['reconcileEntryIntent', 'disputeGameEscrow', 'refundEntryIntent', 'refundGameEscrow']
 
   function safeRequire (path) {
     try {
@@ -86,6 +87,17 @@
     ) {
       adapters.qvac = {
         client: sdkFactory.createQvacSdkRefereeAdapter(qvacConfig),
+        detected: { name: '@qvac/sdk', source: 'package:@qvac/sdk' }
+      }
+    }
+
+    if (
+      qvacConfig &&
+      sdkFactory &&
+      typeof sdkFactory.createQvacSdkCommentaryAdapter === 'function'
+    ) {
+      adapters.qvacCommentary = {
+        client: sdkFactory.createQvacSdkCommentaryAdapter(qvacConfig),
         detected: { name: '@qvac/sdk', source: 'package:@qvac/sdk' }
       }
     }
@@ -170,6 +182,7 @@
   function createRuntimeConfig ({
     rootObject = root,
     qvac,
+    qvacCommentary,
     tetherWdk,
     sdkPackages,
     compliance,
@@ -198,6 +211,23 @@
       selectedQvacDetected = packageAdapters.qvac.detected
     }
 
+    let selectedQvacCommentary = forceDemo ? null : qvacCommentary
+    if (
+      !forceDemo &&
+      !selectedQvacCommentary &&
+      detected.qvacCompletion &&
+      qvacRefereeFactory &&
+      typeof qvacRefereeFactory.createQvacCompletionCommentaryAdapter === 'function'
+    ) {
+      selectedQvacCommentary = qvacRefereeFactory.createQvacCompletionCommentaryAdapter({
+        client: detected.qvacCompletion.client,
+        modelId: rootObject.PearCupQvacCommentaryModelId || rootObject.PearCupQvacModelId || root.PearCupQvacCommentaryModelId || root.PearCupQvacModelId
+      })
+    }
+    if (!forceDemo && !selectedQvacCommentary && packageAdapters.qvacCommentary) {
+      selectedQvacCommentary = packageAdapters.qvacCommentary.client
+    }
+
     let selectedTetherWdk = forceDemo ? null : (tetherWdk || (detected.tetherWdk && detected.tetherWdk.client))
     let selectedTetherWdkDetected = detected.tetherWdk
     if (
@@ -219,7 +249,8 @@
 
     const runtimeAdapters = adapterFactory.createIntegrationAdapters({
       qvac: hasRequiredMethods(selectedQvac, qvacRequiredMethods) ? selectedQvac : null,
-      tetherWdk: hasRequiredMethods(selectedTetherWdk, tetherWdkRequiredMethods) ? selectedTetherWdk : null
+      tetherWdk: hasRequiredMethods(selectedTetherWdk, tetherWdkRequiredMethods) ? selectedTetherWdk : null,
+      qvacCommentary: hasRequiredMethods(selectedQvacCommentary, qvacCommentaryRequiredMethods) ? selectedQvacCommentary : null
     })
     const normalizedCompliance = normalizeCompliance(compliance || runtimeOptions.compliance || rootObject.PearCupCompliance || root.PearCupCompliance || {})
     const qvacReadiness = createServiceReadiness({
@@ -255,7 +286,8 @@
     async function close () {
       await Promise.all([
         runtimeAdapters.qvac && typeof runtimeAdapters.qvac.close === 'function' ? runtimeAdapters.qvac.close() : null,
-        runtimeAdapters.tetherWdk && typeof runtimeAdapters.tetherWdk.close === 'function' ? runtimeAdapters.tetherWdk.close() : null
+        runtimeAdapters.tetherWdk && typeof runtimeAdapters.tetherWdk.close === 'function' ? runtimeAdapters.tetherWdk.close() : null,
+        runtimeAdapters.qvacCommentary && typeof runtimeAdapters.qvacCommentary.close === 'function' ? runtimeAdapters.qvacCommentary.close() : null
       ])
     }
 

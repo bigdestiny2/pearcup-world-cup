@@ -139,6 +139,16 @@
     }
   }
 
+  function settlementServiceForRequest ({ activeService, harness, opts = {} }) {
+    if (typeof opts.requireLive !== 'boolean' || activeService.requireLive === opts.requireLive) {
+      return activeService
+    }
+    return settlementServiceFactory.createGuardedSettlementService({
+      workerRuntime: harness,
+      requireLive: opts.requireLive
+    })
+  }
+
   function createPearWorkerBridgeProtocol ({
     settings,
     rootObject = root,
@@ -172,6 +182,7 @@
         const payload = envelope.payload || {}
         const includeEvents = envelopeWantsEvents(envelope)
         let result = null
+        let responseService = activeService
 
         if (envelope.action === 'dispatch') {
           result = await dispatchCommand(payload.command)
@@ -183,9 +194,13 @@
         } else if (envelope.action === 'status') {
           result = activeService.status()
         } else if (envelope.action === 'settleGameRoundWithReceipt') {
-          result = await activeService.settleGameRoundWithReceipt(payload.payload || {}, payload.opts || {})
+          const requestOpts = payload.opts || {}
+          responseService = settlementServiceForRequest({ activeService, harness, opts: requestOpts })
+          result = await responseService.settleGameRoundWithReceipt(payload.payload || {}, requestOpts)
         } else if (envelope.action === 'settleBracketPoolWithReceipt') {
-          result = await activeService.settleBracketPoolWithReceipt(payload.payload || {}, payload.opts || {})
+          const requestOpts = payload.opts || {}
+          responseService = settlementServiceForRequest({ activeService, harness, opts: requestOpts })
+          result = await responseService.settleBracketPoolWithReceipt(payload.payload || {}, requestOpts)
         } else {
           throw new Error(`Unsupported Pear worker bridge action: ${envelope.action}`)
         }
@@ -193,7 +208,7 @@
         return createOkResponse({
           envelope,
           result,
-          service: activeService,
+          service: responseService,
           harness,
           settings: activeSettings,
           includeEvents

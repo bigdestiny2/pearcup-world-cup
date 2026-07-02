@@ -330,6 +330,16 @@
       input: keeperInput,
       nonce: 'trusted-path-keeper-nonce'
     })
+    const stateHash = core.createPenaltyClashRound({
+      gameId,
+      roundIndex: 0,
+      shooter,
+      keeper,
+      shooterInput,
+      keeperInput,
+      shooterNonce: 'trusted-path-shooter-nonce',
+      keeperNonce: 'trusted-path-keeper-nonce'
+    }).stateHash
     const commands = [
       {
         type: 'game:submitCommitment',
@@ -362,6 +372,16 @@
           input: keeperInput,
           nonce: 'trusted-path-keeper-nonce'
         }
+      },
+      {
+        type: 'game:submitRoundStateHash',
+        actorId: shooter.id,
+        payload: { gameId, roundId, playerId: shooter.id, stateHash }
+      },
+      {
+        type: 'game:submitRoundStateHash',
+        actorId: keeper.id,
+        payload: { gameId, roundId, playerId: keeper.id, stateHash }
       }
     ]
     const events = []
@@ -463,10 +483,24 @@
         entries: confirmedEntries,
         asset: 'USDT'
       })
+      const officialResultsSource = officialResults.source || 'trusted-path-preflight'
+      const officialResultsSourceActorId = officialResults.sourceActorId || officialResultsSource
+      if (typeof activeService.recordOfficialResultsSnapshot === 'function') {
+        await activeService.recordOfficialResultsSnapshot({
+          poolId,
+          officialResults,
+          source: officialResultsSource,
+          sourceActorId: officialResultsSourceActorId,
+          rulesVersion: 'bracket-pool-v1'
+        }, {
+          actorId: officialResultsSourceActorId
+        })
+      }
       const settlementPayload = {
         poolId,
         confirmedEntries,
         officialResults,
+        officialResultsSourceActorId,
         asset: 'USDT',
         rulesVersion: 'bracket-pool-v1'
       }

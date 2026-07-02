@@ -60,16 +60,18 @@
 
   function qvacSettingsFrom ({ env = {}, config = {} } = {}) {
     const configured = (config.sdkPackages && config.sdkPackages.qvac) || config.qvac || {}
-    const enabled = parseBool(env.PEARCUP_QVAC_ENABLED, parseBool(configured.enabled, Boolean(configured.modelSrc || configured.modelId || configured.modelExport)))
+    const enabled = parseBool(env.PEARCUP_QVAC_ENABLED, parseBool(configured.enabled, Boolean(configured.modelSrc || configured.modelExport || configured.preloadedModelId)))
     if (!enabled) return null
 
     const settings = {}
     const modelSrc = env.PEARCUP_QVAC_MODEL_SRC || configured.modelSrc
     const modelId = env.PEARCUP_QVAC_MODEL_ID || configured.modelId
     const modelExport = env.PEARCUP_QVAC_MODEL_EXPORT || configured.modelExport
+    const preloadedModelId = env.PEARCUP_QVAC_PRELOADED_MODEL_ID || configured.preloadedModelId
     if (modelSrc) settings.modelSrc = modelSrc
     if (modelId) settings.modelId = modelId
     if (modelExport) settings.modelExport = modelExport
+    if (preloadedModelId) settings.preloadedModelId = preloadedModelId
     settings.autoUnload = parseBool(env.PEARCUP_QVAC_AUTO_UNLOAD, parseBool(configured.autoUnload, true))
     settings.preflightLoadModel = parseBool(env.PEARCUP_QVAC_PREFLIGHT_LOAD_MODEL, parseBool(configured.preflightLoadModel, false))
     if (configured.loadModelOptions) settings.loadModelOptions = configured.loadModelOptions
@@ -125,7 +127,7 @@
   function createLiveRuntimeConfigTemplate ({ env = {} } = {}) {
     const qvacEnabled = parseBool(
       env.PEARCUP_QVAC_ENABLED,
-      Boolean(env.PEARCUP_QVAC_MODEL_SRC || env.PEARCUP_QVAC_MODEL_ID || env.PEARCUP_QVAC_MODEL_EXPORT)
+      Boolean(env.PEARCUP_QVAC_MODEL_SRC || env.PEARCUP_QVAC_MODEL_EXPORT || env.PEARCUP_QVAC_PRELOADED_MODEL_ID)
     )
     const tetherEnabled = parseBool(env.PEARCUP_WDK_ENABLED, Boolean(env.PEARCUP_WDK_SEED))
 
@@ -135,6 +137,7 @@
           enabled: qvacEnabled,
           modelSrc: env.PEARCUP_QVAC_MODEL_SRC || '',
           modelExport: env.PEARCUP_QVAC_MODEL_EXPORT || 'LLAMA_3_2_1B_INST_Q4_0',
+          preloadedModelId: env.PEARCUP_QVAC_PRELOADED_MODEL_ID || '',
           modelId: env.PEARCUP_QVAC_MODEL_ID || 'qvac-pearcup-referee',
           autoUnload: parseBool(env.PEARCUP_QVAC_AUTO_UNLOAD, true),
           preflightLoadModel: parseBool(env.PEARCUP_QVAC_PREFLIGHT_LOAD_MODEL, false)

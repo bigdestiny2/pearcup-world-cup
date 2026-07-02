@@ -180,6 +180,8 @@
 
   function winnerUserIdForRoundResult (roundResult) {
     if (!roundResult) return null
+    if (roundResult.outcome === 'forfeit') return roundResult.winnerUserId || null
+    if (roundResult.outcome === 'disputed') return null
     if (roundResult.outcome === 'goal') return roundResult.shooter && roundResult.shooter.id || null
     return roundResult.keeper && roundResult.keeper.id || null
   }
@@ -264,8 +266,79 @@
     }
   }
 
+  function createPenaltyClashForfeitRound ({
+    gameId,
+    roundIndex,
+    roundId: explicitRoundId,
+    shooter,
+    keeper,
+    forfeitingPlayerId,
+    winnerUserId,
+    claimantUserId,
+    reason = 'timeout',
+    sourceEventIds = null
+  }) {
+    const roundId = explicitRoundId || `pc-${roundIndex + 1}`
+    const participantUserIds = [
+      shooter && shooter.id,
+      keeper && keeper.id
+    ].filter(Boolean)
+    const forfeiter = forfeitingPlayerId || null
+    const fallbackWinner = participantUserIds.find(userId => userId !== forfeiter) || null
+    const winner = winnerUserId || fallbackWinner
+    const claimant = claimantUserId || winner
+    const outcome = 'forfeit'
+    const normalizedReason = String(reason || 'timeout')
+    const fallbackSourceEventIds = [
+      deterministicHash({
+        type: 'GameRoundForfeitRecorded',
+        gameId,
+        roundId,
+        forfeitingPlayerId: forfeiter,
+        winnerUserId: winner,
+        claimantUserId: claimant,
+        reason: normalizedReason
+      })
+    ]
+    const evidenceSourceEventIds = Array.isArray(sourceEventIds) && sourceEventIds.length
+      ? [...sourceEventIds]
+      : fallbackSourceEventIds
+    const stateHash = deterministicHash({
+      resolverVersion,
+      gameId,
+      roundId,
+      outcome,
+      forfeitingPlayerId: forfeiter,
+      winnerUserId: winner,
+      claimantUserId: claimant,
+      reason: normalizedReason,
+      sourceEventIds: evidenceSourceEventIds
+    })
+
+    return {
+      gameId,
+      roundId,
+      resolverVersion,
+      shooter,
+      keeper,
+      outcome,
+      outcomeLabel: outcomeLabel(outcome),
+      winnerUserId: winner,
+      forfeitingPlayerId: forfeiter,
+      claimantUserId: claimant,
+      forfeitReason: normalizedReason,
+      stateHash,
+      sourceEventIds: evidenceSourceEventIds
+    }
+  }
+
+  function reviewBlocksAttestation (review) {
+    return Boolean(review && review.ruling !== 'verified')
+  }
+
   function createQvacRefereeAttestation ({ roundResult, refereeId = 'qvac-demo-ref', review = null }) {
-    const hasRequiredEvidence = Boolean(
+    const participantUserIds = participantUserIdsForRoundResult(roundResult)
+    const hasResolvedRoundEvidence = Boolean(
       roundResult &&
       roundResult.shooterCommitment &&
       roundResult.keeperCommitment &&
@@ -273,11 +346,21 @@
       Array.isArray(roundResult.sourceEventIds) &&
       roundResult.sourceEventIds.length >= 4
     )
-    const reviewDisputed = review && review.ruling === 'disputed'
-    const ruling = hasRequiredEvidence && !reviewDisputed ? roundResult.outcome : 'disputed'
+    const hasForfeitEvidence = Boolean(
+      roundResult &&
+      roundResult.outcome === 'forfeit' &&
+      roundResult.stateHash &&
+      roundResult.winnerUserId &&
+      roundResult.forfeitingPlayerId &&
+      participantUserIds.length >= 2 &&
+      Array.isArray(roundResult.sourceEventIds) &&
+      roundResult.sourceEventIds.length >= 1
+    )
+    const hasRequiredEvidence = hasResolvedRoundEvidence || hasForfeitEvidence
+    const ruling = hasRequiredEvidence && !reviewBlocksAttestation(review) ? roundResult.outcome : 'disputed'
     const stateHash = hasRequiredEvidence ? roundResult.stateHash : deterministicHash({ reason: 'missing-evidence', roundResult })
     const winnerUserId = hasRequiredEvidence ? winnerUserIdForRoundResult(roundResult) : null
-    const participantUserIds = hasRequiredEvidence ? participantUserIdsForRoundResult(roundResult) : []
+    const signedParticipantUserIds = hasRequiredEvidence ? participantUserIds : []
     const attestationId = deterministicHash({
       refereeId,
       gameId: roundResult && roundResult.gameId,
@@ -285,7 +368,7 @@
       ruling,
       stateHash,
       winnerUserId,
-      participantUserIds: sortedList(participantUserIds),
+      participantUserIds: sortedList(signedParticipantUserIds),
       reviewHash: review ? deterministicHash(review) : null
     })
     const rationale = review && review.rationale
@@ -299,7 +382,7 @@
       ruling,
       stateHash,
       winnerUserId,
-      participantUserIds: sortedList(participantUserIds),
+      participantUserIds: sortedList(signedParticipantUserIds),
       sourceEventIds: hasRequiredEvidence ? roundResult.sourceEventIds : [],
       reviewHash: review ? deterministicHash(review) : null
     })
@@ -312,7 +395,7 @@
       resolverVersion: roundResult && roundResult.resolverVersion,
       ruling,
       winnerUserId,
-      participantUserIds,
+      participantUserIds: signedParticipantUserIds,
       stateHash,
       sourceEventIds: hasRequiredEvidence ? roundResult.sourceEventIds : [],
       rationale,
@@ -331,6 +414,7 @@
       return { ok: false, errors }
     }
     if (!attestation.attestationId) errors.push('QVAC attestation id is required')
+    if (!attestation.refereeId) errors.push('QVAC attestation refereeId is required')
     if (!attestation.signature) errors.push('QVAC attestation signature is required')
     if (attestation.ruling === 'disputed') errors.push('Disputed QVAC attestation cannot release settlement')
     if (!roundResult) return { ok: errors.length === 0, errors }
@@ -482,8 +566,7 @@
       officialResultsHash &&
       poolResult.ruling === 'verified'
     )
-    const reviewDisputed = review && review.ruling === 'disputed'
-    const ruling = hasRequiredEvidence && !reviewDisputed ? 'verified' : 'disputed'
+    const ruling = hasRequiredEvidence && !reviewBlocksAttestation(review) ? 'verified' : 'disputed'
     const stateHash = hasRequiredEvidence ? poolResult.stateHash : deterministicHash({ reason: 'missing-pool-evidence', poolResult })
     const attestationId = deterministicHash({
       refereeId,
@@ -537,6 +620,7 @@
       return { ok: false, errors }
     }
     if (!attestation.attestationId) errors.push('QVAC pool attestation id is required')
+    if (!attestation.refereeId) errors.push('QVAC pool attestation refereeId is required')
     if (!attestation.signature) errors.push('QVAC pool attestation signature is required')
     if (attestation.ruling === 'disputed') errors.push('Disputed QVAC pool attestation cannot release payout')
     if (!poolResult) return { ok: errors.length === 0, errors }
@@ -605,17 +689,39 @@
     amount,
     asset = 'USDT',
     rail = 'tether-wdk-demo',
-    rulesVersion = 'penalty-clash-v1'
+    rulesVersion = 'penalty-clash-v1',
+    sessionId = null,
+    sessionEventId = null,
+    sessionHash = null,
+    sourceEventIds,
+    stakeHash = null,
+    prizeMode = false
   }) {
-    const escrowId = deterministicHash({ gameId, players, amount, asset, rail, rulesVersion })
+    const sessionSourceEventIds = Array.isArray(sourceEventIds) ? [...sourceEventIds] : []
+    const base = { gameId, players, amount, asset, rail, rulesVersion }
+    const hasSessionBinding = Boolean(
+      sessionId ||
+      sessionEventId ||
+      sessionHash ||
+      sessionSourceEventIds.length ||
+      stakeHash ||
+      prizeMode === true
+    )
+    const sessionBinding = hasSessionBinding
+      ? {
+          sessionId,
+          sessionEventId,
+          sessionHash,
+          sourceEventIds: sessionSourceEventIds,
+          stakeHash,
+          prizeMode: prizeMode === true
+        }
+      : null
+    const escrowId = deterministicHash(sessionBinding ? { ...base, ...sessionBinding } : base)
     return {
       escrowId,
-      gameId,
-      players,
-      amount,
-      asset,
-      rail,
-      rulesVersion,
+      ...base,
+      ...(sessionBinding || {}),
       status: 'locked',
       createdAt: '2026-07-01T00:00:00.000Z'
     }
@@ -642,8 +748,50 @@
       winnerUserId,
       amount: escrow.amount,
       asset: escrow.asset,
+      rail: escrow.rail,
       status: 'prepared',
       qvacAttestationId: attestation.attestationId
+    }
+  }
+
+  function refundTetherWdkEscrow ({
+    escrow,
+    reason = 'game-escrow-refunded',
+    processorStatus = 'refunded',
+    refundUserIds = null
+  }) {
+    if (!escrow || escrow.status !== 'locked') throw new Error('Locked escrow is required before refund')
+    const recipients = Array.isArray(refundUserIds) && refundUserIds.length
+      ? [...new Set(refundUserIds)]
+      : Array.isArray(escrow.players) ? [...escrow.players] : []
+    if (recipients.length === 0) throw new Error('At least one escrow refund recipient is required')
+    if (recipients.some(userId => !escrow.players.includes(userId))) throw new Error('Escrow refund recipients must be escrow players')
+    const amountEach = Number((Number(escrow.amount || 0) / recipients.length).toFixed(2))
+    return {
+      refundId: deterministicHash({
+        escrowId: escrow.escrowId,
+        gameId: escrow.gameId,
+        refundUserIds: [...recipients].sort(),
+        amount: escrow.amount,
+        amountEach,
+        asset: escrow.asset,
+        rail: escrow.rail,
+        reason,
+        processorStatus,
+        rulesVersion: escrow.rulesVersion
+      }),
+      escrowId: escrow.escrowId,
+      gameId: escrow.gameId,
+      refundUserIds: recipients,
+      amount: escrow.amount,
+      amountEach,
+      asset: escrow.asset,
+      rail: escrow.rail,
+      rulesVersion: escrow.rulesVersion,
+      status: 'refunded',
+      processorStatus,
+      reason,
+      refundedAt: '2026-07-01T00:00:00.000Z'
     }
   }
 
@@ -723,6 +871,41 @@
     }
   }
 
+  function createTetherWdkEntryRefund ({
+    payment,
+    reason = 'entry-refunded',
+    processorStatus = 'refunded'
+  }) {
+    if (!payment || payment.status !== 'confirmed') throw new Error('Confirmed entry payment is required before refund')
+    return {
+      refundId: deterministicHash({
+        paymentId: payment.paymentId,
+        intentId: payment.intentId,
+        poolId: payment.poolId,
+        entryId: payment.entryId,
+        userId: payment.userId,
+        amount: payment.amount,
+        asset: payment.asset,
+        rail: payment.rail,
+        reason,
+        processorStatus
+      }),
+      paymentId: payment.paymentId,
+      intentId: payment.intentId,
+      poolId: payment.poolId,
+      entryId: payment.entryId,
+      userId: payment.userId,
+      username: payment.username,
+      amount: payment.amount,
+      asset: payment.asset,
+      rail: payment.rail,
+      status: 'refunded',
+      processorStatus,
+      reason,
+      refundedAt: '2026-07-01T00:00:00.000Z'
+    }
+  }
+
   function createTetherWdkPoolPayout ({
     poolId,
     confirmedEntries,
@@ -794,6 +977,7 @@
     winnerUserIdForRoundResult,
     participantUserIdsForRoundResult,
     createPenaltyClashRound,
+    createPenaltyClashForfeitRound,
     createQvacRefereeAttestation,
     verifyQvacRoundAttestation,
     createBracketPoolSettlementResult,
@@ -801,9 +985,11 @@
     verifyQvacPoolSettlementAttestation,
     createTetherWdkEscrowIntent,
     releaseTetherWdkEscrow,
+    refundTetherWdkEscrow,
     createTetherWdkEntryIntent,
     confirmTetherWdkEntryIntent,
     createTetherWdkEntryPaymentPending,
+    createTetherWdkEntryRefund,
     createTetherWdkPoolPayout
   }
 

@@ -13,7 +13,7 @@
   }
 
   function paymentMethodForAsset (asset) {
-    return normalizeAsset(asset) === 'btc' ? 'crypto_btc' : 'crypto_usdc'
+    return normalizeAsset(asset) === 'btc' ? 'crypto_btc' : 'crypto_usdt'
   }
 
   async function createProcessorTransaction (processor, input, reference) {
@@ -48,6 +48,13 @@
       status.status === 'captured' ||
       status.status === 'confirmed' ||
       status.status === 'paid'
+  }
+
+  function isProcessorRefunded (status = {}) {
+    return status.refunded === true ||
+      status.status === 'refunded' ||
+      status.status === 'voided' ||
+      status.status === 'reversed'
   }
 
   function confirmationIdFor ({ confirmationId, confirmation, status, intent } = {}) {
@@ -109,6 +116,34 @@
         return payout
       },
 
+      async refundGameEscrow ({ escrow, reason = 'game-escrow-refunded', refundUserIds, payoutAddress, payoutRecipients }) {
+        if (!escrow || !escrow.escrowId) throw new Error('Locked escrow is required before WDK refund')
+        if (!escrow.wdkTransactionId) throw new Error('WDK transaction id is required before refunding game escrow')
+        const refundMethod = processor && typeof processor.refundEscrow === 'function'
+          ? 'refundEscrow'
+          : processor && typeof processor.refundPayment === 'function'
+            ? 'refundPayment'
+            : null
+        if (!refundMethod) throw new Error('WDK refundEscrow or refundPayment is required before refunding game escrow')
+        const processorRefund = await processor[refundMethod]({ id: escrow.wdkTransactionId }, {
+          escrow,
+          reason,
+          refundUserIds,
+          payoutAddress,
+          payoutRecipients
+        })
+        if (!isProcessorRefunded(processorRefund)) throw new Error('WDK game escrow has not been refunded yet')
+        return {
+          ...core.refundTetherWdkEscrow({
+            escrow,
+            reason,
+            refundUserIds,
+            processorStatus: processorRefund && processorRefund.status ? processorRefund.status : 'refunded'
+          }),
+          processorRefund
+        }
+      },
+
       async createEntryIntent (input) {
         const intent = core.createTetherWdkEntryIntent({ ...input, rail })
         const transaction = await createProcessorTransaction(processor, input, intent.intentId)
@@ -116,19 +151,23 @@
       },
 
       async confirmEntryIntent ({ intent, confirmationId }) {
-        let confirmation = null
-        if (processor && typeof processor.confirmPayment === 'function' && intent && intent.wdkTransactionId) {
-          confirmation = await processor.confirmPayment({ id: intent.wdkTransactionId }, {
-            confirmationId,
-            timeoutMs: 0,
-            pollMs: 0
-          })
+        if (!intent || !intent.intentId) throw new Error('Entry intent is required before WDK confirmation')
+        if (!intent.wdkTransactionId) throw new Error('WDK transaction id is required before payment confirmation')
+        if (!processor || typeof processor.confirmPayment !== 'function') {
+          throw new Error('WDK confirmPayment is required before confirming entry payment')
         }
+        const confirmation = await processor.confirmPayment({ id: intent.wdkTransactionId }, {
+          confirmationId,
+          timeoutMs: 0,
+          pollMs: 0
+        })
+        if (!isProcessorPaid(confirmation)) throw new Error('WDK payment has not been confirmed yet')
         return {
           ...core.confirmTetherWdkEntryIntent({
             intent,
             confirmationId: confirmationIdFor({ confirmationId, confirmation, intent })
           }),
+          wdkTransactionId: intent.wdkTransactionId || null,
           processorConfirmation: confirmation
         }
       },
@@ -158,6 +197,7 @@
                 intent,
                 confirmationId: confirmationIdFor({ confirmationId, status, intent })
               }),
+              wdkTransactionId: intent.wdkTransactionId || null,
               processorConfirmation: status
             }
           } catch (error) {
@@ -178,6 +218,27 @@
             processorStatus: 'confirmation_failed',
             reason: error.message
           })
+        }
+      },
+
+      async refundEntryIntent ({ payment, reason = 'entry-refunded' }) {
+        if (!payment || !payment.paymentId) throw new Error('Confirmed entry payment is required before WDK refund')
+        if (!payment.wdkTransactionId) throw new Error('WDK transaction id is required before refunding entry payment')
+        if (!processor || typeof processor.refundPayment !== 'function') {
+          throw new Error('WDK refundPayment is required before refunding entry payment')
+        }
+        const processorRefund = await processor.refundPayment({ id: payment.wdkTransactionId }, {
+          payment,
+          reason
+        })
+        if (!isProcessorRefunded(processorRefund)) throw new Error('WDK entry payment has not been refunded yet')
+        return {
+          ...core.createTetherWdkEntryRefund({
+            payment,
+            reason,
+            processorStatus: processorRefund && processorRefund.status ? processorRefund.status : 'refunded'
+          }),
+          processorRefund
         }
       },
 
@@ -207,7 +268,8 @@
   const api = {
     createTetherWdkProcessorAdapter,
     normalizeAsset,
-    paymentMethodForAsset
+    paymentMethodForAsset,
+    isProcessorRefunded
   }
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api

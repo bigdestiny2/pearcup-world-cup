@@ -17,6 +17,7 @@
     return {
       eventId: event.eventId,
       type: event.type,
+      actorId: event.actorId || null,
       sequence: event.sequence,
       payloadHash: core.deterministicHash(event.payload || null)
     }
@@ -107,6 +108,7 @@
     return {
       eventId: attestationEvent.eventId,
       eventType: attestationEvent.type,
+      eventActorId: attestationEvent.actorId || null,
       attestationId: attestation.attestationId,
       refereeId: attestation.refereeId || null,
       ruling: attestation.ruling,
@@ -176,14 +178,17 @@
     return {
       eventId: settlementEvent.eventId,
       eventType: settlementEvent.type,
+      eventActorId: settlementEvent.actorId || null,
       status: settlement.status || null,
       payoutId: settlement.payoutId || null,
       disputeId: settlement.disputeId || null,
+      refundId: settlement.refundId || null,
       escrowId: settlement.escrowId || null,
       poolId: settlement.poolId || null,
       qvacAttestationId: settlement.qvacAttestationId || null,
       winnerUserId: settlement.winnerUserId || null,
       winnerUserIds: settlement.winnerUserIds || null,
+      refundUserIdsHash: settlement.refundUserIds ? listHash(settlement.refundUserIds) : null,
       sourcePaymentIdsHash: settlement.sourcePaymentIds ? listHash(settlement.sourcePaymentIds) : null,
       grossPool: settlement.grossPool == null ? null : settlement.grossPool,
       amountEach: settlement.amountEach == null ? null : settlement.amountEach,
@@ -191,7 +196,8 @@
       rail: settlement.rail || null,
       reason: settlement.reason || null,
       processorPayout: processorEvidenceSnapshot(settlement.processorPayout),
-      processorRelease: processorEvidenceSnapshot(settlement.processorRelease)
+      processorRelease: processorEvidenceSnapshot(settlement.processorRelease),
+      processorRefund: processorEvidenceSnapshot(settlement.processorRefund)
     }
   }
 
@@ -282,6 +288,12 @@
     if (!payload.events || !payload.events.settlement || payload.events.settlement.type !== expected.settlementType) {
       errors.push(`Settlement receipt completed path requires ${expected.settlementType} event`)
     }
+    if (!payload.events || !payload.events.attestation || !payload.events.attestation.actorId) {
+      errors.push('Settlement receipt QVAC event ref must include actorId')
+    }
+    if (!payload.events || !payload.events.settlement || !payload.events.settlement.actorId) {
+      errors.push('Settlement receipt WDK event ref must include actorId')
+    }
     if (!payload.qvac || payload.qvac.eventType !== expected.attestationType) {
       errors.push(`Settlement receipt QVAC snapshot must reference ${expected.attestationType}`)
     }
@@ -297,6 +309,22 @@
     if (!payload.wdk || payload.wdk.status !== 'prepared') {
       errors.push('Settlement receipt completed path requires prepared WDK settlement status')
     }
+    if (
+      payload.qvac &&
+      payload.events &&
+      payload.events.attestation &&
+      payload.qvac.eventActorId !== payload.events.attestation.actorId
+    ) {
+      errors.push('Settlement receipt QVAC snapshot actorId does not match event ref')
+    }
+    if (
+      payload.wdk &&
+      payload.events &&
+      payload.events.settlement &&
+      payload.wdk.eventActorId !== payload.events.settlement.actorId
+    ) {
+      errors.push('Settlement receipt WDK snapshot actorId does not match event ref')
+    }
   }
 
   function verifyCompletedTrustedPath ({ payload, errors }) {
@@ -304,8 +332,26 @@
     if (!payload.qvac || !payload.qvac.attestationId) {
       errors.push('Settlement receipt completed path requires QVAC attestation id')
     }
+    if (!payload.qvac || !payload.qvac.eventActorId) {
+      errors.push('Settlement receipt completed path requires QVAC event actorId')
+    }
+    if (!payload.qvac || !payload.qvac.refereeId) {
+      errors.push('Settlement receipt completed path requires QVAC referee id')
+    }
+    if (payload.qvac && payload.qvac.eventActorId && payload.qvac.refereeId && payload.qvac.eventActorId !== payload.qvac.refereeId) {
+      errors.push('Settlement receipt QVAC event actorId must match referee id')
+    }
     if (!payload.wdk || !payload.wdk.qvacAttestationId) {
       errors.push('Settlement receipt WDK settlement must reference QVAC attestation id')
+    }
+    if (!payload.wdk || !payload.wdk.eventActorId) {
+      errors.push('Settlement receipt completed path requires WDK event actorId')
+    }
+    if (!payload.wdk || !payload.wdk.rail) {
+      errors.push('Settlement receipt completed path requires WDK rail')
+    }
+    if (payload.wdk && payload.wdk.eventActorId && payload.wdk.rail && payload.wdk.eventActorId !== payload.wdk.rail) {
+      errors.push('Settlement receipt WDK event actorId must match rail')
     }
     if (payload.qvac && payload.wdk && payload.qvac.attestationId !== payload.wdk.qvacAttestationId) {
       errors.push('Settlement receipt QVAC attestation id does not match WDK settlement')
@@ -481,6 +527,11 @@
       verifyProcessorEvidence({
         processor: payload.wdk.processorRelease,
         label: 'release',
+        errors
+      })
+      verifyProcessorEvidence({
+        processor: payload.wdk.processorRefund,
+        label: 'refund',
         errors
       })
     }
