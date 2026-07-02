@@ -1161,7 +1161,7 @@ const stories = [
     story: 'As the team, we can prove the integrated branch is clean and tested.',
     expected: 'Worktree is clean after integration commit, repo check passes, Kawaii syntax passes, and browser smoke passes.',
     refs: 'git status; npm run check; design/kawaii-app syntax sweep; in-app browser at 127.0.0.1:4175',
-    evidence: '2026-07-02 checkpoint: main ahead 1, clean; npm run check passed; Kawaii syntax passed; browser smoke passed.',
+    evidence: '2026-07-02 checkpoints: worktree cleaned between commits; npm run check passed; Kawaii syntax passed; browser smoke passed.',
     steps: 'Run git status, npm run check, Kawaii syntax sweep, and browser top-nav smoke after any fix.',
     priority: 'P0',
     status: 'Integrated',
@@ -1176,6 +1176,8 @@ const stories = [
 const storyTestOverrides = {
   'US-001': { manual: 'Passed', notes: 'Manual browser batches on isolated ports passed clean boot and no console errors.' },
   'US-003': { manual: 'Passed', notes: 'Reload restored username, Japan team selection, and theme on isolated origin 4178.' },
+  'US-004': { manual: 'Passed', notes: 'Demo-mode preflight passed; worker preflight reported demo-locked guard while browser flows continued with demo adapters.' },
+  'US-005': { manual: 'Passed', notes: 'doctor:live and audit:launch reported QVAC, WDK, compliance, and payout-route blockers without falsely claiming live readiness.' },
   'US-007': { manual: 'Passed', notes: 'Username field accepted codex_tester in browser batch A1.' },
   'US-008': { manual: 'Passed', notes: 'Japan team card became selected and persisted through reload.' },
   'US-009': { manual: 'Passed', notes: 'Save routed to Home and profile chip showed codex_tester / Japan.' },
@@ -1183,6 +1185,7 @@ const storyTestOverrides = {
   'US-011': { manual: 'Passed', notes: 'Wallet chip and wallet panel rendered 500 USDT starting balance.' },
   'US-012': { manual: 'Passed', notes: 'Fund 50 changed wallet balance from 500 to 550 USDT.' },
   'US-013': { manual: 'Passed', notes: 'Collect payouts moved 120 USDT pending payout into balance and marked All collected.' },
+  'US-014': { manual: 'Passed', notes: 'Negative browser pass withdrew wallet to 0 USDT; paid pool and Kaito stake were blocked with funding-route toasts.' },
   'US-015': { manual: 'Passed', notes: 'Live key, match id, and proxy persisted while simulated-feed mode remained disabled.' },
   'US-016': { manual: 'Passed', notes: 'Blank API-key test returned Add your API key first.' },
   'US-017': { manual: 'Passed', notes: 'Home hero/live area rendered match labels in browser batch A2.' },
@@ -1199,13 +1202,16 @@ const storyTestOverrides = {
   'US-028': { manual: 'Passed', notes: 'Incomplete submit reported 14 picks left and did not complete the bracket.' },
   'US-029': { manual: 'Passed', notes: 'Completed bracket submit showed $25 bracket submitted for codex_tester.' },
   'US-030': { manual: 'Passed', notes: 'Bracket audit, Tether, runtime, and QVAC panels were present after entry/picks.' },
+  'US-031': { manual: 'Passed', notes: 'Entries & payouts panel demo recipient helper saved a 0x route and recipient declarations updated to 2.' },
   'US-032': { manual: 'Passed', notes: 'Watch TV surface rendered scorebug, pitch, and stats.' },
   'US-033': { manual: 'Passed', notes: 'Spanish language tab activated and commentary feed rendered.' },
   'US-034': { manual: 'Partial', notes: 'Simulated feed updated score/stats/commentary. API-only source/live board is intentionally hidden in sim mode and still needs API/relay pass.' },
   'US-035': { manual: 'Passed', notes: 'Chat form appended Testing watch chat to the room feed.' },
   'US-036': { manual: 'Passed', notes: 'Voice toggle set the live voice state on the control.' },
   'US-037': { manual: 'Passed', notes: 'Invite button opened room share bar with pear watch link.' },
+  'US-038': { manual: 'Blocked', notes: 'Manual start/stop requires browser screen-share permission. Not clicked in automation to avoid accepting or triggering capture prompts without user approval.' },
   'US-039': { manual: 'Passed', notes: 'Reaction button created a reaction pop in the reaction layer.' },
+  'US-040': { manual: 'Partial', notes: 'Automated transport/P2P tests pass. In-app browser harness exposed only one active localhost tab, so live BroadcastChannel two-client manual proof was blocked.' },
   'US-042': { manual: 'Passed', notes: 'Games lobby rendered quick match, four AI challenge buttons, and audit panels.' },
   'US-043': { manual: 'Passed', notes: 'Practice vs AI started without wallet debit and exposed the six-zone aim grid.' },
   'US-044': { manual: 'Passed', notes: 'Staked Kaito challenge modal accepted, debited 25 USDT, and started a match.' },
@@ -1213,8 +1219,17 @@ const storyTestOverrides = {
   'US-046': { manual: 'Passed', notes: 'Aim-zone kick resolved with banner and HUD update.' },
   'US-047': { manual: 'Passed', notes: 'Slower kick sequence progressed HUD through Round 5 of 5.' },
   'US-048': { manual: 'Passed', notes: 'Shootout reached over state with Back to lobby and Rematch controls.' },
-  'US-052': { manual: 'Passed', notes: 'Resolver, sync, and replay panels existed after shootout.' },
+  'US-049': { manual: 'Passed', defects: 'DF-001', fix: 'Fixed', retest: 'Passed', notes: 'Header Rematch is now blocked during active staked matches and keeps wallet at 475 USDT; completed-match controls remain visible.' },
+  'US-050': { manual: 'Passed', defects: 'DF-002', fix: 'Fixed', retest: 'Passed', notes: 'Fresh staked match populated deterministic resolver, QVAC, WDK escrow/payout, receipt, sync, and replay evidence after state-hash and payout-route fix.' },
+  'US-052': { manual: 'Passed', defects: 'DF-002', fix: 'Fixed', retest: 'Passed', notes: 'Resolver, sync, replay, QVAC, runtime, and Tether panels populated with event roots and receipt hash after completed staked match.' },
+  'US-053': { manual: 'Partial', notes: 'Automated P2P lifecycle/forged-event tests pass. Two-client in-app manual challenge was blocked by single-tab harness limitations.' },
+  'US-054': { manual: 'Partial', notes: 'Friend invite/join modals render and worker/P2P tests pass; live two-tab lobby presence was blocked by in-app single-tab harness.' },
+  'US-060': { manual: 'Passed', notes: 'Watch commentary rendered from live match context and switched to ES without blank/stale feed; worker grounding tests passed.' },
   'US-065': { manual: 'Passed', notes: 'Mobile viewport 390x844 activated all primary screens with no page-level horizontal overflow.' }
+  ,
+  'US-066': { manual: 'Passed', notes: 'Primary screens had focusable controls, no unnamed enabled buttons, active nav state, and aria-live status toast.' },
+  'US-067': { manual: 'Passed', notes: 'Negative API key, incomplete bracket, insufficient funds, and settlement error surfaces all produced actionable recovery/status copy.' },
+  'US-069': { manual: 'Passed', notes: 'preflight:sdk, preflight:worker, preflight:trusted-path, doctor:live, audit:launch, and config:live:print ran; live scripts correctly reported demo/live blockers.' }
 }
 
 for (const story of stories) {
@@ -1332,6 +1347,61 @@ const testRuns = [
     evidence: 'All primary screens activated with clientWidth 375 and scrollWidth 375; no page-level horizontal overflow.',
     stories: 'US-065',
     notes: 'Topbar wraps tall on mobile but did not overlap content or create horizontal overflow.'
+  },
+  {
+    id: 'TR-010',
+    date: today,
+    tester: 'Codex',
+    scope: 'Wallet negative and payout recipient browser batch',
+    command: 'In-app browser on isolated port 4182: payout demo recipient save; withdraw to 0; attempt paid pool; attempt staked Kaito challenge',
+    result: 'Passed',
+    evidence: 'Recipient declarations reached 2; wallet 0 blocked paid pool with Not enough balance; wallet 0 blocked Kaito stake with Need 25 USDT to stake.',
+    stories: 'US-014, US-031, US-067',
+    notes: 'All checks used visible UI state and toasts.'
+  },
+  {
+    id: 'TR-011',
+    date: today,
+    tester: 'Codex',
+    scope: 'Penalty Clash staked settlement regression',
+    command: 'In-app browser on fresh ports 4184/4185: reproduce staked header reset, patch, retest guard, finish staked match, inspect audit panels',
+    result: 'Passed',
+    evidence: 'Active staked header Rematch blocked with wallet fixed at 475 USDT. Completed Kaito match showed deterministic resolver, QVAC attestation, WDK escrow/payout, receipt hash, matched sync roots, and replay log.',
+    stories: 'US-049, US-050, US-052',
+    notes: 'Fix added guarded restart, peer state-hash submissions, demo payout recipient route, and held-summary panel protection.'
+  },
+  {
+    id: 'TR-012',
+    date: today,
+    tester: 'Codex',
+    scope: 'Release preflight scripts',
+    command: 'npm run preflight:sdk; npm run preflight:worker; npm run preflight:trusted-path; npm run doctor:live; npm run audit:launch; npm run config:live:print',
+    result: 'Passed',
+    evidence: 'SDK and trusted-path preflights passed. Worker stayed demo-locked. Live doctor and launch audit reported QVAC/WDK/compliance/payout blockers without claiming live readiness.',
+    stories: 'US-041, US-063, US-069, US-070',
+    notes: 'audit:launch intentionally reports blocked live launch in demo config.'
+  },
+  {
+    id: 'TR-013',
+    date: today,
+    tester: 'Codex',
+    scope: 'Accessibility and QVAC commentary browser pass',
+    command: 'In-app browser on isolated app tab: scan primary screens for unlabeled enabled buttons/focusable controls; switch Watch commentary to ES',
+    result: 'Passed',
+    evidence: 'Profile/Home/Bracket/Watch/Games had focusable controls, no unnamed enabled buttons, active nav, and aria-live toast. ES commentary rendered from live match feed.',
+    stories: 'US-060, US-066',
+    notes: 'This was a fast accessibility sanity pass, not a full assistive-technology audit.'
+  },
+  {
+    id: 'TR-014',
+    date: today,
+    tester: 'Codex',
+    scope: 'Peer and screen-share manual blockers',
+    command: 'Attempted same-origin two-tab in-app browser peer lobby on port 4186; reviewed screen-share permission path',
+    result: 'Blocked',
+    evidence: 'In-app browser exposed only one active localhost tab for the 4186 origin, so BroadcastChannel two-client manual convergence could not be proven there. Screen share requires user-controlled browser capture permission.',
+    stories: 'US-038, US-040, US-053, US-054',
+    notes: 'Automated worker, transport, peer lifecycle, and forged-event tests passed under npm run check.'
   }
 ]
 
@@ -1495,23 +1565,75 @@ addStatusFormats(userStories.getRange(`H2:M${Math.max(200, storyRows.length)}`))
 addTableIfPossible(userStories, `A1:N${storyRows.length}`, 'UserStoriesTable')
 
 // Defect Log
-const emptyDefectRows = Array.from({ length: 40 }, () => [
-  '',
-  '',
-  '',
-  '',
-  '',
-  '',
-  '',
-  '',
-  '',
-  '',
-  '',
-  '',
-  '',
-  ''
-])
-defects.getRangeByIndexes(0, 0, emptyDefectRows.length + 1, defectHeaders.length).values = [defectHeaders, ...emptyDefectRows]
+const defectRecords = [
+  {
+    id: 'DF-001',
+    story: 'US-049',
+    area: 'Penalty Clash Gameplay',
+    severity: 'P0',
+    status: 'Fixed',
+    foundIn: 'TR-011',
+    summary: 'Header Rematch reset an active staked match without wallet guard.',
+    steps: 'Start a staked Kaito match, verify wallet 500 -> 475, click the header Rematch/Spectate control before the match is over.',
+    expected: 'Active staked matches cannot be restarted for free; user must finish the match or pay a guarded rematch stake after completion.',
+    actual: 'The header control reset the shootout while wallet stayed at 475 USDT, allowing repeated attempts against the same stake.',
+    owner: 'Codex',
+    fixCommit: '42abe59',
+    retest: 'Passed',
+    notes: 'Retest on port 4185 showed Finish this staked match before starting a rematch and wallet remained 475 USDT.'
+  },
+  {
+    id: 'DF-002',
+    story: 'US-050, US-052',
+    area: 'Game Settlement',
+    severity: 'P0',
+    status: 'Fixed',
+    foundIn: 'TR-011',
+    summary: 'Staked game audit panels stayed on placeholders after the WDK/QVAC worker merge.',
+    steps: 'Start and finish a staked Kaito match, then inspect Resolver, Tether WDK, QVAC, P2P sync, and Replay panels.',
+    expected: 'Kick and completed-match panels show deterministic resolver, peer state hash evidence, QVAC attestation, WDK escrow/payout, receipt, sync, and replay roots.',
+    actual: 'The UI swallowed a settlement exception and left audit panels as Awaiting kick / 0 events placeholders.',
+    owner: 'Codex',
+    fixCommit: '42abe59',
+    retest: 'Passed',
+    notes: 'Fix submits shooter/keeper state hashes, passes demo payout recipient route, and renders held settlement summaries instead of throwing.'
+  }
+]
+const defectRows = [
+  ...defectRecords.map(d => [
+    d.id,
+    d.story,
+    d.area,
+    d.severity,
+    d.status,
+    d.foundIn,
+    d.summary,
+    d.steps,
+    d.expected,
+    d.actual,
+    d.owner,
+    d.fixCommit,
+    d.retest,
+    d.notes
+  ]),
+  ...Array.from({ length: 38 }, () => [
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    ''
+  ])
+]
+defects.getRangeByIndexes(0, 0, defectRows.length + 1, defectHeaders.length).values = [defectHeaders, ...defectRows]
 styleHeader(defects, 'A1:N1', '#7F1D1D')
 styleBody(defects, 'A2:N41')
 setColumnWidths(defects, [86, 80, 120, 72, 110, 110, 260, 300, 260, 260, 110, 100, 110, 220])
@@ -1575,7 +1697,7 @@ dashboard.getRange('A2:H2').format = {
 dashboard.getRange('A4:H4').values = [['Metric', 'Value', 'Meaning', 'Current Gate', 'Result', 'Evidence', 'Next Action', 'Phase']]
 styleHeader(dashboard, 'A4:H4')
 dashboard.getRange('A5:H12').values = [
-  ['Total stories', null, 'All code-grounded feature stories in User Stories.', 'Worktree', 'Clean', 'git status: main ahead 1 with no dirty files before workbook generation', 'Keep tracker committed after changes.', 'Baseline'],
+  ['Total stories', null, 'All code-grounded feature stories in User Stories.', 'Worktree', 'Clean', 'git status checked before/after commits; no dirty files at handoff expected', 'Keep tracker committed after changes.', 'Baseline'],
   ['Integrated stories', null, 'Rows whose Feature Status is Integrated.', 'Runtime tests', 'Passed', 'npm run check: 282/282 tests plus audit/checks', 'Manual user-story loop.', 'Baseline'],
   ['Manual not run', null, 'Rows still awaiting manual behavior testing.', 'Kawaii syntax', 'Passed', 'All staged JS/CJS files parsed', 'Retest after each fix.', 'Manual Test'],
   ['Manual passed/smoke', null, 'Rows with Passed or Passed (Smoke).', 'Browser smoke', 'Passed', 'Top nav screens active; no boot banner; no console errors', 'Deep workflow testing.', 'Manual Test'],
