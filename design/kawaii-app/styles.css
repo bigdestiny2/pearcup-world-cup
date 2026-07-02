@@ -227,10 +227,18 @@ input:focus-visible {
   box-shadow: var(--shadow);
 }
 
-.profile-chip svg {
+.profile-chip .avatar-art {
   width: 50px;
-  height: 58px;
+  height: 50px;
   display: block;
+  align-self: center;
+  justify-self: center;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.profile-chip > div {
+  min-width: 0;
 }
 
 .chip-name {
@@ -2737,9 +2745,9 @@ h2 {
     padding: 5px 12px 5px 5px;
   }
 
-  .profile-chip svg {
+  .profile-chip .avatar-art {
     width: 44px;
-    height: 52px;
+    height: 44px;
   }
 
   .wallet-chip {
