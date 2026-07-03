@@ -114,6 +114,8 @@ const receipt = {
         'served app includes hidden guest invite handshake self-test',
         'served app references generated avatars',
         'served app references mascot art',
+        'served app and boot bundle make no executable bare P2P controller calls',
+        'served index does not rely on module scripts',
         'served styles reference stadium/ball/confetti art',
         'served generated avatar assets are non-empty',
         'served mascot/stadium assets are non-empty'

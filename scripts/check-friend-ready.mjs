@@ -88,6 +88,7 @@ async function checkPreviewUrl (url) {
     for (const marker of ['pearcupPeerNetModule', 'pearcupPeerMatchModule', 'pearcupPeerLobbyModule', 'pearcupWatchSyncModule']) {
       if (!index.includes(marker)) errors.push(`preview index.html fallback does not require ${marker}`)
     }
+    if (/<script\b[^>]*\btype=["']module["']/i.test(index)) errors.push('preview index.html must not rely on module scripts')
   }
   if (bootLoader) {
     for (const ref of ['./peer-net.js', './peer-match.js', './peer-lobby.js', './watch-sync.js', './app.js']) {
@@ -99,6 +100,7 @@ async function checkPreviewUrl (url) {
     if (!bootLoader.includes('runRuntimePeerHandshakeSelfTest') || !bootLoader.includes('pearcupRuntimeSelfTestGuest')) {
       errors.push('preview pearcup-boot.js does not include the hidden guest invite handshake self-test')
     }
+    checkNoBareP2PControllerCalls(bootLoader, 'preview pearcup-boot.js')
   }
   if (index && /\/index\.cjs(?:\+esm-wrap)?/.test(index)) {
     errors.push('preview index.html exposes /index.cjs or /index.cjs+esm-wrap')
@@ -164,6 +166,7 @@ async function checkPreviewUrl (url) {
     ]) {
       if (!app.includes(needle)) errors.push(message)
     }
+    checkNoBareP2PControllerCalls(app, 'preview app.js')
     if (/\bItaly\b/.test(app)) errors.push('preview app.js must not include Italy as a current competition team')
   }
   if (peerMatch) {
@@ -187,6 +190,30 @@ async function checkPreviewUrl (url) {
     if (!watchSync.includes('pearcupWatchSyncModule')) errors.push('preview watch-sync.js does not mark module readiness')
   }
   if (!errors.some(error => error.startsWith('preview'))) checks.push('Live preview URL')
+}
+
+function checkNoBareP2PControllerCalls (source, label) {
+  for (const [globalName, methods] of [
+    ['PearCupPeerMatch', ['host', 'join', 'promptJoin', 'onZone', 'isActive', 'leave', 'render', 'reset']],
+    ['PearCupPeerNet', ['digest', 'createChannel', 'newPeerId', 'topicFor']],
+    ['PearCupLobby', ['join', 'renderList']],
+    ['PearCupWatchSync', ['ensureRoom', 'bindReactionBar', 'updatePresence', 'broadcastChat']]
+  ]) {
+    for (const leak of bareControllerCallLines(source, globalName, methods)) {
+      errors.push(`${label} makes an executable bare ${globalName} call at line ${leak.line}: ${leak.source.trim()}`)
+    }
+  }
+}
+
+function bareControllerCallLines (source, globalName, methods) {
+  const methodPattern = methods.map(method => method.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
+  const callPattern = new RegExp(`(^|[^\\w.])${globalName}\\.(${methodPattern})\\s*\\(`)
+  return source.split('\n').map((line, index) => {
+    const withoutStrings = line
+      .replace(/(['"`])(?:\\.|(?!\1).)*\1/g, '')
+      .replace(/\/\/.*$/, '')
+    return { line: index + 1, source: line, withoutStrings }
+  }).filter(entry => callPattern.test(entry.withoutStrings) && !entry.withoutStrings.includes(`window.${globalName}.`))
 }
 
 async function fetchText (url, label) {
