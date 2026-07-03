@@ -1,8 +1,9 @@
 (function attachPearCupWorkerRuntime (root) {
-  const runtimeSettings = root.PearCupRuntimeSettings || (typeof require !== 'undefined' ? require('./runtime-settings.js') : null)
-  const runtimeConfigFactory = root.PearCupRuntimeConfig || (typeof require !== 'undefined' ? require('./runtime-config.js') : null)
-  const workerFactory = root.PearCupWorkerSim || (typeof require !== 'undefined' ? require('./worker-sim.js') : null)
-  const sdkRuntime = root.PearCupSdkRuntime || (typeof require !== 'undefined' ? require('./sdk-runtime.js') : null)
+  const canRequireLocal = typeof module !== 'undefined' && module.exports && typeof require !== 'undefined'
+  const runtimeSettings = root.PearCupRuntimeSettings || (canRequireLocal ? require('./runtime-settings.js') : null)
+  const runtimeConfigFactory = root.PearCupRuntimeConfig || (canRequireLocal ? require('./runtime-config.js') : null)
+  const workerFactory = root.PearCupWorkerSim || (canRequireLocal ? require('./worker-sim.js') : null)
+  const sdkRuntime = root.PearCupSdkRuntime || (canRequireLocal ? require('./sdk-runtime.js') : null)
 
   if (!runtimeSettings) throw new Error('PearCupRuntimeSettings is required before PearCupWorkerRuntime')
   if (!runtimeConfigFactory) throw new Error('PearCupRuntimeConfig is required before PearCupWorkerRuntime')

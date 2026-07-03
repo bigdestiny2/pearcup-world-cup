@@ -4,16 +4,56 @@ This directory is a **self-contained Pear app** (its own `package.json` + `index
 kept separate from the repo's live `app/` so parallel work never collides. It bundles
 the Kawaii UI, live WC data relay, real P2P penalty matches, and watch-party sync.
 
+## Current readiness snapshot
+- Local checked preview: `http://127.0.0.1:4186/` from `npm run serve:pearbrowser`.
+- Actual Pear runtime smoke: `npm run smoke:kawaii-pear-run` launches
+  `design/kawaii-app` with a temp store and fails on the prior fallback/script-wrapper
+  boot errors. Its boot probe also requires the real renderer to report hydrated UI,
+  32 country cards, generated avatar images, a hydrated profile chip, and visible
+  P2P controllers for net/match/lobby/watch. A smoke-only runtime self-test then
+  routes the actual Pear renderer to Games, renders generated game avatars and the
+  mascot, opens the real friend-invite modal, verifies the hosted match state plus
+  `?join=` invite link, then launches a hidden same-origin guest app that opens the
+  invite and proves the peer match reaches `started` on both host and guest.
+- Friend/publish candidate check: `npm run check:publish-handoff` creates a fresh
+  non-published bundle, verifies every hashed file, reruns the Hyper payload smoke,
+  and prints the exact publish command. Do not ask friends to use a local
+  `127.0.0.1` link; cross-device testing requires publishing/pinning that checked
+  bundle after explicit approval.
+- Two-client P2P smoke: `npm run smoke:kawaii-p2p-preview` executes the real
+  `peer-net.js` plus `peer-match.js` in paired clients. It covers both the local
+  BroadcastChannel preview backend and the PearBrowser `window.pear.swarm.v1` backend,
+  then proves one client can host, the other can join, both enter Games, and the first
+  kick resolves. It also covers the PearBrowser lobby presence/challenge flow and the
+  watch-room presence/chat flow over the same shared transport.
+
 ## What's verified
 - `pear stage` bundles the whole app (UI, all runtime modules, `peer-net.js` /
   `peer-match.js` / `watch-sync.js`, assets, avatars, crests, `live-match.json`).
-- Public link: `pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo`
-  (release `1734`). This release keeps the Round of 32 bracket as the active round,
-  restores the generated avatar/art assets, and patches the Pear bridge so classic
-  renderer scripts load as raw browser JavaScript instead of script-linker ESM
-  wrappers.
-- Real two-client P2P penalty match + watch chat/reactions verified in-browser
-  (BroadcastChannel transport, two windows/tabs).
+- Last public Pear runtime link:
+  `pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo` (release `1734`).
+  Treat that as the last released pointer, not as evidence that the latest checked
+  PearBrowser/Hyper candidate has been published. Re-run the handoff check and use
+  its printed bundle path before any new public test.
+- Real two-client Penalty Clash + watch chat/reactions now use the shared
+  `PearCupPeerNet` channel contract. PearBrowser prefers `window.pear.swarm.v1`;
+  Pear Runtime prefers the Bare worker; plain browser preview falls back to
+  BroadcastChannel.
+- `npm run test:kawaii-peer` covers the transport backends plus app-level first-run
+  invite handoff and a two-client Penalty Clash host/join handshake:
+  PearBrowser-style invites render as
+  `hyper://<drive>/?join=<room>` instead of localhost proxy links; the host creates a
+  room, the guest joins it, hello frames cross, both clients enter a peer match, and
+  their shooter/keeper roles diverge correctly. It also drives shot/dive/reveal cycles
+  through a full best-of-five match and confirms both clients finish with mirrored score
+  state and no turn desync. The integrated smoke runs the real PeerNet BroadcastChannel
+  fallback and the PearBrowser `swarm.v1` backend with the real PeerMatch, PeerLobby,
+  and WatchSync controllers, so a break between those layers fails before a friend-test
+  handoff.
+- The Hyper payload smoke and live preview readiness checks guard the `?join=` deep-link
+  auto-join path. A browser-level smoke on `http://127.0.0.1:4186/?join=<room>` confirms
+  the real app boots into Games and opens the friend-join handshake modal without
+  renderer errors.
 
 ## Run locally (dev)
 ```
@@ -24,11 +64,125 @@ pear run --dev .
 symlink pointing outside the root breaks the `pear-electron` pre-step (mangles the module
 path). `stage.ignore` must NOT include `/node_modules` or the runtime deps never bundle.
 
+## PearBrowser preview bundle
+From the repo root:
+
+```
+npm run serve:pearbrowser
+```
+
+That command builds the clean `hyper://` payload, runs the PearBrowser Hyper smoke
+check, then serves the exact checked bundle locally. It uses `127.0.0.1:4186` when
+available and automatically steps to the next open port if an older preview is still
+running.
+
+The same repo-level `npm run check` now also reaches the Pear launch path through the
+publish handoff gate: it verifies the self-contained Pear runtime package, launches
+the actual Kawaii Pear GUI smoke with a temp store, and only then builds the checked
+PearBrowser payload.
+
+To smoke-test the actual local Pear GUI path without publishing or touching persistent
+app state:
+
+```
+npm run smoke:kawaii-pear-run
+```
+
+That launches `design/kawaii-app` with `pear run --tmp-store --no-ask --no-pre .`,
+watches for the previous failure signatures (`Unexpected token 'export'`,
+`/index.cjs+esm-wrap`, `Invalid filename: /`, fallback boot errors, missing modules),
+requires the boot-ready probe to prove P2P readiness plus hydrated UI/controller
+readiness, then runs a smoke-only runtime self-test that navigates to Games, opens the
+real friend invite, launches a hidden guest app on the generated `?join=` link, and
+verifies modal/code/link/host state plus a completed host/guest peer handshake before
+shutting the app down. Current Pear emits `Pear.worker` deprecation
+warnings; those are expected for this build and allowed by the smoke.
+
+Before inviting a remote tester, run:
+
+```
+npm run check:friend-ready:preview
+```
+
+That combines the Pear runtime package check, actual Pear GUI launch smoke, clean
+Hyper payload build/smoke, the integrated two-client preview P2P smoke, and the
+currently served preview URL check. It also
+verifies that the served app exposes the active P2P backend, no longer shares
+localhost proxy URLs as friend invites, preserves the Pear runtime Games/invite
+self-test hook, requires every P2P boot marker, and serves the generated avatar,
+mascot, stadium, confetti, ball, and crest assets. It still does not publish;
+release/pin remains an explicit outward-facing step.
+
+To create a non-published release candidate with file hashes:
+
+```
+npm run prepare:pearbrowser-release
+```
+
+This runs the Kawaii runtime check, `npm run test:kawaii-peer`,
+`npm run smoke:kawaii-pear-run`, `npm run smoke:pearbrowser-serve`, and
+`npm run smoke:pearbrowser-published-local`, then writes a clean `bundle/` plus
+`pearcup-release-receipt.json` under a temp release-candidate directory. The receipt
+records those source checks, the explicit boot-probe contract, the served-preview
+contract, the local published-gateway contract, and the bundle smoke so the exact
+payload can be confirmed before publishing/pinning it.
+
+Before any publish/pin handoff, run:
+
+```
+npm run check:publish-handoff
+# or, for an already-prepared candidate:
+node scripts/check-pearbrowser-publish-handoff.mjs --receipt /path/to/pearcup-release-receipt.json
+```
+
+That recomputes every file hash from the receipt, reruns the Hyper payload smoke,
+checks the manifest/asset/P2P contract, verifies that the receipt includes the
+deep-link/P2P source coverage, the actual Pear launch smoke, the served-preview
+contract, the local `/app/<drive>/` gateway smoke, and the hydrated UI/controller
+boot-probe contract, then validates and prints the structured publish command without
+running it. The preferred command goes through
+`npm run publish:approved` / `scripts/publish-approved-pearcup.mjs`, which refuses to
+publish unless the receipt path and expected bundle SHA match. The command remains
+gated on explicit approval for that exact bundle and fresh `pearcup` app name. When
+run with `--publish`, the wrapper captures the published `hyper://` URL and runs the
+published PearBrowser smoke before reporting the publish verified.
+
+To dry-run that final approval wrapper without publishing:
+
+```
+npm run publish:approved -- --receipt /path/to/pearcup-release-receipt.json --sha <bundle-sha> --dry-run
+```
+
+If PearBrowser's local gateway is not on the default `http://127.0.0.1:17208/`,
+append `--gateway http://127.0.0.1:<port>/` to the approved publish command; the
+wrapper passes it through to the post-publish smoke.
+
+The approved wrapper runs this after publish/pin. You can also smoke the actual
+PearBrowser-served link manually before inviting friends:
+
+```
+npm run smoke:pearbrowser-published -- --url hyper://<drive-key>/
+# or, if PearBrowser exposes the local gateway:
+npm run smoke:pearbrowser-published -- --url http://127.0.0.1:17208/app/<drive-key>/
+# or with a non-default gateway:
+npm run smoke:pearbrowser-published -- --drive <drive-key> --gateway http://127.0.0.1:<port>/
+```
+
+That check refuses the local `4186` preview, fetches the PearBrowser-served renderer
+files, verifies the `?join=` deep-link payload path, confirms `swarm.v1`/`hyper://`
+invite support, requires every P2P boot-readiness marker, and checks that the
+published stadium, ball, confetti, mascot, crest, and generated avatar assets are
+non-empty.
+
 ## Status: bundling fixed + boots
-Staged/released to `pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo` with pear-electron,
-pear-bridge, hyperswarm and the swarm worker all bundled. Release `1734` is the current
-public release; `pear run <link>` uses that release pointer. Earlier bugs that blocked
-the original bundle:
+The latest local candidate is verified by the repo scripts above. The last released
+Pear runtime pointer is still
+`pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo` with pear-electron,
+pear-bridge, hyperswarm and the swarm worker all bundled. Release `1734` is the last
+known public release pointer; `pear run <link>` uses whatever has been released there,
+so do not use it as a freshness check for a new PearBrowser bundle unless a new
+release/pin has just been approved and run. Earlier bugs that blocked the original
+bundle:
 1. `node_modules` was a symlink to `../../node_modules` (outside the app root) → pre-step
    failed with `Cannot find module '/-electron/pre.js'`. Fix: real local `npm install`.
 2. `stage.ignore` listed `/node_modules` → deps were never bundled → runtime
@@ -41,7 +195,7 @@ pear stage <link> .          # <link> from `pear touch`; we used the one above
 # add --no-pre to skip the electron GUI pre-bundle (that step needs network + a few min)
 ```
 
-## Release (publish) — YOUR call, it's outward-facing
+## Release (publish) - YOUR call, it's outward-facing
 ```
 pear release pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo
 ```
@@ -57,16 +211,24 @@ staged checkout is the one you want friends to fetch.
 ## Two peers actually playing each other
 
 The transport auto-selects in `peer-net.js`:
+- **In PearBrowser (`hyper://`)** -> **`window.pear.swarm.v1`** using drive-scoped
+  Tier A subtopics. This is the seamless phone/friend path once the clean
+  Hyperdrive build is published and pinned. The first invite/hello frame is queued
+  until a peer connects, so rooms do not miss their opening handshake. Friend
+  invites reconstruct `hyper://<drive-key>/?join=<room>` from PearBrowser's injected
+  base URL instead of copying the local proxy origin.
 - **Under the Pear runtime** → **hyperswarm** via the Bare worker (`swarm-worker.cjs`,
   spawned with `Pear.worker.run`). Real cross-device P2P. **Built + unit-verified** (two
   swarm bridges connect over the live DHT and route a topic-tagged message end-to-end —
   see the bridge test in the session; and a raw two-instance hyperswarm connectivity test).
 - **In a plain browser** (dev/preview) → **BroadcastChannel** fallback (same-origin
-  windows/tabs). This is what the in-browser P2P/lobby/watch tests exercised.
+  windows/tabs). This is only a local preview/smoke-test path.
 
 `peer-match.js`, `peer-lobby.js`, and `watch-sync.js` are transport-agnostic — topics
 (`pearcup:v1:game:<code>`, `pearcup:v1:watch:<match>`, `pearcup:v1:lobby`) match the
-settlement convention.
+settlement convention. The Games lobby shows a small backend badge: `P2P PearBrowser
+swarm` in PearBrowser, `P2P Pear runtime` under Pear, and `Local preview P2P` in the
+plain browser fallback.
 
 ### P2P deps bundling resolved
 The staged bundle now contains pear-electron, pear-bridge, hyperswarm and `swarm-worker.cjs`
@@ -98,7 +260,10 @@ Ship path (release + seed are the owner's calls):
 pear release pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo   # publish latest staged checkout
 pear seed    pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo   # keep it fetchable (hiverelay pin)
 ```
-Then Zeek runs `pear run pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo`.
+After that publish/seed step succeeds, testers can run
+`pear run pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo`. Until then,
+use the checked `4186` preview locally and the handoff receipt/publish command for the
+fresh PearBrowser candidate.
 
 **Seeding / hiverelay:** `pear seed <link>` on a machine that stays online keeps the app
 (and its swarm) reachable. For always-on availability, run `pear seed` under a process

@@ -23,11 +23,25 @@ npm install          # restores git-ignored node_modules (required before pear s
 pear run --dev .     # Pear desktop window with live local files
 ```
 
-Plain-browser UI preview (no P2P/hyperswarm):
+Current friend-test preview path from the repo root:
 
 ```sh
-python3 -m http.server 4180 --directory design/kawaii-app   # http://localhost:4180
+npm run serve:pearbrowser              # serves the checked Hyper payload on http://127.0.0.1:4186/
+npm run smoke:kawaii-p2p-preview       # proves preview + PearBrowser P2P match/lobby/watch paths
+npm run check:friend-ready:preview     # verifies the live preview plus the publish bundle contract
+npm run smoke:kawaii-pear-run          # launches Pear and proves Games + invite + hidden guest handshake
+npm run smoke:pearbrowser-published-local # simulates /app/<drive>/ before publishing
+npm run smoke:pearbrowser-published -- --url hyper://<drive-key>/  # after publish/pin only
 ```
+
+The SHA-gated `npm run publish:approved -- --receipt <receipt> --sha <sha> --publish`
+path also runs the published-link smoke automatically after it extracts the new
+`hyper://` URL from the publish output. Add `--gateway http://127.0.0.1:<port>/`
+to that command if PearBrowser's local gateway is not on the default `17208`.
+
+Avoid ad-hoc `python3 -m http.server` previews for friend testing. They serve the raw
+folder, bypass the Hyper payload checks, and can make an old app look like the current
+candidate.
 
 ### Base app (`app/`)
 

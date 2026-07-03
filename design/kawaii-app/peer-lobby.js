@@ -3,11 +3,18 @@
 // Every open client announces itself on a shared lobby topic and listens for others,
 // so the "open challenges" list is LIVE peers — not hardcoded bots. Challenge a peer
 // and both drop into a P2P penalty match on a shared game code (via PearCupPeerMatch).
-// Transport = PearCupPeerNet (BroadcastChannel now → hyperswarm in the Bare worker for
-// cross-device; topic `pearcup:v1:lobby`). Presence uses a heartbeat + stale timeout.
+// Transport = PearCupPeerNet (PearBrowser swarm.v1 for published hyper:// apps,
+// Pear Runtime hyperswarm, BroadcastChannel for local preview; topic `pearcup:v1:lobby`).
+// Presence uses a heartbeat + stale timeout.
 (function attachPearCupLobby (root) {
+  function markModule (status) {
+    if (root.document && root.document.documentElement) {
+      root.document.documentElement.dataset.pearcupPeerLobbyModule = status
+    }
+  }
+
   const Net = root.PearCupPeerNet
-  if (!Net) { console.warn('PearCupPeerNet missing — matchmaking disabled'); return }
+  if (!Net) { markModule('missing-peer-net'); console.warn('PearCupPeerNet missing — matchmaking disabled'); return }
 
   const LOBBY_TOPIC = 'pearcup:v1:lobby'
   const HEARTBEAT_MS = 4000
@@ -117,4 +124,5 @@
   }
 
   root.PearCupLobby = { join, leave, challenge, renderList, peerCount: () => L.peers.size, _state: L }
+  markModule('ready')
 })(typeof window !== 'undefined' ? window : globalThis)

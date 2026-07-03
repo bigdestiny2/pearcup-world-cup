@@ -1,7 +1,8 @@
 (function attachPearCupSdkRuntime (root) {
-  const core = root.PearCupCore || (typeof require !== 'undefined' ? require('./core.js') : null)
-  const qvacRefereeFactory = root.PearCupQvacReferee || (typeof require !== 'undefined' ? require('./qvac-referee.js') : null)
-  const tetherWdkBridgeFactory = root.PearCupTetherWdkBridge || (typeof require !== 'undefined' ? require('./tether-wdk-bridge.js') : null)
+  const canRequireLocal = typeof module !== 'undefined' && module.exports && typeof require !== 'undefined'
+  const core = root.PearCupCore || (canRequireLocal ? require('./core.js') : null)
+  const qvacRefereeFactory = root.PearCupQvacReferee || (canRequireLocal ? require('./qvac-referee.js') : null)
+  const tetherWdkBridgeFactory = root.PearCupTetherWdkBridge || (canRequireLocal ? require('./tether-wdk-bridge.js') : null)
   if (!core) throw new Error('PearCupCore is required before PearCupSdkRuntime')
 
   function defaultImportModule (specifier) {

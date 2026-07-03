@@ -1,9 +1,10 @@
 (function attachPearCupRuntimeConfig (root) {
-  const adapterFactory = root.PearCupAdapters || (typeof require !== 'undefined' ? require('./adapters.js') : null)
+  const canRequireLocal = typeof module !== 'undefined' && module.exports && typeof require !== 'undefined'
+  const adapterFactory = root.PearCupAdapters || (canRequireLocal ? require('./adapters.js') : null)
   if (!adapterFactory) throw new Error('PearCupAdapters is required before PearCupRuntimeConfig')
-  const qvacRefereeFactory = root.PearCupQvacReferee || (typeof require !== 'undefined' ? safeRequire('./qvac-referee.js') : null)
-  const tetherWdkBridgeFactory = root.PearCupTetherWdkBridge || (typeof require !== 'undefined' ? safeRequire('./tether-wdk-bridge.js') : null)
-  const packageSdkFactory = root.PearCupSdkRuntime || (typeof require !== 'undefined' ? safeRequire('./sdk-runtime.js') : null)
+  const qvacRefereeFactory = root.PearCupQvacReferee || (canRequireLocal ? safeRequire('./qvac-referee.js') : null)
+  const tetherWdkBridgeFactory = root.PearCupTetherWdkBridge || (canRequireLocal ? safeRequire('./tether-wdk-bridge.js') : null)
+  const packageSdkFactory = root.PearCupSdkRuntime || (canRequireLocal ? safeRequire('./sdk-runtime.js') : null)
 
   const qvacRequiredMethods = ['attestRound', 'attestPoolSettlement']
   const qvacCommentaryRequiredMethods = ['generateSegment']
@@ -12,7 +13,7 @@
 
   function safeRequire (path) {
     try {
-      return require(path)
+      return canRequireLocal ? require(path) : null
     } catch {
       return null
     }

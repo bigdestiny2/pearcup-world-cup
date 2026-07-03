@@ -1,6 +1,7 @@
 (function attachPearCupTransportSim (root) {
-  const core = root.PearCupCore || (typeof require !== 'undefined' ? require('./core.js') : null)
-  const workerSim = root.PearCupWorkerSim || (typeof require !== 'undefined' ? require('./worker-sim.js') : null)
+  const canRequireLocal = typeof module !== 'undefined' && module.exports && typeof require !== 'undefined'
+  const core = root.PearCupCore || (canRequireLocal ? require('./core.js') : null)
+  const workerSim = root.PearCupWorkerSim || (canRequireLocal ? require('./worker-sim.js') : null)
   if (!core) throw new Error('PearCupCore is required before PearCupTransportSim')
   if (!workerSim) throw new Error('PearCupWorkerSim is required before PearCupTransportSim')
 

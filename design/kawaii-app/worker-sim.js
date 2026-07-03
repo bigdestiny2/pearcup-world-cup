@@ -1,11 +1,12 @@
 (function attachPearCupWorkerSim (root) {
-  const core = root.PearCupCore || (typeof require !== 'undefined' ? require('./core.js') : null)
-  const adapterFactory = root.PearCupAdapters || (typeof require !== 'undefined' ? require('./adapters.js') : null)
+  const canRequireLocal = typeof module !== 'undefined' && module.exports && typeof require !== 'undefined'
+  const core = root.PearCupCore || (canRequireLocal ? require('./core.js') : null)
+  const adapterFactory = root.PearCupAdapters || (canRequireLocal ? require('./adapters.js') : null)
   if (!core) throw new Error('PearCupCore is required before PearCupWorkerSim')
   if (!adapterFactory) throw new Error('PearCupAdapters is required before PearCupWorkerSim')
 
   function getSettlementReceipts () {
-    return root.PearCupSettlementReceipts || (typeof require !== 'undefined' ? require('./settlement-receipts.js') : null)
+    return root.PearCupSettlementReceipts || (canRequireLocal ? require('./settlement-receipts.js') : null)
   }
 
   function eventEnvelope ({ type, actorId = 'system', payload, previousEventId = null, sequence }) {

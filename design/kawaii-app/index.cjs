@@ -8,13 +8,6 @@ const Runtime = require('pear-electron')
 const Bridge = require('pear-bridge')
 patchPearBridgeRootLookups(Bridge)
 
-// Pull the P2P stack into the dependency graph so `pear stage` bundles it for the
-// swarm worker (swarm-worker.cjs is spawned by path via Pear.worker.run at runtime,
-// so its own requires aren't traced from the renderer). Loaded but unused here.
-require('hyperswarm')
-require('hypercore-crypto')
-require('b4a')
-
 function patchPearBridgeRootRequests () {
   const http = require('bare-http1')
   if (http.__pearcupRootRequestPatch) return
@@ -27,6 +20,13 @@ function patchPearBridgeRootRequests () {
       if (req && typeof req.url === 'string') {
         const originalUrl = req.url
         req.url = normalizeRootRendererUrl(req.url)
+        if (shouldServeBootProbe(req.url)) {
+          tracePearBridge('probe', originalUrl, req.url)
+          return writeResponse(res, 204, {
+            'cache-control': 'no-store',
+            'content-length': '0'
+          }, '')
+        }
         tracePearBridge('http', originalUrl, req.url)
       }
       return handler(req, res)
@@ -102,6 +102,22 @@ function shouldServeRawClassicScript (protocol, type, url) {
 
   const path = url.split('?')[0].split('#')[0]
   return path.endsWith('.js') && !path.endsWith('.mjs') && !path.endsWith('.cjs')
+}
+
+function shouldServeBootProbe (url) {
+  const path = String(url || '').split('?')[0].split('#')[0]
+  return path === '/boot-probe-hit.gif'
+}
+
+function writeResponse (res, statusCode, headers, body) {
+  if (typeof res.writeHead === 'function') res.writeHead(statusCode, headers)
+  else {
+    res.statusCode = statusCode
+    if (typeof res.setHeader === 'function') {
+      for (const [key, value] of Object.entries(headers)) res.setHeader(key, value)
+    }
+  }
+  res.end(body)
 }
 
 function tracePearBridge (stage, from, to) {

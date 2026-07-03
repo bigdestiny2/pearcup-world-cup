@@ -1,6 +1,7 @@
 (function attachPearCupSettlementService (root) {
-  const workerRuntimeFactory = root.PearCupWorkerRuntime || (typeof require !== 'undefined' ? require('./worker-runtime.js') : null)
-  const settlementReceipts = root.PearCupSettlementReceipts || (typeof require !== 'undefined' ? require('./settlement-receipts.js') : null)
+  const canRequireLocal = typeof module !== 'undefined' && module.exports && typeof require !== 'undefined'
+  const workerRuntimeFactory = root.PearCupWorkerRuntime || (canRequireLocal ? require('./worker-runtime.js') : null)
+  const settlementReceipts = root.PearCupSettlementReceipts || (canRequireLocal ? require('./settlement-receipts.js') : null)
   if (!workerRuntimeFactory) throw new Error('PearCupWorkerRuntime is required before PearCupSettlementService')
 
   const SETTLEMENT_LOCKED_CODE = 'PEARCUP_SETTLEMENT_LOCKED'

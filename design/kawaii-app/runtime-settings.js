@@ -1,9 +1,10 @@
 (function attachPearCupRuntimeSettings (root) {
   const DEFAULT_CONFIG_PATH = 'config/pearcup.runtime.json'
+  const canRequireLocal = typeof module !== 'undefined' && module.exports && typeof require !== 'undefined'
 
   function safeRequire (name) {
     try {
-      return typeof require !== 'undefined' ? require(name) : null
+      return canRequireLocal ? require(name) : null
     } catch {
       return null
     }

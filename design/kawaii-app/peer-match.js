@@ -9,11 +9,17 @@
 // from their own perspective. Reuses app.js's pitch/HUD helpers + `state` (shared
 // classic-script globals, referenced bare).
 //
-// Transport is PearCupPeerNet.createChannel (BroadcastChannel today; hyperswarm swap
-// for cross-device — see peer-net.js).
+// Transport is PearCupPeerNet.createChannel: PearBrowser swarm.v1 for published
+// hyper:// apps, Pear Runtime hyperswarm for pear run, BroadcastChannel for local preview.
 (function attachPearCupPeerMatch (root) {
+  function markModule (status) {
+    if (root.document && root.document.documentElement) {
+      root.document.documentElement.dataset.pearcupPeerMatchModule = status
+    }
+  }
+
   const Net = root.PearCupPeerNet
-  if (!Net) { console.warn('PearCupPeerNet missing — peer match disabled'); return }
+  if (!Net) { markModule('missing-peer-net'); console.warn('PearCupPeerNet missing — peer match disabled'); return }
 
   const TOTAL = 5 // rounds (each player takes 5, keeps 5)
   const PM = {
@@ -23,18 +29,21 @@
     kIndex: 0, busy: false,
     commit: null,        // {aim, nonce, power} while I'm shooting
     remoteCommit: null,  // hash received while I'm keeping
-    myDive: null
+    myDive: null,
+    helloTimer: null,
+    helloAttempts: 0
   }
 
   const $ = sel => document.querySelector(sel)
   const sleep = ms => new Promise(r => setTimeout(r, ms))
 
   function reset () {
+    stopAnnouncing()
     if (PM.channel) { try { PM.channel.close() } catch (e) {} }
     Object.assign(PM, {
       active: false, started: false, over: false, channel: null, code: null,
       self: null, opp: null, role: null, kIndex: 0, busy: false,
-      commit: null, remoteCommit: null, myDive: null
+      commit: null, remoteCommit: null, myDive: null, helloTimer: null, helloAttempts: 0
     })
   }
 
@@ -51,7 +60,7 @@
     openChannel()
     if (!silent) { showToast('Room created — invite your friend'); renderInvite() }
     else showToast('Challenge sent — waiting for them to accept…')
-    announce()
+    startAnnouncing()
   }
 
   function join (code) {
@@ -61,7 +70,7 @@
     PM.self = { peerId: Net.newPeerId(), name: state.username || 'captain', team: state.team || 'br' }
     openChannel()
     renderConnecting(code)
-    announce()
+    startAnnouncing()
   }
 
   function openChannel () {
@@ -71,6 +80,28 @@
 
   function announce () { send({ t: 'hello', peer: PM.self }) }
   function send (msg) { if (PM.channel) PM.channel.send({ ...msg, room: PM.code, sender: PM.self.peerId }) }
+
+  function startAnnouncing () {
+    stopAnnouncing()
+    PM.helloAttempts = 0
+    announce()
+    if (typeof root.setInterval !== 'function') return
+    PM.helloTimer = root.setInterval(() => {
+      if (!PM.active || PM.started) {
+        stopAnnouncing()
+        return
+      }
+      PM.helloAttempts += 1
+      announce()
+      if (PM.helloAttempts >= 40) stopAnnouncing()
+    }, 500)
+  }
+
+  function stopAnnouncing () {
+    if (!PM.helloTimer) return
+    if (typeof root.clearInterval === 'function') root.clearInterval(PM.helloTimer)
+    PM.helloTimer = null
+  }
 
   function onMessage (msg) {
     if (!msg || msg.room !== PM.code || msg.sender === PM.self.peerId) return
@@ -92,6 +123,7 @@
   function maybeStart () {
     if (PM.started || !PM.opp) return
     PM.started = true
+    stopAnnouncing()
     PM.role = PM.self.peerId < PM.opp.peerId ? 'A' : 'B'
     // Both players on default names would read "captain vs captain" — disambiguate the
     // opponent (they also get a distinct pool avatar from the new name).
@@ -282,7 +314,31 @@
   }
 
   // ---- invite / connect modals ----
-  function inviteLink (code) { return `${location.origin + location.pathname}?join=${code}` }
+  function hyperLaunchBase () {
+    const candidates = []
+    const baseEl = document.querySelector('base[href]')
+    if (baseEl && baseEl.href) candidates.push(baseEl.href)
+    candidates.push(location.href)
+    for (const href of candidates) {
+      try {
+        const url = new URL(href, location.href)
+        if (url.protocol === 'hyper:' && url.hostname) return `hyper://${url.hostname}/`
+        const match = url.pathname.match(/\/(?:app|hyper)\/([0-9a-f]{64})(?:\/|$)/i)
+        if (match) return `hyper://${match[1].toLowerCase()}/`
+      } catch (e) {}
+    }
+    return null
+  }
+
+  function inviteLink (code) {
+    const hyperBase = hyperLaunchBase()
+    if (hyperBase) return `${hyperBase}?join=${encodeURIComponent(code)}`
+    const url = new URL(location.href)
+    url.search = ''
+    url.hash = ''
+    url.searchParams.set('join', code)
+    return url.toString()
+  }
   function closeModal () {
     const m = $('#peerModal')
     if (m) { if (m._onKey) document.removeEventListener('keydown', m._onKey); m.remove() }
@@ -359,4 +415,5 @@
   function isActive () { return PM.active && PM.started && !PM.over }
 
   root.PearCupPeerMatch = { host, join, promptJoin, onZone, isActive, leave, render, reset, _state: PM }
+  markModule('ready')
 })(typeof window !== 'undefined' ? window : globalThis)

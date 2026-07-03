@@ -1,5 +1,6 @@
 (function attachPearCupStorageSim (root) {
-  const core = root.PearCupCore || (typeof require !== 'undefined' ? require('./core.js') : null)
+  const canRequireLocal = typeof module !== 'undefined' && module.exports && typeof require !== 'undefined'
+  const core = root.PearCupCore || (canRequireLocal ? require('./core.js') : null)
   if (!core) throw new Error('PearCupCore is required before PearCupStorageSim')
 
   function eventRoot (events) {

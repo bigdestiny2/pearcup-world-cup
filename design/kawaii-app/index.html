@@ -447,6 +447,88 @@
         var root = window
         if (root.__pearcupFallbackInstalled) return
         root.__pearcupFallbackInstalled = true
+        var bootProbeUrlPromise = null
+
+        function normalizeBootProbeUrl (raw) {
+          if (!raw) return ''
+          if (raw === './boot-probe-hit.gif' || raw.indexOf('./boot-probe-hit.gif?') === 0) return raw
+          if (raw === '/boot-probe-hit.gif' || raw.indexOf('/boot-probe-hit.gif?') === 0) return raw
+          try {
+            var parsed = new URL(raw)
+            if (parsed.protocol !== 'http:') return ''
+            if (['127.0.0.1', 'localhost', '[::1]'].indexOf(parsed.hostname) === -1) return ''
+            return parsed.href
+          } catch (e) {
+            return ''
+          }
+        }
+
+        function resolveBootProbeUrl () {
+          if (bootProbeUrlPromise) return bootProbeUrlPromise
+          bootProbeUrlPromise = new Promise(function (resolve) {
+            var env = (typeof process !== 'undefined' && process && process.env) || null
+            var direct = normalizeBootProbeUrl(env && env.PEARCUP_BOOT_PROBE_URL)
+            if (direct) { resolve(direct); return }
+            if (typeof root.fetch !== 'function') { resolve(''); return }
+            root.fetch('./boot-probe.json', { cache: 'no-store' })
+              .then(function (res) { return res && res.ok ? res.json() : null })
+              .then(function (config) { resolve(normalizeBootProbeUrl(config && config.url)) })
+              .catch(function () { resolve('') })
+          })
+          return bootProbeUrlPromise
+        }
+
+        function bootProbePayload (patch) {
+          var d = document.documentElement && document.documentElement.dataset
+          return Object.assign({
+            event: 'pearcup:shell-status',
+            status: 'shell',
+            appScriptSeen: !!root.__pearcupAppScriptSeen,
+            appBooted: !!root.__pearcupAppBooted,
+            bootReady: d && d.pearcupBootReady || null,
+            p2pModules: d && d.pearcupP2pModules || null,
+            modules: {
+              net: d && d.pearcupPeerNetModule || null,
+              match: d && d.pearcupPeerMatchModule || null,
+              lobby: d && d.pearcupPeerLobbyModule || null,
+              watch: d && d.pearcupWatchSyncModule || null
+            },
+            activeScreens: Array.prototype.slice.call(document.querySelectorAll('.screen.is-active')).map(function (el) { return el.id })
+          }, patch || {})
+        }
+
+        function sendBootProbe (patch) {
+          resolveBootProbeUrl().then(function (url) {
+            if (!url) return
+            sendBootProbePayload(url, bootProbePayload(patch))
+          }).catch(function () {})
+        }
+
+        function sendBootProbePayload (url, payload) {
+          var body = JSON.stringify(payload)
+          if (typeof root.Image === 'function') {
+            root.__pearcupBootProbeImages = root.__pearcupBootProbeImages || []
+            var image = new root.Image()
+            var sep = url.indexOf('?') === -1 ? '?' : '&'
+            image.src = url + sep + 'payload=' + encodeURIComponent(body)
+            root.__pearcupBootProbeImages.push(image)
+            setTimeout(function () {
+              var list = root.__pearcupBootProbeImages || []
+              var index = list.indexOf(image)
+              if (index >= 0) list.splice(index, 1)
+            }, 5000)
+            return
+          }
+          if (typeof root.fetch === 'function') {
+            root.fetch(url, {
+              method: 'POST',
+              headers: { 'content-type': 'text/plain' },
+              body: body
+            }).catch(function () {})
+          }
+        }
+
+        sendBootProbe({ event: 'pearcup:shell-started', status: 'shell' })
 
         var shellTeams = {
           br: { name: 'Brazil', flag: '🇧🇷', colors: ['#139b49', '#ffd447', '#1b55a5'] },
@@ -638,26 +720,7 @@
         }
         bindStaticShell()
 
-        var scripts = [
-          './core.js',
-          './adapters.js',
-          './qvac-referee.js',
-          './tether-wdk-bridge.js',
-          './runtime-settings.js',
-          './runtime-config.js',
-          './worker-sim.js',
-          './worker-client.js',
-          './worker-runtime.js',
-          './settlement-receipts.js',
-          './settlement-service.js',
-          './transport-sim.js',
-          './storage-sim.js',
-          './app.js',
-          './peer-net.js',
-          './peer-match.js',
-          './peer-lobby.js',
-          './watch-sync.js'
-        ]
+        var scripts = ['./pearcup-boot.js']
 
         function appBooted () {
           return root.__pearcupAppBooted
@@ -678,13 +741,25 @@
             document.querySelectorAll('#watchPickBoard .watch-pick-card').length > 0
         }
 
+        function p2pModulesReady () {
+          var d = document.documentElement && document.documentElement.dataset
+          return d &&
+            d.pearcupP2pModules === 'ready' &&
+            d.pearcupPeerNetModule === 'ready' &&
+            d.pearcupPeerMatchModule === 'ready' &&
+            d.pearcupPeerLobbyModule === 'ready' &&
+            d.pearcupWatchSyncModule === 'ready'
+        }
+
         function acceptHydratedAppUi () {
           if (!appUiHydrated()) return false
+          if (!p2pModulesReady()) return false
           root.__pearcupAppBooted = true
           document.documentElement.setAttribute('data-pearcup-booted', 'true')
           try { root.sessionStorage && root.sessionStorage.removeItem('pearcupBootRetryVisualShell') } catch (e) {}
           clearNotice()
           try { root.dispatchEvent(new Event('pearcup:booted')) } catch (e) {}
+          sendBootProbe({ event: 'pearcup:boot-ready', status: 'ready' })
           return true
         }
 
@@ -712,6 +787,7 @@
           bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;max-height:45vh;overflow:auto;margin:0;padding:12px 16px;background:#3a1030;color:#ffd9ec;font:12px/1.5 ui-monospace,monospace;z-index:99999;white-space:pre-wrap;border-top:3px solid #ff8fc0'
           bar.textContent = title + (detail ? '\n' + detail : '')
           if (!existing && document.body) document.body.appendChild(bar)
+          sendBootProbe({ event: 'pearcup:fallback-notice', status: 'fallback', title: title, detail: detail || '' })
         }
 
         function clearNotice () {
@@ -736,7 +812,7 @@
           if (appScriptLoaded()) {
             if (acceptHydratedAppUi()) return
             if (retryOnceBeforeNotice()) return
-            notice('PearCup app script loaded, but boot did not complete.', 'The static shell is visible; check the boot error banner or console for the first renderer issue.')
+            notice('PearCup app script loaded, but boot did not complete.', 'The static shell is visible, but P2P modules did not report ready. Check the boot error banner or console for the first renderer issue.')
             setTimeout(function () {
               if (appBooted()) clearNotice()
               else if (acceptHydratedAppUi()) clearNotice()
@@ -753,8 +829,8 @@
                 if (appBooted()) clearNotice()
                 else if (acceptHydratedAppUi()) clearNotice()
                 else if (visualShellReady()) {
-                  if (retryOnceBeforeNotice()) return
-                  notice('PearCup fallback loaded the visual shell, but the app did not finish booting.', 'Check the boot error banner or console for the first renderer issue.')
+                if (retryOnceBeforeNotice()) return
+                  notice('PearCup fallback loaded the visual shell, but the app did not finish booting.', 'P2P modules did not report ready. Check the boot error banner or console for the first renderer issue.')
                 }
                 else notice('PearCup fallback loaded scripts, but the app did not hydrate.', 'Check the boot error banner or console for the first renderer issue.')
               }, 1200)
@@ -765,34 +841,39 @@
             })
         }
 
+        function scheduleFallback () {
+          var started = Date.now()
+          function check () {
+            if (appBooted()) return
+            if (!appScriptLoaded() && document.readyState === 'loading' && Date.now() - started < 45000) {
+              setTimeout(check, 800)
+              return
+            }
+            runFallback()
+          }
+          setTimeout(check, 2200)
+        }
+
         root.addEventListener('error', function (event) {
-          if (!appBooted()) notice('PearCup renderer error.', event.error && event.error.stack ? event.error.stack : (event.message || String(event)))
+          if (!appBooted()) {
+            var message = event.error && event.error.stack ? event.error.stack : (event.message || String(event))
+            sendBootProbe({ event: 'pearcup:renderer-error', status: 'error', detail: message })
+            notice('PearCup renderer error.', message)
+          }
         })
         root.addEventListener('unhandledrejection', function (event) {
-          if (!appBooted()) notice('PearCup renderer promise error.', event.reason && event.reason.stack ? event.reason.stack : String(event.reason))
+          if (!appBooted()) {
+            var message = event.reason && event.reason.stack ? event.reason.stack : String(event.reason)
+            sendBootProbe({ event: 'pearcup:renderer-promise-error', status: 'error', detail: message })
+            notice('PearCup renderer promise error.', message)
+          }
         })
         root.addEventListener('pearcup:booted', clearNotice)
 
-        setTimeout(runFallback, 1600)
+        scheduleFallback()
       })()
     </script>
-    <script src="./core.js"></script>
-    <script src="./adapters.js"></script>
-    <script src="./qvac-referee.js"></script>
-    <script src="./tether-wdk-bridge.js"></script>
-    <script src="./runtime-settings.js"></script>
-    <script src="./runtime-config.js"></script>
-    <script src="./worker-sim.js"></script>
-    <script src="./worker-client.js"></script>
-    <script src="./worker-runtime.js"></script>
-    <script src="./settlement-receipts.js"></script>
-    <script src="./settlement-service.js"></script>
-    <script src="./transport-sim.js"></script>
-    <script src="./storage-sim.js"></script>
-    <script src="./app.js"></script>
-    <script src="./peer-net.js"></script>
-    <script src="./peer-match.js"></script>
-    <script src="./peer-lobby.js"></script>
-    <script src="./watch-sync.js"></script>
+    <!-- PearCup boot bundle loads ./peer-net.js, ./peer-match.js, ./peer-lobby.js, ./watch-sync.js, and ./app.js. -->
+    <script src="./pearcup-boot.js"></script>
   </body>
 </html>

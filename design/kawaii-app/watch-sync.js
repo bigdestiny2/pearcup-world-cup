@@ -4,11 +4,17 @@
 // The room topic is derived from the current match (home vs away), so two friends
 // watching the same live game land in the same room automatically — no code to
 // exchange. Chat lines and reaction emojis broadcast to every peer; presence is a
-// lightweight "here"/"bye" ping. Transport = BroadcastChannel today (same-origin
-// windows/tabs), hyperswarm in the Pear runtime (see peer-net.js).
+// lightweight "here"/"bye" ping. Transport = PearBrowser swarm.v1 for published
+// hyper:// apps, Pear Runtime hyperswarm, BroadcastChannel for local preview.
 (function attachPearCupWatchSync (root) {
+  function markModule (status) {
+    if (root.document && root.document.documentElement) {
+      root.document.documentElement.dataset.pearcupWatchSyncModule = status
+    }
+  }
+
   const Net = root.PearCupPeerNet
-  if (!Net) { console.warn('PearCupPeerNet missing — watch sync disabled'); return }
+  if (!Net) { markModule('missing-peer-net'); console.warn('PearCupPeerNet missing — watch sync disabled'); return }
 
   const WS = { channel: null, topic: null, self: null, peers: new Map(), heartbeat: null }
   const $ = s => document.querySelector(s)
@@ -107,4 +113,5 @@
   }
 
   root.PearCupWatchSync = { ensureRoom, broadcastChat, react, bindReactionBar, updatePresence, leave, peerCount: () => WS.peers.size + 1 }
+  markModule('ready')
 })(typeof window !== 'undefined' ? window : globalThis)

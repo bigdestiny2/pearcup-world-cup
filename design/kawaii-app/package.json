@@ -26,6 +26,7 @@
         "/package.json",
         "/index.html",
         "/styles.css",
+        "/pearcup-boot.js",
         "/core.js",
         "/adapters.js",
         "/qvac-referee.js",
