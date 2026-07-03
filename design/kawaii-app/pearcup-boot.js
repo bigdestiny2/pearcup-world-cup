@@ -7379,7 +7379,7 @@ function startMatch (player, joined) {
 }
 
 function leaveMatch () {
-  if (state.match && state.match.peer && window.PearCupPeerMatch) { PearCupPeerMatch.leave(); return }
+  if (state.match && state.match.peer && window.PearCupPeerMatch) { window.PearCupPeerMatch.leave(); return }
   state.match = null
   ensureShootout(true)
   persist()
@@ -7389,7 +7389,7 @@ function leaveMatch () {
 
 function restartShootout ({ blockActiveStake = false, message = 'New penalty shootout — pick your corners!' } = {}) {
   // Peer match: starting over mid-room would desync the two clients, so leave cleanly.
-  if (state.match && state.match.peer && window.PearCupPeerMatch) { PearCupPeerMatch.leave(); return false }
+  if (state.match && state.match.peer && window.PearCupPeerMatch) { window.PearCupPeerMatch.leave(); return false }
   const stake = state.match && state.match.stake || 0
   const so = ensureShootout()
   if (stake > 0 && blockActiveStake && so.phase !== 'over') {
@@ -7415,7 +7415,7 @@ async function renderGames () {
   if (state.match && state.match.peer && window.PearCupPeerMatch) {
     const arena0 = document.querySelector('#games .game-arena')
     if (arena0) arena0.classList.remove('is-lobby')
-    if (so.phase !== 'over') PearCupPeerMatch.render()
+    if (so.phase !== 'over') window.PearCupPeerMatch.render()
     return null
   }
   const arena = document.querySelector('#games .game-arena')

@@ -22,6 +22,18 @@ const deepLinkSource = [
 
 const p2pGuardSource = sliceFunctionBlock('assertP2PModulesReady', 'boot')
 
+function bareControllerCallLines (source, globalName, methods) {
+  const methodPattern = methods.map(method => method.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
+  const callPattern = new RegExp(`(^|[^\\w.])${globalName}\\.(${methodPattern})\\s*\\(`)
+  return source.split('\n').map((line, index) => {
+    const withoutStrings = line
+      .replace(/(['"`])(?:\\.|(?!\1).)*\1/g, '')
+      .replace(/\/\/.*$/, '')
+    return { line: index + 1, source: line, withoutStrings }
+  }).filter(entry => callPattern.test(entry.withoutStrings) && !entry.withoutStrings.includes(`window.${globalName}.`))
+    .map(entry => `${entry.line}: ${entry.source.trim()}`)
+}
+
 function createHarness ({ search = '?join=Room-42!!', inputValue = 'guest_beta ', peerMatch } = {}) {
   const calls = {
     joins: [],
@@ -157,6 +169,16 @@ test('renderGameLobby friend buttons use the window-scoped peer controller', () 
   assert.doesNotMatch(appSource, /window\.PearCupLobby\) \{ PearCupLobby\./)
   assert.doesNotMatch(appSource, /window\.PearCupWatchSync\) PearCupWatchSync\./)
   assert.doesNotMatch(appSource, /window\.PearCupWatchSync\) \{ PearCupWatchSync\./)
+})
+
+test('hydrated app does not make executable bare P2P controller calls', () => {
+  const leaks = [
+    ...bareControllerCallLines(appSource, 'PearCupPeerMatch', ['host', 'join', 'promptJoin', 'onZone', 'isActive', 'leave', 'render', 'reset']),
+    ...bareControllerCallLines(appSource, 'PearCupPeerNet', ['digest', 'createChannel', 'newPeerId', 'topicFor']),
+    ...bareControllerCallLines(appSource, 'PearCupLobby', ['join', 'renderList']),
+    ...bareControllerCallLines(appSource, 'PearCupWatchSync', ['ensureRoom', 'bindReactionBar', 'updatePresence', 'broadcastChat'])
+  ]
+  assert.deepEqual(leaks, [])
 })
 
 test('assertP2PModulesReady marks the app ready only when every P2P module is attached', () => {

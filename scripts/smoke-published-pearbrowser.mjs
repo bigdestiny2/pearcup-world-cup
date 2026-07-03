@@ -111,6 +111,7 @@ function checkBootLoader (bootLoader) {
   if (!bootLoader.includes('runRuntimePeerHandshakeSelfTest') || !bootLoader.includes('pearcupRuntimeSelfTestGuest')) {
     errors.push('published pearcup-boot.js does not include the hidden guest invite handshake self-test')
   }
+  checkNoBareP2PControllerCalls(bootLoader, 'published pearcup-boot.js')
 }
 
 function checkManifest (manifest) {
@@ -170,7 +171,32 @@ function checkApp (app) {
   ]) {
     if (pattern.test(app)) errors.push(message)
   }
+  checkNoBareP2PControllerCalls(app, 'published app.js')
   if (/\bItaly\b/.test(app)) errors.push('published app.js must not include Italy as a current competition team')
+}
+
+function checkNoBareP2PControllerCalls (source, label) {
+  for (const [globalName, methods] of [
+    ['PearCupPeerMatch', ['host', 'join', 'promptJoin', 'onZone', 'isActive', 'leave', 'render', 'reset']],
+    ['PearCupPeerNet', ['digest', 'createChannel', 'newPeerId', 'topicFor']],
+    ['PearCupLobby', ['join', 'renderList']],
+    ['PearCupWatchSync', ['ensureRoom', 'bindReactionBar', 'updatePresence', 'broadcastChat']]
+  ]) {
+    for (const leak of bareControllerCallLines(source, globalName, methods)) {
+      errors.push(`${label} makes an executable bare ${globalName} call at line ${leak.line}: ${leak.source.trim()}`)
+    }
+  }
+}
+
+function bareControllerCallLines (source, globalName, methods) {
+  const methodPattern = methods.map(method => method.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
+  const callPattern = new RegExp(`(^|[^\\w.])${globalName}\\.(${methodPattern})\\s*\\(`)
+  return source.split('\n').map((line, index) => {
+    const withoutStrings = line
+      .replace(/(['"`])(?:\\.|(?!\1).)*\1/g, '')
+      .replace(/\/\/.*$/, '')
+    return { line: index + 1, source: line, withoutStrings }
+  }).filter(entry => callPattern.test(entry.withoutStrings) && !entry.withoutStrings.includes(`window.${globalName}.`))
 }
 
 function checkPeerNet (peerNet) {
