@@ -174,8 +174,8 @@ function validateApprovedPublishWrapper () {
   if (!wrapper.includes('exact bundle published-gateway preflight - passed')) {
     errors.push('approved publish wrapper must clearly report the exact bundle published-gateway preflight')
   }
-  if (!wrapper.includes('publishedBrowserProofCommand') || !wrapper.includes('local published browser proof command')) {
-    errors.push('approved publish wrapper must surface the local published browser proof command from the receipt')
+  if (!wrapper.includes('publishedLinkProofCommand') || !wrapper.includes('local published-link proof command')) {
+    errors.push('approved publish wrapper must surface the local published-link proof command from the receipt')
   }
   if (!wrapper.includes('writePublishResultReceipt') || !wrapper.includes('pearcup-publish-result.json')) {
     errors.push('approved publish wrapper must write a pearcup-publish-result.json after verified publish')
@@ -237,9 +237,9 @@ function validateVerification (verification) {
   const localPublishedGatewayRequirements = Array.isArray(localPublishedGatewayContract.requires)
     ? localPublishedGatewayContract.requires
     : []
-  const localPublishedBrowserContract = verification.localPublishedBrowserContract || {}
-  const localPublishedBrowserRequirements = Array.isArray(localPublishedBrowserContract.requires)
-    ? localPublishedBrowserContract.requires
+  const localPublishedLinkContract = verification.localPublishedLinkContract || {}
+  const localPublishedLinkRequirements = Array.isArray(localPublishedLinkContract.requires)
+    ? localPublishedLinkContract.requires
     : []
   if (!sourceChecks.includes('node scripts/check-kawaii-runtime.mjs')) {
     errors.push('receipt verification must include Kawaii runtime source check before build')
@@ -366,28 +366,25 @@ function validateVerification (verification) {
       errors.push(`receipt localPublishedGatewayContract must require ${required}`)
     }
   }
-  if (localPublishedBrowserContract.command !== 'npm run serve:pearbrowser-published -- --receipt <receipt> --port 4191') {
-    errors.push('receipt localPublishedBrowserContract must document the exact-receipt browser server command')
+  if (localPublishedLinkContract.command !== 'npm run serve:pearbrowser-published -- --receipt <receipt> --port 4191') {
+    errors.push('receipt localPublishedLinkContract must document the exact-receipt published-link server command')
   }
-  if (!String(localPublishedBrowserContract.exactReceiptCommand || '').includes('serve:pearbrowser-published') ||
-    !String(localPublishedBrowserContract.exactReceiptCommand || '').includes('--port 4191')) {
-    errors.push('receipt localPublishedBrowserContract must include an exact receipt command')
+  if (!String(localPublishedLinkContract.exactReceiptCommand || '').includes('serve:pearbrowser-published') ||
+    !String(localPublishedLinkContract.exactReceiptCommand || '').includes('--port 4191')) {
+    errors.push('receipt localPublishedLinkContract must include an exact receipt command')
   }
   for (const required of [
-    'exact receipt bundle boots at /app/<64-hex-drive>/',
+    'exact receipt bundle is served at /app/<64-hex-drive>/',
     'local proof server uses a browser-safe fetch port',
-    'browser reports bootReady=p2p',
-    'browser reports p2pModules=ready',
-    'Games route activates from published-style URL',
-    'generated avatar images render in Games',
-    'Invite a friend opens a valid room code',
-    'published-style invite link is hyper://<drive>/?join=<code>',
-    'published-style invite link does not leak localhost',
-    '?join=<code> deep link opens Games join flow',
-    'browser console has no renderer errors or warnings'
+    'published-link smoke fetches root and ?join= deep-link HTML',
+    'published-link smoke verifies app/boot/P2P/assets contract before publish',
+    'published-link smoke verifies generated avatar and game art assets',
+    'published-link smoke rejects preview-only paths',
+    'published-link smoke verifies hyper invite code paths do not leak localhost',
+    'live browser runtime proof remains the remote friend gate'
   ]) {
-    if (!localPublishedBrowserRequirements.includes(required)) {
-      errors.push(`receipt localPublishedBrowserContract must require ${required}`)
+    if (!localPublishedLinkRequirements.includes(required)) {
+      errors.push(`receipt localPublishedLinkContract must require ${required}`)
     }
   }
   validateSmokeContracts()

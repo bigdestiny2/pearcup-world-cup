@@ -32,7 +32,7 @@ if (errors.length > 0) {
 const publishArgs = receipt.publishHandoff.args
 const publishCommand = `node ${publishArgs.map(arg => JSON.stringify(arg)).join(' ')}`
 const postPublishSmokeCommand = `npm ${postPublishSmokeArgs('hyper://<drive-key>/').map(arg => JSON.stringify(arg)).join(' ')}`
-const localPublishedBrowserCommand = publishedBrowserProofCommand(receipt)
+const localPublishedLinkProofCommand = publishedLinkProofCommand(receipt)
 const publishResultPath = publishResultReceiptPath(receipt, receiptPath)
 
 if (!args.publish) {
@@ -43,9 +43,9 @@ if (!args.publish) {
   console.log('publish command, add --publish to run after explicit approval:')
   console.log(publishCommand)
   console.log('exact bundle published-gateway preflight - passed')
-  if (localPublishedBrowserCommand) {
-    console.log('local published browser proof command:')
-    console.log(localPublishedBrowserCommand)
+  if (localPublishedLinkProofCommand) {
+    console.log('local published-link proof command:')
+    console.log(localPublishedLinkProofCommand)
   }
   console.log('post-publish smoke command that will run after publish:')
   console.log(postPublishSmokeCommand)
@@ -58,9 +58,9 @@ console.log('PearCup approved publish starting')
 console.log(`receipt - ${receiptPath}`)
 console.log(`bundle sha256 - ${receipt.bundleSha256}`)
 console.log('exact bundle published-gateway preflight - passed')
-if (localPublishedBrowserCommand) {
-  console.log('local published browser proof command:')
-  console.log(localPublishedBrowserCommand)
+if (localPublishedLinkProofCommand) {
+  console.log('local published-link proof command:')
+  console.log(localPublishedLinkProofCommand)
 }
 console.log('post-publish smoke preflight - passed')
 console.log(`publish result receipt will be written to: ${publishResultPath}`)
@@ -102,7 +102,7 @@ writePublishResultReceipt({
   publishedUrl,
   publishOutput,
   smokeOutput: [smokeResult.stdout, smokeResult.stderr].filter(Boolean).join('\n'),
-  localPublishedBrowserCommand
+  localPublishedLinkProofCommand
 })
 
 console.log('PearCup approved publish verified')
@@ -224,7 +224,7 @@ function writePublishResultReceipt ({
   publishedUrl,
   publishOutput,
   smokeOutput,
-  localPublishedBrowserCommand
+  localPublishedLinkProofCommand
 }) {
   const driveKey = (String(publishedUrl).match(/^hyper:\/\/([0-9a-f]{64})\//i) || [])[1] || ''
   const postPublishCommand = `npm ${postPublishSmokeArgs(publishedUrl).map(arg => JSON.stringify(arg)).join(' ')}`
@@ -239,7 +239,7 @@ function writePublishResultReceipt ({
     driveKey,
     publishCommand,
     postPublishSmokeCommand: postPublishCommand,
-    localPublishedBrowserCommand,
+    localPublishedLinkProofCommand,
     friendTest: {
       status: 'pending-remote-friend',
       recordCommand: `npm run record:friend-test -- --publish-result ${publishResultPath} --sha ${receipt.bundleSha256 || '<bundle-sha256>'} --friend "<friend-name>" --friend-opened --reached-games --joined-p2p --started-penalty-clash --notes "<what you observed>"`,
@@ -264,10 +264,10 @@ function trimForReceipt (text) {
   return String(text || '').trim().slice(-4000)
 }
 
-function publishedBrowserProofCommand (receipt) {
+function publishedLinkProofCommand (receipt) {
   const contract = receipt &&
     receipt.verification &&
-    receipt.verification.localPublishedBrowserContract
+    (receipt.verification.localPublishedLinkContract || receipt.verification.localPublishedBrowserContract)
   return contract && contract.exactReceiptCommand
     ? String(contract.exactReceiptCommand)
     : ''

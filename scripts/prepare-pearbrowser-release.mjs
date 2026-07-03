@@ -146,21 +146,18 @@ const receipt = {
         'published-style smoke verifies app/boot/P2P/assets contract before publish'
       ]
     },
-    localPublishedBrowserContract: {
+    localPublishedLinkContract: {
       command: 'npm run serve:pearbrowser-published -- --receipt <receipt> --port 4191',
       exactReceiptCommand: `npm run serve:pearbrowser-published -- --receipt ${receiptPath} --port 4191`,
       requires: [
-        'exact receipt bundle boots at /app/<64-hex-drive>/',
+        'exact receipt bundle is served at /app/<64-hex-drive>/',
         'local proof server uses a browser-safe fetch port',
-        'browser reports bootReady=p2p',
-        'browser reports p2pModules=ready',
-        'Games route activates from published-style URL',
-        'generated avatar images render in Games',
-        'Invite a friend opens a valid room code',
-        'published-style invite link is hyper://<drive>/?join=<code>',
-        'published-style invite link does not leak localhost',
-        '?join=<code> deep link opens Games join flow',
-        'browser console has no renderer errors or warnings'
+        'published-link smoke fetches root and ?join= deep-link HTML',
+        'published-link smoke verifies app/boot/P2P/assets contract before publish',
+        'published-link smoke verifies generated avatar and game art assets',
+        'published-link smoke rejects preview-only paths',
+        'published-link smoke verifies hyper invite code paths do not leak localhost',
+        'live browser runtime proof remains the remote friend gate'
       ]
     }
   },

@@ -14,7 +14,7 @@ const errors = []
 let receiptPath = ''
 let bundlePath = ''
 let bundleSha256 = ''
-let publishedBrowserCommand = ''
+let publishedLinkProofCommand = ''
 
 if (args.full) runNpm('Full project check', ['run', 'check'])
 
@@ -27,7 +27,7 @@ if (errors.length === 0) {
     if (!receiptPath) errors.push('PearBrowser publish handoff did not print a receipt path')
     if (!bundlePath) errors.push('PearBrowser publish handoff did not print a bundle path')
     if (!bundleSha256) errors.push('PearBrowser publish handoff did not print a bundle SHA-256')
-    if (receiptPath) publishedBrowserCommand = readPublishedBrowserCommand(receiptPath)
+    if (receiptPath) publishedLinkProofCommand = readPublishedLinkProofCommand(receiptPath)
   }
 }
 
@@ -67,7 +67,7 @@ if (errors.length > 0) {
   if (receiptPath) console.log(`receipt - ${receiptPath}`)
   if (bundlePath) console.log(`bundle - ${bundlePath}`)
   if (bundleSha256) console.log(`bundle sha256 - ${bundleSha256}`)
-  if (publishedBrowserCommand) console.log(`published browser proof command - ${publishedBrowserCommand}`)
+  if (publishedLinkProofCommand) console.log(`published link proof command - ${publishedLinkProofCommand}`)
   if (args.url) console.log(`checked preview URL - ${args.url}`)
   for (const note of notes) console.log(`note - ${note}`)
   console.log('manual gate - publish/pin only after explicit approval of this exact bundle SHA')
@@ -189,17 +189,18 @@ function extractLineValue (text, pattern) {
   return match ? match[1].trim() : ''
 }
 
-function readPublishedBrowserCommand (filePath) {
+function readPublishedLinkProofCommand (filePath) {
   try {
     const receipt = JSON.parse(readFileSync(filePath, 'utf8'))
+    const verification = receipt && receipt.verification
+    const contract = verification && (verification.localPublishedLinkContract || verification.localPublishedBrowserContract)
     return receipt &&
-      receipt.verification &&
-      receipt.verification.localPublishedBrowserContract &&
-      receipt.verification.localPublishedBrowserContract.exactReceiptCommand
-      ? String(receipt.verification.localPublishedBrowserContract.exactReceiptCommand)
+      contract &&
+      contract.exactReceiptCommand
+      ? String(contract.exactReceiptCommand)
       : ''
   } catch (err) {
-    errors.push(`could not read published browser proof command from receipt: ${err.message}`)
+    errors.push(`could not read published link proof command from receipt: ${err.message}`)
     return ''
   }
 }

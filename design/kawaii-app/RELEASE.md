@@ -140,8 +140,10 @@ node scripts/check-pearbrowser-publish-handoff.mjs --receipt /path/to/pearcup-re
 `check:pear-seamless:preview` is the top-level release gate: it prepares a fresh
 candidate, validates the approved publish dry-run, runs the release-scope audit,
 checks the live `4186` preview, starts the exact receipt-backed local
-`/app/<drive>/` published proof server, smokes that published-link shape, and now
-hard-fails on a dirty worktree unless `--allow-dirty` is passed for an exploratory run.
+`/app/<drive>/` published proof server, smokes that published-link fetch/static
+contract, and now hard-fails on a dirty worktree unless `--allow-dirty` is passed
+for an exploratory run. The live browser/runtime proof still comes from the
+post-publish remote friend test.
 
 The lower-level handoff check recomputes every file hash from the receipt, reruns the Hyper payload smoke,
 checks the manifest/asset/P2P contract, verifies that the receipt includes the
