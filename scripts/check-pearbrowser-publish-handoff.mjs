@@ -398,6 +398,7 @@ function validateSmokeContracts () {
   const publishedSmokePath = join(root, 'scripts', 'smoke-published-pearbrowser.mjs')
   const publishedServerPath = join(root, 'scripts', 'serve-pearbrowser-published-local.mjs')
   const friendReadyPath = join(root, 'scripts', 'check-friend-ready.mjs')
+  const friendResultPath = join(root, 'scripts', 'record-friend-test-result.mjs')
   const seamlessPath = join(root, 'scripts', 'check-pear-seamless.mjs')
   for (const [filePath, label] of [
     [runtimeSmokePath, 'actual Pear runtime smoke'],
@@ -406,6 +407,7 @@ function validateSmokeContracts () {
     [publishedSmokePath, 'published PearBrowser smoke'],
     [publishedServerPath, 'local published browser server'],
     [friendReadyPath, 'friend-ready preview gate'],
+    [friendResultPath, 'friend-test result recorder'],
     [seamlessPath, 'seamless readiness gate']
   ]) {
     if (!existsSync(filePath)) errors.push(`${label} script is missing`)
@@ -492,6 +494,18 @@ function validateSmokeContracts () {
       'generated avatar p-aria'
     ]) {
       if (!friendReady.includes(required)) errors.push(`friend-ready preview gate is missing contract text: ${required}`)
+    }
+  }
+  if (existsSync(friendResultPath)) {
+    const friendResult = readFileSync(friendResultPath, 'utf8')
+    for (const required of [
+      'localPublishedLinkProofCommand',
+      'deprecated localPublishedBrowserCommand',
+      'remote friend opens the final PearBrowser link',
+      'host and friend complete a live P2P invite join',
+      'host and friend can start Penalty Clash from the joined room'
+    ]) {
+      if (!friendResult.includes(required)) errors.push(`friend-test result recorder is missing contract text: ${required}`)
     }
   }
   if (existsSync(seamlessPath)) {

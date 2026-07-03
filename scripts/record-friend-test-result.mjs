@@ -76,6 +76,25 @@ function validatePublishResult (result) {
   if (!result.friendTest || result.friendTest.status !== 'pending-remote-friend') {
     errors.push('publish result must still be pending remote friend verification')
   }
+  if (!String(result.localPublishedLinkProofCommand || '').includes('serve:pearbrowser-published')) {
+    errors.push('publish result must include the local published-link proof command')
+  }
+  if (result.localPublishedBrowserCommand) {
+    errors.push('publish result must use localPublishedLinkProofCommand, not deprecated localPublishedBrowserCommand')
+  }
+  const friendRequires = result.friendTest && Array.isArray(result.friendTest.requires)
+    ? result.friendTest.requires
+    : []
+  for (const required of [
+    'remote friend opens the final PearBrowser link',
+    'remote friend reaches Games without fallback or boot error',
+    'host and friend complete a live P2P invite join',
+    'host and friend can start Penalty Clash from the joined room'
+  ]) {
+    if (!friendRequires.includes(required)) {
+      errors.push(`publish result friendTest must require: ${required}`)
+    }
+  }
   const evidence = result.evidence || {}
   if (evidence.exactBundlePublishedGatewayPreflight !== true) {
     errors.push('publish result must prove exact bundle published-gateway preflight passed')

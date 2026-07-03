@@ -93,6 +93,73 @@ test('refuses publish-result receipts whose driveKey does not match the hyper UR
   assert.match(result.stderr, /driveKey must match/)
 })
 
+test('refuses publish-result receipts without the local published-link proof command', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-no-link-proof-'))
+  const publishResult = writePublishResult(dir, {
+    localPublishedLinkProofCommand: ''
+  })
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /local published-link proof command/)
+})
+
+test('refuses deprecated local published browser proof receipts', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-deprecated-browser-proof-'))
+  const publishResult = writePublishResult(dir, {
+    localPublishedLinkProofCommand: undefined,
+    localPublishedBrowserCommand: 'npm run serve:pearbrowser-published -- --receipt old.json --port 4191'
+  })
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /deprecated localPublishedBrowserCommand/)
+})
+
+test('refuses publish-result receipts without the full remote friend checklist', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-missing-checklist-'))
+  const publishResult = writePublishResult(dir, {
+    friendTest: {
+      status: 'pending-remote-friend',
+      requires: ['remote friend opens the final PearBrowser link']
+    }
+  })
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /host and friend complete a live P2P invite join/)
+})
+
 test('failed friend-test records still require notes but do not require a SHA', () => {
   const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-failed-'))
   const publishResult = writePublishResult(dir)
@@ -120,7 +187,16 @@ function writePublishResult (dir, overrides = {}) {
     publishedUrl: `hyper://${driveKey}/`,
     driveKey,
     bundleSha256,
-    friendTest: { status: 'pending-remote-friend' },
+    localPublishedLinkProofCommand: 'npm run serve:pearbrowser-published -- --receipt release.json --port 4191',
+    friendTest: {
+      status: 'pending-remote-friend',
+      requires: [
+        'remote friend opens the final PearBrowser link',
+        'remote friend reaches Games without fallback or boot error',
+        'host and friend complete a live P2P invite join',
+        'host and friend can start Penalty Clash from the joined room'
+      ]
+    },
     evidence: {
       exactBundlePublishedGatewayPreflight: true,
       postPublishSmokePassed: true
