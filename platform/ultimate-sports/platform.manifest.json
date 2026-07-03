@@ -41,6 +41,7 @@
       "createExperience",
       "createTournamentLobby",
       "createTournamentExperience",
+      "createTournamentShell",
       "createAssetGenerationPlan",
       "createSurface",
       "joinTopic",

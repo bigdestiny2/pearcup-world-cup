@@ -363,6 +363,14 @@ function createUltimateSportsPlatform ({
     return modules.tournamentExperience.createTournamentExperience(input)
   }
 
+  function createTournamentShell (input = {}) {
+    return modules.tournamentExperience.createTournamentShell({
+      ...input,
+      view: input.view || runtime.view(),
+      userId: input.userId || peerId
+    })
+  }
+
   function createAssetGenerationPlan (input = {}) {
     return modules.tournamentExperience.createAssetGenerationPlan(input)
   }
@@ -477,6 +485,7 @@ function createUltimateSportsPlatform ({
     createExperience,
     createTournamentLobby,
     createTournamentExperience,
+    createTournamentShell,
     createAssetGenerationPlan,
     createSurface,
     joinTopic,

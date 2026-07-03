@@ -31,7 +31,8 @@ PearCup build exactly as-is while these v2 engines evolve beside it.
 - `src/transport-engine.js`: deterministic P2P topic naming, publish, pull,
   sync, and topic-root comparison for replay logs.
 - `src/tournament-experience-engine.js`: server-lobby style tournament
-  selection, custom GUI bundles, API plans, and asset-pack briefs per event fit.
+  selection, renderable custom GUI shells, API plans, and asset-pack briefs per
+  event fit.
 - `src/platform.js`: stable product-facing facade for runtime, transport, and
   scenario workflows.
 - `src/policy-engine.js`: facade command policy for demo, sponsor-prize, and

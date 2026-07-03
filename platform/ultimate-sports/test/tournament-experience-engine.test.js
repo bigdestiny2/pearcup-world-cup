@@ -45,9 +45,52 @@ test('tournament lobby selects one custom GUI bundle across multiple active spor
   assert.equal(lobby.selectedExperience.assetPack.requiredAssets.length, tournamentExperience.REQUIRED_ASSET_TYPES.length)
 })
 
+test('tournament shell turns selected server into renderable routes, slots, dock, and asset queue', () => {
+  const shellState = tournamentExperience.createTournamentShell({
+    selectedTournamentId: 'march-2027',
+    activeTournaments: [
+      { tournamentId: 'wc-2030', fitId: 'world-cup', title: 'World Cup 2030', status: 'live', playerCount: 128, roomCount: 12 },
+      { tournamentId: 'march-2027', fitId: 'march-madness', title: 'March 2027', status: 'live', playerCount: 64, roomCount: 8 }
+    ]
+  })
+  const shell = shellState.shell
+
+  assert.equal(shellState.selectedExperience.fitId, 'march-madness')
+  assert.equal(shell.shellId, 'large-basketball-bracket-shell')
+  assert.equal(shell.route, '/tournaments/march-2027')
+  assert.equal(shell.serverRail.filter(server => server.mode === 'active').length, 2)
+  assert.equal(shell.serverRail.some(server => server.selected && server.tournamentId === 'march-2027'), true)
+  assert.deepEqual(
+    new Set(shell.routeMap.map(route => route.surfaceId)),
+    new Set(['lobby', 'overview', 'picks', 'pools', 'watch', 'games', 'results', 'wallet'])
+  )
+  assert.equal(shell.screenSlots.some(slot => slot.slotId === 'watch-room' && slot.bindings.includes('miniGameDock')), true)
+  assert.equal(shell.poolTabs.some(tab => tab.variantId === 'upset-bounty'), true)
+  assert.equal(shell.miniGameDock.some(item => item.gameType === 'peer-mini-fantasy'), true)
+  assert.equal(shell.apiConnections.some(connection => connection.adapterId === 'seed-lines'), true)
+  assert.equal(shell.assetQueue.length, tournamentExperience.REQUIRED_ASSET_TYPES.length)
+  assert.equal(shell.assetQueue.every(asset => asset.bindingTarget && asset.prompt && asset.acceptance), true)
+})
+
+test('tournament shell handles empty lobby and catalog template preview states', () => {
+  const emptyShell = tournamentExperience.createTournamentShell()
+  const previewShell = tournamentExperience.createTournamentShell({ selectedFitId: 'awards-prediction-pools' })
+
+  assert.equal(emptyShell.lobby.state, 'empty')
+  assert.equal(emptyShell.selectedExperience, null)
+  assert.equal(emptyShell.shell.shellId, 'tournament-lobby-empty-shell')
+  assert.equal(emptyShell.shell.header.primaryAction, 'browse-catalog')
+  assert.equal(previewShell.lobby.state, 'empty')
+  assert.equal(previewShell.selectedExperience.fitId, 'awards-prediction-pools')
+  assert.equal(previewShell.shell.shellId, 'awards-card-shell')
+  assert.equal(previewShell.shell.header.primaryAction, 'create-tournament')
+  assert.equal(previewShell.shell.screenSlots.some(slot => slot.component === 'category-card-picker'), true)
+})
+
 test('every catalog fit has a managed GUI, API plan, pools, mini-games, and assets', () => {
   catalog.listEventFits().forEach(fit => {
     const experience = tournamentExperience.createTournamentExperience({ fitId: fit.fitId })
+    const shellState = tournamentExperience.createTournamentShell({ selectedFitId: fit.fitId })
     const assetTypes = new Set(experience.assetPack.requiredAssets.map(asset => asset.assetType))
 
     assert.equal(experience.gui.shellId.length > 0, true, `${fit.fitId} missing shell`)
@@ -57,8 +100,12 @@ test('every catalog fit has a managed GUI, API plan, pools, mini-games, and asse
     assert.deepEqual(experience.miniGameDock.gameTypes, fit.recommendedMiniGames)
     assert.equal(experience.apiPlan.adapters.length > 0, true, `${fit.fitId} missing API adapters`)
     assert.equal(experience.management.route, `/tournaments/${fit.fitId}`)
+    assert.equal(shellState.shell.poolTabs.length, fit.recommendedVariants.length)
+    assert.equal(shellState.shell.miniGameDock.length, fit.recommendedMiniGames.length)
+    assert.equal(shellState.shell.apiConnections.length, experience.apiPlan.adapters.length)
     tournamentExperience.REQUIRED_ASSET_TYPES.forEach(assetType => {
       assert.equal(assetTypes.has(assetType), true, `${fit.fitId} missing ${assetType}`)
+      assert.equal(shellState.shell.assetQueue.some(asset => asset.assetType === assetType), true, `${fit.fitId} shell missing ${assetType}`)
     })
   })
 })
@@ -80,10 +127,15 @@ test('facade exposes tournament lobby and asset plan helpers', () => {
   const lobby = app.createTournamentLobby({
     activeTournaments: [{ tournamentId: 'local-cup', fitId: 'local-leagues', status: 'live' }]
   })
+  const shellState = app.createTournamentShell({
+    activeTournaments: [{ tournamentId: 'local-cup', fitId: 'local-leagues', status: 'live' }]
+  })
   const assetPlan = app.createAssetGenerationPlan({ fitId: 'local-leagues' })
 
   assert.equal(lobby.selectedExperience.fitId, 'local-leagues')
   assert.equal(lobby.selectedExperience.gui.shellId, 'local-flex-league-shell')
+  assert.equal(shellState.shell.shellId, 'local-flex-league-shell')
+  assert.equal(shellState.shell.assetQueue.some(asset => asset.sourceType === 'host-upload-or-generated'), true)
   assert.equal(assetPlan.packs[0].fitId, 'local-leagues')
 })
 
@@ -91,7 +143,7 @@ test('tournament lobby and asset plan doc names every managed event fit', () => 
   catalog.listEventFits().forEach(fit => {
     assert.equal(planDoc.includes(`### \`${fit.fitId}\``), true, `${fit.fitId} missing from lobby asset plan`)
   })
-  ;['createTournamentLobby', 'createTournamentExperience', 'createAssetGenerationPlan'].forEach(methodName => {
+  ;['createTournamentLobby', 'createTournamentExperience', 'createTournamentShell', 'createAssetGenerationPlan'].forEach(methodName => {
     assert.equal(planDoc.includes(methodName), true, `${methodName} missing from implementation contract`)
   })
   tournamentExperience.REQUIRED_ASSET_TYPES.forEach(assetType => {

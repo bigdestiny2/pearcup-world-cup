@@ -253,18 +253,35 @@ The future UI should use these product-facing methods:
 - `createTournamentLobby({ activeTournaments, selectedTournamentId,
   selectedFitId })`
 - `createTournamentExperience({ fitId, tournamentId, title, status })`
+- `createTournamentShell({ activeTournaments, selectedTournamentId,
+  selectedFitId })`
 - `createAssetGenerationPlan({ fitId })`
 
 The app shell should not hard-code tournament screens. It should:
 
 1. Render the lobby from `createTournamentLobby`.
-2. Route selected server cards to `selectedExperience.management.route`.
-3. Load `selectedExperience.gui.shellId`.
-4. Bind surface modules from `selectedExperience.gui.surfaceBindings`.
-5. Show pools from `selectedExperience.competition.poolVariants`.
-6. Show mini-games from `selectedExperience.miniGameDock.gameTypes`.
-7. Configure API clients from `selectedExperience.apiPlan.adapters`.
-8. Load generated or licensed art from `selectedExperience.assetPack`.
+2. Ask `createTournamentShell` for the selected server's renderable shell.
+3. Route selected server cards to `selectedExperience.management.route`.
+4. Load `selectedExperience.gui.shellId`.
+5. Bind surface modules from `selectedExperience.gui.surfaceBindings`.
+6. Show pools from `selectedExperience.competition.poolVariants`.
+7. Show mini-games from `selectedExperience.miniGameDock.gameTypes`.
+8. Configure API clients from `selectedExperience.apiPlan.adapters`.
+9. Load generated or licensed art from `selectedExperience.assetPack`.
+
+`createTournamentShell` is the frontend handoff object. It returns:
+
+- `serverRail`: active and catalog servers with selected state and actions.
+- `routeMap`: lobby, overview, picks, pools, watch, games, results, and wallet
+  routes for the selected tournament.
+- `screenSlots`: component slots for overview, setup, picks, pools, watch,
+  games, results, and wallet.
+- `apiConnections`: adapter cards with mode, readiness, topics, and fallback.
+- `poolTabs`: variant tabs for the selected tournament.
+- `miniGameDock`: launch/challenge items for all enabled mini-games.
+- `assetQueue`: concrete asset build tasks with prompt, source type,
+  acceptance gate, and UI binding target.
+- `theme`: palette, density, motion, surface treatment, and asset pack ID.
 
 ## Acceptance Criteria
 

@@ -310,6 +310,27 @@ function createAssetGenerationPlan (input = {}) {
   }
 }
 
+function createTournamentShell (input = {}) {
+  const lobby = createTournamentLobby(input)
+  const selectedExperience = input.experience || lobby.selectedExperience || (input.fitId
+    ? createTournamentExperience(input)
+    : null)
+  const shell = selectedExperience
+    ? shellForExperience({
+        lobby,
+        experience: selectedExperience,
+        userId: input.userId || 'local-peer'
+      })
+    : emptyLobbyShell(lobby)
+
+  return {
+    shellVersion: 'ultimate-sports-tournament-shell-v1',
+    lobby,
+    selectedExperience,
+    shell
+  }
+}
+
 function listExperienceProfiles () {
   return catalog.listEventFits().map(fit => getExperienceProfile(fit.fitId))
 }
@@ -465,6 +486,221 @@ function assetPackFor ({ fit, profile }) {
   }
 }
 
+function shellForExperience ({ lobby, experience, userId }) {
+  return {
+    route: experience.management.route,
+    shellId: experience.gui.shellId,
+    userId,
+    theme: themeTokensForExperience(experience),
+    serverRail: serverRailForLobby(lobby),
+    header: {
+      title: experience.title,
+      subtitle: experience.server.serverLabel,
+      status: experience.status,
+      badges: experience.server.badges.slice(),
+      primaryAction: experience.status === 'template' ? 'create-tournament' : 'enter-watch-room',
+      secondaryActions: ['open-picks', 'view-pools', 'invite-peers']
+    },
+    routeMap: routeMapForExperience(experience),
+    screenSlots: screenSlotsForExperience(experience),
+    apiConnections: apiConnectionsForExperience(experience),
+    competitionFormat: {
+      bracketStyle: experience.competition.bracketStyle,
+      templateKinds: experience.competition.templateKinds.slice(),
+      setupPanels: experience.competition.setupPanels.slice()
+    },
+    poolTabs: experience.competition.poolVariants.map((variantId, index) => ({
+      tabId: `pool:${variantId}`,
+      variantId,
+      selected: index === 0,
+      action: 'open-pool-workbench'
+    })),
+    miniGameDock: experience.miniGameDock.gameTypes.map((gameType, index) => ({
+      dockItemId: `mini-game:${gameType}`,
+      gameType,
+      promptExamples: experience.miniGameDock.promptLexicon.slice(0, 4),
+      placement: experience.miniGameDock.defaultPlacement,
+      priority: index + 1,
+      action: 'launch-or-challenge'
+    })),
+    assetQueue: assetQueueForExperience(experience),
+    personalization: experience.management.personalizationScopes.map(scope => ({
+      scope,
+      storageKey: `${experience.management.cacheNamespace}:${scope}`,
+      editable: true
+    }))
+  }
+}
+
+function emptyLobbyShell (lobby) {
+  return {
+    route: '/tournaments',
+    shellId: 'tournament-lobby-empty-shell',
+    userId: 'local-peer',
+    theme: {
+      themeId: 'catalog-lobby',
+      palette: ['lobby-charcoal', 'field-green', 'scoreboard-white', 'action-gold'],
+      density: 'browse',
+      motion: 'soft'
+    },
+    serverRail: serverRailForLobby(lobby),
+    header: {
+      title: 'Tournament Lobby',
+      subtitle: 'Choose a live tournament server or browse a template.',
+      status: lobby.state,
+      badges: ['catalog', 'no-active-server'],
+      primaryAction: 'browse-catalog',
+      secondaryActions: ['create-tournament', 'join-invite']
+    },
+    routeMap: [
+      routeItem('lobby', '/tournaments', 'Tournament Lobby', true),
+      routeItem('catalog', '/tournaments/catalog', 'Catalog', false)
+    ],
+    screenSlots: [
+      slot('server-browser', 'lobby', 'server-grid', ['serverRail', 'filters', 'emptyState']),
+      slot('catalog-preview', 'catalog', 'template-grid', ['catalogServers'])
+    ],
+    apiConnections: [],
+    competitionFormat: null,
+    poolTabs: [],
+    miniGameDock: [],
+    assetQueue: [],
+    personalization: []
+  }
+}
+
+function themeTokensForExperience (experience) {
+  return {
+    themeId: experience.assetPack.themeId,
+    palette: experience.assetPack.palette.slice(),
+    density: densityForLayout(experience.gui.layoutMode),
+    motion: experience.category === 'esports' ? 'snappy' : 'broadcast',
+    surfaceTreatment: experience.server.resultPolicy === 'host-entered' ? 'manual-review' : 'feed-backed',
+    assetPackId: experience.assetPack.packId
+  }
+}
+
+function densityForLayout (layoutMode) {
+  if (['region-tabs', 'series-board', 'map-series'].includes(layoutMode)) return 'dense'
+  if (['category-card', 'bout-list', 'flex-format'].includes(layoutMode)) return 'table'
+  return 'balanced'
+}
+
+function serverRailForLobby (lobby) {
+  const selectedServerId = lobby.selectedServerId
+  return lobby.activeServers.concat(lobby.catalogServers).map(server => ({
+    serverId: server.serverId,
+    tournamentId: server.tournamentId,
+    fitId: server.fitId,
+    title: server.title,
+    category: server.category,
+    mode: server.mode,
+    status: server.status,
+    selected: server.serverId === selectedServerId,
+    serverSkin: server.serverSkin,
+    action: server.active ? 'enter-server' : 'preview-template'
+  }))
+}
+
+function routeMapForExperience (experience) {
+  return experience.gui.primaryNavigation.map((surfaceId, index) => routeItem(
+    surfaceId,
+    `${experience.management.route}/${surfaceId === 'lobby' ? '' : surfaceId}`.replace(/\/$/, ''),
+    titleForRoute(surfaceId),
+    index === 1
+  ))
+}
+
+function routeItem (surfaceId, route, title, selected) {
+  return {
+    surfaceId,
+    route,
+    title,
+    selected
+  }
+}
+
+function titleForRoute (surfaceId) {
+  return surfaceId.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ')
+}
+
+function screenSlotsForExperience (experience) {
+  return [
+    slot('tournament-overview', 'overview', experience.gui.layoutMode, ['header', 'apiConnections', 'competitionFormat']),
+    slot('setup-workbench', 'setup', 'setup-tabs', experience.competition.setupPanels),
+    slot('pick-workbench', 'picks', pickSlotType(experience), ['poolTabs', 'bracketBoard', 'predictionCards']),
+    slot('pool-hub', 'pools', 'pool-tabs', experience.competition.poolVariants.map(variantId => `pool:${variantId}`)),
+    slot('watch-room', 'watch', 'live-room-stage', ['scoreboard', 'chat', 'challengeTray', 'miniGameDock']),
+    slot('games-dock', 'games', 'p2p-game-list', experience.miniGameDock.gameTypes.map(gameType => `mini-game:${gameType}`)),
+    slot('results-review', 'results', experience.server.resultPolicy === 'host-entered' ? 'manual-result-review' : 'feed-result-review', ['resultSource', 'settlementReceipts', 'disputes']),
+    slot('wallet-status', 'wallet', 'wallet-holds-receipts', ['holds', 'rewards', 'readiness'])
+  ]
+}
+
+function slot (slotId, surfaceId, component, bindings) {
+  return {
+    slotId,
+    surfaceId,
+    component,
+    bindings: bindings.slice()
+  }
+}
+
+function pickSlotType (experience) {
+  if (experience.fitId === 'awards-prediction-pools') return 'category-card-picker'
+  if (experience.fitId === 'mma-boxing-fight-card') return 'bout-card-picker'
+  if (experience.fitId === 'march-madness') return 'region-bracket-picker'
+  if (experience.fitId === 'pro-playoffs') return 'series-picker'
+  if (experience.fitId === 'tennis-grand-slams') return 'player-draw-picker'
+  return 'bracket-and-card-picker'
+}
+
+function apiConnectionsForExperience (experience) {
+  return experience.apiPlan.adapters.map(adapterId => ({
+    adapterId,
+    mode: experience.apiPlan.mode,
+    status: experience.status === 'template' ? 'not-configured' : 'ready',
+    fallback: experience.apiPlan.fallback,
+    requiredTopics: experience.apiPlan.requiredTopics.slice()
+  }))
+}
+
+function assetQueueForExperience (experience) {
+  return experience.assetPack.requiredAssets.map((asset, index) => ({
+    assetId: `${experience.assetPack.packId}:${asset.assetType}`,
+    assetType: asset.assetType,
+    fitId: experience.fitId,
+    themeId: experience.assetPack.themeId,
+    sourceType: sourceTypeForAsset({ assetType: asset.assetType, experience }),
+    status: 'needed',
+    bindingTarget: bindingTargetForAsset(asset.assetType),
+    prompt: asset.prompt,
+    acceptance: asset.acceptance,
+    order: index + 1
+  }))
+}
+
+function sourceTypeForAsset ({ assetType, experience }) {
+  if (assetType === 'lobby-icon' || assetType === 'server-card-cover' || assetType === 'hero-backdrop') return 'generated'
+  if (assetType === 'mini-game-icon-set' || assetType === 'pool-card-accent' || assetType === 'empty-state-illustration') return 'generated-ui'
+  if (experience.category === 'creator' || experience.category === 'local') return 'host-upload-or-generated'
+  return 'generated-unlicensed'
+}
+
+function bindingTargetForAsset (assetType) {
+  return {
+    'lobby-icon': 'serverRail.icon',
+    'server-card-cover': 'serverRail.cover',
+    'hero-backdrop': 'header.backdrop',
+    'bracket-board-skin': 'picks.bracketBoard.skin',
+    'pool-card-accent': 'pools.cardAccent',
+    'mini-game-icon-set': 'watch.miniGameDock.icons',
+    'watch-room-stage': 'watch.stageBackdrop',
+    'result-share-card': 'results.shareCard',
+    'empty-state-illustration': 'lobby.emptyState'
+  }[assetType] || 'shell.asset'
+}
+
 function assetPromptFor ({ assetType, fit, profile }) {
   return `${fit.title} ${assetType.replace(/-/g, ' ')} for a P2P sports tournament app, ${profile.visualTone}, ${profile.palette.join(', ')} palette, readable mobile UI safe areas, no official logos unless licensed`
 }
@@ -511,6 +747,7 @@ module.exports = {
   REQUIRED_ASSET_TYPES,
   createTournamentLobby,
   createTournamentExperience,
+  createTournamentShell,
   createAssetGenerationPlan,
   listExperienceProfiles,
   getExperienceProfile,
