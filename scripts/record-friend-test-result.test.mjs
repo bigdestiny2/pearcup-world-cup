@@ -206,6 +206,73 @@ test('refuses publish-result receipts without the approved wrapper publish comma
   assert.match(result.stderr, /approvedPublishCommand wrapper/)
 })
 
+test('refuses publish-result receipts whose approved wrapper command targets another release receipt', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-approved-command-receipt-'))
+  const publishResult = writePublishResult(dir, {
+    approvedPublishCommand: `node "/repo/scripts/publish-approved-pearcup.mjs" --receipt "${join(dir, 'other-release-receipt.json')}" --sha ${bundleSha256} --publish`
+  })
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /approvedPublishCommand must target the source release receipt path/)
+})
+
+test('refuses publish-result receipts whose approved wrapper command targets another bundle SHA', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-approved-command-sha-'))
+  const publishResult = writePublishResult(dir, {
+    approvedPublishCommand: `node "/repo/scripts/publish-approved-pearcup.mjs" --receipt "${join(dir, 'pearcup-release-receipt.json')}" --sha ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff --publish`
+  })
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /approvedPublishCommand must target the publish result bundle SHA/)
+})
+
+test('refuses publish-result receipts whose approved command is the raw PearBrowser publisher', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-approved-command-raw-'))
+  const publishResult = writePublishResult(dir, {
+    approvedPublishCommand: `node "/repo/pearbrowser/scripts/publish-and-pin.js" "${join(dir, 'bundle')}" --name pearcup --sha ${bundleSha256} --receipt "${join(dir, 'pearcup-release-receipt.json')}" --publish`
+  })
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /approvedPublishCommand wrapper/)
+  assert.match(result.stderr, /not the raw PearBrowser publish script/)
+})
+
 test('refuses publish-result receipts whose source release receipt is missing', () => {
   const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-missing-release-receipt-'))
   const publishResult = writePublishResult(dir, {

@@ -159,6 +159,20 @@ function validateSourceReleaseReceiptBinding (result, resultPath, receipt, recei
   if (resolve(result.receipt || '') !== receiptPath) {
     errors.push('publish result receipt path must resolve to the loaded source release receipt')
   }
+  validateApprovedPublishCommandBinding(result, receiptPath)
+}
+
+function validateApprovedPublishCommandBinding (result, receiptPath) {
+  const command = String(result.approvedPublishCommand || '')
+  if (!command.includes(receiptPath)) {
+    errors.push('approvedPublishCommand must target the source release receipt path')
+  }
+  if (!command.includes(String(result.bundleSha256 || ''))) {
+    errors.push('approvedPublishCommand must target the publish result bundle SHA')
+  }
+  if (command.includes('publish-and-pin.js')) {
+    errors.push('approvedPublishCommand must route through the approved wrapper, not the raw PearBrowser publish script')
+  }
 }
 
 function readJson (filePath, label) {

@@ -242,7 +242,8 @@ the latest helper refuses stale publish results whose receipt path, bundle SHA, 
 source commit do not match `.pearcup-release/latest/pearcup-release-receipt.json`.
 The lower-level recorder also opens the source release receipt named by the publish
 result and refuses to record a pass if the source commit, clean source state, bundle
-SHA, or expected `postPublishVerification.resultPath` do not match.
+SHA, expected `postPublishVerification.resultPath`, or `approvedPublishCommand`
+receipt/SHA do not match.
 
 ```
 npm run record:friend-test:latest -- \

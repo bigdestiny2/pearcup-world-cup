@@ -140,6 +140,27 @@ test('latest friend-test recorder refuses publish results for another receipt', 
   assert.match(result.stderr, /does not match latest release receipt/)
 })
 
+test('latest friend-test recorder refuses publish results with an approved command for another SHA', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-latest-friend-approved-command-sha-'))
+  const receipt = writeFixture(dir, {}, {
+    approvedPublishCommand: `node "/repo/scripts/publish-approved-pearcup.mjs" --receipt "${join(dir, 'pearcup-release-receipt.json')}" --sha ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff --publish`
+  })
+
+  const result = run([
+    '--receipt', receipt,
+    '--friend', 'sam',
+    '--room-code', 'pzw7kb',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'should be refused before recording'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /approvedPublishCommand must target the publish result bundle SHA/)
+})
+
 function writeFixture (dir, overrides = {}, publishResultOverrides = {}) {
   const receiptPath = join(dir, 'pearcup-release-receipt.json')
   const publishResult = {
