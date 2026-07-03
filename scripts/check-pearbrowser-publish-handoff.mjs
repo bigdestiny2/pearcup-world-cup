@@ -538,6 +538,7 @@ function validateSmokeContracts () {
   const publishedServerPath = join(root, 'scripts', 'serve-pearbrowser-published-local.mjs')
   const friendReadyPath = join(root, 'scripts', 'check-friend-ready.mjs')
   const friendResultPath = join(root, 'scripts', 'record-friend-test-result.mjs')
+  const latestFriendResultPath = join(root, 'scripts', 'record-latest-friend-test-result.mjs')
   const seamlessPath = join(root, 'scripts', 'check-pear-seamless.mjs')
   for (const [filePath, label] of [
     [runtimeSmokePath, 'actual Pear runtime smoke'],
@@ -548,6 +549,7 @@ function validateSmokeContracts () {
     [publishedServerPath, 'local published browser server'],
     [friendReadyPath, 'friend-ready preview gate'],
     [friendResultPath, 'friend-test result recorder'],
+    [latestFriendResultPath, 'latest friend-test result recorder'],
     [seamlessPath, 'seamless readiness gate']
   ]) {
     if (!existsSync(filePath)) errors.push(`${label} script is missing`)
@@ -671,6 +673,19 @@ function validateSmokeContracts () {
       'publish result must prove exact bundle Pear runtime preflight passed'
     ]) {
       if (!friendResult.includes(required)) errors.push(`friend-test result recorder is missing contract text: ${required}`)
+    }
+  }
+  if (existsSync(latestFriendResultPath)) {
+    const latestFriendResult = readFileSync(latestFriendResultPath, 'utf8')
+    for (const required of [
+      'validatePublishResultBinding',
+      'publish result sourceGitHead',
+      'does not match release receipt sourceGitHead',
+      'does not match latest release receipt',
+      'latest publish result was not created from a clean source release receipt',
+      'postPublishVerification.resultPath'
+    ]) {
+      if (!latestFriendResult.includes(required)) errors.push(`latest friend-test result recorder is missing contract text: ${required}`)
     }
   }
   if (existsSync(seamlessPath)) {

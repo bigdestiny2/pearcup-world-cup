@@ -98,11 +98,54 @@ test('latest friend-test recorder refuses dirty source receipts', () => {
   assert.match(result.stderr, /generated from a dirty worktree/)
 })
 
-function writeFixture (dir, overrides = {}) {
+test('latest friend-test recorder refuses publish results from another source commit', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-latest-friend-publish-stale-'))
+  const receipt = writeFixture(dir, {}, {
+    sourceGitHead: '0000000000000000000000000000000000000000'
+  })
+
+  const result = run([
+    '--receipt', receipt,
+    '--friend', 'sam',
+    '--room-code', 'pzw7kb',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'should be refused before recording'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /publish result sourceGitHead/)
+})
+
+test('latest friend-test recorder refuses publish results for another receipt', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-latest-friend-publish-receipt-'))
+  const receipt = writeFixture(dir, {}, {
+    receipt: join(dir, 'old-pearcup-release-receipt.json')
+  })
+
+  const result = run([
+    '--receipt', receipt,
+    '--friend', 'sam',
+    '--room-code', 'pzw7kb',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'should be refused before recording'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /does not match latest release receipt/)
+})
+
+function writeFixture (dir, overrides = {}, publishResultOverrides = {}) {
+  const receiptPath = join(dir, 'pearcup-release-receipt.json')
   const publishResult = {
     app: 'PearCup',
     status: 'published-and-smoked',
-    receipt: join(dir, 'pearcup-release-receipt.json'),
+    receipt: receiptPath,
     sourceGitHead: currentGitHead(),
     sourceGitBranch: 'main',
     sourceDirty: false,
@@ -125,12 +168,12 @@ function writeFixture (dir, overrides = {}) {
       exactBundlePublishedGatewayPreflight: true,
       exactBundlePearRuntimePreflight: true,
       postPublishSmokePassed: true
-    }
+    },
+    ...publishResultOverrides
   }
   const publishResultPath = join(dir, 'pearcup-publish-result.json')
   writeFileSync(publishResultPath, JSON.stringify(publishResult, null, 2) + '\n')
 
-  const receiptPath = join(dir, 'pearcup-release-receipt.json')
   writeFileSync(receiptPath, JSON.stringify({
     app: 'PearCup',
     sourceGitHead: currentGitHead(),

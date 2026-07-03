@@ -228,6 +228,8 @@ and supplies the exact `pearcup-publish-result.json` path plus bundle SHA for yo
 The publish result must also carry the source release receipt path, clean
 `sourceGitHead`, exact-bundle published-gateway preflight, exact-bundle Pear runtime
 preflight, and post-publish smoke evidence before the friend result can be recorded:
+the latest helper refuses stale publish results whose receipt path, bundle SHA, or
+source commit do not match `.pearcup-release/latest/pearcup-release-receipt.json`.
 
 ```
 npm run record:friend-test:latest -- \

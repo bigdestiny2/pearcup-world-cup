@@ -24,6 +24,9 @@ const publishResultPath = receipt &&
   receipt.postPublishVerification.resultPath
   ? resolve(receipt.postPublishVerification.resultPath)
   : ''
+const publishResult = errors.length === 0 && publishResultPath && existsSync(publishResultPath)
+  ? readJson(publishResultPath, 'latest publish result')
+  : null
 
 if (receipt && !/^[0-9a-f]{64}$/i.test(bundleSha256)) {
   errors.push('latest release receipt is missing a valid bundleSha256')
@@ -32,6 +35,10 @@ if (receipt) validateSourceGitReceipt(receipt)
 if (receipt && !publishResultPath) {
   errors.push('latest release receipt is missing postPublishVerification.resultPath')
 }
+if (receipt && publishResultPath && !existsSync(publishResultPath)) {
+  errors.push(`latest publish result does not exist: ${publishResultPath}`)
+}
+if (receipt && publishResult) validatePublishResultBinding(receipt, publishResult, publishResultPath)
 
 if (errors.length > 0) {
   console.error('PearCup latest friend-test recorder refused:')
@@ -56,10 +63,14 @@ if (result.error) throw result.error
 process.exit(result.status == null ? 1 : result.status)
 
 function readReceipt (filePath) {
+  return readJson(filePath, 'latest release receipt')
+}
+
+function readJson (filePath, label) {
   try {
     return JSON.parse(readFileSync(filePath, 'utf8'))
   } catch (err) {
-    errors.push(`could not read latest release receipt: ${err.message}`)
+    errors.push(`could not read ${label}: ${err.message}`)
     return null
   }
 }
@@ -78,6 +89,30 @@ function validateSourceGitReceipt (receipt) {
   const normalizedCurrent = currentHead.trim().toLowerCase()
   if (normalizedCurrent && normalizedCurrent !== sourceGitHead.toLowerCase()) {
     errors.push(`latest release receipt sourceGitHead ${sourceGitHead} does not match current HEAD ${currentHead.trim()}`)
+  }
+}
+
+function validatePublishResultBinding (receipt, publishResult, publishResultPath) {
+  const publishReceiptPath = publishResult.receipt ? resolve(publishResult.receipt) : ''
+  if (publishReceiptPath !== receiptPath) {
+    errors.push(`latest publish result receipt ${publishResult.receipt || '(missing)'} does not match latest release receipt ${receiptPath}`)
+  }
+  if (String(publishResult.bundleSha256 || '').toLowerCase() !== String(receipt.bundleSha256 || '').toLowerCase()) {
+    errors.push(`latest publish result bundleSha256 ${publishResult.bundleSha256 || '(missing)'} does not match latest release receipt bundleSha256 ${receipt.bundleSha256 || '(missing)'}`)
+  }
+  if (String(publishResult.sourceGitHead || '').toLowerCase() !== String(receipt.sourceGitHead || '').toLowerCase()) {
+    errors.push(`latest publish result sourceGitHead ${publishResult.sourceGitHead || '(missing)'} does not match release receipt sourceGitHead ${receipt.sourceGitHead || '(missing)'}`)
+  }
+  if (publishResult.sourceDirty !== false) {
+    errors.push('latest publish result was not created from a clean source release receipt')
+  }
+  const expectedResultPath = receipt &&
+    receipt.postPublishVerification &&
+    receipt.postPublishVerification.resultPath
+    ? resolve(receipt.postPublishVerification.resultPath)
+    : ''
+  if (expectedResultPath && expectedResultPath !== publishResultPath) {
+    errors.push('latest publish result path does not match latest release receipt postPublishVerification.resultPath')
   }
 }
 
