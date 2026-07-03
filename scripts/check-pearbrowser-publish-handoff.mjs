@@ -177,11 +177,27 @@ function validateApprovedPublishWrapper () {
   if (!wrapper.includes('publishedLinkProofCommand') || !wrapper.includes('local published-link proof command')) {
     errors.push('approved publish wrapper must surface the local published-link proof command from the receipt')
   }
+  if (!wrapper.includes('localPublishedLinkProofCommand')) {
+    errors.push('approved publish wrapper result receipt must preserve the local published-link proof command field')
+  }
+  if (wrapper.includes('localPublishedBrowserCommand')) {
+    errors.push('approved publish wrapper must not write the deprecated localPublishedBrowserCommand field')
+  }
   if (!wrapper.includes('writePublishResultReceipt') || !wrapper.includes('pearcup-publish-result.json')) {
     errors.push('approved publish wrapper must write a pearcup-publish-result.json after verified publish')
   }
   if (!wrapper.includes('pending-remote-friend')) {
     errors.push('approved publish wrapper result receipt must preserve the remote friend verification gate')
+  }
+  for (const required of [
+    'remote friend opens the final PearBrowser link',
+    'remote friend reaches Games without fallback or boot error',
+    'host and friend complete a live P2P invite join',
+    'host and friend can start Penalty Clash from the joined room'
+  ]) {
+    if (!wrapper.includes(required)) {
+      errors.push(`approved publish wrapper result receipt must require: ${required}`)
+    }
   }
   if (!wrapper.includes('record:friend-test') || !wrapper.includes('recordCommand')) {
     errors.push('approved publish wrapper result receipt must include a friend-test record command')
