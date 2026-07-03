@@ -693,6 +693,7 @@ function validateSmokeContracts () {
       'approvedPublishCommand must target the source release receipt path',
       'approvedPublishCommand must target the publish result bundle SHA',
       'publishEvidence',
+      'remoteFriendChecklist',
       'exactBundlePearRuntimePreflight',
       'publish result must prove exact bundle Pear runtime preflight passed'
     ]) {

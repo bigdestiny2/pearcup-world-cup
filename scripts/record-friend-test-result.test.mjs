@@ -40,6 +40,8 @@ test('records a passed remote friend test only with exact SHA and observed notes
   assert.equal(receipt.publishEvidence.exactBundlePearRuntimePreflight, true)
   assert.equal(receipt.publishEvidence.postPublishSmokePassed, true)
   assert.match(receipt.localPublishedLinkProofCommand, /serve:pearbrowser-published/)
+  assert.ok(receipt.remoteFriendChecklist.includes('remote friend opens the final PearBrowser link'))
+  assert.ok(receipt.remoteFriendChecklist.includes('host and friend can start Penalty Clash from the joined room'))
 })
 
 test('refuses a passed friend test when the operator omits the exact bundle SHA', () => {

@@ -57,6 +57,9 @@ const result = {
     exactBundlePearRuntimePreflight: publishResult.evidence && publishResult.evidence.exactBundlePearRuntimePreflight === true,
     postPublishSmokePassed: publishResult.evidence && publishResult.evidence.postPublishSmokePassed === true
   },
+  remoteFriendChecklist: publishResult.friendTest && Array.isArray(publishResult.friendTest.requires)
+    ? [...publishResult.friendTest.requires]
+    : [],
   friend: args.friend || 'friend',
   evidence: {
     expectedBundleSha256: args.sha || '',

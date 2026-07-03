@@ -36,6 +36,8 @@ test('latest friend-test recorder binds publish result and SHA from the release 
   assert.match(recorded.approvedPublishCommand, /publish-approved-pearcup\.mjs/)
   assert.equal(recorded.publishEvidence.exactBundlePearRuntimePreflight, true)
   assert.equal(recorded.publishEvidence.postPublishSmokePassed, true)
+  assert.ok(recorded.remoteFriendChecklist.includes('remote friend opens the final PearBrowser link'))
+  assert.ok(recorded.remoteFriendChecklist.includes('host and friend can start Penalty Clash from the joined room'))
 })
 
 test('latest friend-test recorder refuses manual SHA overrides', () => {

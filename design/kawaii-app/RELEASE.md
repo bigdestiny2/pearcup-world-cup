@@ -245,7 +245,8 @@ result and refuses to record a pass if the source commit, clean source state, bu
 SHA, expected `postPublishVerification.resultPath`, or `approvedPublishCommand`
 receipt/SHA do not match. The final friend-test result copies the approved publish
 command, local published-link proof command, post-publish smoke command, and publish
-preflight booleans so the recorded remote result remains auditable on its own.
+preflight booleans, plus the remote friend checklist from the publish result, so the
+recorded remote result remains auditable on its own.
 
 ```
 npm run record:friend-test:latest -- \
