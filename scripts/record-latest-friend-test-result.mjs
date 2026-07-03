@@ -28,6 +28,7 @@ const publishResultPath = receipt &&
 if (receipt && !/^[0-9a-f]{64}$/i.test(bundleSha256)) {
   errors.push('latest release receipt is missing a valid bundleSha256')
 }
+if (receipt) validateSourceGitReceipt(receipt)
 if (receipt && !publishResultPath) {
   errors.push('latest release receipt is missing postPublishVerification.resultPath')
 }
@@ -61,6 +62,36 @@ function readReceipt (filePath) {
     errors.push(`could not read latest release receipt: ${err.message}`)
     return null
   }
+}
+
+function validateSourceGitReceipt (receipt) {
+  const sourceGitHead = String(receipt.sourceGitHead || '')
+  if (!/^[0-9a-f]{40}$/i.test(sourceGitHead)) {
+    errors.push('latest release receipt is missing sourceGitHead; regenerate the durable handoff')
+    return
+  }
+  if (receipt.sourceDirty !== false) {
+    errors.push('latest release receipt was generated from a dirty worktree; regenerate from a clean commit')
+  }
+  const currentHead = runGit(['rev-parse', 'HEAD'])
+  if (!currentHead) return
+  const normalizedCurrent = currentHead.trim().toLowerCase()
+  if (normalizedCurrent && normalizedCurrent !== sourceGitHead.toLowerCase()) {
+    errors.push(`latest release receipt sourceGitHead ${sourceGitHead} does not match current HEAD ${currentHead.trim()}`)
+  }
+}
+
+function runGit (gitArgs) {
+  const result = spawnSync('git', gitArgs, {
+    cwd: root,
+    encoding: 'utf8'
+  })
+  if (result.status !== 0) {
+    const detail = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+    errors.push(`git ${gitArgs.join(' ')} failed${detail ? `: ${detail}` : ''}`)
+    return ''
+  }
+  return result.stdout
 }
 
 function parseArgs (argv) {

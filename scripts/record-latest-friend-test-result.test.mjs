@@ -55,7 +55,50 @@ test('latest friend-test recorder refuses manual SHA overrides', () => {
   assert.match(result.stderr, /supplies --sha from the release receipt/)
 })
 
-function writeFixture (dir) {
+test('latest friend-test recorder refuses stale source receipts', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-latest-friend-stale-'))
+  const receipt = writeFixture(dir, {
+    sourceGitHead: '0000000000000000000000000000000000000000'
+  })
+
+  const result = run([
+    '--receipt', receipt,
+    '--friend', 'sam',
+    '--room-code', 'pzw7kb',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'should be refused before recording'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /does not match current HEAD/)
+})
+
+test('latest friend-test recorder refuses dirty source receipts', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-latest-friend-dirty-'))
+  const receipt = writeFixture(dir, {
+    sourceDirty: true,
+    sourceGitStatus: ['M design/kawaii-app/app.js']
+  })
+
+  const result = run([
+    '--receipt', receipt,
+    '--friend', 'sam',
+    '--room-code', 'pzw7kb',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'should be refused before recording'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /generated from a dirty worktree/)
+})
+
+function writeFixture (dir, overrides = {}) {
   const publishResult = {
     app: 'PearCup',
     status: 'published-and-smoked',
@@ -84,10 +127,15 @@ function writeFixture (dir) {
   const receiptPath = join(dir, 'pearcup-release-receipt.json')
   writeFileSync(receiptPath, JSON.stringify({
     app: 'PearCup',
+    sourceGitHead: currentGitHead(),
+    sourceGitBranch: 'main',
+    sourceDirty: false,
+    sourceGitStatus: [],
     bundleSha256: sha,
     postPublishVerification: {
       resultPath: publishResultPath
-    }
+    },
+    ...overrides
   }, null, 2) + '\n')
   return receiptPath
 }
@@ -97,4 +145,13 @@ function run (args) {
     cwd: root,
     encoding: 'utf8'
   })
+}
+
+function currentGitHead () {
+  const result = spawnSync('git', ['rev-parse', 'HEAD'], {
+    cwd: root,
+    encoding: 'utf8'
+  })
+  assert.equal(result.status, 0, result.stderr)
+  return result.stdout.trim()
 }

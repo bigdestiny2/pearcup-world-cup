@@ -57,6 +57,7 @@ function validateReceipt (receipt, receiptPath) {
   if (!receipt.bundle) errors.push('receipt is missing bundle path')
   if (!receipt.bundleSha256 || !/^[0-9a-f]{64}$/i.test(receipt.bundleSha256)) errors.push('receipt is missing a valid bundleSha256')
   if (!Array.isArray(receipt.files) || receipt.files.length === 0) errors.push('receipt has no file inventory')
+  validateSourceGitReceipt(receipt)
 
   const bundle = receipt.bundle ? resolve(receipt.bundle) : ''
   if (!bundle || !existsSync(bundle) || !statSync(bundle).isDirectory()) {
@@ -142,6 +143,56 @@ function validateReceipt (receipt, receiptPath) {
   else checks.push('PearBrowser publish script path not found; handoff command uses placeholder')
   checks.push(`${totals.files} files hashed`)
   checks.push(`${totals.bytes} bytes accounted`)
+}
+
+function validateSourceGitReceipt (receipt) {
+  const sourceGitHead = String(receipt.sourceGitHead || '')
+  if (!/^[0-9a-f]{40}$/i.test(sourceGitHead)) {
+    errors.push('receipt must include sourceGitHead for the commit that produced the bundle')
+    return
+  }
+  if (!Object.prototype.hasOwnProperty.call(receipt, 'sourceDirty')) {
+    errors.push('receipt must include sourceDirty')
+  } else if (receipt.sourceDirty !== false) {
+    errors.push('receipt sourceDirty must be false for a publish-ready handoff')
+  }
+  if (!Array.isArray(receipt.sourceGitStatus)) {
+    errors.push('receipt must include sourceGitStatus')
+  } else if (receipt.sourceGitStatus.length > 0) {
+    errors.push('receipt sourceGitStatus must be empty for a publish-ready handoff')
+  }
+
+  const current = readCurrentGitState()
+  if (!current) return
+  if (current.head && current.head.toLowerCase() !== sourceGitHead.toLowerCase()) {
+    errors.push(`receipt sourceGitHead ${sourceGitHead} does not match current HEAD ${current.head}`)
+  }
+  if (current.status.length > 0) {
+    errors.push(`current git worktree must be clean before publish handoff validation (${current.status.length} path${current.status.length === 1 ? '' : 's'})`)
+  }
+}
+
+function readCurrentGitState () {
+  const head = runGit(['rev-parse', 'HEAD'])
+  const status = runGit(['status', '--short'])
+  if (head == null || status == null) return null
+  return {
+    head: head.trim(),
+    status: status.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+  }
+}
+
+function runGit (gitArgs) {
+  const result = spawnSync('git', gitArgs, {
+    cwd: root,
+    encoding: 'utf8'
+  })
+  if (result.status !== 0) {
+    const detail = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+    errors.push(`git ${gitArgs.join(' ')} failed${detail ? `: ${detail}` : ''}`)
+    return null
+  }
+  return result.stdout
 }
 
 function validateApprovedPublishWrapper () {

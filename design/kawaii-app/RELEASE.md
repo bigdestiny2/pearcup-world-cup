@@ -194,7 +194,8 @@ npm run publish:approved:latest -- --publish
 
 It reads `.pearcup-release/latest/pearcup-release-receipt.json`, supplies the exact
 receipt and bundle SHA to the approved wrapper, and still will not publish unless
-`--publish` is present.
+`--publish` is present. The receipt also records the git commit that produced the
+bundle; the latest helper refuses stale or dirty handoffs.
 
 The approved wrapper runs this after publish/pin. You can also smoke the actual
 PearBrowser-served link manually before inviting friends:

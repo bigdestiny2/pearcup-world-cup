@@ -28,7 +28,28 @@ test('latest approved publish refuses manual SHA overrides', () => {
   assert.doesNotMatch(result.stdout + result.stderr, /PearCup approved publish dry-run passed/)
 })
 
-function writeFixture () {
+test('latest approved publish refuses stale source receipts', () => {
+  const receipt = writeFixture({
+    sourceGitHead: '0000000000000000000000000000000000000000'
+  })
+  const result = run(['--latest-receipt', receipt, '--print-resolved'])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /does not match current HEAD/)
+})
+
+test('latest approved publish refuses dirty source receipts', () => {
+  const receipt = writeFixture({
+    sourceDirty: true,
+    sourceGitStatus: ['M design/kawaii-app/app.js']
+  })
+  const result = run(['--latest-receipt', receipt, '--print-resolved'])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /generated from a dirty worktree/)
+})
+
+function writeFixture (overrides = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'pearcup-latest-publish-'))
   const bundle = join(dir, 'bundle')
   mkdirSync(bundle)
@@ -45,6 +66,10 @@ function writeFixture () {
   const receiptPath = join(dir, 'pearcup-release-receipt.json')
   writeFileSync(receiptPath, JSON.stringify({
     app: 'PearCup',
+    sourceGitHead: currentGitHead(),
+    sourceGitBranch: 'main',
+    sourceDirty: false,
+    sourceGitStatus: [],
     bundle,
     bundleSha256: sha,
     files: [
@@ -72,7 +97,8 @@ function writeFixture () {
       enforcedByApprovedWrapper: true,
       resultPath: join(dir, 'pearcup-publish-result.json'),
       resultRequiresRemoteFriend: true
-    }
+    },
+    ...overrides
   }, null, 2) + '\n')
   return receiptPath
 }
@@ -86,4 +112,13 @@ function run (args) {
 
 function escapeRegExp (value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function currentGitHead () {
+  const result = spawnSync('git', ['rev-parse', 'HEAD'], {
+    cwd: root,
+    encoding: 'utf8'
+  })
+  assert.equal(result.status, 0, result.stderr)
+  return result.stdout.trim()
 }

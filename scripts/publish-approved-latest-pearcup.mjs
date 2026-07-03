@@ -22,6 +22,7 @@ const bundleSha256 = receipt && String(receipt.bundleSha256 || '')
 if (receipt && !/^[0-9a-f]{64}$/i.test(bundleSha256)) {
   errors.push('latest release receipt is missing a valid bundleSha256')
 }
+if (receipt) validateSourceGitReceipt(receipt, { requireCleanCurrent: !args.printResolved })
 
 if (errors.length > 0) {
   console.error('PearCup latest approved publish refused:')
@@ -59,6 +60,48 @@ function readReceipt (filePath) {
     errors.push(`could not read latest release receipt: ${err.message}`)
     return null
   }
+}
+
+function validateSourceGitReceipt (receipt, opts = {}) {
+  const sourceGitHead = String(receipt.sourceGitHead || '')
+  if (!/^[0-9a-f]{40}$/i.test(sourceGitHead)) {
+    errors.push('latest release receipt is missing sourceGitHead; regenerate the durable handoff')
+    return
+  }
+  if (receipt.sourceDirty !== false) {
+    errors.push('latest release receipt was generated from a dirty worktree; regenerate from a clean commit')
+  }
+  const current = readCurrentGitState()
+  if (!current) return
+  if (current.head && current.head.toLowerCase() !== sourceGitHead.toLowerCase()) {
+    errors.push(`latest release receipt sourceGitHead ${sourceGitHead} does not match current HEAD ${current.head}`)
+  }
+  if (opts.requireCleanCurrent && current.status.length > 0) {
+    errors.push(`current git worktree is dirty; commit changes and regenerate the latest handoff before publishing (${current.status.length} path${current.status.length === 1 ? '' : 's'})`)
+  }
+}
+
+function readCurrentGitState () {
+  const head = runGit(['rev-parse', 'HEAD'])
+  const status = runGit(['status', '--short'])
+  if (head == null || status == null) return null
+  return {
+    head: head.trim(),
+    status: status.split(/\r?\n/).map(line => line.trim()).filter(Boolean)
+  }
+}
+
+function runGit (gitArgs) {
+  const result = spawnSync('git', gitArgs, {
+    cwd: root,
+    encoding: 'utf8'
+  })
+  if (result.status !== 0) {
+    const detail = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+    errors.push(`git ${gitArgs.join(' ')} failed${detail ? `: ${detail}` : ''}`)
+    return null
+  }
+  return result.stdout
 }
 
 function parseArgs (argv) {

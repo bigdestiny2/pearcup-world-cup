@@ -53,10 +53,15 @@ const manifest = JSON.parse(readFileSync(join(bundle, 'manifest.json'), 'utf8'))
 const bundleSha256 = createHash('sha256')
   .update(files.map(file => `${file.sha256}  ${file.path}\n`).join(''))
   .digest('hex')
+const sourceGit = readSourceGitState()
 const approvedPublishWrapper = join(root, 'scripts', 'publish-approved-pearcup.mjs')
 const receipt = {
   app: 'PearCup',
   generatedAt: new Date().toISOString(),
+  sourceGitHead: sourceGit.head,
+  sourceGitBranch: sourceGit.branch,
+  sourceDirty: sourceGit.dirty,
+  sourceGitStatus: sourceGit.status,
   bundle,
   manifest,
   totals: {
@@ -209,6 +214,8 @@ console.log(`PearBrowser release receipt: ${receiptPath}`)
 console.log(`Files: ${receipt.totals.files}`)
 console.log(`Bytes: ${receipt.totals.bytes}`)
 console.log(`Bundle SHA-256: ${receipt.bundleSha256}`)
+console.log(`Source git head: ${receipt.sourceGitHead || '(unknown)'}`)
+console.log(`Source dirty: ${receipt.sourceDirty ? 'yes' : 'no'}`)
 console.log('Next: publish/pin only after explicit approval.')
 
 function runNode (script, scriptArgs = []) {
@@ -243,6 +250,33 @@ function runNodeTest (script) {
     const detail = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
     throw new Error(`node --test ${script} failed${detail ? `:\n${detail}` : ''}`)
   }
+}
+
+function readSourceGitState () {
+  const head = runGit(['rev-parse', 'HEAD']).trim()
+  const branch = runGit(['rev-parse', '--abbrev-ref', 'HEAD']).trim()
+  const status = runGit(['status', '--short'])
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+  return {
+    head,
+    branch,
+    dirty: status.length > 0,
+    status
+  }
+}
+
+function runGit (gitArgs) {
+  const result = spawnSync('git', gitArgs, {
+    cwd: root,
+    encoding: 'utf8'
+  })
+  if (result.status !== 0) {
+    const detail = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+    throw new Error(`git ${gitArgs.join(' ')} failed${detail ? `:\n${detail}` : ''}`)
+  }
+  return result.stdout
 }
 
 function listFiles (dir, acc = []) {
