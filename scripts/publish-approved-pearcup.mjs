@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, statSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
@@ -33,6 +33,7 @@ const publishArgs = receipt.publishHandoff.args
 const publishCommand = `node ${publishArgs.map(arg => JSON.stringify(arg)).join(' ')}`
 const postPublishSmokeCommand = `npm ${postPublishSmokeArgs('hyper://<drive-key>/').map(arg => JSON.stringify(arg)).join(' ')}`
 const localPublishedBrowserCommand = publishedBrowserProofCommand(receipt)
+const publishResultPath = publishResultReceiptPath(receipt, receiptPath)
 
 if (!args.publish) {
   console.log('PearCup approved publish dry-run passed')
@@ -49,6 +50,7 @@ if (!args.publish) {
   console.log('post-publish smoke command that will run after publish:')
   console.log(postPublishSmokeCommand)
   console.log('post-publish smoke preflight - passed')
+  console.log(`publish result receipt will be written to: ${publishResultPath}`)
   process.exit(0)
 }
 
@@ -61,6 +63,7 @@ if (localPublishedBrowserCommand) {
   console.log(localPublishedBrowserCommand)
 }
 console.log('post-publish smoke preflight - passed')
+console.log(`publish result receipt will be written to: ${publishResultPath}`)
 console.log(publishCommand)
 
 const result = spawnSync(process.execPath, publishArgs, {
@@ -92,7 +95,18 @@ if (smokeResult.stderr) process.stderr.write(smokeResult.stderr)
 if (smokeResult.error) throw smokeResult.error
 if (smokeResult.status !== 0) process.exit(smokeResult.status == null ? 1 : smokeResult.status)
 
+writePublishResultReceipt({
+  receipt,
+  receiptPath,
+  publishResultPath,
+  publishedUrl,
+  publishOutput,
+  smokeOutput: [smokeResult.stdout, smokeResult.stderr].filter(Boolean).join('\n'),
+  localPublishedBrowserCommand
+})
+
 console.log('PearCup approved publish verified')
+console.log(`publish result receipt - ${publishResultPath}`)
 process.exit(0)
 
 function validateReceipt (receipt, receiptPath) {
@@ -194,6 +208,59 @@ function readReceipt (filePath) {
     errors.push(`could not read receipt: ${err.message}`)
     return null
   }
+}
+
+function publishResultReceiptPath (receipt, receiptPath) {
+  const configured = receipt &&
+    receipt.postPublishVerification &&
+    receipt.postPublishVerification.resultPath
+  return configured ? resolve(configured) : join(dirname(receiptPath), 'pearcup-publish-result.json')
+}
+
+function writePublishResultReceipt ({
+  receipt,
+  receiptPath,
+  publishResultPath,
+  publishedUrl,
+  publishOutput,
+  smokeOutput,
+  localPublishedBrowserCommand
+}) {
+  const driveKey = (String(publishedUrl).match(/^hyper:\/\/([0-9a-f]{64})\//i) || [])[1] || ''
+  const postPublishCommand = `npm ${postPublishSmokeArgs(publishedUrl).map(arg => JSON.stringify(arg)).join(' ')}`
+  const result = {
+    app: 'PearCup',
+    status: 'published-and-smoked',
+    publishedAt: new Date().toISOString(),
+    receipt: receiptPath,
+    bundle: receipt.bundle || '',
+    bundleSha256: receipt.bundleSha256 || '',
+    publishedUrl,
+    driveKey,
+    publishCommand,
+    postPublishSmokeCommand: postPublishCommand,
+    localPublishedBrowserCommand,
+    friendTest: {
+      status: 'pending-remote-friend',
+      requires: [
+        'remote friend opens the final PearBrowser link',
+        'remote friend reaches Games without fallback or boot error',
+        'host and friend complete a live P2P invite join',
+        'host and friend can start Penalty Clash from the joined room'
+      ]
+    },
+    evidence: {
+      exactBundlePublishedGatewayPreflight: true,
+      postPublishSmokePassed: true,
+      publishOutputSnippet: trimForReceipt(publishOutput),
+      smokeOutputSnippet: trimForReceipt(smokeOutput)
+    }
+  }
+  writeFileSync(publishResultPath, JSON.stringify(result, null, 2) + '\n')
+}
+
+function trimForReceipt (text) {
+  return String(text || '').trim().slice(-4000)
 }
 
 function publishedBrowserProofCommand (receipt) {

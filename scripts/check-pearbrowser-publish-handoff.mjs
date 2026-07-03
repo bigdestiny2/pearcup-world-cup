@@ -130,6 +130,12 @@ function validateReceipt (receipt, receiptPath) {
   if (receipt.postPublishVerification && receipt.postPublishVerification.enforcedByApprovedWrapper !== true) {
     errors.push('receipt postPublishVerification must be enforced by the approved publish wrapper')
   }
+  if (receipt.postPublishVerification && !String(receipt.postPublishVerification.resultPath || '').endsWith('pearcup-publish-result.json')) {
+    errors.push('receipt postPublishVerification must declare a pearcup-publish-result.json resultPath')
+  }
+  if (receipt.postPublishVerification && receipt.postPublishVerification.resultRequiresRemoteFriend !== true) {
+    errors.push('receipt postPublishVerification must keep remote friend verification as a required follow-up')
+  }
   validateApprovedPublishWrapper()
 
   if (existsSync(browserPublishScript)) checks.push('PearBrowser publish script located')
@@ -167,6 +173,12 @@ function validateApprovedPublishWrapper () {
   }
   if (!wrapper.includes('publishedBrowserProofCommand') || !wrapper.includes('local published browser proof command')) {
     errors.push('approved publish wrapper must surface the local published browser proof command from the receipt')
+  }
+  if (!wrapper.includes('writePublishResultReceipt') || !wrapper.includes('pearcup-publish-result.json')) {
+    errors.push('approved publish wrapper must write a pearcup-publish-result.json after verified publish')
+  }
+  if (!wrapper.includes('pending-remote-friend')) {
+    errors.push('approved publish wrapper result receipt must preserve the remote friend verification gate')
   }
 }
 

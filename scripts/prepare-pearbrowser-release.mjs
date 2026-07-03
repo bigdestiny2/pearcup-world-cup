@@ -14,6 +14,7 @@ const out = args.out
   : mkdtempSync(join(tmpdir(), 'pearcup-release-candidate-'))
 const bundle = join(out, 'bundle')
 const receiptPath = join(out, 'pearcup-release-receipt.json')
+const publishResultPath = join(out, 'pearcup-publish-result.json')
 
 if (existsSync(bundle)) throw new Error(`bundle output already exists: ${bundle}`)
 mkdirSync(out, { recursive: true })
@@ -163,7 +164,9 @@ const receipt = {
     required: true,
     command: 'npm run smoke:pearbrowser-published -- --url hyper://<drive-key>/',
     acceptsGatewayUrl: true,
-    enforcedByApprovedWrapper: true
+    enforcedByApprovedWrapper: true,
+    resultPath: publishResultPath,
+    resultRequiresRemoteFriend: true
   },
   nextStep: 'Publish/pin this bundle only after explicit approval.'
 }
