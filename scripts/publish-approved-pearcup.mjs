@@ -49,6 +49,12 @@ const latestFriendTestRecordCommand = [
   '--notes "<what both sides observed>"'
 ].join(' ')
 
+if (args.publish && existsSync(publishResultPath) && !args.forceResult) {
+  console.error('PearCup approved publish refused:')
+  console.error(`- publish result receipt already exists: ${publishResultPath}; use --force-result to replace it intentionally`)
+  process.exit(1)
+}
+
 if (!args.publish) {
   console.log('PearCup approved publish dry-run passed')
   console.log(`receipt - ${receiptPath}`)
@@ -350,6 +356,7 @@ function approvedWrapperPublishCommand (receiptPath, bundleSha256, gateway) {
     bundleSha256
   ]
   if (gateway) commandArgs.push('--gateway', gateway)
+  if (args.forceResult) commandArgs.push('--force-result')
   commandArgs.push('--publish')
   return `node ${commandArgs.map(arg => JSON.stringify(arg)).join(' ')}`
 }
@@ -389,7 +396,7 @@ function validateGateway (value) {
 }
 
 function parseArgs (argv) {
-  const parsed = { publish: false }
+  const parsed = { publish: false, forceResult: false }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--receipt') parsed.receipt = argv[++i]
@@ -400,6 +407,7 @@ function parseArgs (argv) {
     else if (arg.startsWith('--gateway=')) parsed.gateway = arg.slice('--gateway='.length)
     else if (arg === '--publish') parsed.publish = true
     else if (arg === '--dry-run') parsed.publish = false
+    else if (arg === '--force-result') parsed.forceResult = true
     else {
       errors.push(`unknown argument: ${arg}`)
     }

@@ -269,6 +269,9 @@ function validateApprovedPublishWrapper () {
   if (!wrapper.includes('writePublishResultReceipt') || !wrapper.includes('pearcup-publish-result.json')) {
     errors.push('approved publish wrapper must write a pearcup-publish-result.json after verified publish')
   }
+  if (!wrapper.includes('publish result receipt already exists') || !wrapper.includes('--force-result')) {
+    errors.push('approved publish wrapper must protect publish result receipts from accidental overwrite')
+  }
   if (!wrapper.includes('pending-remote-friend')) {
     errors.push('approved publish wrapper result receipt must preserve the remote friend verification gate')
   }

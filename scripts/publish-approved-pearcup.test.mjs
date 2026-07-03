@@ -45,6 +45,14 @@ test('approved publish wrapper prints the wrapper command as the publish path', 
   assert.doesNotMatch(source, /publish command, add --publish to run after explicit approval/)
 })
 
+test('approved publish wrapper protects publish result receipts from accidental overwrite', () => {
+  const source = readFileSync(script, 'utf8')
+
+  assert.match(source, /publish result receipt already exists/)
+  assert.match(source, /--force-result/)
+  assert.match(source, /forceResult/)
+})
+
 function run (args) {
   return spawnSync(process.execPath, [script, ...args], {
     cwd: root,
