@@ -19,7 +19,8 @@ let publishedLinkProofCommand = ''
 if (args.full) runNpm('Full project check', ['run', 'check'])
 
 if (errors.length === 0) {
-  const handoff = runNode('PearBrowser publish handoff', 'scripts/check-pearbrowser-publish-handoff.mjs')
+  const handoffArgs = args.receipt ? ['--receipt', resolve(args.receipt)] : []
+  const handoff = runNode('PearBrowser publish handoff', 'scripts/check-pearbrowser-publish-handoff.mjs', handoffArgs)
   if (handoff.ok) {
     receiptPath = extractLineValue(handoff.output, /^receipt - (.+)$/m)
     bundlePath = extractLineValue(handoff.output, /^bundle - (.+)$/m)
@@ -218,6 +219,7 @@ function parseArgs (argv) {
     gateway: 'http://127.0.0.1:17208/',
     allowDirty: false,
     proofPort: 4191,
+    receipt: '',
     url: ''
   }
   for (let i = 0; i < argv.length; i++) {
@@ -229,6 +231,8 @@ function parseArgs (argv) {
     else if (arg.startsWith('--gateway=')) parsed.gateway = arg.slice('--gateway='.length)
     else if (arg === '--proof-port') parsed.proofPort = readPort(argv[++i])
     else if (arg.startsWith('--proof-port=')) parsed.proofPort = readPort(arg.slice('--proof-port='.length))
+    else if (arg === '--receipt') parsed.receipt = argv[++i]
+    else if (arg.startsWith('--receipt=')) parsed.receipt = arg.slice('--receipt='.length)
     else if (arg === '--url') parsed.url = argv[++i]
     else if (arg.startsWith('--url=')) parsed.url = arg.slice('--url='.length)
     else {

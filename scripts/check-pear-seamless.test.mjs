@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { test } from 'node:test'
 
@@ -24,6 +25,17 @@ test('seamless gate rejects invalid proof ports before running heavy checks', ()
   assert.match(output, /Invalid --proof-port: 70000/)
   assert.doesNotMatch(output, /PearBrowser publish handoff/)
   assert.doesNotMatch(output, /Exact receipt published-link proof/)
+})
+
+test('seamless gate supports binding checks to a provided release receipt', () => {
+  const source = readFileSync(script, 'utf8')
+  const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+
+  assert.match(source, /args\.receipt/)
+  assert.match(source, /check-pearbrowser-publish-handoff\.mjs/)
+  assert.match(source, /'--receipt'/)
+  assert.match(packageJson.scripts['check:pear-seamless:latest'], /--receipt \.pearcup-release\/latest\/pearcup-release-receipt\.json/)
+  assert.match(packageJson.scripts['check:pear-seamless:latest'], /--url http:\/\/127\.0\.0\.1:4186\//)
 })
 
 function run (args) {

@@ -88,6 +88,7 @@
     "check:publish-handoff:latest": "node --check scripts/check-pearbrowser-publish-handoff.mjs && node scripts/check-pearbrowser-publish-handoff.mjs --receipt .pearcup-release/latest/pearcup-release-receipt.json",
     "check:pear-seamless": "node --check scripts/check-pear-seamless.mjs && node scripts/check-pear-seamless.mjs",
     "check:pear-seamless:preview": "node --check scripts/check-pear-seamless.mjs && node scripts/check-pear-seamless.mjs --url http://127.0.0.1:4186/",
+    "check:pear-seamless:latest": "node --check scripts/check-pear-seamless.mjs && node scripts/check-pear-seamless.mjs --receipt .pearcup-release/latest/pearcup-release-receipt.json --url http://127.0.0.1:4186/",
     "publish:approved": "node --check scripts/publish-approved-pearcup.mjs && node scripts/publish-approved-pearcup.mjs",
     "publish:approved:latest": "node --check scripts/publish-approved-latest-pearcup.mjs && node scripts/publish-approved-latest-pearcup.mjs",
     "record:friend-test": "node --check scripts/record-friend-test-result.mjs && node scripts/record-friend-test-result.mjs",

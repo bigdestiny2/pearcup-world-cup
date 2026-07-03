@@ -145,6 +145,7 @@ Before any publish/pin handoff, run:
 
 ```
 npm run check:pear-seamless:preview
+npm run check:pear-seamless:latest
 # lower-level receipt-only check:
 npm run check:publish-handoff
 # stable friend-test handoff:
@@ -153,15 +154,20 @@ npm run check:publish-handoff:latest
 node scripts/check-pearbrowser-publish-handoff.mjs --receipt /path/to/pearcup-release-receipt.json
 ```
 
-`check:pear-seamless:preview` is the top-level release gate: it prepares a fresh
-candidate, validates the approved publish dry-run, runs the release-scope audit,
-checks the live `4186` preview, starts the exact receipt-backed local
+`check:pear-seamless:preview` is the top-level fresh-candidate release gate: it
+prepares a fresh candidate, validates the approved publish dry-run, runs the
+release-scope audit, checks the live `4186` preview, starts the exact receipt-backed local
 `/app/<drive>/` published proof server, smokes that published-link fetch/static
 contract plus the worker/settlement stack, then builds a temporary Pear app from the
 exact generated renderer bundle and runs the Pear runtime Games/invite/hidden-guest
 smoke against it. It hard-fails on a dirty worktree unless `--allow-dirty` is passed
 for an exploratory run. The exact PearBrowser bundle is still a manifest renderer
 payload; final remote proof still comes from the post-publish friend test.
+
+`check:pear-seamless:latest` runs the same top-level proof against the durable
+`.pearcup-release/latest/pearcup-release-receipt.json` handoff that would actually be
+published for friends, plus the live `4186` preview. Run it after regenerating the
+durable handoff and before approving a publish.
 
 The lower-level handoff check recomputes every file hash from the receipt, reruns the Hyper payload smoke,
 checks the manifest/asset/P2P contract, verifies that the receipt includes the
