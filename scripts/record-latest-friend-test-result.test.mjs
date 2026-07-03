@@ -17,6 +17,7 @@ test('latest friend-test recorder binds publish result and SHA from the release 
   const result = run([
     '--receipt', receipt,
     '--friend', 'sam',
+    '--room-code', 'pzw7kb',
     '--friend-opened',
     '--reached-games',
     '--joined-p2p',
@@ -30,6 +31,7 @@ test('latest friend-test recorder binds publish result and SHA from the release 
   assert.equal(recorded.publishResult, join(dir, 'pearcup-publish-result.json'))
   assert.equal(recorded.bundleSha256, sha)
   assert.equal(recorded.evidence.expectedBundleSha256, sha)
+  assert.equal(recorded.evidence.observedRoomCode, 'pzw7kb')
   assert.equal(recorded.evidence.hostAndFriendStartedPenaltyClash, true)
 })
 
@@ -41,6 +43,7 @@ test('latest friend-test recorder refuses manual SHA overrides', () => {
     '--receipt', receipt,
     '--sha', sha,
     '--friend', 'sam',
+    '--room-code', 'pzw7kb',
     '--friend-opened',
     '--reached-games',
     '--joined-p2p',
@@ -66,7 +69,8 @@ function writeFixture (dir) {
         'remote friend opens the final PearBrowser link',
         'remote friend reaches Games without fallback or boot error',
         'host and friend complete a live P2P invite join',
-        'host and friend can start Penalty Clash from the joined room'
+        'host and friend can start Penalty Clash from the joined room',
+        'record the observed Penalty Clash room code'
       ]
     },
     evidence: {

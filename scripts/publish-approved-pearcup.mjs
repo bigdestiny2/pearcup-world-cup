@@ -242,12 +242,13 @@ function writePublishResultReceipt ({
     localPublishedLinkProofCommand,
     friendTest: {
       status: 'pending-remote-friend',
-      recordCommand: `npm run record:friend-test -- --publish-result ${publishResultPath} --sha ${receipt.bundleSha256 || '<bundle-sha256>'} --friend "<friend-name>" --friend-opened --reached-games --joined-p2p --started-penalty-clash --notes "<what you observed>"`,
+      recordCommand: `npm run record:friend-test -- --publish-result ${publishResultPath} --sha ${receipt.bundleSha256 || '<bundle-sha256>'} --friend "<friend-name>" --room-code "<observed-room-code>" --friend-opened --reached-games --joined-p2p --started-penalty-clash --notes "<what you observed>"`,
       requires: [
         'remote friend opens the final PearBrowser link',
         'remote friend reaches Games without fallback or boot error',
         'host and friend complete a live P2P invite join',
-        'host and friend can start Penalty Clash from the joined room'
+        'host and friend can start Penalty Clash from the joined room',
+        'record the observed Penalty Clash room code'
       ]
     },
     evidence: {

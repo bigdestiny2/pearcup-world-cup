@@ -220,6 +220,7 @@ and supplies the exact `pearcup-publish-result.json` path plus bundle SHA for yo
 ```
 npm run record:friend-test:latest -- \
   --friend "<friend-name>" \
+  --room-code "<observed-room-code>" \
   --friend-opened \
   --reached-games \
   --joined-p2p \

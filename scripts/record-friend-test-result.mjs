@@ -20,8 +20,10 @@ if (!passed && !args.failed) {
 if (args.failed && !args.notes) errors.push('--failed requires --notes')
 if (passed && !args.friend) errors.push('recording a passed friend test requires --friend <name-or-handle>')
 if (passed && !args.notes) errors.push('recording a passed friend test requires --notes with observed remote behavior')
+if (passed && !args.roomCode) errors.push('recording a passed friend test requires --room-code <observed invite room code>')
 if (passed && !args.sha) errors.push('recording a passed friend test requires --sha <expected bundleSha256>')
 if (args.sha && !/^[0-9a-f]{64}$/i.test(args.sha)) errors.push('--sha must be a 64-character hex bundle SHA')
+if (args.roomCode && !/^[a-z0-9-]{3,32}$/i.test(args.roomCode)) errors.push('--room-code must be 3-32 letters, numbers, or dashes')
 if (args.sha && publishResult && String(args.sha).toLowerCase() !== String(publishResult.bundleSha256 || '').toLowerCase()) {
   errors.push(`--sha ${args.sha} does not match publish result bundleSha256 ${publishResult.bundleSha256 || '(missing)'}`)
 }
@@ -50,6 +52,7 @@ const result = {
     friendReachedGamesWithoutFallbackOrBootError: args.reachedGames,
     hostAndFriendCompletedLiveP2PJoin: args.joinedP2p,
     hostAndFriendStartedPenaltyClash: args.startedPenaltyClash,
+    observedRoomCode: args.roomCode || '',
     notes: args.notes || ''
   },
   remaining: passed ? [] : ['repeat remote friend PearBrowser test after fixing noted issue']
@@ -89,7 +92,8 @@ function validatePublishResult (result) {
     'remote friend opens the final PearBrowser link',
     'remote friend reaches Games without fallback or boot error',
     'host and friend complete a live P2P invite join',
-    'host and friend can start Penalty Clash from the joined room'
+    'host and friend can start Penalty Clash from the joined room',
+    'record the observed Penalty Clash room code'
   ]) {
     if (!friendRequires.includes(required)) {
       errors.push(`publish result friendTest must require: ${required}`)
@@ -122,6 +126,7 @@ function parseArgs (argv) {
     startedPenaltyClash: false,
     notes: '',
     friend: '',
+    roomCode: '',
     out: '',
     publishResult: '',
     sha: ''
@@ -136,6 +141,8 @@ function parseArgs (argv) {
     else if (arg.startsWith('--friend=')) parsed.friend = arg.slice('--friend='.length)
     else if (arg === '--notes') parsed.notes = argv[++i]
     else if (arg.startsWith('--notes=')) parsed.notes = arg.slice('--notes='.length)
+    else if (arg === '--room-code') parsed.roomCode = argv[++i]
+    else if (arg.startsWith('--room-code=')) parsed.roomCode = arg.slice('--room-code='.length)
     else if (arg === '--sha') parsed.sha = argv[++i]
     else if (arg.startsWith('--sha=')) parsed.sha = arg.slice('--sha='.length)
     else if (arg === '--friend-opened') parsed.friendOpened = true

@@ -193,7 +193,8 @@ function validateApprovedPublishWrapper () {
     'remote friend opens the final PearBrowser link',
     'remote friend reaches Games without fallback or boot error',
     'host and friend complete a live P2P invite join',
-    'host and friend can start Penalty Clash from the joined room'
+    'host and friend can start Penalty Clash from the joined room',
+    'record the observed Penalty Clash room code'
   ]) {
     if (!wrapper.includes(required)) {
       errors.push(`approved publish wrapper result receipt must require: ${required}`)
@@ -204,6 +205,9 @@ function validateApprovedPublishWrapper () {
   }
   if (!wrapper.includes('record:friend-test -- --publish-result') || !wrapper.includes('--sha ${receipt.bundleSha256')) {
     errors.push('approved publish wrapper friend-test record command must require the exact bundle SHA')
+  }
+  if (!wrapper.includes('--room-code "<observed-room-code>"')) {
+    errors.push('approved publish wrapper friend-test record command must require the observed room code')
   }
 }
 
@@ -535,7 +539,9 @@ function validateSmokeContracts () {
       'deprecated localPublishedBrowserCommand',
       'remote friend opens the final PearBrowser link',
       'host and friend complete a live P2P invite join',
-      'host and friend can start Penalty Clash from the joined room'
+      'host and friend can start Penalty Clash from the joined room',
+      'recording a passed friend test requires --room-code',
+      'observedRoomCode'
     ]) {
       if (!friendResult.includes(required)) errors.push(`friend-test result recorder is missing contract text: ${required}`)
     }

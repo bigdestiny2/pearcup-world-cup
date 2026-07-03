@@ -20,6 +20,7 @@ test('records a passed remote friend test only with exact SHA and observed notes
     '--out', out,
     '--sha', bundleSha256,
     '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
     '--friend-opened',
     '--reached-games',
     '--joined-p2p',
@@ -32,6 +33,7 @@ test('records a passed remote friend test only with exact SHA and observed notes
   assert.equal(receipt.status, 'remote-friend-verified')
   assert.equal(receipt.friend, 'tariq')
   assert.equal(receipt.evidence.expectedBundleSha256, bundleSha256)
+  assert.equal(receipt.evidence.observedRoomCode, 'wdk8yv')
   assert.equal(receipt.evidence.hostAndFriendCompletedLiveP2PJoin, true)
 })
 
@@ -42,6 +44,7 @@ test('refuses a passed friend test when the operator omits the exact bundle SHA'
   const result = run([
     '--publish-result', publishResult,
     '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
     '--friend-opened',
     '--reached-games',
     '--joined-p2p',
@@ -53,6 +56,45 @@ test('refuses a passed friend test when the operator omits the exact bundle SHA'
   assert.match(result.stderr, /requires --sha/)
 })
 
+test('refuses a passed friend test when the operator omits the observed room code', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-no-room-'))
+  const publishResult = writePublishResult(dir)
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'friend opened final PearBrowser link and joined a room'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /requires --room-code/)
+})
+
+test('refuses malformed observed room codes', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-bad-room-'))
+  const publishResult = writePublishResult(dir)
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--room-code', '../wdk8yv',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'friend opened final PearBrowser link and joined a room'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /--room-code must be/)
+})
+
 test('refuses a passed friend test when the SHA does not match the publish result', () => {
   const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-wrong-sha-'))
   const publishResult = writePublishResult(dir)
@@ -61,6 +103,7 @@ test('refuses a passed friend test when the SHA does not match the publish resul
     '--publish-result', publishResult,
     '--sha', 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
     '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
     '--friend-opened',
     '--reached-games',
     '--joined-p2p',
@@ -82,6 +125,7 @@ test('refuses publish-result receipts whose driveKey does not match the hyper UR
     '--publish-result', publishResult,
     '--sha', bundleSha256,
     '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
     '--friend-opened',
     '--reached-games',
     '--joined-p2p',
@@ -103,6 +147,7 @@ test('refuses publish-result receipts without the local published-link proof com
     '--publish-result', publishResult,
     '--sha', bundleSha256,
     '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
     '--friend-opened',
     '--reached-games',
     '--joined-p2p',
@@ -125,6 +170,7 @@ test('refuses deprecated local published browser proof receipts', () => {
     '--publish-result', publishResult,
     '--sha', bundleSha256,
     '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
     '--friend-opened',
     '--reached-games',
     '--joined-p2p',
@@ -149,6 +195,7 @@ test('refuses publish-result receipts without the full remote friend checklist',
     '--publish-result', publishResult,
     '--sha', bundleSha256,
     '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
     '--friend-opened',
     '--reached-games',
     '--joined-p2p',
@@ -194,7 +241,8 @@ function writePublishResult (dir, overrides = {}) {
         'remote friend opens the final PearBrowser link',
         'remote friend reaches Games without fallback or boot error',
         'host and friend complete a live P2P invite join',
-        'host and friend can start Penalty Clash from the joined room'
+        'host and friend can start Penalty Clash from the joined room',
+        'record the observed Penalty Clash room code'
       ]
     },
     evidence: {
