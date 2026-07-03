@@ -309,6 +309,10 @@ function validateVerification (verification) {
   const bootProbeRequirements = Array.isArray(bootProbeContract.requires)
     ? bootProbeContract.requires
     : []
+  const exactBundlePearRuntimeContract = verification.exactBundlePearRuntimeContract || {}
+  const exactBundlePearRuntimeRequirements = Array.isArray(exactBundlePearRuntimeContract.requires)
+    ? exactBundlePearRuntimeContract.requires
+    : []
   const servedPreviewContract = verification.servedPreviewContract || {}
   const servedPreviewRequirements = Array.isArray(servedPreviewContract.requires)
     ? servedPreviewContract.requires
@@ -369,6 +373,9 @@ function validateVerification (verification) {
   if (!bundleChecks.some(check => String(check).startsWith('node scripts/smoke-pearbrowser-published-local.mjs --bundle '))) {
     errors.push('receipt verification must include local published-gateway smoke against the exact bundle')
   }
+  if (!bundleChecks.some(check => String(check).startsWith('node scripts/smoke-published-pearbrowser-runtime.mjs --bundle '))) {
+    errors.push('receipt verification must include Pear runtime smoke against the exact generated bundle')
+  }
   for (const required of [
     'design/kawaii-app/index-entry.test.js',
     'design/kawaii-app/app-deeplink.test.js',
@@ -422,6 +429,26 @@ function validateVerification (verification) {
   ]) {
     if (!bootProbeRequirements.includes(required)) {
       errors.push(`receipt bootProbeContract must require ${required}`)
+    }
+  }
+  if (exactBundlePearRuntimeContract.command !== 'node scripts/smoke-published-pearbrowser-runtime.mjs --bundle <bundle>') {
+    errors.push('receipt exactBundlePearRuntimeContract must document the exact-bundle Pear runtime smoke command')
+  }
+  for (const required of [
+    'temporary Pear app uses exact generated renderer bundle',
+    'actual Pear runtime boots exact bundle renderer',
+    'bootReady=p2p',
+    'p2pModules=ready',
+    'runtimeSelfTest=ready',
+    'runtimeSelfTest.activeScreen=games',
+    'runtimeSelfTest.inviteModalOpen=true',
+    'runtimeSelfTest.inviteLink includes ?join=',
+    'runtimeSelfTest.peerHandshake.started=true',
+    'runtimeSelfTest.peerHandshake.guest.p2pModules=ready',
+    'runtimeSelfTest.peerHandshake.guest.activeScreen=games'
+  ]) {
+    if (!exactBundlePearRuntimeRequirements.includes(required)) {
+      errors.push(`receipt exactBundlePearRuntimeContract must require ${required}`)
     }
   }
   if (servedPreviewContract.command !== 'npm run smoke:pearbrowser-serve') {
@@ -479,7 +506,7 @@ function validateVerification (verification) {
     'published-link smoke verifies generated avatar and game art assets',
     'published-link smoke rejects preview-only paths',
     'published-link smoke verifies hyper invite code paths do not leak localhost',
-    'exact PearBrowser bundle is a manifest renderer payload; actual Pear runtime proof comes from source package smoke',
+    'exact PearBrowser bundle is a manifest renderer payload; exact renderer Pear runtime proof comes from temporary Pear app smoke',
     'live browser runtime proof remains the remote friend gate'
   ]) {
     if (!localPublishedLinkRequirements.includes(required)) {
@@ -492,6 +519,7 @@ function validateVerification (verification) {
 
 function validateSmokeContracts () {
   const runtimeSmokePath = join(root, 'scripts', 'smoke-kawaii-pear-run.mjs')
+  const exactBundleRuntimeSmokePath = join(root, 'scripts', 'smoke-published-pearbrowser-runtime.mjs')
   const servedSmokePath = join(root, 'scripts', 'smoke-pearbrowser-serve.mjs')
   const localPublishedSmokePath = join(root, 'scripts', 'smoke-pearbrowser-published-local.mjs')
   const publishedSmokePath = join(root, 'scripts', 'smoke-published-pearbrowser.mjs')
@@ -501,6 +529,7 @@ function validateSmokeContracts () {
   const seamlessPath = join(root, 'scripts', 'check-pear-seamless.mjs')
   for (const [filePath, label] of [
     [runtimeSmokePath, 'actual Pear runtime smoke'],
+    [exactBundleRuntimeSmokePath, 'exact-bundle Pear runtime smoke'],
     [servedSmokePath, 'served PearBrowser preview smoke'],
     [localPublishedSmokePath, 'local published-gateway smoke'],
     [publishedSmokePath, 'published PearBrowser smoke'],
@@ -526,6 +555,19 @@ function validateSmokeContracts () {
       'runtime self-test guest did not join the hosted peer match'
     ]) {
       if (!runtimeSmoke.includes(required)) errors.push(`actual Pear runtime smoke is missing contract text: ${required}`)
+    }
+  }
+  if (existsSync(exactBundleRuntimeSmokePath)) {
+    const exactBundleRuntimeSmoke = readFileSync(exactBundleRuntimeSmokePath, 'utf8')
+    for (const required of [
+      'Exact PearBrowser bundle Pear run smoke',
+      '--app-root',
+      'temporary Pear app root',
+      'exact bundle renderer',
+      'node_modules',
+      '--no-pre'
+    ]) {
+      if (!exactBundleRuntimeSmoke.includes(required)) errors.push(`exact-bundle Pear runtime smoke is missing contract text: ${required}`)
     }
   }
   if (existsSync(servedSmokePath)) {
@@ -618,6 +660,8 @@ function validateSmokeContracts () {
     const seamless = readFileSync(seamlessPath, 'utf8')
     for (const required of [
       'runExactReceiptPublishedProof',
+      'Exact bundle Pear runtime proof',
+      'smoke-published-pearbrowser-runtime.mjs',
       'serve-pearbrowser-published-local.mjs',
       'smoke-published-pearbrowser.mjs',
       'Exact receipt published-link proof',

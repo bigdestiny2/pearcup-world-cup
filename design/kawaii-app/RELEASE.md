@@ -157,17 +157,18 @@ node scripts/check-pearbrowser-publish-handoff.mjs --receipt /path/to/pearcup-re
 candidate, validates the approved publish dry-run, runs the release-scope audit,
 checks the live `4186` preview, starts the exact receipt-backed local
 `/app/<drive>/` published proof server, smokes that published-link fetch/static
-contract plus the worker/settlement stack, and now hard-fails on a dirty worktree
-unless `--allow-dirty` is passed for an exploratory run. The exact PearBrowser
-bundle is a manifest renderer payload; actual Pear runtime proof comes from the
-source package smoke, and live remote proof still comes from the post-publish
-friend test.
+contract plus the worker/settlement stack, then builds a temporary Pear app from the
+exact generated renderer bundle and runs the Pear runtime Games/invite/hidden-guest
+smoke against it. It hard-fails on a dirty worktree unless `--allow-dirty` is passed
+for an exploratory run. The exact PearBrowser bundle is still a manifest renderer
+payload; final remote proof still comes from the post-publish friend test.
 
 The lower-level handoff check recomputes every file hash from the receipt, reruns the Hyper payload smoke,
 checks the manifest/asset/P2P contract, verifies that the receipt includes the
 deep-link/P2P source coverage, the actual Pear launch smoke, the served-preview
-contract, the local `/app/<drive>/` gateway smoke, the worker/settlement stack, and
-the hydrated UI/controller boot-probe contract, then validates and prints the structured publish command without
+contract, the local `/app/<drive>/` gateway smoke, the worker/settlement stack, the
+exact-bundle Pear runtime smoke, and the hydrated UI/controller boot-probe contract,
+then validates and prints the structured publish command without
 running it. The preferred command goes through
 `npm run publish:approved` / `scripts/publish-approved-pearcup.mjs`, which refuses to
 publish unless the receipt path and expected bundle SHA match. The command remains

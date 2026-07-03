@@ -6,11 +6,15 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const appRoot = join(root, 'design', 'kawaii-app')
 const args = parseArgs(process.argv.slice(2))
+const appRoot = args.appRoot ? resolve(args.appRoot) : join(root, 'design', 'kawaii-app')
+const smokeLabel = args.label || 'Kawaii Pear run smoke'
 const durationMs = Number(args.duration || 10_000)
 const pear = args.pear || 'pear'
 const bridgeProbeUrl = './boot-probe-hit.gif'
+
+if (!existsSync(appRoot)) throw new Error(`Pear app root does not exist: ${appRoot}`)
+
 const bootProbe = await createBootProbe()
 const bootProbeConfig = createBootProbeConfig(bootProbe.url)
 
@@ -86,7 +90,7 @@ const unexpectedWarnings = output
   .filter(line => !allowedWarnings.some(pattern => pattern.test(line)))
 
 if (fatal || earlyExit || bootProbeErrors.length > 0 || unexpectedWarnings.length > 0) {
-  console.error('Kawaii Pear run smoke failed:')
+  console.error(`${smokeLabel} failed:`)
   if (fatal) console.error(`- ${fatal}`)
   if (earlyExit) console.error(`- ${earlyExit}`)
   for (const error of bootProbeErrors) console.error(`- ${error}`)
@@ -97,8 +101,8 @@ if (fatal || earlyExit || bootProbeErrors.length > 0 || unexpectedWarnings.lengt
   }
   process.exitCode = 1
 } else {
-  console.log(`Kawaii Pear run smoke passed (${durationMs}ms)`)
-  console.log('ok - launched design/kawaii-app with temp store')
+  console.log(`${smokeLabel} passed (${durationMs}ms)`)
+  console.log(`ok - launched ${appRoot} with temp store`)
   console.log('ok - renderer reported P2P boot-ready through Pear bridge probe')
   console.log('ok - renderer routed to Games and opened a friend invite in the actual Pear app')
   console.log('ok - hidden guest app joined the invite and completed the peer handshake')
@@ -339,8 +343,13 @@ function parseArgs (argv) {
     const arg = argv[i]
     if (arg === '--duration') parsed.duration = argv[++i]
     else if (arg.startsWith('--duration=')) parsed.duration = arg.slice('--duration='.length)
+    else if (arg === '--app-root') parsed.appRoot = argv[++i]
+    else if (arg.startsWith('--app-root=')) parsed.appRoot = arg.slice('--app-root='.length)
+    else if (arg === '--label') parsed.label = argv[++i]
+    else if (arg.startsWith('--label=')) parsed.label = arg.slice('--label='.length)
     else if (arg === '--pear') parsed.pear = argv[++i]
     else if (arg.startsWith('--pear=')) parsed.pear = arg.slice('--pear='.length)
+    else throw new Error(`Unknown argument: ${arg}`)
   }
   return parsed
 }

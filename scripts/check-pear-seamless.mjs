@@ -55,6 +55,13 @@ if (errors.length === 0) {
   await runExactReceiptPublishedProof()
 }
 
+if (errors.length === 0) {
+  runNode('Exact bundle Pear runtime proof', 'scripts/smoke-published-pearbrowser-runtime.mjs', [
+    '--receipt',
+    receiptPath
+  ])
+}
+
 checkWorktree()
 
 if (errors.length > 0) {

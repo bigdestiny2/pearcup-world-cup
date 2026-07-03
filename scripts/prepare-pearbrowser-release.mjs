@@ -39,6 +39,7 @@ runNpm('smoke:pearbrowser-published-local')
 runNode('scripts/build-pearbrowser-hyper.mjs', ['--out', bundle])
 runNode('scripts/smoke-pearbrowser-hyper.mjs', ['--bundle', bundle])
 runNode('scripts/smoke-pearbrowser-published-local.mjs', ['--bundle', bundle])
+runNode('scripts/smoke-published-pearbrowser-runtime.mjs', ['--bundle', bundle])
 
 const files = listFiles(bundle).map(filePath => {
   const data = readFileSync(filePath)
@@ -89,7 +90,8 @@ const receipt = {
     bundleChecks: [
       `node scripts/build-pearbrowser-hyper.mjs --out ${bundle}`,
       `node scripts/smoke-pearbrowser-hyper.mjs --bundle ${bundle}`,
-      `node scripts/smoke-pearbrowser-published-local.mjs --bundle ${bundle}`
+      `node scripts/smoke-pearbrowser-published-local.mjs --bundle ${bundle}`,
+      `node scripts/smoke-published-pearbrowser-runtime.mjs --bundle ${bundle}`
     ],
     requiredCoverage: [
       'design/kawaii-app/index-entry.test.js',
@@ -139,6 +141,22 @@ const receipt = {
         'runtimeSelfTest.peerHandshake.guest.appBootedDataset=true'
       ]
     },
+    exactBundlePearRuntimeContract: {
+      command: 'node scripts/smoke-published-pearbrowser-runtime.mjs --bundle <bundle>',
+      requires: [
+        'temporary Pear app uses exact generated renderer bundle',
+        'actual Pear runtime boots exact bundle renderer',
+        'bootReady=p2p',
+        'p2pModules=ready',
+        'runtimeSelfTest=ready',
+        'runtimeSelfTest.activeScreen=games',
+        'runtimeSelfTest.inviteModalOpen=true',
+        'runtimeSelfTest.inviteLink includes ?join=',
+        'runtimeSelfTest.peerHandshake.started=true',
+        'runtimeSelfTest.peerHandshake.guest.p2pModules=ready',
+        'runtimeSelfTest.peerHandshake.guest.activeScreen=games'
+      ]
+    },
     servedPreviewContract: {
       command: 'npm run smoke:pearbrowser-serve',
       requires: [
@@ -180,7 +198,7 @@ const receipt = {
         'published-link smoke verifies generated avatar and game art assets',
         'published-link smoke rejects preview-only paths',
         'published-link smoke verifies hyper invite code paths do not leak localhost',
-        'exact PearBrowser bundle is a manifest renderer payload; actual Pear runtime proof comes from source package smoke',
+        'exact PearBrowser bundle is a manifest renderer payload; exact renderer Pear runtime proof comes from temporary Pear app smoke',
         'live browser runtime proof remains the remote friend gate'
       ]
     }
