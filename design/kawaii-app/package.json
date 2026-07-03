@@ -16,6 +16,10 @@
       "minHeight": 760,
       "backgroundColor": "#ffeef6"
     },
+    "routes": {
+      "": ".",
+      "/": "."
+    },
     "stage": {
       "include": [
         "/index.cjs",

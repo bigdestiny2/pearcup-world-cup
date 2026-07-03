@@ -1,5 +1,6 @@
 // The Pear renderer has no visible console — surface ANY uncaught error on-screen so a
 // pre-boot throw can't leave a blank shell with no explanation.
+if (typeof window !== 'undefined') window.__pearcupAppScriptSeen = true
 if (typeof window !== 'undefined' && !window.__pearcupErrHook) {
   window.__pearcupErrHook = true
   window.addEventListener('error', e => {
@@ -28,7 +29,23 @@ const teams = [
   { id: 'es', name: 'Spain', flag: '🇪🇸', colors: ['#c60b1e', '#ffc400', '#75131a'] },
   { id: 'at', name: 'Austria', flag: '🇦🇹', colors: ['#ed2939', '#ffffff', '#8f1d27'] },
   { id: 'fr', name: 'France', flag: '🇫🇷', colors: ['#1d3d8f', '#ffffff', '#d84a3a'] },
-  { id: 'ar', name: 'Argentina', flag: '🇦🇷', colors: ['#75aadb', '#ffffff', '#f6b33f'] }
+  { id: 'ar', name: 'Argentina', flag: '🇦🇷', colors: ['#75aadb', '#ffffff', '#f6b33f'] },
+  { id: 'us', name: 'United States', flag: '🇺🇸', colors: ['#ffffff', '#b31942', '#0a3161'] },
+  { id: 'ca', name: 'Canada', flag: '🇨🇦', colors: ['#ff0000', '#ffffff', '#8a1538'] },
+  { id: 'de', name: 'Germany', flag: '🇩🇪', colors: ['#000000', '#dd0000', '#ffce00'] },
+  { id: 'ma', name: 'Morocco', flag: '🇲🇦', colors: ['#c1272d', '#006233', '#ffffff'] },
+  { id: 'nl', name: 'Netherlands', flag: '🇳🇱', colors: ['#ae1c28', '#ffffff', '#21468b'] },
+  { id: 'sn', name: 'Senegal', flag: '🇸🇳', colors: ['#00853f', '#fdef42', '#e31b23'] },
+  { id: 'za', name: 'South Africa', flag: '🇿🇦', colors: ['#007749', '#ffb81c', '#de3831'] },
+  { id: 'py', name: 'Paraguay', flag: '🇵🇾', colors: ['#d52b1e', '#ffffff', '#0038a8'] },
+  { id: 'co', name: 'Colombia', flag: '🇨🇴', colors: ['#fcd116', '#003893', '#ce1126'] },
+  { id: 'gh', name: 'Ghana', flag: '🇬🇭', colors: ['#ce1126', '#fcd116', '#006b3f'] },
+  { id: 'se', name: 'Sweden', flag: '🇸🇪', colors: ['#006aa7', '#fecc00', '#0b4f7a'] },
+  { id: 'au', name: 'Australia', flag: '🇦🇺', colors: ['#012169', '#ffcd00', '#00843d'] },
+  { id: 'be', name: 'Belgium', flag: '🇧🇪', colors: ['#000000', '#fae042', '#ed2939'] },
+  { id: 'ba', name: 'Bosnia and Herzegovina', flag: '🇧🇦', colors: ['#002395', '#fecb00', '#ffffff'] },
+  { id: 'eg', name: 'Egypt', flag: '🇪🇬', colors: ['#ce1126', '#ffffff', '#000000'] },
+  { id: 'cv', name: 'Cabo Verde', flag: '🇨🇻', colors: ['#003893', '#f7d116', '#cf2027'] }
 ]
 
 // Runtime modules attach via <script> before app.js. In some runtimes (notably the Pear
@@ -83,44 +100,52 @@ const pools = [
   { tier: 100, entrants: 19, closes: '5h', max: 64, prize: '$1,900', heat: 'Elite', rail: 'USDT demo' }
 ]
 
-const r16Matches = [
-  { id: 'r16-1', time: 'Mon, 06/29', status: 'FT', slots: ['br', 'jp'], score: [2, 1], sample: { br: ['lina', 'ash'], jp: ['ken'] } },
-  { id: 'r16-2', time: 'Yesterday', status: 'FT', slots: ['ci', 'no'], score: [1, 2], sample: { ci: ['paz'], no: ['vera', 'jo'] } },
-  { id: 'r16-3', time: 'Today', status: 'FT', slots: ['mx', 'ec'], score: [2, 0], sample: { mx: ['milo'], ec: ['rio'] } },
-  { id: 'r16-4', time: 'Today, 20:00', status: 'Open', slots: ['eng', 'cd'], score: [null, null], sample: { eng: ['sasha'], cd: ['kito'] } },
-  { id: 'r16-5', time: 'Fri, 07/03', status: 'Open', slots: ['ch', 'dz'], score: [null, null], sample: { ch: ['noa'], dz: ['samir'] } },
-  { id: 'r16-6', time: 'Fri, 07/03', status: 'Open', slots: ['pt', 'hr'], score: [null, null], sample: { pt: ['ines'], hr: ['marko'] } },
-  { id: 'r16-7', time: 'Sat, 07/04', status: 'Open', slots: ['es', 'at'], score: [null, null], sample: { es: ['sol'], at: ['finn'] } },
-  { id: 'r16-8', time: 'Sat, 07/04', status: 'Open', slots: ['fr', 'ar'], score: [null, null], sample: { fr: ['cam'], ar: ['leo'] } }
+const round32Matches = [
+  { id: 'r32-1', time: 'Sat, 06/28', status: 'FT', slots: ['ca', 'za'], score: [1, 0], sample: { ca: ['noah'], za: ['zola'] } },
+  { id: 'r32-2', time: 'Sun, 06/29', status: 'PEN 3-2', slots: ['ma', 'nl'], score: [1, 1], sample: { ma: ['youssef'], nl: ['daan'] } },
+  { id: 'r32-3', time: 'Sun, 06/29', status: 'FT', slots: ['br', 'jp'], score: [2, 1], sample: { br: ['lina', 'ash'], jp: ['ken'] } },
+  { id: 'r32-4', time: 'Mon, 06/30', status: 'FT', slots: ['no', 'ci'], score: [2, 1], sample: { no: ['vera', 'jo'], ci: ['paz'] } },
+  { id: 'r32-5', time: 'Sun, 06/29', status: 'PEN 4-3', slots: ['py', 'de'], score: [1, 1], sample: { py: ['santi'], de: ['fritz'] } },
+  { id: 'r32-6', time: 'Mon, 06/30', status: 'FT', slots: ['fr', 'se'], score: [3, 0], sample: { fr: ['cam'], se: ['ingrid'] } },
+  { id: 'r32-7', time: 'Mon, 06/30', status: 'FT', slots: ['mx', 'ec'], score: [2, 0], sample: { mx: ['milo'], ec: ['rio'] } },
+  { id: 'r32-8', time: 'Tue, 07/01', status: 'FT', slots: ['eng', 'cd'], score: [2, 1], sample: { eng: ['sasha'], cd: ['kito'] } },
+  { id: 'r32-9', time: 'Tue, 07/01', status: 'AET', slots: ['be', 'sn'], score: [3, 2], sample: { be: ['eline'], sn: ['amina'] } },
+  { id: 'r32-10', time: 'Tue, 07/01', status: 'FT', slots: ['us', 'ba'], score: [2, 0], sample: { us: ['maya'], ba: ['dado'] } },
+  { id: 'r32-11', time: 'Today, 15:00', status: 'Open', slots: ['es', 'at'], score: [null, null], sample: { es: ['sol'], at: ['finn'] } },
+  { id: 'r32-12', time: 'Today, 19:00', status: 'Open', slots: ['pt', 'hr'], score: [null, null], sample: { pt: ['ines'], hr: ['marko'] } },
+  { id: 'r32-13', time: 'Today, 23:00', status: 'Open', slots: ['ch', 'dz'], score: [null, null], sample: { ch: ['noa'], dz: ['samir'] } },
+  { id: 'r32-14', time: 'Fri, 07/03, 14:00', status: 'Open', slots: ['au', 'eg'], score: [null, null], sample: { au: ['matilda'], eg: ['omar'] } },
+  { id: 'r32-15', time: 'Fri, 07/03, 18:00', status: 'Open', slots: ['ar', 'cv'], score: [null, null], sample: { ar: ['leo'], cv: ['sofia'] } },
+  { id: 'r32-16', time: 'Fri, 07/03, 21:30', status: 'Open', slots: ['co', 'gh'], score: [null, null], sample: { co: ['vale'], gh: ['kwame'] } }
 ]
 
 const commentary = {
   EN: [
-    ['64:10', 'Brazil are stretching the right side. Norway are staying compact, but the next switch is dangerous.'],
-    ['63:22', 'Shot quality is tilting green and yellow: two touches inside the box in the last minute.'],
-    ['62:47', 'Pool impact: 41% of this room needs Brazil to hold the lead for their quarterfinal path.']
+    ['Today', 'Spain vs Austria is the next Round of 32 room. Picks are open until kickoff.'],
+    ['19:00Z', 'Portugal vs Croatia follows later today, then Switzerland vs Algeria closes the slate.'],
+    ['R32', 'Pool impact is live, but the fallback feed will not invent scores before kickoff.']
   ],
   PT: [
-    ['64:10', 'O Brasil abre o jogo pela direita. A Noruega protege a area, mas a virada pode machucar.'],
-    ['63:22', 'A qualidade das chances subiu: dois toques dentro da area no ultimo minuto.'],
-    ['62:47', 'Impacto no bolao: 41% da sala precisa que o Brasil segure a vantagem.']
+    ['Today', 'Espanha vs Austria e a proxima sala do Round of 32. Palpites abertos ate o inicio.'],
+    ['19:00Z', 'Portugal vs Croacia vem depois, e Suica vs Argelia fecha o dia.'],
+    ['R32', 'O impacto do bolao esta ativo, mas o fallback nao inventa placares antes do jogo.']
   ],
   ES: [
-    ['64:10', 'Brasil estira el lado derecho. Noruega esta cerrada, pero el cambio de frente pesa.'],
-    ['63:22', 'La calidad de tiro sube: dos toques en el area durante el ultimo minuto.'],
-    ['62:47', 'Impacto en la quiniela: 41% de la sala necesita que Brasil sostenga la ventaja.']
+    ['Today', 'Espana vs Austria es la proxima sala de Round of 32. Picks abiertos hasta el inicio.'],
+    ['19:00Z', 'Portugal vs Croacia sigue mas tarde, y Suiza vs Argelia cierra el dia.'],
+    ['R32', 'El impacto del pool esta activo, pero el fallback no inventa marcadores antes del partido.']
   ],
   FR: [
-    ['64:10', 'Le Bresil etire le cote droit. La Norvege reste compacte, mais le renversement menace.'],
-    ['63:22', 'La qualite des tirs bascule: deux touches dans la surface sur la derniere minute.'],
-    ['62:47', 'Impact du pool: 41% de la salle veut que le Bresil garde son avance.']
+    ['Today', 'Espagne vs Autriche est la prochaine salle du Round of 32. Picks ouverts jusqu au coup d envoi.'],
+    ['19:00Z', 'Portugal vs Croatie suit ensuite, puis Suisse vs Algerie ferme la journee.'],
+    ['R32', 'L impact du pool est actif, mais le fallback ne fabrique pas de score avant le match.']
   ]
 }
 
 const defaultChat = [
-  { user: 'lina', text: 'That save changed the whole bracket.', time: '63:05' },
-  { user: 'vera', text: 'Norway still has one big counter in them.', time: '63:31' },
-  { user: 'ash', text: 'Brazil midfield finally woke up.', time: '64:02' }
+  { user: 'lina', text: 'Spain/Austria room is up. No fake score until the feed lands.', time: 'Today' },
+  { user: 'vera', text: 'Portugal/Croatia pool is next on my list.', time: '19:00Z' },
+  { user: 'ash', text: 'Good, bracket is still Round of 32.', time: 'R32' }
 ]
 
 const liveTabs = [
@@ -132,9 +157,9 @@ const liveTabs = [
 ]
 
 const homeFixtures = [
-  { status: 'Live, 64\'', title: 'Brazil 2 - 1 Norway', detail: '38 peers watching', live: true },
-  { status: 'Today, 20:00', title: 'England vs DR Congo', detail: 'Room opens in 3h', live: false },
-  { status: 'Fri, 07/03, 03:00', title: 'Portugal vs Croatia', detail: '$50 pool closing', live: false }
+  { status: 'Today, 15:00', title: 'Spain vs Austria', detail: 'Round of 32 match room', live: false },
+  { status: 'Today, 19:00', title: 'Portugal vs Croatia', detail: '$50 pool closing', live: false },
+  { status: 'Today, 23:00', title: 'Switzerland vs Algeria', detail: 'Late room opening', live: false }
 ]
 
 const matchStats = [
@@ -203,6 +228,14 @@ const gameLeaderboardRows = [
 ]
 
 const bracketLinks = [
+  { from: ['r32-1', 'r32-2'], to: 'r16-1' },
+  { from: ['r32-3', 'r32-4'], to: 'r16-2' },
+  { from: ['r32-5', 'r32-6'], to: 'r16-3' },
+  { from: ['r32-7', 'r32-8'], to: 'r16-4' },
+  { from: ['r32-9', 'r32-10'], to: 'r16-5' },
+  { from: ['r32-11', 'r32-12'], to: 'r16-6' },
+  { from: ['r32-13', 'r32-14'], to: 'r16-7' },
+  { from: ['r32-15', 'r32-16'], to: 'r16-8' },
   { from: ['r16-1', 'r16-2'], to: 'qf-1' },
   { from: ['r16-3', 'r16-4'], to: 'qf-2' },
   { from: ['r16-5', 'r16-6'], to: 'qf-3' },
@@ -210,6 +243,18 @@ const bracketLinks = [
   { from: ['qf-1', 'qf-2'], to: 'sf-1' },
   { from: ['qf-3', 'qf-4'], to: 'sf-2' },
   { from: ['sf-1', 'sf-2'], to: 'final-1' }
+]
+
+const bracketMatchIds = [
+  'r32-1', 'r32-2', 'r32-3', 'r32-4',
+  'r32-5', 'r32-6', 'r32-7', 'r32-8',
+  'r32-9', 'r32-10', 'r32-11', 'r32-12',
+  'r32-13', 'r32-14', 'r32-15', 'r32-16',
+  'r16-1', 'r16-2', 'r16-3', 'r16-4',
+  'r16-5', 'r16-6', 'r16-7', 'r16-8',
+  'qf-1', 'qf-2', 'qf-3', 'qf-4',
+  'sf-1', 'sf-2',
+  'final-1'
 ]
 
 const state = loadState()
@@ -259,10 +304,39 @@ function loadState () {
     }
     // A live peer match can't survive a reload (the connection is gone) — start in the lobby.
     if (merged.match && merged.match.peer) merged.match = null
+    merged.picks = normalizeBracketPicks(merged.picks)
     return merged
   } catch {
     return fallback
   }
+}
+
+function normalizeBracketPicks (picks = {}) {
+  const source = picks && typeof picks === 'object' && !Array.isArray(picks) ? picks : {}
+  const next = { ...source }
+  const hasRound32 = Object.keys(next).some(id => id.startsWith('r32-'))
+  if (!hasRound32) {
+    for (let i = 1; i <= 8; i++) {
+      if (next[`r16-${i}`] && !next[`r32-${i}`]) next[`r32-${i}`] = next[`r16-${i}`]
+      if (next[`qf-${i}`] && !next[`r16-${i}`]) next[`r16-${i}`] = next[`qf-${i}`]
+    }
+    for (let i = 1; i <= 4; i++) {
+      if (next[`sf-${i}`] && !next[`qf-${i}`]) next[`qf-${i}`] = next[`sf-${i}`]
+    }
+    if (next['final-1'] && !next['sf-1']) next['sf-1'] = next['final-1']
+  }
+  const knownTeamIds = new Set(teams.map(team => team.id))
+  const round32ById = new Map(round32Matches.map(match => [match.id, match]))
+  for (const id of Object.keys(next)) {
+    const teamId = next[id]
+    if (!bracketMatchIds.includes(id) || !knownTeamIds.has(teamId)) {
+      delete next[id]
+      continue
+    }
+    const round32Match = round32ById.get(id)
+    if (round32Match && !round32Match.slots.includes(teamId)) delete next[id]
+  }
+  return next
 }
 
 function persist () {
@@ -412,15 +486,11 @@ function mixHex (hex, target, amount) {
   return `#${mixed.join('')}`
 }
 
-// Registry for AI-generated anime portraits, keyed by `${name}-${team.id}`.
-// Populated when a user opts to generate art; until then the SVG chibi renders.
+// Registry for AI-generated Higgsfield portraits, keyed by `${name}-${team.id}`.
+// The static SVG shell remains a pre-boot fallback; hydrated avatars use these assets.
 const AVATAR_PORTRAITS = (typeof window !== 'undefined' && (window.__pearcupPortraits = window.__pearcupPortraits || {})) || {}
-// AI-generated Kawaii anime portraits (Higgsfield) for the recurring characters,
-// keyed by `${name}-${team.id}`. Others fall back to the seeded SVG chibi.
 Object.assign(AVATAR_PORTRAITS, {
-  // team-specific (user's country-aware avatar)
   'captain-br': 'avatars/captain-br.png',
-  // name-based so every recurring character is AI everywhere (no chibi fallback)
   captain: 'avatars/captain-br.png',
   vera: 'avatars/vera-no.png',
   milo: 'avatars/milo-mx.png',
@@ -434,7 +504,6 @@ Object.assign(AVATAR_PORTRAITS, {
   dado: 'avatars/dado.png',
   ash: 'avatars/ash.png'
 })
-// Diverse pool characters, named so casts can reference distinct faces directly.
 Object.assign(AVATAR_PORTRAITS, {
   aria: 'avatars/p-aria.png', rico: 'avatars/p-rico.png', kenji: 'avatars/p-kenji.png',
   amara: 'avatars/p-amara.png', luca: 'avatars/p-luca.png', sofia: 'avatars/p-sofia.png',
@@ -444,22 +513,19 @@ Object.assign(AVATAR_PORTRAITS, {
   freya: 'avatars/p-freya.png', santi: 'avatars/p-santi.png', kofi: 'avatars/p-kofi.png'
 })
 
-// Diverse AI portrait pool — every distinct character/team gets a consistent, distinct
-// face (deterministic by name+team) so no two players look alike and no chibi fallback.
 const AVATAR_POOL = [
   'p-aria', 'p-rico', 'p-kenji', 'p-amara', 'p-luca', 'p-sofia', 'p-omar', 'p-nina',
   'p-diego', 'p-yuki', 'p-kwame', 'p-ingrid', 'p-rafa', 'p-mei', 'p-tariq', 'p-freya',
   'p-santi', 'p-kofi'
 ]
+
 function pooledPortrait (name, team) {
   const h = hashString(`${name}-${team && team.id ? team.id : ''}`)
   return `avatars/${AVATAR_POOL[h % AVATAR_POOL.length]}.png`
 }
 
 function avatarPortrait (name, team) {
-  // team-specific first (e.g. the user's chosen country), then name-based so a
-  // character shows the same AI avatar everywhere it appears, then a deterministic
-  // pick from the diverse pool so EVERYONE is AI and distinct (no chibi fallback).
+  if (!team || !team.id) return AVATAR_PORTRAITS[String(name).toLowerCase()] || null
   return AVATAR_PORTRAITS[`${name}-${team.id}`] ||
     AVATAR_PORTRAITS[String(name).toLowerCase()] ||
     pooledPortrait(name, team)
@@ -482,18 +548,18 @@ const KAWAII_SKIN = ['#ffe6d3', '#ffd9c0', '#f0c09b', '#d9a17a', '#b97e58']
 
 function avatarSvg (name, team, compact = false) {
   const seed = hashString(`${name}-${team.id}`)
-  const prefix = `av-${team.id}-${seed}`.replace(/[^a-z0-9-]/gi, '')
   const scaleClass = compact ? 'compact-avatar' : 'showcase-avatar'
+  const prefix = `av-${compact ? 'sm' : 'lg'}-${team.id}-${seed}`.replace(/[^a-z0-9-]/gi, '')
   const jersey = pickJerseyColor(team.colors)
   const jerseyLight = mixHex(jersey, '#ffffff', 0.32)
   const jerseyDeep = mixHex(jersey, '#3a1030', 0.28)
   const accent = team.colors.find(c => c !== jersey) || '#ff8fc0'
+  const label = escapeHtml(initials(name))
   const shoe = mixHex(accent, '#ff8fc0', 0.15)
   const skin = KAWAII_SKIN[seed % KAWAII_SKIN.length]
   const skinShade = mixHex(skin, '#e08a6a', 0.45)
   const ariaLabel = `${escapeHtml(name)} anime avatar wearing ${escapeHtml(team.name)} kit`
 
-  // AI-generated portrait path: clipped into a rounded team-tinted frame.
   const portrait = avatarPortrait(name, team)
   if (portrait) {
     const pv = compact ? '10 10 180 180' : '0 0 200 200'
@@ -501,6 +567,7 @@ function avatarSvg (name, team, compact = false) {
     <svg class="avatar-art ${scaleClass}" viewBox="${pv}" role="img" aria-label="${ariaLabel}">
       <defs><clipPath id="${prefix}-pc"><rect x="14" y="14" width="172" height="172" rx="46"/></clipPath></defs>
       <rect x="10" y="10" width="180" height="180" rx="50" fill="${jerseyLight}"/>
+      <text x="100" y="113" text-anchor="middle" font-size="44" font-weight="900" fill="${jerseyDeep}" opacity="0.72" font-family="Arial, sans-serif">${label}</text>
       <image href="${escapeHtml(portrait)}" x="14" y="14" width="172" height="172" clip-path="url(#${prefix}-pc)" preserveAspectRatio="xMidYMid slice"/>
       <rect x="14" y="14" width="172" height="172" rx="46" fill="none" stroke="#ffffff" stroke-width="6"/>
       <rect x="14" y="14" width="172" height="172" rx="46" fill="none" stroke="${jersey}" stroke-width="3" opacity="0.6"/>
@@ -604,7 +671,7 @@ function avatarSvg (name, team, compact = false) {
       <ellipse cx="118" cy="224" rx="15" ry="8" fill="${shoe}"/>
       <path d="M64 158c0-22 16-34 36-34s36 12 36 34l3 26c0 7-5 12-13 12H74c-8 0-13-5-13-12Z" fill="url(#${prefix}-kit)"/>
       <circle cx="100" cy="150" r="15" fill="#ffffff" opacity="0.85"/>
-      <text x="100" y="188" text-anchor="middle" font-family="'Baloo 2', Arial, sans-serif" font-weight="800" font-size="26" fill="#ffffff">${jerseyNumber}</text>
+      <text x="100" y="188" text-anchor="middle" font-family="Arial Rounded MT Bold, Arial, sans-serif" font-weight="800" font-size="26" fill="#ffffff">${jerseyNumber}</text>
       <rect x="48" y="152" width="17" height="38" rx="8.5" fill="url(#${prefix}-kit)"/>
       <rect x="135" y="152" width="17" height="38" rx="8.5" fill="url(#${prefix}-kit)"/>
       <circle cx="56" cy="192" r="10" fill="${skin}"/>
@@ -933,12 +1000,12 @@ function renderHomeHero () {
   const set = (id, html) => { const el = $(id); if (el) el.innerHTML = html }
   set('#heroHomeFlag', flag(snap.home)); set('#heroAwayFlag', flag(snap.away))
   set('#heroHomeName', escapeHtml(snap.home.name)); set('#heroAwayName', escapeHtml(snap.away.name))
-  set('#heroScore', `${snap.home.goals} - ${snap.away.goals}`)
-  const poss = (st && st.possession && st.possession !== 50) ? `${st.possession}% possession` : (snap.live ? 'World Cup' : '58% possession')
+  set('#heroScore', snap.st && snap.st.hasScore === false ? 'vs' : `${snap.home.goals} - ${snap.away.goals}`)
+  const poss = (st && st.possession && st.possession !== 50) ? `${st.possession}% possession` : (snap.live ? 'World Cup' : 'Pre-match room')
   set('#heroHomeSub', escapeHtml(poss))
-  set('#heroAwaySub', escapeHtml(snap.live && st ? stageLabel(st) || 'World Cup' : 'Counter threat high'))
+  set('#heroAwaySub', escapeHtml(st ? stageLabel(st) || 'World Cup' : 'Round of 32'))
   const clockEl = $('#heroClock')
-  if (clockEl) clockEl.textContent = st ? (st.matchStatus === 'FINISHED' ? 'FT' : st.minute ? `${st.minute}'` : snap.live ? 'LIVE' : "64'") : "64'"
+  if (clockEl) clockEl.textContent = st ? (st.matchStatus === 'FINISHED' ? 'FT' : st.minute ? `${st.minute}'` : snap.status) : '15:00 ET'
   const stateEl = $('#heroState')
   if (stateEl) { stateEl.textContent = snap.status; stateEl.className = snap.live && st && /IN_PLAY|LIVE|PAUSED/.test(st.matchStatus) ? 'is-live' : '' }
 }
@@ -960,7 +1027,9 @@ function renderHomeDashboard () {
   const snap = livePanelSnapshot()
   const liveFixture = {
     status: snap.status,
-    title: `${snap.home.name} ${snap.home.goals} - ${snap.away.goals} ${snap.away.name}`,
+    title: snap.st && snap.st.hasScore === false
+      ? `${snap.home.name} vs ${snap.away.name}`
+      : `${snap.home.name} ${snap.home.goals} - ${snap.away.goals} ${snap.away.name}`,
     detail: `${state.spectators || 38} peers watching`,
     live: true
   }
@@ -1014,9 +1083,9 @@ function livePanelSnapshot () {
   let st = null
   try { st = feedState() } catch { st = null }
   const live = isLiveApi()
-  const home = st ? st.home : { name: 'Brazil', goals: 2, teamId: 'br' }
-  const away = st ? st.away : { name: 'Norway', goals: 1, teamId: 'no' }
-  const status = st ? matchStateLabel(st).txt : "Live, 64'"
+  const home = st ? st.home : { name: 'Spain', flag: '🇪🇸', goals: 0, teamId: 'es' }
+  const away = st ? st.away : { name: 'Austria', flag: '🇦🇹', goals: 0, teamId: 'at' }
+  const status = st ? matchStateLabel(st).txt : 'Kicks off 15:00 ET'
   const events = (state.feedEvents || [])
   return { st, live, home, away, status, events }
 }
@@ -1272,7 +1341,7 @@ function renderTeams () {
 }
 
 function renderPools () {
-  const sampleTeams = ['br', 'no', 'mx']
+  const sampleTeams = ['es', 'at', 'pt']
   const railMode = serviceModeLabel(integrationRuntime.readiness.tetherWdk)
   const railState = integrationRuntime.canUseRealMoney ? 'Live USDT' : `${railMode} locked`
   $('#poolGrid').innerHTML = pools.map(pool => `
@@ -1758,22 +1827,33 @@ function makeMatch (id, time, status, slots, score = [null, null], sample = {}) 
 }
 
 function buildRounds () {
-  const round16 = r16Matches.map(match => makeMatch(match.id, match.time, match.status, match.slots, match.score, match.sample))
+  const round32 = round32Matches.map(match => makeMatch(match.id, match.time, match.status, match.slots, match.score, match.sample))
+  const round16 = [
+    makeMatch('r16-1', 'Sat, 07/04, 00:00', 'Next', [getPick('r32-1'), getPick('r32-2')], [null, null], {}),
+    makeMatch('r16-2', 'Sat, 07/04, 04:00', 'Next', [getPick('r32-3'), getPick('r32-4')], [null, null], {}),
+    makeMatch('r16-3', 'Sun, 07/05, 00:00', 'Next', [getPick('r32-5'), getPick('r32-6')], [null, null], {}),
+    makeMatch('r16-4', 'Sun, 07/05, 04:00', 'Next', [getPick('r32-7'), getPick('r32-8')], [null, null], {}),
+    makeMatch('r16-5', 'Mon, 07/06, 00:00', 'Next', [getPick('r32-9'), getPick('r32-10')], [null, null], {}),
+    makeMatch('r16-6', 'Mon, 07/06, 04:00', 'Next', [getPick('r32-11'), getPick('r32-12')], [null, null], {}),
+    makeMatch('r16-7', 'Tue, 07/07, 00:00', 'Next', [getPick('r32-13'), getPick('r32-14')], [null, null], {}),
+    makeMatch('r16-8', 'Tue, 07/07, 04:00', 'Next', [getPick('r32-15'), getPick('r32-16')], [null, null], {})
+  ]
   const qf = [
-    makeMatch('qf-1', 'Mon, 07/06, 00:00', 'Open', [getPick('r16-1'), getPick('r16-2')], [null, null], {}),
-    makeMatch('qf-2', 'Mon, 07/06, 04:00', 'Open', [getPick('r16-3'), getPick('r16-4')], [null, null], {}),
-    makeMatch('qf-3', 'Tue, 07/07, 00:00', 'Open', [getPick('r16-5'), getPick('r16-6')], [null, null], {}),
-    makeMatch('qf-4', 'Tue, 07/07, 04:00', 'Open', [getPick('r16-7'), getPick('r16-8')], [null, null], {})
+    makeMatch('qf-1', 'Thu, 07/09, 00:00', 'Open', [getPick('r16-1'), getPick('r16-2')], [null, null], {}),
+    makeMatch('qf-2', 'Fri, 07/10, 00:00', 'Open', [getPick('r16-3'), getPick('r16-4')], [null, null], {}),
+    makeMatch('qf-3', 'Fri, 07/10, 04:00', 'Open', [getPick('r16-5'), getPick('r16-6')], [null, null], {}),
+    makeMatch('qf-4', 'Sat, 07/11, 00:00', 'Open', [getPick('r16-7'), getPick('r16-8')], [null, null], {})
   ]
   const semi = [
-    makeMatch('sf-1', 'Thu, 07/09, 00:00', 'Open', [getPick('qf-1'), getPick('qf-2')], [null, null], {}),
-    makeMatch('sf-2', 'Thu, 07/09, 04:00', 'Open', [getPick('qf-3'), getPick('qf-4')], [null, null], {})
+    makeMatch('sf-1', 'Tue, 07/14, 00:00', 'Open', [getPick('qf-1'), getPick('qf-2')], [null, null], {}),
+    makeMatch('sf-2', 'Wed, 07/15, 00:00', 'Open', [getPick('qf-3'), getPick('qf-4')], [null, null], {})
   ]
   const final = [
-    makeMatch('final-1', 'Sun, 07/12, 01:00', 'Open', [getPick('sf-1'), getPick('sf-2')], [null, null], {})
+    makeMatch('final-1', 'Sun, 07/19, 01:00', 'Open', [getPick('sf-1'), getPick('sf-2')], [null, null], {})
   ]
 
   return [
+    { key: 'round32', label: 'Round of 32', matches: round32 },
     { key: 'round16', label: 'Round of 16', matches: round16 },
     { key: 'quarter', label: 'Quarterfinals', matches: qf },
     { key: 'semi', label: 'Semifinals', matches: semi },
@@ -1974,10 +2054,11 @@ async function renderBracket () {
   renderBracketEntrants(settlement)
   bindPayoutControls()
   const placements = {
-    round16: index => ({ column: 1, row: index + 2, span: 1 }),
-    quarter: index => ({ column: 2, row: 2 + (index * 2), span: 2 }),
-    semi: index => ({ column: 3, row: 2 + (index * 4), span: 4 }),
-    final: () => ({ column: 4, row: 4, span: 4 })
+    round32: index => ({ column: 1, row: index + 2, span: 1 }),
+    round16: index => ({ column: 2, row: 2 + (index * 2), span: 2 }),
+    quarter: index => ({ column: 3, row: 3 + (index * 4), span: 4 }),
+    semi: index => ({ column: 4, row: 5 + (index * 8), span: 8 }),
+    final: () => ({ column: 5, row: 9, span: 8 })
   }
   const rounds = buildRounds()
 
@@ -2071,35 +2152,30 @@ function updateBracketConnectors () {
 }
 
 function clearDownstream (matchId) {
-  const downstream = {
-    'r16-1': ['qf-1', 'sf-1', 'final-1'],
-    'r16-2': ['qf-1', 'sf-1', 'final-1'],
-    'r16-3': ['qf-2', 'sf-1', 'final-1'],
-    'r16-4': ['qf-2', 'sf-1', 'final-1'],
-    'r16-5': ['qf-3', 'sf-2', 'final-1'],
-    'r16-6': ['qf-3', 'sf-2', 'final-1'],
-    'r16-7': ['qf-4', 'sf-2', 'final-1'],
-    'r16-8': ['qf-4', 'sf-2', 'final-1'],
-    'qf-1': ['sf-1', 'final-1'],
-    'qf-2': ['sf-1', 'final-1'],
-    'qf-3': ['sf-2', 'final-1'],
-    'qf-4': ['sf-2', 'final-1'],
-    'sf-1': ['final-1'],
-    'sf-2': ['final-1']
+  const queue = bracketLinks
+    .filter(link => link.from.includes(matchId))
+    .map(link => link.to)
+  const seen = new Set()
+  while (queue.length) {
+    const id = queue.shift()
+    if (seen.has(id)) continue
+    seen.add(id)
+    bracketLinks
+      .filter(link => link.from.includes(id))
+      .forEach(link => queue.push(link.to))
   }
-
-  for (const id of downstream[matchId] || []) delete state.picks[id]
+  for (const id of seen) delete state.picks[id]
 }
 
 function watchParticipants () {
-  const livePick = ['br', 'no'].includes(state.picks['qf-1']) ? state.picks['qf-1'] : 'br'
+  const livePick = ['es', 'at'].includes(state.picks['r32-11']) ? state.picks['r32-11'] : 'es'
   return [
     { name: state.username || 'captain', pick: livePick, role: 'you' },
-    { name: 'lina', pick: 'br', role: 'stream host' },
-    { name: 'amara', pick: 'ci', role: 'voice' },
-    { name: 'vera', pick: 'no', role: 'voice' },
-    { name: 'diego', pick: 'ar', role: 'chat' },
-    { name: 'kwame', pick: 'ci', role: 'chat' }
+    { name: 'lina', pick: 'es', role: 'stream host' },
+    { name: 'amara', pick: 'at', role: 'voice' },
+    { name: 'vera', pick: 'at', role: 'voice' },
+    { name: 'diego', pick: 'es', role: 'chat' },
+    { name: 'kwame', pick: 'at', role: 'chat' }
   ]
 }
 
@@ -2115,7 +2191,8 @@ const COMMENTARY_TEMPLATES = {
   chance: { EN: 'Big chance for {t}! Inches wide.', PT: 'Grande chance do {t}! Passou perto.', ES: '¡Ocasion clara de {t}! Rozo el palo.', FR: 'Grosse occasion pour {t} ! Tout pres.' },
   corner: { EN: 'Corner to {t} — bodies in the box.', PT: 'Escanteio para o {t} — area lotada.', ES: 'Corner para {t} — todos al area.', FR: 'Corner pour {t} — la surface se remplit.' },
   save:   { EN: 'Huge save denies {t}! What a moment.', PT: 'Que defesa nega o {t}! Momento enorme.', ES: '¡Paradon que niega a {t}! Momentazo.', FR: 'Quel arret face a {t} ! Moment enorme.' },
-  poss:   { EN: '{t} keep the ball and probe for openings.', PT: '{t} tocam a bola buscando espacos.', ES: '{t} manejan el balon buscando espacios.', FR: '{t} gardent le ballon et cherchent la faille.' }
+  poss:   { EN: '{t} keep the ball and probe for openings.', PT: '{t} tocam a bola buscando espacos.', ES: '{t} manejan el balon buscando espacios.', FR: '{t} gardent le ballon et cherchent la faille.' },
+  preview: { EN: '{t}', PT: '{t}', ES: '{t}', FR: '{t}' }
 }
 // Real seam: replace with a QVAC completion call { event, language } -> line.
 function commentaryLine (type, teamName, lang) {
@@ -2127,13 +2204,24 @@ function createSimLiveFeed () {
   const listeners = new Set()
   let timer = null
   const st = {
-    minute: 64,
-    home: { name: 'Brazil', flag: '🇧🇷', teamId: 'br', goals: 2 },
-    away: { name: 'Norway', flag: '🇳🇴', teamId: 'no', goals: 1 },
-    possession: 58, shots: [12, 6], threat: 74
+    minute: 0,
+    home: { name: 'Spain', flag: '🇪🇸', teamId: 'es', goals: 0 },
+    away: { name: 'Austria', flag: '🇦🇹', teamId: 'at', goals: 0 },
+    possession: 50,
+    shots: [0, 0],
+    threat: 50,
+    hasScore: false,
+    matchStatus: 'TIMED',
+    utcDate: '2026-07-02T19:00:00Z',
+    stage: 'LAST_32',
+    competition: { name: 'FIFA World Cup' }
   }
   const emit = ev => listeners.forEach(fn => fn(ev, st))
   function tick () {
+    if (st.matchStatus === 'TIMED' || st.matchStatus === 'SCHEDULED') {
+      emit({ type: 'preview', team: 'Spain vs Austria room is open. Kickoff is 15:00 ET.', clock: 'Soon', minute: 0 })
+      return
+    }
     st.minute += 1
     st.possession = Math.max(35, Math.min(72, st.possession + Math.round((Math.random() - 0.5) * 8)))
     st.threat = Math.max(20, Math.min(96, st.threat + Math.round((Math.random() - 0.5) * 22)))
@@ -2227,8 +2315,8 @@ function createApiLiveFeed (config) {
   let timer = null
   const st = {
     minute: 0,
-    home: { name: 'Home', flag: '⚽', teamId: 'br', goals: 0 },
-    away: { name: 'Away', flag: '⚽', teamId: 'no', goals: 0 },
+    home: { name: 'Home', flag: '⚽', teamId: 'es', goals: 0 },
+    away: { name: 'Away', flag: '⚽', teamId: 'at', goals: 0 },
     possession: 50, shots: [0, 0], threat: 50, matchStatus: 'connecting'
   }
   const emit = ev => listeners.forEach(fn => fn(ev, st))
@@ -2270,9 +2358,9 @@ function feedState () { return activeFeed.state() }
 function seedFeedEvents () {
   if (!state.feedEvents || !state.feedEvents.length) {
     state.feedEvents = [
-      { clock: "64'", type: 'shot', team: 'Brazil' },
-      { clock: "63'", type: 'save', team: 'Norway' },
-      { clock: "62'", type: 'corner', team: 'Brazil' }
+      { clock: 'Today', type: 'preview', team: 'Spain vs Austria room is open.' },
+      { clock: '19:00Z', type: 'preview', team: 'Kickoff at SoFi Stadium.' },
+      { clock: 'R32', type: 'preview', team: 'Portugal vs Croatia and Switzerland vs Algeria follow later today.' }
     ]
   }
 }
@@ -2404,7 +2492,9 @@ function applyFeedTick (ev, st) {
     : st.matchStatus === 'TIMED' || st.matchStatus === 'SCHEDULED' ? 'Soon'
     : `${st.minute || 0}'`
   const clock = $('#tvClock'); if (clock) clock.textContent = clockTxt
-  const score = $('#tvScore'); if (score) score.textContent = `${st.home.name} ${st.home.goals} - ${st.away.goals} ${st.away.name}`
+  const score = $('#tvScore'); if (score) score.textContent = st.hasScore === false
+    ? `${st.home.name} vs ${st.away.name}`
+    : `${st.home.name} ${st.home.goals} - ${st.away.goals} ${st.away.name}`
   const title = $('#watchTitle'); if (title) title.textContent = `${st.home.name} vs ${st.away.name}`
   // Live vs simulated presentation: real API → rich scoreboard + source badge.
   const tv = document.querySelector('#watch .stadium-tv')
@@ -2566,7 +2656,7 @@ function renderWatch () {
   renderWatchStats(feedState())
   applyFeedTick(null, feedState())
   const room = watchParticipants()
-  const grouped = ['br', 'no'].map(teamId => {
+  const grouped = ['es', 'at'].map(teamId => {
     const picked = room.filter(person => person.pick === teamId)
     return { team: teamById(teamId), picked }
   })
@@ -3687,8 +3777,7 @@ function applyKickResult (result) {
 }
 
 function remainingPicks () {
-  const ids = ['r16-1', 'r16-2', 'r16-3', 'r16-4', 'r16-5', 'r16-6', 'r16-7', 'r16-8', 'qf-1', 'qf-2', 'qf-3', 'qf-4', 'sf-1', 'sf-2', 'final-1']
-  return ids.filter(id => !state.picks[id]).length
+  return bracketMatchIds.filter(id => !state.picks[id]).length
 }
 
 function bindViewButtons (root = document) {
@@ -3697,6 +3786,51 @@ function bindViewButtons (root = document) {
     button.dataset.viewBound = 'true'
     button.addEventListener('click', () => setView(button.dataset.view))
   })
+}
+
+function bindCoreFallbackEvents () {
+  if (document.documentElement.dataset.coreFallbackBound) return
+  document.documentElement.dataset.coreFallbackBound = 'true'
+
+  document.addEventListener('click', event => {
+    const viewButton = event.target.closest('[data-view]')
+    if (viewButton && viewButton.dataset.view) {
+      event.preventDefault()
+      event.stopPropagation()
+      setView(viewButton.dataset.view)
+      return
+    }
+
+    const teamButton = event.target.closest('#teamGrid .team-card[data-team]')
+    if (teamButton) {
+      event.preventDefault()
+      event.stopPropagation()
+      state.team = teamButton.dataset.team
+      persist()
+      renderAll()
+      return
+    }
+
+    const saveButton = event.target.closest('#saveProfile')
+    if (saveButton) {
+      event.preventDefault()
+      event.stopPropagation()
+      const name = $('#usernameInput').value.trim()
+      state.username = name || 'captain'
+      persist()
+      renderAll()
+      setView('home')
+      showToast(`${state.username} joined as ${teamById(state.team).name}`)
+    }
+  }, true)
+
+  document.addEventListener('input', event => {
+    if (event.target && event.target.id === 'usernameInput') {
+      state.username = event.target.value.trim() || 'captain'
+      persist()
+      renderProfile()
+    }
+  }, true)
 }
 
 function bindEvents () {
@@ -3789,13 +3923,17 @@ function renderAll () {
 
 function boot () {
   applyTheme(state.theme)
-  bindEvents()
+  bindCoreFallbackEvents()
   renderAll()
   setView(state.view)
+  bindEvents()
   // If any runtime module was missing or the runtime config degraded to demo, say so
   // (non-blocking) — tells us the real cause without a console.
   if (bootIssues.length) { try { console.warn('PearCup boot issues:', bootIssues); showToast('Runtime note: ' + bootIssues.join(' · ')) } catch (e) {} }
-  if (!state.themeChosen) showThemePicker(true)
+  if (!state.themeChosen) {
+    state.themeChosen = true
+    persist()
+  }
   // Deep link: ?join=<code> auto-joins a friend's peer match.
   try {
     const joinCode = new URLSearchParams(location.search).get('join')
@@ -3811,11 +3949,20 @@ function boot () {
 
 try {
   boot()
+  if (typeof window !== 'undefined') {
+    window.__pearcupAppBooted = true
+    document.documentElement.setAttribute('data-pearcup-booted', 'true')
+    try { window.sessionStorage && window.sessionStorage.removeItem('pearcupBootRetryVisualShell') } catch (e) {}
+    const bar = document.getElementById('bootErrorBar')
+    if (bar && !/^PearCup boot error:/.test(bar.textContent || '')) bar.remove()
+    try { window.dispatchEvent(new Event('pearcup:booted')) } catch (e) {}
+  }
 } catch (err) {
   // The Pear renderer has no visible console — surface the real boot error ON SCREEN so a
   // single early throw can't leave a blank, dead app (and tells us exactly what failed).
   try {
     const banner = document.createElement('pre')
+    banner.id = 'bootErrorBar'
     banner.style.cssText = 'position:fixed;left:0;right:0;bottom:0;max-height:45vh;overflow:auto;margin:0;padding:12px 16px;background:#3a1030;color:#ffd9ec;font:12px/1.5 ui-monospace,monospace;z-index:99999;white-space:pre-wrap;border-top:3px solid #ff8fc0'
     banner.textContent = 'PearCup boot error:\n' + (err && err.stack ? err.stack : String(err))
     document.body.appendChild(banner)

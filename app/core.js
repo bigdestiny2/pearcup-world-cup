@@ -51,9 +51,10 @@
 
   function bracketMatchWeight (matchId) {
     const id = String(matchId || '').toLowerCase()
-    if (id.includes('final') || id === 'champion') return 8
-    if (id.includes('semi') || id.startsWith('sf')) return 4
-    if (id.includes('quarter') || id.startsWith('qf')) return 2
+    if (id.includes('final') || id === 'champion') return 16
+    if (id.includes('semi') || id.startsWith('sf')) return 8
+    if (id.includes('quarter') || id.startsWith('qf')) return 4
+    if (id.includes('round16') || id.startsWith('r16')) return 2
     return 1
   }
 

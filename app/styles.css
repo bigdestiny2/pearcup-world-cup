@@ -423,7 +423,7 @@ input {
 }
 
 .avatar-stage {
-  min-height: 448px;
+  min-height: clamp(300px, 34vw, 448px);
   position: relative;
   overflow: hidden;
   display: grid;
@@ -463,6 +463,7 @@ input {
   position: relative;
   z-index: 1;
   width: min(338px, 90%);
+  min-width: 180px;
   height: auto;
   filter: drop-shadow(0 28px 24px rgba(0, 0, 0, 0.26));
 }
@@ -1370,16 +1371,16 @@ h2 {
 }
 
 .bracket-board {
-  min-height: 1010px;
+  min-height: 1720px;
   position: relative;
   overflow-x: auto;
   overflow-y: visible;
   display: grid;
-  grid-template-columns: repeat(4, minmax(250px, 1fr));
-  grid-template-rows: 28px repeat(8, 104px);
+  grid-template-columns: repeat(5, minmax(218px, 1fr));
+  grid-template-rows: 28px repeat(16, 92px);
   align-items: center;
-  column-gap: 34px;
-  row-gap: 10px;
+  column-gap: 24px;
+  row-gap: 8px;
   padding: 22px 12px 32px;
   border: 1px solid rgba(185, 197, 192, 0.72);
   border-radius: var(--radius);
@@ -2429,11 +2430,10 @@ h2 {
 
   .avatar-preview {
     position: static;
-    order: -1;
   }
 
   .avatar-stage {
-    min-height: 360px;
+    min-height: 300px;
   }
 
   .activity-rail,
@@ -2445,9 +2445,9 @@ h2 {
 
 @media (max-width: 900px) {
   .bracket-board {
-    min-height: 946px;
-    grid-template-columns: repeat(4, minmax(142px, 1fr));
-    grid-template-rows: 28px repeat(8, 98px);
+    min-height: 1580px;
+    grid-template-columns: repeat(5, minmax(180px, 1fr));
+    grid-template-rows: 28px repeat(16, 84px);
     column-gap: 12px;
     row-gap: 9px;
     padding: 18px 8px 26px;

@@ -28,7 +28,33 @@
           <button type="button" data-view="games">Games</button>
         </nav>
 
-        <div class="profile-chip" id="profileChip" aria-live="polite"></div>
+        <div class="profile-chip" id="profileChip" aria-live="polite">
+          <svg class="avatar-art compact-avatar" viewBox="0 0 220 220" role="img" aria-label="captain Brazil badge avatar">
+            <defs>
+              <linearGradient id="staticCompactBadge" x1="24" y1="18" x2="190" y2="204" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#58c980"/><stop offset=".48" stop-color="#139b49"/><stop offset="1" stop-color="#294f3c"/>
+              </linearGradient>
+              <linearGradient id="staticCompactShine" x1="54" y1="28" x2="156" y2="174" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#fff" stop-opacity=".78"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <rect x="20" y="18" width="180" height="184" rx="44" fill="url(#staticCompactBadge)"/>
+            <path d="M36 55c44-25 99-31 148-12 8 44 2 93-18 132-36 20-79 23-124 9-18-40-20-86-6-129Z" fill="#fff" opacity=".14"/>
+            <path d="M47 52c31-21 76-26 113-12-31 8-64 28-94 61-11-18-17-34-19-49Z" fill="url(#staticCompactShine)"/>
+            <circle cx="110" cy="76" r="40" fill="#fff" opacity=".95"/>
+            <circle cx="110" cy="76" r="32" fill="#ffec8f"/>
+            <text x="110" y="89" text-anchor="middle" font-size="42" font-weight="900" font-family="Arial, sans-serif">🇧🇷</text>
+            <path d="M67 130c10-21 25-32 43-32s33 11 43 32l-10 45H77Z" fill="#fff" opacity=".92"/>
+            <path d="M74 130c9-17 21-25 36-25s27 8 36 25l-8 38H82Z" fill="#ffec8f" opacity=".9"/>
+            <path d="M88 108h44l-9 19h-26Z" fill="#139b49" opacity=".88"/>
+            <text x="110" y="158" text-anchor="middle" font-size="46" font-weight="900" fill="#294f3c" font-family="Arial, sans-serif">CA</text>
+            <text x="110" y="181" text-anchor="middle" font-size="18" font-weight="900" fill="#294f3c" opacity=".8" font-family="Arial, sans-serif">19</text>
+          </svg>
+          <div>
+            <span class="chip-name">captain</span>
+            <span class="chip-team">🇧🇷 Brazil</span>
+          </div>
+        </div>
       </header>
 
       <main class="screens">
@@ -41,7 +67,7 @@
               </div>
               <label class="field-label" for="usernameInput">Username</label>
               <div class="username-row">
-                <input id="usernameInput" maxlength="18" autocomplete="nickname" placeholder="your handle">
+                <input id="usernameInput" maxlength="18" autocomplete="nickname" placeholder="your handle" value="captain">
                 <button class="primary-button" id="saveProfile" type="button">
                   <span class="button-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
@@ -49,18 +75,62 @@
                   Enter
                 </button>
               </div>
-              <div class="team-grid" id="teamGrid"></div>
+              <div class="team-grid" id="teamGrid">
+                <button class="team-card is-selected" type="button" data-team="br" aria-pressed="true"><span class="flag-tile">🇧🇷</span><span><span class="team-name">Brazil</span><span class="team-colors" aria-hidden="true"><i style="background:#139b49"></i><i style="background:#ffd447"></i><i style="background:#1b55a5"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="jp" aria-pressed="false"><span class="flag-tile">🇯🇵</span><span><span class="team-name">Japan</span><span class="team-colors" aria-hidden="true"><i style="background:#f6f6f6"></i><i style="background:#d91f3c"></i><i style="background:#0a2f68"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="ci" aria-pressed="false"><span class="flag-tile">🇨🇮</span><span><span class="team-name">Ivory Coast</span><span class="team-colors" aria-hidden="true"><i style="background:#f27b22"></i><i style="background:#ffffff"></i><i style="background:#159759"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="no" aria-pressed="false"><span class="flag-tile">🇳🇴</span><span><span class="team-name">Norway</span><span class="team-colors" aria-hidden="true"><i style="background:#d91f3c"></i><i style="background:#ffffff"></i><i style="background:#143d8d"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="mx" aria-pressed="false"><span class="flag-tile">🇲🇽</span><span><span class="team-name">Mexico</span><span class="team-colors" aria-hidden="true"><i style="background:#0c8c57"></i><i style="background:#ffffff"></i><i style="background:#d43f3a"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="ec" aria-pressed="false"><span class="flag-tile">🇪🇨</span><span><span class="team-name">Ecuador</span><span class="team-colors" aria-hidden="true"><i style="background:#f9d33a"></i><i style="background:#1f5aa6"></i><i style="background:#d13d32"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="eng" aria-pressed="false"><span class="flag-tile">🏴</span><span><span class="team-name">England</span><span class="team-colors" aria-hidden="true"><i style="background:#ffffff"></i><i style="background:#d41f35"></i><i style="background:#1c3764"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="cd" aria-pressed="false"><span class="flag-tile">🇨🇩</span><span><span class="team-name">DR Congo</span><span class="team-colors" aria-hidden="true"><i style="background:#2a9bd8"></i><i style="background:#f3d13d"></i><i style="background:#d84a3a"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="ch" aria-pressed="false"><span class="flag-tile">🇨🇭</span><span><span class="team-name">Switzerland</span><span class="team-colors" aria-hidden="true"><i style="background:#d71920"></i><i style="background:#ffffff"></i><i style="background:#901019"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="dz" aria-pressed="false"><span class="flag-tile">🇩🇿</span><span><span class="team-name">Algeria</span><span class="team-colors" aria-hidden="true"><i style="background:#ffffff"></i><i style="background:#00843d"></i><i style="background:#d21034"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="pt" aria-pressed="false"><span class="flag-tile">🇵🇹</span><span><span class="team-name">Portugal</span><span class="team-colors" aria-hidden="true"><i style="background:#d71920"></i><i style="background:#006b3f"></i><i style="background:#f6c343"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="hr" aria-pressed="false"><span class="flag-tile">🇭🇷</span><span><span class="team-name">Croatia</span><span class="team-colors" aria-hidden="true"><i style="background:#ffffff"></i><i style="background:#d7272f"></i><i style="background:#1f5aa6"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="es" aria-pressed="false"><span class="flag-tile">🇪🇸</span><span><span class="team-name">Spain</span><span class="team-colors" aria-hidden="true"><i style="background:#c60b1e"></i><i style="background:#ffc400"></i><i style="background:#75131a"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="at" aria-pressed="false"><span class="flag-tile">🇦🇹</span><span><span class="team-name">Austria</span><span class="team-colors" aria-hidden="true"><i style="background:#ed2939"></i><i style="background:#ffffff"></i><i style="background:#8f1d27"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="fr" aria-pressed="false"><span class="flag-tile">🇫🇷</span><span><span class="team-name">France</span><span class="team-colors" aria-hidden="true"><i style="background:#1d3d8f"></i><i style="background:#ffffff"></i><i style="background:#d84a3a"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="ar" aria-pressed="false"><span class="flag-tile">🇦🇷</span><span><span class="team-name">Argentina</span><span class="team-colors" aria-hidden="true"><i style="background:#75aadb"></i><i style="background:#ffffff"></i><i style="background:#f6b33f"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+              </div>
             </div>
 
             <aside class="avatar-preview" aria-label="Avatar preview">
-              <div class="avatar-stage" id="avatarPreview"></div>
+              <div class="avatar-stage" id="avatarPreview">
+                <svg class="avatar-art showcase-avatar" viewBox="0 0 220 220" role="img" aria-label="captain Brazil badge avatar">
+                  <defs>
+                    <linearGradient id="staticShowcaseBadge" x1="24" y1="18" x2="190" y2="204" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#58c980"/><stop offset=".48" stop-color="#139b49"/><stop offset="1" stop-color="#294f3c"/>
+                    </linearGradient>
+                    <linearGradient id="staticShowcaseShine" x1="54" y1="28" x2="156" y2="174" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#fff" stop-opacity=".78"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+                    </linearGradient>
+                    <filter id="staticShowcaseDrop" x="-30%" y="-30%" width="160%" height="170%">
+                      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#3a1030" flood-opacity=".18"/>
+                    </filter>
+                  </defs>
+                  <rect x="20" y="18" width="180" height="184" rx="44" fill="url(#staticShowcaseBadge)" filter="url(#staticShowcaseDrop)"/>
+                  <path d="M36 55c44-25 99-31 148-12 8 44 2 93-18 132-36 20-79 23-124 9-18-40-20-86-6-129Z" fill="#fff" opacity=".14"/>
+                  <path d="M47 52c31-21 76-26 113-12-31 8-64 28-94 61-11-18-17-34-19-49Z" fill="url(#staticShowcaseShine)"/>
+                  <circle cx="110" cy="76" r="40" fill="#fff" opacity=".95"/>
+                  <circle cx="110" cy="76" r="32" fill="#ffec8f"/>
+                  <text x="110" y="89" text-anchor="middle" font-size="42" font-weight="900" font-family="Arial, sans-serif">🇧🇷</text>
+                  <path d="M67 130c10-21 25-32 43-32s33 11 43 32l-10 45H77Z" fill="#fff" opacity=".92"/>
+                  <path d="M74 130c9-17 21-25 36-25s27 8 36 25l-8 38H82Z" fill="#ffec8f" opacity=".9"/>
+                  <path d="M88 108h44l-9 19h-26Z" fill="#139b49" opacity=".88"/>
+                  <text x="110" y="158" text-anchor="middle" font-size="46" font-weight="900" fill="#294f3c" font-family="Arial, sans-serif">CA</text>
+                  <text x="110" y="181" text-anchor="middle" font-size="18" font-weight="900" fill="#294f3c" opacity=".8" font-family="Arial, sans-serif">19</text>
+                  <rect x="48" y="184" width="124" height="20" rx="10" fill="#fff" opacity=".9"/>
+                  <text x="110" y="199" text-anchor="middle" font-size="13" font-weight="900" fill="#294f3c" font-family="Arial, sans-serif">captain</text>
+                </svg>
+              </div>
               <div class="kit-card">
-                <span class="kit-swatch" id="primarySwatch"></span>
-                <span class="kit-swatch" id="secondarySwatch"></span>
-                <span class="kit-swatch" id="accentSwatch"></span>
+                <span class="kit-swatch" id="primarySwatch" style="background:#139b49"></span>
+                <span class="kit-swatch" id="secondarySwatch" style="background:#ffd447"></span>
+                <span class="kit-swatch" id="accentSwatch" style="background:#1b55a5"></span>
                 <div>
-                  <p class="kit-country" id="kitCountry">Brazil</p>
-                  <p class="kit-subtitle" id="kitSubtitle">Home jersey generated</p>
+                  <p class="kit-country" id="kitCountry">🇧🇷 Brazil</p>
+                  <p class="kit-subtitle" id="kitSubtitle">captain's jersey is ready</p>
                 </div>
               </div>
             </aside>
@@ -85,22 +155,22 @@
               <section class="live-command" aria-label="Live match dashboard">
                 <div class="live-scoreline">
                   <div class="live-team">
-                    <span class="score-flag">🇧🇷</span>
+                    <span class="score-flag">🇪🇸</span>
                     <div>
-                      <strong>Brazil</strong>
-                      <span>58% possession</span>
+                      <strong>Spain</strong>
+                      <span>Pre-match room</span>
                     </div>
                   </div>
                   <div class="score-core">
-                    <span>64'</span>
-                    <strong>2 - 1</strong>
-                    <em>Live</em>
+                    <span>15:00 ET</span>
+                    <strong>vs</strong>
+                    <em>Scheduled</em>
                   </div>
                   <div class="live-team is-away">
-                    <span class="score-flag">🇳🇴</span>
+                    <span class="score-flag">🇦🇹</span>
                     <div>
-                      <strong>Norway</strong>
-                      <span>Counter threat high</span>
+                      <strong>Austria</strong>
+                      <span>Round of 32</span>
                     </div>
                   </div>
                 </div>
@@ -177,7 +247,7 @@
               <div class="room-topline">
                 <div class="section-heading compact">
                   <p class="eyebrow">Watch party</p>
-                  <h1 id="watchTitle">Brazil vs Norway</h1>
+                  <h1 id="watchTitle">Spain vs Austria</h1>
                 </div>
                 <div class="room-controls">
                   <button class="primary-button compact-action" type="button" data-view="games">
@@ -200,8 +270,8 @@
               <div class="stadium">
                 <div class="stadium-tv">
                   <div class="scorebug">
-                    <span>64'</span>
-                    <strong>Brazil 2 - 1 Norway</strong>
+                    <span>15:00 ET</span>
+                    <strong>Spain vs Austria</strong>
                   </div>
                   <div class="pitch">
                     <div class="ball"></div>

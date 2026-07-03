@@ -1,3 +1,5 @@
+if (typeof window !== 'undefined') window.__pearcupAppScriptSeen = true
+
 const teams = [
   { id: 'br', name: 'Brazil', flag: '🇧🇷', colors: ['#139b49', '#ffd447', '#1b55a5'] },
   { id: 'jp', name: 'Japan', flag: '🇯🇵', colors: ['#f6f6f6', '#d91f3c', '#0a2f68'] },
@@ -14,7 +16,23 @@ const teams = [
   { id: 'es', name: 'Spain', flag: '🇪🇸', colors: ['#c60b1e', '#ffc400', '#75131a'] },
   { id: 'at', name: 'Austria', flag: '🇦🇹', colors: ['#ed2939', '#ffffff', '#8f1d27'] },
   { id: 'fr', name: 'France', flag: '🇫🇷', colors: ['#1d3d8f', '#ffffff', '#d84a3a'] },
-  { id: 'ar', name: 'Argentina', flag: '🇦🇷', colors: ['#75aadb', '#ffffff', '#f6b33f'] }
+  { id: 'ar', name: 'Argentina', flag: '🇦🇷', colors: ['#75aadb', '#ffffff', '#f6b33f'] },
+  { id: 'us', name: 'United States', flag: '🇺🇸', colors: ['#ffffff', '#b31942', '#0a3161'] },
+  { id: 'ca', name: 'Canada', flag: '🇨🇦', colors: ['#ff0000', '#ffffff', '#8a1538'] },
+  { id: 'de', name: 'Germany', flag: '🇩🇪', colors: ['#000000', '#dd0000', '#ffce00'] },
+  { id: 'ma', name: 'Morocco', flag: '🇲🇦', colors: ['#c1272d', '#006233', '#ffffff'] },
+  { id: 'nl', name: 'Netherlands', flag: '🇳🇱', colors: ['#ae1c28', '#ffffff', '#21468b'] },
+  { id: 'sn', name: 'Senegal', flag: '🇸🇳', colors: ['#00853f', '#fdef42', '#e31b23'] },
+  { id: 'za', name: 'South Africa', flag: '🇿🇦', colors: ['#007749', '#ffb81c', '#de3831'] },
+  { id: 'py', name: 'Paraguay', flag: '🇵🇾', colors: ['#d52b1e', '#ffffff', '#0038a8'] },
+  { id: 'co', name: 'Colombia', flag: '🇨🇴', colors: ['#fcd116', '#003893', '#ce1126'] },
+  { id: 'gh', name: 'Ghana', flag: '🇬🇭', colors: ['#ce1126', '#fcd116', '#006b3f'] },
+  { id: 'se', name: 'Sweden', flag: '🇸🇪', colors: ['#006aa7', '#fecc00', '#0b4f7a'] },
+  { id: 'au', name: 'Australia', flag: '🇦🇺', colors: ['#012169', '#ffcd00', '#00843d'] },
+  { id: 'be', name: 'Belgium', flag: '🇧🇪', colors: ['#000000', '#fae042', '#ed2939'] },
+  { id: 'ba', name: 'Bosnia and Herzegovina', flag: '🇧🇦', colors: ['#002395', '#fecb00', '#ffffff'] },
+  { id: 'eg', name: 'Egypt', flag: '🇪🇬', colors: ['#ce1126', '#ffffff', '#000000'] },
+  { id: 'cv', name: 'Cabo Verde', flag: '🇨🇻', colors: ['#003893', '#f7d116', '#cf2027'] }
 ]
 
 const PearCupCore = window.PearCupCore
@@ -43,7 +61,9 @@ const appStateClient = PearCupWorkerClient.createAutoWorkerClient({
     storage: appStateEventStore
   })
 })
-const LIVE_MATCH_ID = 'match-brazil-norway'
+const LIVE_MATCH_ID = 'match-spain-austria'
+const LIVE_HOME_TEAM_ID = 'es'
+const LIVE_AWAY_TEAM_ID = 'at'
 const LIVE_MATCH_SOURCE_ACTOR = 'sports-feed'
 const liveMatchEventStore = createLiveMatchEventStore()
 const liveMatchClient = PearCupWorkerClient.createAutoWorkerClient({
@@ -54,9 +74,9 @@ const liveMatchClient = PearCupWorkerClient.createAutoWorkerClient({
     storage: liveMatchEventStore
   })
 })
-const WATCH_MATCH_ID = 'match-br-no-live'
-const WATCH_ROOM_ID = 'room-br-no-live'
-const WATCH_STREAM_ID = 'room-br-no-live-lina-stream'
+const WATCH_MATCH_ID = 'match-es-at-r32'
+const WATCH_ROOM_ID = 'room-es-at-r32'
+const WATCH_STREAM_ID = 'room-es-at-r32-lina-stream'
 const watchRoomEventStore = createWatchRoomEventStore()
 const watchRoomClient = PearCupWorkerClient.createAutoWorkerClient({
   rootObject: window,
@@ -80,44 +100,52 @@ const pools = [
   { tier: 100, entrants: 19, closes: '5h', max: 64, prize: '$1,900', heat: 'Elite', rail: 'USDT demo' }
 ]
 
-const r16Matches = [
-  { id: 'r16-1', time: 'Mon, 06/29', status: 'FT', slots: ['br', 'jp'], score: [2, 1], sample: { br: ['lina', 'ash'], jp: ['ken'] } },
-  { id: 'r16-2', time: 'Yesterday', status: 'FT', slots: ['ci', 'no'], score: [1, 2], sample: { ci: ['paz'], no: ['vera', 'jo'] } },
-  { id: 'r16-3', time: 'Today', status: 'FT', slots: ['mx', 'ec'], score: [2, 0], sample: { mx: ['milo'], ec: ['rio'] } },
-  { id: 'r16-4', time: 'Today, 20:00', status: 'Open', slots: ['eng', 'cd'], score: [null, null], sample: { eng: ['sasha'], cd: ['kito'] } },
-  { id: 'r16-5', time: 'Fri, 07/03', status: 'Open', slots: ['ch', 'dz'], score: [null, null], sample: { ch: ['noa'], dz: ['samir'] } },
-  { id: 'r16-6', time: 'Fri, 07/03', status: 'Open', slots: ['pt', 'hr'], score: [null, null], sample: { pt: ['ines'], hr: ['marko'] } },
-  { id: 'r16-7', time: 'Sat, 07/04', status: 'Open', slots: ['es', 'at'], score: [null, null], sample: { es: ['sol'], at: ['finn'] } },
-  { id: 'r16-8', time: 'Sat, 07/04', status: 'Open', slots: ['fr', 'ar'], score: [null, null], sample: { fr: ['cam'], ar: ['leo'] } }
+const round32Matches = [
+  { id: 'r32-1', time: 'Sat, 06/28', status: 'FT', slots: ['ca', 'za'], score: [1, 0], sample: { ca: ['noah'], za: ['zola'] } },
+  { id: 'r32-2', time: 'Sun, 06/29', status: 'PEN 3-2', slots: ['ma', 'nl'], score: [1, 1], sample: { ma: ['youssef'], nl: ['daan'] } },
+  { id: 'r32-3', time: 'Sun, 06/29', status: 'FT', slots: ['br', 'jp'], score: [2, 1], sample: { br: ['lina', 'ash'], jp: ['ken'] } },
+  { id: 'r32-4', time: 'Mon, 06/30', status: 'FT', slots: ['no', 'ci'], score: [2, 1], sample: { no: ['vera', 'jo'], ci: ['paz'] } },
+  { id: 'r32-5', time: 'Sun, 06/29', status: 'PEN 4-3', slots: ['py', 'de'], score: [1, 1], sample: { py: ['santi'], de: ['fritz'] } },
+  { id: 'r32-6', time: 'Mon, 06/30', status: 'FT', slots: ['fr', 'se'], score: [3, 0], sample: { fr: ['cam'], se: ['ingrid'] } },
+  { id: 'r32-7', time: 'Mon, 06/30', status: 'FT', slots: ['mx', 'ec'], score: [2, 0], sample: { mx: ['milo'], ec: ['rio'] } },
+  { id: 'r32-8', time: 'Tue, 07/01', status: 'FT', slots: ['eng', 'cd'], score: [2, 1], sample: { eng: ['sasha'], cd: ['kito'] } },
+  { id: 'r32-9', time: 'Tue, 07/01', status: 'AET', slots: ['be', 'sn'], score: [3, 2], sample: { be: ['eline'], sn: ['amina'] } },
+  { id: 'r32-10', time: 'Tue, 07/01', status: 'FT', slots: ['us', 'ba'], score: [2, 0], sample: { us: ['maya'], ba: ['dado'] } },
+  { id: 'r32-11', time: 'Today, 15:00', status: 'Open', slots: ['es', 'at'], score: [null, null], sample: { es: ['sol'], at: ['finn'] } },
+  { id: 'r32-12', time: 'Today, 19:00', status: 'Open', slots: ['pt', 'hr'], score: [null, null], sample: { pt: ['ines'], hr: ['marko'] } },
+  { id: 'r32-13', time: 'Today, 23:00', status: 'Open', slots: ['ch', 'dz'], score: [null, null], sample: { ch: ['noa'], dz: ['samir'] } },
+  { id: 'r32-14', time: 'Fri, 07/03, 14:00', status: 'Open', slots: ['au', 'eg'], score: [null, null], sample: { au: ['matilda'], eg: ['omar'] } },
+  { id: 'r32-15', time: 'Fri, 07/03, 18:00', status: 'Open', slots: ['ar', 'cv'], score: [null, null], sample: { ar: ['leo'], cv: ['sofia'] } },
+  { id: 'r32-16', time: 'Fri, 07/03, 21:30', status: 'Open', slots: ['co', 'gh'], score: [null, null], sample: { co: ['vale'], gh: ['kwame'] } }
 ]
 
 const commentary = {
   EN: [
-    ['64:10', 'Brazil are stretching the right side. Norway are staying compact, but the next switch is dangerous.'],
-    ['63:22', 'Shot quality is tilting green and yellow: two touches inside the box in the last minute.'],
-    ['62:47', 'Pool impact: 41% of this room needs Brazil to hold the lead for their quarterfinal path.']
+    ['Today', 'Spain vs Austria is the next Round of 32 room. Picks are open until kickoff.'],
+    ['19:00Z', 'Portugal vs Croatia follows later today, then Switzerland vs Algeria closes the slate.'],
+    ['R32', 'Pool impact is live, but the fallback feed will not invent scores before kickoff.']
   ],
   PT: [
-    ['64:10', 'O Brasil abre o jogo pela direita. A Noruega protege a area, mas a virada pode machucar.'],
-    ['63:22', 'A qualidade das chances subiu: dois toques dentro da area no ultimo minuto.'],
-    ['62:47', 'Impacto no bolao: 41% da sala precisa que o Brasil segure a vantagem.']
+    ['Today', 'Espanha vs Austria e a proxima sala do Round of 32. Palpites abertos ate o inicio.'],
+    ['19:00Z', 'Portugal vs Croacia vem depois, e Suica vs Argelia fecha o dia.'],
+    ['R32', 'O impacto do bolao esta ativo, mas o fallback nao inventa placares antes do jogo.']
   ],
   ES: [
-    ['64:10', 'Brasil estira el lado derecho. Noruega esta cerrada, pero el cambio de frente pesa.'],
-    ['63:22', 'La calidad de tiro sube: dos toques en el area durante el ultimo minuto.'],
-    ['62:47', 'Impacto en la quiniela: 41% de la sala necesita que Brasil sostenga la ventaja.']
+    ['Today', 'Espana vs Austria es la proxima sala de Round of 32. Picks abiertos hasta el inicio.'],
+    ['19:00Z', 'Portugal vs Croacia sigue mas tarde, y Suiza vs Argelia cierra el dia.'],
+    ['R32', 'El impacto del pool esta activo, pero el fallback no inventa marcadores antes del partido.']
   ],
   FR: [
-    ['64:10', 'Le Bresil etire le cote droit. La Norvege reste compacte, mais le renversement menace.'],
-    ['63:22', 'La qualite des tirs bascule: deux touches dans la surface sur la derniere minute.'],
-    ['62:47', 'Impact du pool: 41% de la salle veut que le Bresil garde son avance.']
+    ['Today', 'Espagne vs Autriche est la prochaine salle du Round of 32. Picks ouverts jusqu au coup d envoi.'],
+    ['19:00Z', 'Portugal vs Croatie suit ensuite, puis Suisse vs Algerie ferme la journee.'],
+    ['R32', 'L impact du pool est actif, mais le fallback ne fabrique pas de score avant le match.']
   ]
 }
 
 const defaultChat = [
-  { user: 'lina', text: 'That save changed the whole bracket.', time: '63:05' },
-  { user: 'vera', text: 'Norway still has one big counter in them.', time: '63:31' },
-  { user: 'ash', text: 'Brazil midfield finally woke up.', time: '64:02' }
+  { user: 'lina', text: 'Spain/Austria room is up. No fake score until the feed lands.', time: 'Today' },
+  { user: 'vera', text: 'Portugal/Croatia pool is next on my list.', time: '19:00Z' },
+  { user: 'ash', text: 'Good, bracket is still Round of 32.', time: 'R32' }
 ]
 
 const liveTabs = [
@@ -129,18 +157,18 @@ const liveTabs = [
 ]
 
 const homeFixtures = [
-  { status: 'Live, 64\'', title: 'Brazil 2 - 1 Norway', detail: '38 peers watching', live: true },
-  { status: 'Today, 20:00', title: 'England vs DR Congo', detail: 'Room opens in 3h', live: false },
-  { status: 'Fri, 07/03, 03:00', title: 'Portugal vs Croatia', detail: '$50 pool closing', live: false }
+  { status: 'Today, 15:00', title: 'Spain vs Austria', detail: 'Round of 32 match room', live: false },
+  { status: 'Today, 19:00', title: 'Portugal vs Croatia', detail: '$50 pool closing', live: false },
+  { status: 'Today, 23:00', title: 'Switzerland vs Algeria', detail: 'Late room opening', live: false }
 ]
 
 const matchStats = [
-  ['Possession', '58%', '42%', 58],
-  ['Shots', '12', '6', 67],
-  ['xG', '1.82', '0.74', 71],
-  ['Pass accuracy', '89%', '81%', 62],
-  ['Corners', '5', '2', 71],
-  ['Saves', '1', '4', 20]
+  ['Possession', '50%', '50%', 50],
+  ['Shots', '0', '0', 50],
+  ['xG', '0.00', '0.00', 50],
+  ['Pass accuracy', '-', '-', 50],
+  ['Corners', '0', '0', 50],
+  ['Saves', '0', '0', 50]
 ]
 
 const leaders = [
@@ -195,6 +223,14 @@ const gameLeaderboardRows = [
 ]
 
 const bracketLinks = [
+  { from: ['r32-1', 'r32-2'], to: 'r16-1' },
+  { from: ['r32-3', 'r32-4'], to: 'r16-2' },
+  { from: ['r32-5', 'r32-6'], to: 'r16-3' },
+  { from: ['r32-7', 'r32-8'], to: 'r16-4' },
+  { from: ['r32-9', 'r32-10'], to: 'r16-5' },
+  { from: ['r32-11', 'r32-12'], to: 'r16-6' },
+  { from: ['r32-13', 'r32-14'], to: 'r16-7' },
+  { from: ['r32-15', 'r32-16'], to: 'r16-8' },
   { from: ['r16-1', 'r16-2'], to: 'qf-1' },
   { from: ['r16-3', 'r16-4'], to: 'qf-2' },
   { from: ['r16-5', 'r16-6'], to: 'qf-3' },
@@ -205,35 +241,45 @@ const bracketLinks = [
 ]
 
 const bracketMatchIds = [
-  'r16-1',
-  'r16-2',
-  'r16-3',
-  'r16-4',
-  'r16-5',
-  'r16-6',
-  'r16-7',
-  'r16-8',
-  'qf-1',
-  'qf-2',
-  'qf-3',
-  'qf-4',
-  'sf-1',
-  'sf-2',
+  'r32-1', 'r32-2', 'r32-3', 'r32-4',
+  'r32-5', 'r32-6', 'r32-7', 'r32-8',
+  'r32-9', 'r32-10', 'r32-11', 'r32-12',
+  'r32-13', 'r32-14', 'r32-15', 'r32-16',
+  'r16-1', 'r16-2', 'r16-3', 'r16-4',
+  'r16-5', 'r16-6', 'r16-7', 'r16-8',
+  'qf-1', 'qf-2', 'qf-3', 'qf-4',
+  'sf-1', 'sf-2',
   'final-1'
 ]
 
 const demoOfficialMatchWinners = {
-  'r16-1': 'br',
-  'r16-2': 'no',
-  'r16-3': 'mx',
+  'r32-1': 'ca',
+  'r32-2': 'ma',
+  'r32-3': 'br',
+  'r32-4': 'no',
+  'r32-5': 'py',
+  'r32-6': 'fr',
+  'r32-7': 'mx',
+  'r32-8': 'eng',
+  'r32-9': 'be',
+  'r32-10': 'us',
+  'r32-11': 'es',
+  'r32-12': 'pt',
+  'r32-13': 'ch',
+  'r32-14': 'au',
+  'r32-15': 'ar',
+  'r32-16': 'co',
+  'r16-1': 'ca',
+  'r16-2': 'br',
+  'r16-3': 'fr',
   'r16-4': 'eng',
-  'r16-5': 'ch',
+  'r16-5': 'us',
   'r16-6': 'pt',
-  'r16-7': 'es',
+  'r16-7': 'ch',
   'r16-8': 'ar',
   'qf-1': 'br',
-  'qf-2': 'mx',
-  'qf-3': 'pt',
+  'qf-2': 'fr',
+  'qf-3': 'us',
   'qf-4': 'ar',
   'sf-1': 'br',
   'sf-2': 'ar',
@@ -266,18 +312,55 @@ function loadState () {
 
   try {
     const saved = JSON.parse(localStorage.getItem('pearcup-prototype') || 'null')
-    return saved
-      ? {
-          ...fallback,
-          ...saved,
-          chat: saved.chat || defaultChat,
-          submittedPicksByTier: { ...fallback.submittedPicksByTier, ...(saved.submittedPicksByTier || {}) },
-          payoutAddresses: { ...fallback.payoutAddresses, ...(saved.payoutAddresses || {}) }
-        }
-      : fallback
+    if (!saved) return fallback
+    const merged = {
+      ...fallback,
+      ...saved,
+      chat: saved.chat || defaultChat,
+      submittedPicksByTier: normalizeSubmittedPicksByTier({ ...fallback.submittedPicksByTier, ...(saved.submittedPicksByTier || {}) }),
+      payoutAddresses: { ...fallback.payoutAddresses, ...(saved.payoutAddresses || {}) }
+    }
+    merged.picks = normalizeBracketPicks(merged.picks)
+    return merged
   } catch {
     return fallback
   }
+}
+
+function normalizeBracketPicks (picks = {}) {
+  const source = picks && typeof picks === 'object' && !Array.isArray(picks) ? picks : {}
+  const next = { ...source }
+  const hasRound32 = Object.keys(next).some(id => id.startsWith('r32-'))
+  if (!hasRound32) {
+    for (let i = 1; i <= 8; i++) {
+      if (next[`r16-${i}`] && !next[`r32-${i}`]) next[`r32-${i}`] = next[`r16-${i}`]
+      if (next[`qf-${i}`] && !next[`r16-${i}`]) next[`r16-${i}`] = next[`qf-${i}`]
+    }
+    for (let i = 1; i <= 4; i++) {
+      if (next[`sf-${i}`] && !next[`qf-${i}`]) next[`qf-${i}`] = next[`sf-${i}`]
+    }
+    if (next['final-1'] && !next['sf-1']) next['sf-1'] = next['final-1']
+  }
+  const knownTeamIds = new Set(teams.map(team => team.id))
+  const round32ById = new Map(round32Matches.map(match => [match.id, match]))
+  for (const id of Object.keys(next)) {
+    const teamId = next[id]
+    if (!bracketMatchIds.includes(id) || !knownTeamIds.has(teamId)) {
+      delete next[id]
+      continue
+    }
+    const round32Match = round32ById.get(id)
+    if (round32Match && !round32Match.slots.includes(teamId)) delete next[id]
+  }
+  return next
+}
+
+function normalizeSubmittedPicksByTier (submitted = {}) {
+  const next = {}
+  for (const [tier, picks] of Object.entries(submitted || {})) {
+    next[tier] = normalizeBracketPicks(picks)
+  }
+  return next
 }
 
 function persist () {
@@ -447,10 +530,10 @@ function avatarSvg (name, team, compact = false) {
   const primaryLight = mixHex(primary, '#ffffff', 0.22)
   const secondarySoft = mixHex(secondary, '#ffffff', 0.25)
   const accentDark = mixHex(accent, '#111827', 0.22)
-  const prefix = `av-${team.id}-${seed}`.replace(/[^a-z0-9-]/gi, '')
   const label = escapeHtml(initials(name))
   const jerseyNumber = String((team.name.length * 7) % 90 + 10)
   const scaleClass = compact ? 'compact-avatar' : 'showcase-avatar'
+  const prefix = `av-${compact ? 'sm' : 'lg'}-${team.id}-${seed}`.replace(/[^a-z0-9-]/gi, '')
   const viewBox = compact ? '42 20 136 216' : '0 0 220 260'
   const hairStyles = [
     `<path d="M68 79c2-33 21-52 45-52 23 0 40 15 44 43-15-12-33-14-51-9-15 4-27 10-38 18Z" fill="${hair}"/>`,
@@ -664,7 +747,7 @@ function renderLivePanel (tab) {
             <strong>38 peers</strong>
           </div>
           <div class="room-preview-avatars">
-            ${['captain', 'lina', 'vera', 'milo'].map((name, index) => avatarSvg(name, teamById(['br', 'br', 'no', 'mx'][index]), true)).join('')}
+            ${['captain', 'lina', 'vera', 'milo'].map((name, index) => avatarSvg(name, teamById(['es', 'es', 'at', 'pt'][index]), true)).join('')}
           </div>
           <button class="primary-button" type="button" data-view="watch">
             <span class="button-icon" aria-hidden="true">
@@ -748,7 +831,7 @@ function renderLivePanel (tab) {
       <article class="live-card momentum-card">
         <div class="rail-header">
           <p class="eyebrow">Momentum</p>
-          <strong>Brazil ${liveMatchStats() && liveMatchStats().threat.br === 'high' ? '+24' : '+18'}</strong>
+          <strong>Spain vs Austria</strong>
         </div>
         <div class="momentum-track">
           <i style="left:18%;height:42%"></i>
@@ -765,18 +848,18 @@ function renderLivePanel (tab) {
         </div>
         <div class="timeline-list">
           ${(liveMatchTimelineItems().length ? liveMatchTimelineItems() : [
-            { clock: '64', text: 'Brazil overload down the right side.' },
-            { clock: '61', text: 'Norway keeper saves a low shot.' },
-            { clock: '54', text: 'Brazil retake the lead.' }
+            { clock: 'Today', text: 'Spain vs Austria room is open.' },
+            { clock: '19:00Z', text: 'Kickoff at SoFi Stadium.' },
+            { clock: 'R32', text: 'Portugal vs Croatia and Switzerland vs Algeria follow later today.' }
           ]).map(item => `<div><time>${escapeHtml(item.clock)}</time><span>${escapeHtml(item.text)}</span></div>`).join('')}
         </div>
       </article>
       <article class="live-card impact-card">
         <div class="rail-header">
           <p class="eyebrow">Pool impact</p>
-          <strong>41%</strong>
+          <strong>3 open</strong>
         </div>
-        <p class="live-copy">Room brackets need Brazil to hold this result for the projected semifinal path.</p>
+        <p class="live-copy">Today's Round of 32 rooms are Spain/Austria, Portugal/Croatia, and Switzerland/Algeria. Scores stay blank until the feed or host relay updates them.</p>
       </article>
     </div>
   `
@@ -809,7 +892,7 @@ function renderTeams () {
 }
 
 function renderPools () {
-  const sampleTeams = ['br', 'no', 'mx']
+  const sampleTeams = ['es', 'at', 'pt']
   const railMode = serviceModeLabel(integrationRuntime.readiness.tetherWdk)
   const railState = integrationRuntime.canUseRealMoney ? 'Live USDT' : `${railMode} locked`
   $('#poolGrid').innerHTML = pools.map(pool => `
@@ -1102,17 +1185,8 @@ async function dispatchLiveMatchCommand (command, { rerender = false, toastError
 
 function liveMatchSeedEvents () {
   return [
-    { clock: '12:14', period: '1H', type: 'shot', teamId: 'br', value: 0.18 },
-    { clock: '26:31', period: '1H', type: 'goal', teamId: 'br', value: 0.42 },
-    { clock: '39:40', period: '1H', type: 'shot', teamId: 'no', value: 'on-target' },
-    { clock: '44:12', period: '1H', type: 'save', teamId: 'br' },
-    { clock: '51:28', period: '2H', type: 'goal', teamId: 'no', value: 0.31 },
-    { clock: '54:03', period: '2H', type: 'goal', teamId: 'br', value: 0.56 },
-    { clock: '61:11', period: '2H', type: 'shot', teamId: 'br', value: 0.22 },
-    { clock: '63:22', period: '2H', type: 'shot', teamId: 'br', value: 'on-target' },
-    { clock: '64:10', period: '2H', type: 'save', teamId: 'no' },
-    { clock: '64:20', period: '2H', type: 'possession', teamId: 'br', value: 58 },
-    { clock: '64:20', period: '2H', type: 'possession', teamId: 'no', value: 42 }
+    { clock: 'Today', period: 'Pre', type: 'possession', teamId: LIVE_HOME_TEAM_ID, value: 50 },
+    { clock: 'Today', period: 'Pre', type: 'possession', teamId: LIVE_AWAY_TEAM_ID, value: 50 }
   ].map(event => ({
     type: 'match:ingestEvent',
     actorId: LIVE_MATCH_SOURCE_ACTOR,
@@ -1192,23 +1266,27 @@ function liveMatchStats () {
 function liveMatchStatRows () {
   const stats = liveMatchStats()
   if (!stats) return matchStats
-  const possessionBr = Math.round(stats.possession.br || 58)
-  const possessionNo = Math.round(stats.possession.no || Math.max(0, 100 - possessionBr))
-  const shotsBr = stats.shots.br || 0
-  const shotsNo = stats.shots.no || 0
-  const totalShots = Math.max(1, shotsBr + shotsNo)
-  const xgBr = Number(stats.xg.br || 0)
-  const xgNo = Number(stats.xg.no || 0)
-  const totalXg = Math.max(0.1, xgBr + xgNo)
-  const savesBr = stats.saves.br || 0
-  const savesNo = stats.saves.no || 0
-  const totalSaves = Math.max(1, savesBr + savesNo)
+  const homeId = LIVE_HOME_TEAM_ID
+  const awayId = LIVE_AWAY_TEAM_ID
+  const possessionHome = Math.round(stats.possession[homeId] || 50)
+  const possessionAway = Math.round(stats.possession[awayId] || Math.max(0, 100 - possessionHome))
+  const shotsHome = stats.shots[homeId] || 0
+  const shotsAway = stats.shots[awayId] || 0
+  const totalShots = Math.max(1, shotsHome + shotsAway)
+  const xgHome = Number(stats.xg[homeId] || 0)
+  const xgAway = Number(stats.xg[awayId] || 0)
+  const totalXg = Math.max(0.1, xgHome + xgAway)
+  const savesHome = stats.saves[homeId] || 0
+  const savesAway = stats.saves[awayId] || 0
+  const totalSaves = Math.max(1, savesHome + savesAway)
+  const onTargetHome = stats.shotsOnTarget[homeId] || 0
+  const onTargetAway = stats.shotsOnTarget[awayId] || 0
   return [
-    ['Possession', `${possessionBr}%`, `${possessionNo}%`, possessionBr],
-    ['Shots', String(shotsBr), String(shotsNo), Math.round((shotsBr / totalShots) * 100)],
-    ['xG', xgBr.toFixed(2), xgNo.toFixed(2), Math.round((xgBr / totalXg) * 100)],
-    ['On target', String(stats.shotsOnTarget.br || 0), String(stats.shotsOnTarget.no || 0), Math.round(((stats.shotsOnTarget.br || 0) / Math.max(1, (stats.shotsOnTarget.br || 0) + (stats.shotsOnTarget.no || 0))) * 100)],
-    ['Saves', String(savesBr), String(savesNo), Math.round((savesBr / totalSaves) * 100)]
+    ['Possession', `${possessionHome}%`, `${possessionAway}%`, possessionHome],
+    ['Shots', String(shotsHome), String(shotsAway), Math.round((shotsHome / totalShots) * 100)],
+    ['xG', xgHome.toFixed(2), xgAway.toFixed(2), Math.round((xgHome / totalXg) * 100)],
+    ['On target', String(onTargetHome), String(onTargetAway), Math.round((onTargetHome / Math.max(1, onTargetHome + onTargetAway)) * 100)],
+    ['Saves', String(savesHome), String(savesAway), Math.round((savesHome / totalSaves) * 100)]
   ]
 }
 
@@ -1579,8 +1657,9 @@ function demoBracketPicksForEntrant (entrant, tier) {
   if (entrant.userId === 'user-vera') {
     return {
       ...demoOfficialMatchWinners,
-      'qf-1': 'no',
-      'sf-1': 'mx',
+      'r16-2': 'no',
+      'qf-1': 'ca',
+      'sf-1': 'fr',
       'final-1': 'ar'
     }
   }
@@ -1773,22 +1852,33 @@ function makeMatch (id, time, status, slots, score = [null, null], sample = {}) 
 }
 
 function buildRounds () {
-  const round16 = r16Matches.map(match => makeMatch(match.id, match.time, match.status, match.slots, match.score, match.sample))
+  const round32 = round32Matches.map(match => makeMatch(match.id, match.time, match.status, match.slots, match.score, match.sample))
+  const round16 = [
+    makeMatch('r16-1', 'Sat, 07/04, 00:00', 'Next', [getPick('r32-1'), getPick('r32-2')], [null, null], {}),
+    makeMatch('r16-2', 'Sat, 07/04, 04:00', 'Next', [getPick('r32-3'), getPick('r32-4')], [null, null], {}),
+    makeMatch('r16-3', 'Sun, 07/05, 00:00', 'Next', [getPick('r32-5'), getPick('r32-6')], [null, null], {}),
+    makeMatch('r16-4', 'Sun, 07/05, 04:00', 'Next', [getPick('r32-7'), getPick('r32-8')], [null, null], {}),
+    makeMatch('r16-5', 'Mon, 07/06, 00:00', 'Next', [getPick('r32-9'), getPick('r32-10')], [null, null], {}),
+    makeMatch('r16-6', 'Mon, 07/06, 04:00', 'Next', [getPick('r32-11'), getPick('r32-12')], [null, null], {}),
+    makeMatch('r16-7', 'Tue, 07/07, 00:00', 'Next', [getPick('r32-13'), getPick('r32-14')], [null, null], {}),
+    makeMatch('r16-8', 'Tue, 07/07, 04:00', 'Next', [getPick('r32-15'), getPick('r32-16')], [null, null], {})
+  ]
   const qf = [
-    makeMatch('qf-1', 'Mon, 07/06, 00:00', 'Open', [getPick('r16-1'), getPick('r16-2')], [null, null], {}),
-    makeMatch('qf-2', 'Mon, 07/06, 04:00', 'Open', [getPick('r16-3'), getPick('r16-4')], [null, null], {}),
-    makeMatch('qf-3', 'Tue, 07/07, 00:00', 'Open', [getPick('r16-5'), getPick('r16-6')], [null, null], {}),
-    makeMatch('qf-4', 'Tue, 07/07, 04:00', 'Open', [getPick('r16-7'), getPick('r16-8')], [null, null], {})
+    makeMatch('qf-1', 'Thu, 07/09, 00:00', 'Open', [getPick('r16-1'), getPick('r16-2')], [null, null], {}),
+    makeMatch('qf-2', 'Fri, 07/10, 00:00', 'Open', [getPick('r16-3'), getPick('r16-4')], [null, null], {}),
+    makeMatch('qf-3', 'Fri, 07/10, 04:00', 'Open', [getPick('r16-5'), getPick('r16-6')], [null, null], {}),
+    makeMatch('qf-4', 'Sat, 07/11, 00:00', 'Open', [getPick('r16-7'), getPick('r16-8')], [null, null], {})
   ]
   const semi = [
-    makeMatch('sf-1', 'Thu, 07/09, 00:00', 'Open', [getPick('qf-1'), getPick('qf-2')], [null, null], {}),
-    makeMatch('sf-2', 'Thu, 07/09, 04:00', 'Open', [getPick('qf-3'), getPick('qf-4')], [null, null], {})
+    makeMatch('sf-1', 'Tue, 07/14, 00:00', 'Open', [getPick('qf-1'), getPick('qf-2')], [null, null], {}),
+    makeMatch('sf-2', 'Wed, 07/15, 00:00', 'Open', [getPick('qf-3'), getPick('qf-4')], [null, null], {})
   ]
   const final = [
-    makeMatch('final-1', 'Sun, 07/12, 01:00', 'Open', [getPick('sf-1'), getPick('sf-2')], [null, null], {})
+    makeMatch('final-1', 'Sun, 07/19, 01:00', 'Open', [getPick('sf-1'), getPick('sf-2')], [null, null], {})
   ]
 
   return [
+    { key: 'round32', label: 'Round of 32', matches: round32 },
     { key: 'round16', label: 'Round of 16', matches: round16 },
     { key: 'quarter', label: 'Quarterfinals', matches: qf },
     { key: 'semi', label: 'Semifinals', matches: semi },
@@ -1958,10 +2048,11 @@ async function renderBracket () {
   `
   bindPayoutControls()
   const placements = {
-    round16: index => ({ column: 1, row: index + 2, span: 1 }),
-    quarter: index => ({ column: 2, row: 2 + (index * 2), span: 2 }),
-    semi: index => ({ column: 3, row: 2 + (index * 4), span: 4 }),
-    final: () => ({ column: 4, row: 4, span: 4 })
+    round32: index => ({ column: 1, row: index + 2, span: 1 }),
+    round16: index => ({ column: 2, row: 2 + (index * 2), span: 2 }),
+    quarter: index => ({ column: 3, row: 3 + (index * 4), span: 4 }),
+    semi: index => ({ column: 4, row: 5 + (index * 8), span: 8 }),
+    final: () => ({ column: 5, row: 9, span: 8 })
   }
   const rounds = buildRounds()
 
@@ -2062,30 +2153,25 @@ function updateBracketConnectors () {
 }
 
 function clearDownstream (matchId, picks = state.picks) {
-  const downstream = {
-    'r16-1': ['qf-1', 'sf-1', 'final-1'],
-    'r16-2': ['qf-1', 'sf-1', 'final-1'],
-    'r16-3': ['qf-2', 'sf-1', 'final-1'],
-    'r16-4': ['qf-2', 'sf-1', 'final-1'],
-    'r16-5': ['qf-3', 'sf-2', 'final-1'],
-    'r16-6': ['qf-3', 'sf-2', 'final-1'],
-    'r16-7': ['qf-4', 'sf-2', 'final-1'],
-    'r16-8': ['qf-4', 'sf-2', 'final-1'],
-    'qf-1': ['sf-1', 'final-1'],
-    'qf-2': ['sf-1', 'final-1'],
-    'qf-3': ['sf-2', 'final-1'],
-    'qf-4': ['sf-2', 'final-1'],
-    'sf-1': ['final-1'],
-    'sf-2': ['final-1']
+  const queue = bracketLinks
+    .filter(link => link.from.includes(matchId))
+    .map(link => link.to)
+  const seen = new Set()
+  while (queue.length) {
+    const id = queue.shift()
+    if (seen.has(id)) continue
+    seen.add(id)
+    bracketLinks
+      .filter(link => link.from.includes(id))
+      .forEach(link => queue.push(link.to))
   }
-
-  for (const id of downstream[matchId] || []) delete picks[id]
+  for (const id of seen) delete picks[id]
   return picks
 }
 
 function currentWatchPickTeamId () {
   const picks = displayedPicksForTier()
-  const livePick = ['br', 'no'].includes(picks['qf-1']) ? picks['qf-1'] : 'br'
+  const livePick = [LIVE_HOME_TEAM_ID, LIVE_AWAY_TEAM_ID].includes(picks['r32-11']) ? picks['r32-11'] : LIVE_HOME_TEAM_ID
   return livePick
 }
 
@@ -2100,11 +2186,11 @@ function currentWatchParticipant () {
 
 function demoWatchParticipants () {
   return [
-    { userId: 'user-lina', username: 'lina', teamId: 'br', role: 'stream host' },
-    { userId: 'user-vera', username: 'vera', teamId: 'no', role: 'voice' },
-    { userId: 'user-milo', username: 'milo', teamId: 'br', role: 'chat' },
-    { userId: 'user-samir', username: 'samir', teamId: 'no', role: 'voice' },
-    { userId: 'user-ash', username: 'ash', teamId: 'br', role: 'chat' }
+    { userId: 'user-lina', username: 'lina', teamId: 'es', role: 'stream host' },
+    { userId: 'user-vera', username: 'vera', teamId: 'at', role: 'voice' },
+    { userId: 'user-milo', username: 'milo', teamId: 'es', role: 'chat' },
+    { userId: 'user-samir', username: 'samir', teamId: 'at', role: 'voice' },
+    { userId: 'user-ash', username: 'ash', teamId: 'es', role: 'chat' }
   ]
 }
 
@@ -2160,7 +2246,7 @@ function watchParticipants () {
   return seeded
     .map(person => {
       const isCurrentUser = person.userId === current.userId
-      const teamId = isCurrentUser ? current.teamId : (['br', 'no'].includes(person.teamId) ? person.teamId : 'br')
+      const teamId = isCurrentUser ? current.teamId : ([LIVE_HOME_TEAM_ID, LIVE_AWAY_TEAM_ID].includes(person.teamId) ? person.teamId : LIVE_HOME_TEAM_ID)
       return {
         userId: person.userId,
         name: isCurrentUser ? current.username : (person.username || person.userId),
@@ -2267,7 +2353,7 @@ function ensureWatchRoomSeeded () {
         userId: 'user-lina',
         username: 'lina',
         source: 'match-visualization',
-        title: 'Brazil vs Norway room TV',
+        title: 'Spain vs Austria room TV',
         rightsConfirmed: true
       }
     }, { rerender: false, toastError: false })
@@ -2283,7 +2369,7 @@ function renderWatch () {
   ensureWatchRoomSeeded()
   ensureLiveMatchSeeded()
   const room = watchParticipants()
-  const grouped = ['br', 'no'].map(teamId => {
+  const grouped = [LIVE_HOME_TEAM_ID, LIVE_AWAY_TEAM_ID].map(teamId => {
     const picked = room.filter(person => person.pick === teamId)
     return { team: teamById(teamId), picked }
   })
@@ -2868,6 +2954,51 @@ function bindViewButtons (root = document) {
   })
 }
 
+function bindCoreFallbackEvents () {
+  if (document.documentElement.dataset.coreFallbackBound) return
+  document.documentElement.dataset.coreFallbackBound = 'true'
+
+  document.addEventListener('click', event => {
+    const viewButton = event.target.closest('[data-view]')
+    if (viewButton && viewButton.dataset.view) {
+      event.preventDefault()
+      event.stopPropagation()
+      setView(viewButton.dataset.view)
+      return
+    }
+
+    const teamButton = event.target.closest('#teamGrid .team-card[data-team]')
+    if (teamButton) {
+      event.preventDefault()
+      event.stopPropagation()
+      state.team = teamButton.dataset.team
+      persist()
+      renderAll()
+      return
+    }
+
+    const saveButton = event.target.closest('#saveProfile')
+    if (saveButton) {
+      event.preventDefault()
+      event.stopPropagation()
+      const name = $('#usernameInput').value.trim()
+      state.username = name || 'captain'
+      persist()
+      renderAll()
+      setView('home')
+      showToast(`${state.username} joined as ${teamById(state.team).name}`)
+    }
+  }, true)
+
+  document.addEventListener('input', event => {
+    if (event.target && event.target.id === 'usernameInput') {
+      state.username = event.target.value.trim() || 'captain'
+      persist()
+      renderProfile()
+    }
+  }, true)
+}
+
 function bindEvents () {
   bindViewButtons()
 
@@ -3040,9 +3171,17 @@ function renderAll () {
   renderGames()
 }
 
-bindEvents()
+bindCoreFallbackEvents()
 renderAll()
 setView(state.view)
+bindEvents()
 window.addEventListener('load', resetScrollPosition)
 window.addEventListener('pageshow', resetScrollPosition)
 window.addEventListener('resize', scheduleBracketConnectors)
+if (typeof window !== 'undefined') {
+  window.__pearcupAppBooted = true
+  document.documentElement.setAttribute('data-pearcup-booted', 'true')
+  const bar = document.getElementById('bootErrorBar')
+  if (bar && !/^PearCup boot error:/.test(bar.textContent || '')) bar.remove()
+  try { window.dispatchEvent(new Event('pearcup:booted')) } catch (e) {}
+}

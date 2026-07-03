@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:* pear:; object-src 'none'; base-uri 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:* pear:; object-src 'none'; base-uri 'none'">
     <title>PearCup Prototype</title>
     <link rel="stylesheet" href="./styles.css">
   </head>
@@ -32,8 +32,36 @@
           <button class="theme-btn" id="themeBtn" type="button" aria-label="Change theme" title="Change theme">
             <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.7-.8 1.7-1.7 0-.4-.2-.8-.5-1.1-.3-.3-.5-.7-.5-1.1 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-3.9-4-7.4-9-7.4Z"/><circle cx="7.5" cy="11.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="8" r="1.3" fill="currentColor" stroke="none"/><circle cx="16.5" cy="11.5" r="1.3" fill="currentColor" stroke="none"/></svg>
           </button>
-          <button class="wallet-chip" id="walletChip" type="button" data-view="onboarding" aria-label="Open wallet"></button>
-          <div class="profile-chip" id="profileChip" aria-live="polite"></div>
+          <button class="wallet-chip" id="walletChip" type="button" data-view="onboarding" aria-label="Open wallet">
+            <span class="wallet-ico">💰</span><span class="wallet-amt">490 USDT</span>
+          </button>
+          <div class="profile-chip" id="profileChip" aria-live="polite">
+            <svg class="avatar-art compact-avatar" viewBox="0 0 220 220" role="img" aria-label="captain Brazil badge avatar">
+              <defs>
+                <linearGradient id="staticCompactBadge" x1="24" y1="18" x2="190" y2="204" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#58c980"/><stop offset=".48" stop-color="#139b49"/><stop offset="1" stop-color="#294f3c"/>
+                </linearGradient>
+                <linearGradient id="staticCompactShine" x1="54" y1="28" x2="156" y2="174" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#fff" stop-opacity=".78"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <rect x="20" y="18" width="180" height="184" rx="44" fill="url(#staticCompactBadge)"/>
+              <path d="M36 55c44-25 99-31 148-12 8 44 2 93-18 132-36 20-79 23-124 9-18-40-20-86-6-129Z" fill="#fff" opacity=".14"/>
+              <path d="M47 52c31-21 76-26 113-12-31 8-64 28-94 61-11-18-17-34-19-49Z" fill="url(#staticCompactShine)"/>
+              <circle cx="110" cy="76" r="40" fill="#fff" opacity=".95"/>
+              <circle cx="110" cy="76" r="32" fill="#ffec8f"/>
+              <text x="110" y="89" text-anchor="middle" font-size="42" font-weight="900" font-family="Arial, sans-serif">🇧🇷</text>
+              <path d="M67 130c10-21 25-32 43-32s33 11 43 32l-10 45H77Z" fill="#fff" opacity=".92"/>
+              <path d="M74 130c9-17 21-25 36-25s27 8 36 25l-8 38H82Z" fill="#ffec8f" opacity=".9"/>
+              <path d="M88 108h44l-9 19h-26Z" fill="#139b49" opacity=".88"/>
+              <text x="110" y="158" text-anchor="middle" font-size="46" font-weight="900" fill="#294f3c" font-family="Arial, sans-serif">CA</text>
+              <text x="110" y="181" text-anchor="middle" font-size="18" font-weight="900" fill="#294f3c" opacity=".8" font-family="Arial, sans-serif">19</text>
+            </svg>
+            <div>
+              <span class="chip-name">captain</span>
+              <span class="chip-team">🇧🇷 Brazil</span>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -47,7 +75,7 @@
               </div>
               <label class="field-label" for="usernameInput">Username</label>
               <div class="username-row">
-                <input id="usernameInput" maxlength="18" autocomplete="nickname" placeholder="your handle">
+                <input id="usernameInput" maxlength="18" autocomplete="nickname" placeholder="your handle" value="captain">
                 <button class="primary-button" id="saveProfile" type="button">
                   <span class="button-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
@@ -55,18 +83,62 @@
                   Enter
                 </button>
               </div>
-              <div class="team-grid" id="teamGrid"></div>
+              <div class="team-grid" id="teamGrid">
+                <button class="team-card is-selected" type="button" data-team="br" aria-pressed="true"><span class="flag-tile">🇧🇷</span><span><span class="team-name">Brazil</span><span class="team-colors" aria-hidden="true"><i style="background:#139b49"></i><i style="background:#ffd447"></i><i style="background:#1b55a5"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="jp" aria-pressed="false"><span class="flag-tile">🇯🇵</span><span><span class="team-name">Japan</span><span class="team-colors" aria-hidden="true"><i style="background:#f6f6f6"></i><i style="background:#d91f3c"></i><i style="background:#0a2f68"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="ci" aria-pressed="false"><span class="flag-tile">🇨🇮</span><span><span class="team-name">Ivory Coast</span><span class="team-colors" aria-hidden="true"><i style="background:#f27b22"></i><i style="background:#ffffff"></i><i style="background:#159759"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="no" aria-pressed="false"><span class="flag-tile">🇳🇴</span><span><span class="team-name">Norway</span><span class="team-colors" aria-hidden="true"><i style="background:#d91f3c"></i><i style="background:#ffffff"></i><i style="background:#143d8d"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="mx" aria-pressed="false"><span class="flag-tile">🇲🇽</span><span><span class="team-name">Mexico</span><span class="team-colors" aria-hidden="true"><i style="background:#0c8c57"></i><i style="background:#ffffff"></i><i style="background:#d43f3a"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="ec" aria-pressed="false"><span class="flag-tile">🇪🇨</span><span><span class="team-name">Ecuador</span><span class="team-colors" aria-hidden="true"><i style="background:#f9d33a"></i><i style="background:#1f5aa6"></i><i style="background:#d13d32"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="eng" aria-pressed="false"><span class="flag-tile">🏴</span><span><span class="team-name">England</span><span class="team-colors" aria-hidden="true"><i style="background:#ffffff"></i><i style="background:#d41f35"></i><i style="background:#1c3764"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="cd" aria-pressed="false"><span class="flag-tile">🇨🇩</span><span><span class="team-name">DR Congo</span><span class="team-colors" aria-hidden="true"><i style="background:#2a9bd8"></i><i style="background:#f3d13d"></i><i style="background:#d84a3a"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="ch" aria-pressed="false"><span class="flag-tile">🇨🇭</span><span><span class="team-name">Switzerland</span><span class="team-colors" aria-hidden="true"><i style="background:#d71920"></i><i style="background:#ffffff"></i><i style="background:#901019"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="dz" aria-pressed="false"><span class="flag-tile">🇩🇿</span><span><span class="team-name">Algeria</span><span class="team-colors" aria-hidden="true"><i style="background:#ffffff"></i><i style="background:#00843d"></i><i style="background:#d21034"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="pt" aria-pressed="false"><span class="flag-tile">🇵🇹</span><span><span class="team-name">Portugal</span><span class="team-colors" aria-hidden="true"><i style="background:#d71920"></i><i style="background:#006b3f"></i><i style="background:#f6c343"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="hr" aria-pressed="false"><span class="flag-tile">🇭🇷</span><span><span class="team-name">Croatia</span><span class="team-colors" aria-hidden="true"><i style="background:#ffffff"></i><i style="background:#d7272f"></i><i style="background:#1f5aa6"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="es" aria-pressed="false"><span class="flag-tile">🇪🇸</span><span><span class="team-name">Spain</span><span class="team-colors" aria-hidden="true"><i style="background:#c60b1e"></i><i style="background:#ffc400"></i><i style="background:#75131a"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="at" aria-pressed="false"><span class="flag-tile">🇦🇹</span><span><span class="team-name">Austria</span><span class="team-colors" aria-hidden="true"><i style="background:#ed2939"></i><i style="background:#ffffff"></i><i style="background:#8f1d27"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="fr" aria-pressed="false"><span class="flag-tile">🇫🇷</span><span><span class="team-name">France</span><span class="team-colors" aria-hidden="true"><i style="background:#1d3d8f"></i><i style="background:#ffffff"></i><i style="background:#d84a3a"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+                <button class="team-card" type="button" data-team="ar" aria-pressed="false"><span class="flag-tile">🇦🇷</span><span><span class="team-name">Argentina</span><span class="team-colors" aria-hidden="true"><i style="background:#75aadb"></i><i style="background:#ffffff"></i><i style="background:#f6b33f"></i></span></span><span class="check-dot" aria-hidden="true"></span></button>
+              </div>
             </div>
 
             <aside class="avatar-preview" aria-label="Avatar preview">
-              <div class="avatar-stage" id="avatarPreview"></div>
+              <div class="avatar-stage" id="avatarPreview">
+                <svg class="avatar-art showcase-avatar" viewBox="0 0 220 220" role="img" aria-label="captain Brazil badge avatar">
+                  <defs>
+                    <linearGradient id="staticShowcaseBadge" x1="24" y1="18" x2="190" y2="204" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#58c980"/><stop offset=".48" stop-color="#139b49"/><stop offset="1" stop-color="#294f3c"/>
+                    </linearGradient>
+                    <linearGradient id="staticShowcaseShine" x1="54" y1="28" x2="156" y2="174" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#fff" stop-opacity=".78"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+                    </linearGradient>
+                    <filter id="staticShowcaseDrop" x="-30%" y="-30%" width="160%" height="170%">
+                      <feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#3a1030" flood-opacity=".18"/>
+                    </filter>
+                  </defs>
+                  <rect x="20" y="18" width="180" height="184" rx="44" fill="url(#staticShowcaseBadge)" filter="url(#staticShowcaseDrop)"/>
+                  <path d="M36 55c44-25 99-31 148-12 8 44 2 93-18 132-36 20-79 23-124 9-18-40-20-86-6-129Z" fill="#fff" opacity=".14"/>
+                  <path d="M47 52c31-21 76-26 113-12-31 8-64 28-94 61-11-18-17-34-19-49Z" fill="url(#staticShowcaseShine)"/>
+                  <circle cx="110" cy="76" r="40" fill="#fff" opacity=".95"/>
+                  <circle cx="110" cy="76" r="32" fill="#ffec8f"/>
+                  <text x="110" y="89" text-anchor="middle" font-size="42" font-weight="900" font-family="Arial, sans-serif">🇧🇷</text>
+                  <path d="M67 130c10-21 25-32 43-32s33 11 43 32l-10 45H77Z" fill="#fff" opacity=".92"/>
+                  <path d="M74 130c9-17 21-25 36-25s27 8 36 25l-8 38H82Z" fill="#ffec8f" opacity=".9"/>
+                  <path d="M88 108h44l-9 19h-26Z" fill="#139b49" opacity=".88"/>
+                  <text x="110" y="158" text-anchor="middle" font-size="46" font-weight="900" fill="#294f3c" font-family="Arial, sans-serif">CA</text>
+                  <text x="110" y="181" text-anchor="middle" font-size="18" font-weight="900" fill="#294f3c" opacity=".8" font-family="Arial, sans-serif">19</text>
+                  <rect x="48" y="184" width="124" height="20" rx="10" fill="#fff" opacity=".9"/>
+                  <text x="110" y="199" text-anchor="middle" font-size="13" font-weight="900" fill="#294f3c" font-family="Arial, sans-serif">captain</text>
+                </svg>
+              </div>
               <div class="kit-card">
-                <span class="kit-swatch" id="primarySwatch"></span>
-                <span class="kit-swatch" id="secondarySwatch"></span>
-                <span class="kit-swatch" id="accentSwatch"></span>
+                <span class="kit-swatch" id="primarySwatch" style="background:#139b49"></span>
+                <span class="kit-swatch" id="secondarySwatch" style="background:#ffd447"></span>
+                <span class="kit-swatch" id="accentSwatch" style="background:#1b55a5"></span>
                 <div>
-                  <p class="kit-country" id="kitCountry">Brazil</p>
-                  <p class="kit-subtitle" id="kitSubtitle">Home jersey generated</p>
+                  <p class="kit-country" id="kitCountry">🇧🇷 Brazil</p>
+                  <p class="kit-subtitle" id="kitSubtitle">captain's jersey is ready</p>
                 </div>
               </div>
               <div id="walletManage"></div>
@@ -94,22 +166,22 @@
               <section class="live-command" aria-label="Live match dashboard">
                 <div class="live-scoreline">
                   <div class="live-team">
-                    <span class="score-flag" id="heroHomeFlag">🇧🇷</span>
+                    <span class="score-flag" id="heroHomeFlag">🇪🇸</span>
                     <div>
-                      <strong id="heroHomeName">Brazil</strong>
-                      <span id="heroHomeSub">58% possession</span>
+                      <strong id="heroHomeName">Spain</strong>
+                      <span id="heroHomeSub">Pre-match room</span>
                     </div>
                   </div>
                   <div class="score-core">
-                    <span id="heroClock">64'</span>
-                    <strong id="heroScore">2 - 1</strong>
-                    <em id="heroState">Live</em>
+                    <span id="heroClock">15:00 ET</span>
+                    <strong id="heroScore">vs</strong>
+                    <em id="heroState">Scheduled</em>
                   </div>
                   <div class="live-team is-away">
-                    <span class="score-flag" id="heroAwayFlag">🇳🇴</span>
+                    <span class="score-flag" id="heroAwayFlag">🇦🇹</span>
                     <div>
-                      <strong id="heroAwayName">Norway</strong>
-                      <span id="heroAwaySub">Counter threat high</span>
+                      <strong id="heroAwayName">Austria</strong>
+                      <span id="heroAwaySub">Round of 32</span>
                     </div>
                   </div>
                 </div>
@@ -210,8 +282,8 @@
             <div class="watch-room">
               <div class="room-topline">
                 <div class="section-heading compact">
-                  <p class="eyebrow">Watch party <span class="live-badge" id="tvLive"><i></i>LIVE</span></p>
-                  <h1 id="watchTitle">Brazil vs Norway</h1>
+                  <p class="eyebrow">Watch party <span class="live-badge" id="tvLive">Scheduled</span></p>
+                  <h1 id="watchTitle">Spain vs Austria</h1>
                 </div>
                 <div class="room-controls">
                   <button class="secondary-button compact-action" type="button" id="shareGameBtn">
@@ -236,8 +308,8 @@
                   <video id="shareVideo" class="share-video" playsinline muted hidden></video>
                   <div class="share-badge" id="shareBadge" hidden></div>
                   <div class="scorebug">
-                    <span id="tvClock">64'</span>
-                    <strong id="tvScore">Brazil 2 - 1 Norway</strong>
+                    <span id="tvClock">15:00 ET</span>
+                    <strong id="tvScore">Spain vs Austria</strong>
                   </div>
                   <div class="pitch" id="tvPitch">
                     <div class="ball"></div>
@@ -370,6 +442,340 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script>
+      (function () {
+        var root = window
+        if (root.__pearcupFallbackInstalled) return
+        root.__pearcupFallbackInstalled = true
+
+        var shellTeams = {
+          br: { name: 'Brazil', flag: '🇧🇷', colors: ['#139b49', '#ffd447', '#1b55a5'] },
+          jp: { name: 'Japan', flag: '🇯🇵', colors: ['#f6f6f6', '#d91f3c', '#0a2f68'] },
+          ci: { name: 'Ivory Coast', flag: '🇨🇮', colors: ['#f27b22', '#ffffff', '#159759'] },
+          no: { name: 'Norway', flag: '🇳🇴', colors: ['#d91f3c', '#ffffff', '#143d8d'] },
+          mx: { name: 'Mexico', flag: '🇲🇽', colors: ['#0c8c57', '#ffffff', '#d43f3a'] },
+          ec: { name: 'Ecuador', flag: '🇪🇨', colors: ['#f9d33a', '#1f5aa6', '#d13d32'] },
+          eng: { name: 'England', flag: '🏴', colors: ['#ffffff', '#d41f35', '#1c3764'] },
+          cd: { name: 'DR Congo', flag: '🇨🇩', colors: ['#2a9bd8', '#f3d13d', '#d84a3a'] },
+          ch: { name: 'Switzerland', flag: '🇨🇭', colors: ['#d71920', '#ffffff', '#901019'] },
+          dz: { name: 'Algeria', flag: '🇩🇿', colors: ['#ffffff', '#00843d', '#d21034'] },
+          pt: { name: 'Portugal', flag: '🇵🇹', colors: ['#d71920', '#006b3f', '#f6c343'] },
+          hr: { name: 'Croatia', flag: '🇭🇷', colors: ['#ffffff', '#d7272f', '#1f5aa6'] },
+          es: { name: 'Spain', flag: '🇪🇸', colors: ['#c60b1e', '#ffc400', '#75131a'] },
+          at: { name: 'Austria', flag: '🇦🇹', colors: ['#ed2939', '#ffffff', '#8f1d27'] },
+          fr: { name: 'France', flag: '🇫🇷', colors: ['#1d3d8f', '#ffffff', '#d84a3a'] },
+          ar: { name: 'Argentina', flag: '🇦🇷', colors: ['#75aadb', '#ffffff', '#f6b33f'] }
+        }
+
+        function shellEscape (value) {
+          return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]
+          })
+        }
+
+        function shellState (patch) {
+          var fallback = { view: 'onboarding', username: 'captain', team: 'br' }
+          try {
+            var saved = JSON.parse(localStorage.getItem('pearcup-prototype') || 'null') || {}
+            var next = Object.assign({}, fallback, saved, patch || {})
+            if (patch) localStorage.setItem('pearcup-prototype', JSON.stringify(next))
+            return next
+          } catch (e) {
+            return Object.assign({}, fallback, patch || {})
+          }
+        }
+
+        function shellInitials (name) {
+          var parts = String(name || 'captain').trim().split(/\s+/).filter(Boolean)
+          return (parts.length > 1 ? parts[0][0] + parts[1][0] : parts[0].slice(0, 2)).toUpperCase()
+        }
+
+        var shellPortraits = {
+          'captain-br': 'avatars/captain-br.png',
+          captain: 'avatars/captain-br.png',
+          vera: 'avatars/vera-no.png',
+          milo: 'avatars/milo-mx.png',
+          lina: 'avatars/lina-no.png',
+          kaito: 'avatars/kaito-jp.png',
+          mateo: 'avatars/mateo-ar.png',
+          emre: 'avatars/emre-ch.png',
+          zola: 'avatars/zola-ci.png',
+          samir: 'avatars/samir.png',
+          saki: 'avatars/saki.png',
+          dado: 'avatars/dado.png',
+          ash: 'avatars/ash.png',
+          aria: 'avatars/p-aria.png',
+          rico: 'avatars/p-rico.png',
+          kenji: 'avatars/p-kenji.png',
+          amara: 'avatars/p-amara.png',
+          luca: 'avatars/p-luca.png',
+          sofia: 'avatars/p-sofia.png',
+          omar: 'avatars/p-omar.png',
+          nina: 'avatars/p-nina.png',
+          diego: 'avatars/p-diego.png',
+          yuki: 'avatars/p-yuki.png',
+          kwame: 'avatars/p-kwame.png',
+          ingrid: 'avatars/p-ingrid.png',
+          rafa: 'avatars/p-rafa.png',
+          mei: 'avatars/p-mei.png',
+          tariq: 'avatars/p-tariq.png',
+          freya: 'avatars/p-freya.png',
+          santi: 'avatars/p-santi.png',
+          kofi: 'avatars/p-kofi.png'
+        }
+        var shellAvatarPool = ['p-aria', 'p-rico', 'p-kenji', 'p-amara', 'p-luca', 'p-sofia', 'p-omar', 'p-nina', 'p-diego', 'p-yuki', 'p-kwame', 'p-ingrid', 'p-rafa', 'p-mei', 'p-tariq', 'p-freya', 'p-santi', 'p-kofi']
+
+        function shellHash (value) {
+          var hash = 0
+          for (var i = 0; i < value.length; i++) {
+            hash = ((hash << 5) - hash) + value.charCodeAt(i)
+            hash |= 0
+          }
+          return Math.abs(hash)
+        }
+
+        function shellPortrait (name, team) {
+          var key = String(name || '').toLowerCase()
+          if (team && team.id && shellPortraits[key + '-' + team.id]) return shellPortraits[key + '-' + team.id]
+          if (shellPortraits[key]) return shellPortraits[key]
+          var index = shellHash(key + '-' + (team && team.name || 'team')) % shellAvatarPool.length
+          return 'avatars/' + shellAvatarPool[index] + '.png'
+        }
+
+        function shellAvatar (team, name, className) {
+          var primary = team.colors[0] === '#ffffff' ? team.colors[1] : team.colors[0]
+          var secondary = team.colors[1] === '#ffffff' ? team.colors[2] : team.colors[1]
+          var deep = primary === '#ffffff' ? '#3a1030' : primary
+          var prefix = className.indexOf('compact') === -1 ? 'shellShowcase' : 'shellCompact'
+          var label = shellEscape(shellInitials(name))
+          var shortName = shellEscape(String(name || 'captain').slice(0, 16))
+          var portrait = shellPortrait(name, team)
+          if (portrait) {
+            return '<svg class="avatar-art ' + className + '" viewBox="0 0 200 200" role="img" aria-label="' + shellEscape(name) + ' avatar">' +
+              '<defs><clipPath id="' + prefix + 'PortraitClip"><rect x="14" y="14" width="172" height="172" rx="46"/></clipPath></defs>' +
+              '<rect x="10" y="10" width="180" height="180" rx="50" fill="' + shellEscape(secondary) + '" opacity=".34"/>' +
+              '<text x="100" y="113" text-anchor="middle" font-size="44" font-weight="900" fill="' + shellEscape(deep) + '" opacity=".5" font-family="Arial, sans-serif">' + label + '</text>' +
+              '<image href="' + shellEscape(portrait) + '" x="14" y="14" width="172" height="172" clip-path="url(#' + prefix + 'PortraitClip)" preserveAspectRatio="xMidYMid slice"/>' +
+              '<rect x="14" y="14" width="172" height="172" rx="46" fill="none" stroke="#ffffff" stroke-width="6"/>' +
+              '<rect x="14" y="14" width="172" height="172" rx="46" fill="none" stroke="' + shellEscape(primary) + '" stroke-width="3" opacity=".65"/></svg>'
+          }
+          return '<svg class="avatar-art ' + className + '" viewBox="0 0 220 220" role="img" aria-label="' + shellEscape(name) + ' badge avatar">' +
+            '<defs><linearGradient id="' + prefix + 'Badge" x1="24" y1="18" x2="190" y2="204" gradientUnits="userSpaceOnUse">' +
+            '<stop stop-color="' + shellEscape(secondary) + '"/><stop offset=".48" stop-color="' + shellEscape(primary) + '"/><stop offset="1" stop-color="' + shellEscape(deep) + '"/></linearGradient>' +
+            '<linearGradient id="' + prefix + 'Shine" x1="54" y1="28" x2="156" y2="174" gradientUnits="userSpaceOnUse"><stop stop-color="#fff" stop-opacity=".78"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>' +
+            '<rect x="20" y="18" width="180" height="184" rx="44" fill="url(#' + prefix + 'Badge)"/><path d="M36 55c44-25 99-31 148-12 8 44 2 93-18 132-36 20-79 23-124 9-18-40-20-86-6-129Z" fill="#fff" opacity=".14"/>' +
+            '<path d="M47 52c31-21 76-26 113-12-31 8-64 28-94 61-11-18-17-34-19-49Z" fill="url(#' + prefix + 'Shine)"/><circle cx="110" cy="76" r="40" fill="#fff" opacity=".95"/><circle cx="110" cy="76" r="32" fill="' + shellEscape(secondary) + '" opacity=".92"/>' +
+            '<text x="110" y="89" text-anchor="middle" font-size="42" font-weight="900" font-family="Arial, sans-serif">' + shellEscape(team.flag) + '</text><path d="M67 130c10-21 25-32 43-32s33 11 43 32l-10 45H77Z" fill="#fff" opacity=".92"/><path d="M74 130c9-17 21-25 36-25s27 8 36 25l-8 38H82Z" fill="' + shellEscape(secondary) + '" opacity=".9"/>' +
+            '<path d="M88 108h44l-9 19h-26Z" fill="' + shellEscape(primary) + '" opacity=".88"/><text x="110" y="158" text-anchor="middle" font-size="46" font-weight="900" fill="' + shellEscape(deep) + '" font-family="Arial, sans-serif">' + label + '</text><text x="110" y="181" text-anchor="middle" font-size="18" font-weight="900" fill="' + shellEscape(deep) + '" opacity=".8" font-family="Arial, sans-serif">19</text>' +
+            '<rect x="48" y="184" width="124" height="20" rx="10" fill="#fff" opacity=".9"/><text x="110" y="199" text-anchor="middle" font-size="13" font-weight="900" fill="' + shellEscape(deep) + '" font-family="Arial, sans-serif">' + shortName + '</text></svg>'
+        }
+
+        function renderStaticShell () {
+          if (appBooted()) return
+          var state = shellState()
+          var team = shellTeams[state.team] || shellTeams.br
+          var name = state.username || 'captain'
+          var input = document.getElementById('usernameInput')
+          if (input && document.activeElement !== input) input.value = name
+          var profile = document.getElementById('profileChip')
+          if (profile) profile.innerHTML = shellAvatar(team, name, 'compact-avatar') + '<div><span class="chip-name">' + shellEscape(name) + '</span><span class="chip-team">' + shellEscape(team.flag + ' ' + team.name) + '</span></div>'
+          var preview = document.getElementById('avatarPreview')
+          if (preview) preview.innerHTML = shellAvatar(team, name, 'showcase-avatar')
+          var country = document.getElementById('kitCountry')
+          if (country) country.textContent = team.flag + ' ' + team.name
+          var sub = document.getElementById('kitSubtitle')
+          if (sub) sub.textContent = name + "'s jersey is ready"
+          var swatches = ['primarySwatch', 'secondarySwatch', 'accentSwatch']
+          swatches.forEach(function (id, index) {
+            var el = document.getElementById(id)
+            if (el) el.style.background = team.colors[index]
+          })
+          Array.prototype.forEach.call(document.querySelectorAll('#teamGrid .team-card'), function (button) {
+            var selected = button.getAttribute('data-team') === state.team
+            button.classList.toggle('is-selected', selected)
+            button.setAttribute('aria-pressed', selected ? 'true' : 'false')
+          })
+        }
+
+        function setStaticView (view) {
+          shellState({ view: view })
+          Array.prototype.forEach.call(document.querySelectorAll('.screen'), function (screen) {
+            screen.classList.toggle('is-active', screen.id === view)
+          })
+          Array.prototype.forEach.call(document.querySelectorAll('.topnav button'), function (button) {
+            button.classList.toggle('is-active', button.getAttribute('data-view') === view)
+          })
+          window.scrollTo(0, 0)
+        }
+
+        function bindStaticShell () {
+          document.addEventListener('click', function (event) {
+            if (appBooted()) return
+            var viewButton = event.target.closest && event.target.closest('[data-view]')
+            if (viewButton && viewButton.getAttribute('data-view')) {
+              setStaticView(viewButton.getAttribute('data-view'))
+              return
+            }
+            var teamButton = event.target.closest && event.target.closest('#teamGrid .team-card[data-team]')
+            if (teamButton) {
+              shellState({ team: teamButton.getAttribute('data-team') || 'br' })
+              renderStaticShell()
+              return
+            }
+            if (event.target.closest && event.target.closest('#saveProfile')) {
+              var input = document.getElementById('usernameInput')
+              shellState({ username: (input && input.value.trim()) || 'captain', view: 'home' })
+              renderStaticShell()
+              setStaticView('home')
+            }
+          })
+          document.addEventListener('input', function (event) {
+            if (appBooted() || !event.target || event.target.id !== 'usernameInput') return
+            shellState({ username: event.target.value.trim() || 'captain' })
+            renderStaticShell()
+          })
+          setTimeout(renderStaticShell, 0)
+        }
+        bindStaticShell()
+
+        var scripts = [
+          './core.js',
+          './adapters.js',
+          './qvac-referee.js',
+          './tether-wdk-bridge.js',
+          './runtime-settings.js',
+          './runtime-config.js',
+          './worker-sim.js',
+          './worker-client.js',
+          './worker-runtime.js',
+          './settlement-receipts.js',
+          './settlement-service.js',
+          './transport-sim.js',
+          './storage-sim.js',
+          './app.js',
+          './peer-net.js',
+          './peer-match.js',
+          './peer-lobby.js',
+          './watch-sync.js'
+        ]
+
+        function appBooted () {
+          return root.__pearcupAppBooted
+        }
+
+        function appScriptLoaded () {
+          return root.__pearcupAppScriptSeen
+        }
+
+        function visualShellReady () {
+          return document.querySelectorAll('#teamGrid .team-card').length > 0 &&
+            document.querySelector('#avatarPreview svg')
+        }
+
+        function appUiHydrated () {
+          return document.querySelectorAll('[data-match-card]').length > 0 ||
+            document.querySelectorAll('#homeFixtures .mini-fixture').length > 0 ||
+            document.querySelectorAll('#watchPickBoard .watch-pick-card').length > 0
+        }
+
+        function acceptHydratedAppUi () {
+          if (!appUiHydrated()) return false
+          root.__pearcupAppBooted = true
+          document.documentElement.setAttribute('data-pearcup-booted', 'true')
+          try { root.sessionStorage && root.sessionStorage.removeItem('pearcupBootRetryVisualShell') } catch (e) {}
+          clearNotice()
+          try { root.dispatchEvent(new Event('pearcup:booted')) } catch (e) {}
+          return true
+        }
+
+        function retryOnceBeforeNotice () {
+          try {
+            if (!root.sessionStorage || root.sessionStorage.getItem('pearcupBootRetryVisualShell')) return false
+            root.sessionStorage.setItem('pearcupBootRetryVisualShell', String(Date.now()))
+            var sep = root.location.search ? '&' : '?'
+            root.location.replace(root.location.pathname + root.location.search + sep + 'bootRetry=' + Date.now() + root.location.hash)
+            return true
+          } catch (e) {
+            return false
+          }
+        }
+
+        function isRealBootError (bar) {
+          return bar && /^PearCup boot error:/.test(bar.textContent || '')
+        }
+
+        function notice (title, detail) {
+          var existing = document.getElementById('bootErrorBar')
+          if (isRealBootError(existing)) return
+          var bar = existing || document.createElement('pre')
+          bar.id = 'bootErrorBar'
+          bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;max-height:45vh;overflow:auto;margin:0;padding:12px 16px;background:#3a1030;color:#ffd9ec;font:12px/1.5 ui-monospace,monospace;z-index:99999;white-space:pre-wrap;border-top:3px solid #ff8fc0'
+          bar.textContent = title + (detail ? '\n' + detail : '')
+          if (!existing && document.body) document.body.appendChild(bar)
+        }
+
+        function clearNotice () {
+          var bar = document.getElementById('bootErrorBar')
+          if (bar) bar.remove()
+        }
+
+        function runScript (path) {
+          return new Promise(function (resolve, reject) {
+            var script = document.createElement('script')
+            script.src = path
+            script.async = false
+            script.dataset.pearcupFallbackScript = path
+            script.onload = function () { resolve() }
+            script.onerror = function () { reject(new Error(path + ' failed to load as a fallback script')) }
+            document.body.appendChild(script)
+          })
+        }
+
+        function runFallback () {
+          if (appBooted() || root.__pearcupFallbackRunning) return
+          if (appScriptLoaded()) {
+            if (acceptHydratedAppUi()) return
+            if (retryOnceBeforeNotice()) return
+            notice('PearCup app script loaded, but boot did not complete.', 'The static shell is visible; check the boot error banner or console for the first renderer issue.')
+            setTimeout(function () {
+              if (appBooted()) clearNotice()
+              else if (acceptHydratedAppUi()) clearNotice()
+            }, 2400)
+            return
+          }
+          root.__pearcupFallbackRunning = true
+          notice('PearCup is loading in fallback mode.', 'External renderer scripts did not boot the app; retrying them now.')
+          scripts.reduce(function (chain, path) {
+            return chain.then(function () { return runScript(path) })
+          }, Promise.resolve())
+            .then(function () {
+              setTimeout(function () {
+                if (appBooted()) clearNotice()
+                else if (acceptHydratedAppUi()) clearNotice()
+                else if (visualShellReady()) {
+                  if (retryOnceBeforeNotice()) return
+                  notice('PearCup fallback loaded the visual shell, but the app did not finish booting.', 'Check the boot error banner or console for the first renderer issue.')
+                }
+                else notice('PearCup fallback loaded scripts, but the app did not hydrate.', 'Check the boot error banner or console for the first renderer issue.')
+              }, 1200)
+            })
+            .catch(function (err) {
+              notice('PearCup fallback failed.', err && err.stack ? err.stack : String(err))
+              if (root.console && root.console.error) root.console.error('PearCup fallback failed', err)
+            })
+        }
+
+        root.addEventListener('error', function (event) {
+          if (!appBooted()) notice('PearCup renderer error.', event.error && event.error.stack ? event.error.stack : (event.message || String(event)))
+        })
+        root.addEventListener('unhandledrejection', function (event) {
+          if (!appBooted()) notice('PearCup renderer promise error.', event.reason && event.reason.stack ? event.reason.stack : String(event.reason))
+        })
+        root.addEventListener('pearcup:booted', clearNotice)
+
+        setTimeout(runFallback, 1600)
+      })()
+    </script>
     <script src="./core.js"></script>
     <script src="./adapters.js"></script>
     <script src="./qvac-referee.js"></script>

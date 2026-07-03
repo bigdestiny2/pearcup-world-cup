@@ -16,52 +16,45 @@
     "id": 2398,
     "startDate": "2026-06-11",
     "endDate": "2026-07-19",
-    "currentMatchday": 3,
+    "currentMatchday": 4,
     "winner": null
   },
-  "id": 537426,
-  "utcDate": "2026-07-01T16:00:00Z",
-  "status": "FINISHED",
-  "venue": null,
+  "id": 537429,
+  "utcDate": "2026-07-02T19:00:00Z",
+  "status": "TIMED",
+  "venue": "SoFi Stadium",
   "matchday": null,
   "stage": "LAST_32",
   "group": null,
-  "lastUpdated": "2026-07-01T18:06:21Z",
+  "lastUpdated": "2026-07-02T12:00:00Z",
   "homeTeam": {
-    "id": 770,
-    "name": "England",
-    "shortName": "England",
-    "tla": "ENG",
-    "crest": "crests/770.svg"
+    "id": 760,
+    "name": "Spain",
+    "shortName": "Spain",
+    "tla": "ESP",
+    "crest": ""
   },
   "awayTeam": {
-    "id": 1934,
-    "name": "Congo DR",
-    "shortName": "Congo DR",
-    "tla": "COD",
-    "crest": "crests/congo_dr.svg"
+    "id": 816,
+    "name": "Austria",
+    "shortName": "Austria",
+    "tla": "AUT",
+    "crest": ""
   },
   "score": {
-    "winner": "HOME_TEAM",
+    "winner": null,
     "duration": "REGULAR",
     "fullTime": {
-      "home": 2,
-      "away": 1
+      "home": null,
+      "away": null
     },
     "halfTime": {
-      "home": 0,
-      "away": 1
+      "home": null,
+      "away": null
     }
   },
   "odds": {
     "msg": "Activate Odds-Package in User-Panel to retrieve odds."
   },
-  "referees": [
-    {
-      "id": 129250,
-      "name": "Adham Makhadmeh",
-      "type": "REFEREE",
-      "nationality": "Jordan"
-    }
-  ]
+  "referees": []
 }
