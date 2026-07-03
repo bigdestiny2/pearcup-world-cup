@@ -9,6 +9,8 @@ const errors = []
 const args = parseArgs(process.argv.slice(2))
 const postPublishSmokeScript = resolve(root, 'scripts', 'smoke-published-pearbrowser.mjs')
 const exactBundleSmokeScript = resolve(root, 'scripts', 'smoke-pearbrowser-published-local.mjs')
+const exactBundleRuntimeSmokeScript = resolve(root, 'scripts', 'smoke-published-pearbrowser-runtime.mjs')
+let exactBundleRuntimeSmokeOutput = ''
 
 if (!args.receipt) errors.push('missing --receipt <pearcup-release-receipt.json>')
 if (!args.sha) errors.push('missing --sha <expected bundleSha256>')
@@ -21,6 +23,7 @@ if (receiptPath && !receipt) errors.push(`receipt does not exist or is unreadabl
 if (receipt) validateReceipt(receipt, receiptPath)
 
 if (errors.length === 0) runExactBundlePublishedSmoke(receipt)
+if (errors.length === 0) runExactBundlePearRuntimeSmoke(receipt)
 if (errors.length === 0) runPostPublishSmokePreflight()
 
 if (errors.length > 0) {
@@ -53,6 +56,7 @@ if (!args.publish) {
   console.log('publish command, add --publish to run after explicit approval:')
   console.log(publishCommand)
   console.log('exact bundle published-gateway preflight - passed')
+  console.log('exact bundle Pear runtime preflight - passed')
   if (localPublishedLinkProofCommand) {
     console.log('local published-link proof command:')
     console.log(localPublishedLinkProofCommand)
@@ -70,6 +74,7 @@ console.log('PearCup approved publish starting')
 console.log(`receipt - ${receiptPath}`)
 console.log(`bundle sha256 - ${receipt.bundleSha256}`)
 console.log('exact bundle published-gateway preflight - passed')
+console.log('exact bundle Pear runtime preflight - passed')
 if (localPublishedLinkProofCommand) {
   console.log('local published-link proof command:')
   console.log(localPublishedLinkProofCommand)
@@ -217,6 +222,39 @@ function runExactBundlePublishedSmoke (receipt) {
   }
 }
 
+function runExactBundlePearRuntimeSmoke (receipt) {
+  if (!existsSync(exactBundleRuntimeSmokeScript)) {
+    errors.push(`exact bundle Pear runtime smoke script does not exist: ${exactBundleRuntimeSmokeScript}`)
+    return
+  }
+  const bundle = receipt && receipt.bundle ? resolve(receipt.bundle) : ''
+  const result = spawnSync(process.execPath, [
+    '--check',
+    exactBundleRuntimeSmokeScript
+  ], {
+    cwd: root,
+    encoding: 'utf8'
+  })
+  if (result.status !== 0) {
+    const detail = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+    errors.push(`exact bundle Pear runtime smoke syntax preflight failed${detail ? `:\n${detail}` : ''}`)
+    return
+  }
+  const smokeResult = spawnSync(process.execPath, [
+    exactBundleRuntimeSmokeScript,
+    '--bundle',
+    bundle
+  ], {
+    cwd: root,
+    encoding: 'utf8'
+  })
+  exactBundleRuntimeSmokeOutput = [smokeResult.stdout, smokeResult.stderr].filter(Boolean).join('\n')
+  if (smokeResult.status !== 0) {
+    const detail = exactBundleRuntimeSmokeOutput.trim()
+    errors.push(`exact bundle Pear runtime smoke failed${detail ? `:\n${detail}` : ''}`)
+  }
+}
+
 function readReceipt (filePath) {
   try {
     return JSON.parse(readFileSync(filePath, 'utf8'))
@@ -269,7 +307,9 @@ function writePublishResultReceipt ({
     },
     evidence: {
       exactBundlePublishedGatewayPreflight: true,
+      exactBundlePearRuntimePreflight: true,
       postPublishSmokePassed: true,
+      exactBundlePearRuntimeSmokeOutputSnippet: trimForReceipt(exactBundleRuntimeSmokeOutput),
       publishOutputSnippet: trimForReceipt(publishOutput),
       smokeOutputSnippet: trimForReceipt(smokeOutput)
     }

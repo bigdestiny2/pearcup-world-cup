@@ -159,6 +159,31 @@ test('refuses publish-result receipts without the local published-link proof com
   assert.match(result.stderr, /local published-link proof command/)
 })
 
+test('refuses publish-result receipts without exact-bundle Pear runtime proof', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-no-runtime-proof-'))
+  const publishResult = writePublishResult(dir, {
+    evidence: {
+      exactBundlePublishedGatewayPreflight: true,
+      postPublishSmokePassed: true
+    }
+  })
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /exact bundle Pear runtime preflight/)
+})
+
 test('refuses deprecated local published browser proof receipts', () => {
   const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-deprecated-browser-proof-'))
   const publishResult = writePublishResult(dir, {
@@ -247,6 +272,7 @@ function writePublishResult (dir, overrides = {}) {
     },
     evidence: {
       exactBundlePublishedGatewayPreflight: true,
+      exactBundlePearRuntimePreflight: true,
       postPublishSmokePassed: true
     },
     ...overrides

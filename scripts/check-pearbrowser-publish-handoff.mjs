@@ -225,14 +225,23 @@ function validateApprovedPublishWrapper () {
   if (!wrapper.includes('runExactBundlePublishedSmoke') || !wrapper.includes('smoke-pearbrowser-published-local.mjs')) {
     errors.push('approved publish wrapper must run the exact bundle local published-gateway smoke before publishing')
   }
+  if (!wrapper.includes('runExactBundlePearRuntimeSmoke') || !wrapper.includes('smoke-published-pearbrowser-runtime.mjs')) {
+    errors.push('approved publish wrapper must run the exact bundle Pear runtime smoke before publishing')
+  }
   if (!wrapper.includes('exact bundle published-gateway preflight - passed')) {
     errors.push('approved publish wrapper must clearly report the exact bundle published-gateway preflight')
+  }
+  if (!wrapper.includes('exact bundle Pear runtime preflight - passed')) {
+    errors.push('approved publish wrapper must clearly report the exact bundle Pear runtime preflight')
   }
   if (!wrapper.includes('publishedLinkProofCommand') || !wrapper.includes('local published-link proof command')) {
     errors.push('approved publish wrapper must surface the local published-link proof command from the receipt')
   }
   if (!wrapper.includes('localPublishedLinkProofCommand')) {
     errors.push('approved publish wrapper result receipt must preserve the local published-link proof command field')
+  }
+  if (!wrapper.includes('exactBundlePearRuntimePreflight')) {
+    errors.push('approved publish wrapper result receipt must preserve the exact bundle Pear runtime proof field')
   }
   if (wrapper.includes('localPublishedBrowserCommand')) {
     errors.push('approved publish wrapper must not write the deprecated localPublishedBrowserCommand field')
@@ -651,7 +660,9 @@ function validateSmokeContracts () {
       'host and friend complete a live P2P invite join',
       'host and friend can start Penalty Clash from the joined room',
       'recording a passed friend test requires --room-code',
-      'observedRoomCode'
+      'observedRoomCode',
+      'exactBundlePearRuntimePreflight',
+      'publish result must prove exact bundle Pear runtime preflight passed'
     ]) {
       if (!friendResult.includes(required)) errors.push(`friend-test result recorder is missing contract text: ${required}`)
     }

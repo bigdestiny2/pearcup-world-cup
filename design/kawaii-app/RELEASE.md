@@ -184,9 +184,10 @@ npm run publish:approved -- --receipt /path/to/pearcup-release-receipt.json --sh
 npm run publish:approved:latest -- --dry-run
 ```
 
-The dry-run prints the exact publish command, the post-publish smoke command, and
-the remote friend-test recording command for the latest handoff, so keep that output
-with the release notes for the friend-test session.
+The dry-run also runs the exact-bundle published-gateway preflight and the
+exact-bundle Pear runtime preflight before printing the publish command,
+post-publish smoke command, and remote friend-test recording command for the latest
+handoff, so keep that output with the release notes for the friend-test session.
 
 If PearBrowser's local gateway is not on the default `http://127.0.0.1:17208/`,
 append `--gateway http://127.0.0.1:<port>/` to the approved publish command; the

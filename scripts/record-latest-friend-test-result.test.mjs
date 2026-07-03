@@ -118,6 +118,7 @@ function writeFixture (dir, overrides = {}) {
     },
     evidence: {
       exactBundlePublishedGatewayPreflight: true,
+      exactBundlePearRuntimePreflight: true,
       postPublishSmokePassed: true
     }
   }

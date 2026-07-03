@@ -103,6 +103,9 @@ function validatePublishResult (result) {
   if (evidence.exactBundlePublishedGatewayPreflight !== true) {
     errors.push('publish result must prove exact bundle published-gateway preflight passed')
   }
+  if (evidence.exactBundlePearRuntimePreflight !== true) {
+    errors.push('publish result must prove exact bundle Pear runtime preflight passed')
+  }
   if (evidence.postPublishSmokePassed !== true) {
     errors.push('publish result must prove post-publish smoke passed')
   }
