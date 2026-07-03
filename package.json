@@ -79,7 +79,7 @@
     "smoke:pearbrowser-published": "node scripts/smoke-published-pearbrowser.mjs",
     "serve:pearbrowser": "node scripts/serve-pearbrowser-hyper.mjs --port 4186",
     "serve:pearbrowser-published": "node --check scripts/serve-pearbrowser-published-local.mjs && node scripts/serve-pearbrowser-published-local.mjs",
-    "check:kawaii-runtime": "node --check design/kawaii-app/index.cjs && node --check design/kawaii-app/pear-worker.cjs && node --check design/kawaii-app/swarm-worker.cjs && node --check scripts/build-kawaii-boot.mjs && node scripts/build-kawaii-boot.mjs --check && node --check scripts/check-kawaii-runtime.mjs && node scripts/check-kawaii-runtime.mjs",
+    "check:kawaii-runtime": "node --check index.cjs && node --check design/kawaii-app/index.cjs && node --check design/kawaii-app/pear-worker.cjs && node --check design/kawaii-app/swarm-worker.cjs && node --check scripts/build-kawaii-boot.mjs && node scripts/build-kawaii-boot.mjs --check && node --check scripts/check-kawaii-runtime.mjs && node scripts/check-kawaii-runtime.mjs",
     "check:friend-ready": "node --check scripts/check-friend-ready.mjs && node scripts/check-friend-ready.mjs",
     "check:friend-ready:preview": "node scripts/check-friend-ready.mjs --url http://127.0.0.1:4186/",
     "check:publish-handoff": "node --check scripts/check-pearbrowser-publish-handoff.mjs && node scripts/check-pearbrowser-publish-handoff.mjs",

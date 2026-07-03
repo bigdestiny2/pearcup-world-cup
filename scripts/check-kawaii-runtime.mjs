@@ -16,6 +16,7 @@ if (pkg) {
 }
 const rootPkg = readRootJson('package.json')
 if (rootPkg) checkRootLaunchScripts(rootPkg)
+checkRootLegacyPearGuard()
 checkBootBundleFresh()
 checkRendererHtml()
 
@@ -128,6 +129,20 @@ function checkRootLaunchScripts (pkg) {
   }
 }
 
+function checkRootLegacyPearGuard () {
+  const index = readRootText('index.cjs')
+  if (!index) return
+  if (!index.includes('PEARCUP_ALLOW_LEGACY_ROOT')) {
+    errors.push('root Pear entrypoint must require PEARCUP_ALLOW_LEGACY_ROOT before launching the legacy base app')
+  }
+  if (!index.includes('root Pear package is legacy and intentionally disabled')) {
+    errors.push('root Pear entrypoint must clearly refuse accidental legacy launches')
+  }
+  if (!index.includes('cd design/kawaii-app && pear run --dev .')) {
+    errors.push('root Pear entrypoint must point operators to the canonical design/kawaii-app launch command')
+  }
+}
+
 function checkRendererHtml () {
   let html = ''
   try {
@@ -199,6 +214,15 @@ function readRootJson (filePath) {
   } catch (err) {
     errors.push(`could not read root ${filePath}: ${err.message}`)
     return null
+  }
+}
+
+function readRootText (filePath) {
+  try {
+    return readFileSync(join(root, filePath), 'utf8')
+  } catch (err) {
+    errors.push(`could not read root ${filePath}: ${err.message}`)
+    return ''
   }
 }
 

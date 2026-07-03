@@ -50,8 +50,12 @@ candidate.
 
 ```sh
 npm run preview   # http://127.0.0.1:4174/
-pear run --dev .  # legacy root Pear package only
+PEARCUP_ALLOW_LEGACY_ROOT=1 pear run --dev .  # legacy root Pear package only
 ```
+
+The legacy root Pear entrypoint is disabled unless `PEARCUP_ALLOW_LEGACY_ROOT=1` is
+set, so accidental root launches cannot be mistaken for the canonical friend-test
+app.
 
 ## Test
 
