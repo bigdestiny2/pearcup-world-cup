@@ -31,6 +31,8 @@ if (errors.length > 0) {
   console.log(`bundle - ${bundle}`)
   console.log(`receipt - ${receiptPath}`)
   console.log(`bundle sha256 - ${receipt.bundleSha256}`)
+  console.log(`source git head - ${receipt.sourceGitHead || '(missing)'}`)
+  console.log(`source dirty - ${sourceDirtyLabel(receipt)}`)
   console.log('approved publish command, after explicit approval:')
   if (receipt.publishHandoff && receipt.publishHandoff.approvedCommand) {
     console.log(receipt.publishHandoff.approvedCommand)
@@ -242,6 +244,9 @@ function validateApprovedPublishWrapper () {
   }
   if (!wrapper.includes('sourceGitHead') || !wrapper.includes('sourceDirty')) {
     errors.push('approved publish wrapper result receipt must preserve the release source git binding')
+  }
+  if (!wrapper.includes('source git head - ${receipt.sourceGitHead') || !wrapper.includes('source dirty - ${sourceDirtyLabel(receipt)}')) {
+    errors.push('approved publish wrapper must print the release source git binding before publish')
   }
   if (!wrapper.includes('exactBundlePearRuntimePreflight')) {
     errors.push('approved publish wrapper result receipt must preserve the exact bundle Pear runtime proof field')
@@ -723,6 +728,11 @@ function validateP2PSmokeCoverage () {
       errors.push(`P2P smoke coverage is missing: ${required}`)
     }
   }
+}
+
+function sourceDirtyLabel (receipt) {
+  if (!Object.prototype.hasOwnProperty.call(receipt || {}, 'sourceDirty')) return '(missing)'
+  return receipt.sourceDirty ? 'yes' : 'no'
 }
 
 function readReceipt (filePath) {

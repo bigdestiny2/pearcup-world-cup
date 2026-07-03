@@ -53,6 +53,8 @@ if (!args.publish) {
   console.log(`receipt - ${receiptPath}`)
   console.log(`bundle - ${resolve(receipt.bundle)}`)
   console.log(`bundle sha256 - ${receipt.bundleSha256}`)
+  console.log(`source git head - ${receipt.sourceGitHead || '(missing)'}`)
+  console.log(`source dirty - ${sourceDirtyLabel(receipt)}`)
   console.log('publish command, add --publish to run after explicit approval:')
   console.log(publishCommand)
   console.log('exact bundle published-gateway preflight - passed')
@@ -72,7 +74,10 @@ if (!args.publish) {
 
 console.log('PearCup approved publish starting')
 console.log(`receipt - ${receiptPath}`)
+console.log(`bundle - ${resolve(receipt.bundle)}`)
 console.log(`bundle sha256 - ${receipt.bundleSha256}`)
+console.log(`source git head - ${receipt.sourceGitHead || '(missing)'}`)
+console.log(`source dirty - ${sourceDirtyLabel(receipt)}`)
 console.log('exact bundle published-gateway preflight - passed')
 console.log('exact bundle Pear runtime preflight - passed')
 if (localPublishedLinkProofCommand) {
@@ -324,6 +329,11 @@ function writePublishResultReceipt ({
 
 function trimForReceipt (text) {
   return String(text || '').trim().slice(-4000)
+}
+
+function sourceDirtyLabel (receipt) {
+  if (!Object.prototype.hasOwnProperty.call(receipt || {}, 'sourceDirty')) return '(missing)'
+  return receipt.sourceDirty ? 'yes' : 'no'
 }
 
 function publishedLinkProofCommand (receipt) {
