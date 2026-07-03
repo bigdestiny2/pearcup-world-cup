@@ -210,6 +210,9 @@ function validateApprovedPublishWrapper () {
   if (!wrapper.includes('PearCup approved publish verified')) {
     errors.push('approved publish wrapper must clearly report verified publish completion')
   }
+  if (!wrapper.includes('runHandoffCheck') || !wrapper.includes('check-pearbrowser-publish-handoff.mjs')) {
+    errors.push('approved publish wrapper must run the source-aware handoff validation before publishing')
+  }
   if (!wrapper.includes('--gateway')) {
     errors.push('approved publish wrapper must pass optional --gateway through to published smoke')
   }
