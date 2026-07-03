@@ -242,7 +242,7 @@ function writePublishResultReceipt ({
     localPublishedBrowserCommand,
     friendTest: {
       status: 'pending-remote-friend',
-      recordCommand: `npm run record:friend-test -- --publish-result ${publishResultPath} --friend "<friend-name>" --friend-opened --reached-games --joined-p2p --started-penalty-clash --notes "<what you observed>"`,
+      recordCommand: `npm run record:friend-test -- --publish-result ${publishResultPath} --sha ${receipt.bundleSha256 || '<bundle-sha256>'} --friend "<friend-name>" --friend-opened --reached-games --joined-p2p --started-penalty-clash --notes "<what you observed>"`,
       requires: [
         'remote friend opens the final PearBrowser link',
         'remote friend reaches Games without fallback or boot error',

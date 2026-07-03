@@ -183,6 +183,9 @@ function validateApprovedPublishWrapper () {
   if (!wrapper.includes('record:friend-test') || !wrapper.includes('recordCommand')) {
     errors.push('approved publish wrapper result receipt must include a friend-test record command')
   }
+  if (!wrapper.includes('record:friend-test -- --publish-result') || !wrapper.includes('--sha ${receipt.bundleSha256')) {
+    errors.push('approved publish wrapper friend-test record command must require the exact bundle SHA')
+  }
 }
 
 function validatePublishHandoff (handoff, bundle, bundleSha256, receiptPath) {

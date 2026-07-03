@@ -1,0 +1,139 @@
+import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import { test } from 'node:test'
+
+const root = resolve(new URL('..', import.meta.url).pathname)
+const script = join(root, 'scripts', 'record-friend-test-result.mjs')
+const driveKey = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
+const bundleSha256 = '184244c9078de2892f9413fc33c1abd92ebd0edcb909cac3161c09ed0e4ddc1e'
+
+test('records a passed remote friend test only with exact SHA and observed notes', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-pass-'))
+  const publishResult = writePublishResult(dir)
+  const out = join(dir, 'friend-result.json')
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--out', out,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'friend opened final PearBrowser link and joined room wdk8yv'
+  ])
+
+  assert.equal(result.status, 0, result.stderr || result.stdout)
+  const receipt = JSON.parse(readFileSync(out, 'utf8'))
+  assert.equal(receipt.status, 'remote-friend-verified')
+  assert.equal(receipt.friend, 'tariq')
+  assert.equal(receipt.evidence.expectedBundleSha256, bundleSha256)
+  assert.equal(receipt.evidence.hostAndFriendCompletedLiveP2PJoin, true)
+})
+
+test('refuses a passed friend test when the operator omits the exact bundle SHA', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-no-sha-'))
+  const publishResult = writePublishResult(dir)
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--friend', 'tariq',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /requires --sha/)
+})
+
+test('refuses a passed friend test when the SHA does not match the publish result', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-wrong-sha-'))
+  const publishResult = writePublishResult(dir)
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+    '--friend', 'tariq',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /does not match publish result bundleSha256/)
+})
+
+test('refuses publish-result receipts whose driveKey does not match the hyper URL', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-wrong-drive-'))
+  const publishResult = writePublishResult(dir, {
+    driveKey: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+  })
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /driveKey must match/)
+})
+
+test('failed friend-test records still require notes but do not require a SHA', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-failed-'))
+  const publishResult = writePublishResult(dir)
+  const out = join(dir, 'friend-result.json')
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--out', out,
+    '--failed',
+    '--notes', 'friend saw boot error before Games'
+  ])
+
+  assert.equal(result.status, 0, result.stderr || result.stdout)
+  const receipt = JSON.parse(readFileSync(out, 'utf8'))
+  assert.equal(receipt.status, 'remote-friend-failed')
+  assert.equal(receipt.evidence.expectedBundleSha256, '')
+  assert.deepEqual(receipt.remaining, ['repeat remote friend PearBrowser test after fixing noted issue'])
+})
+
+function writePublishResult (dir, overrides = {}) {
+  const file = join(dir, 'publish-result.json')
+  const receipt = {
+    app: 'PearCup',
+    status: 'published-and-smoked',
+    publishedUrl: `hyper://${driveKey}/`,
+    driveKey,
+    bundleSha256,
+    friendTest: { status: 'pending-remote-friend' },
+    evidence: {
+      exactBundlePublishedGatewayPreflight: true,
+      postPublishSmokePassed: true
+    },
+    ...overrides
+  }
+  writeFileSync(file, JSON.stringify(receipt, null, 2) + '\n')
+  return file
+}
+
+function run (args) {
+  return spawnSync(process.execPath, [script, ...args], {
+    cwd: root,
+    encoding: 'utf8'
+  })
+}

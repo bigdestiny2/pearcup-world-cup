@@ -18,6 +18,13 @@ if (!passed && !args.failed) {
   errors.push('recording a passed friend test requires --friend-opened --reached-games --joined-p2p --started-penalty-clash, or use --failed with --notes')
 }
 if (args.failed && !args.notes) errors.push('--failed requires --notes')
+if (passed && !args.friend) errors.push('recording a passed friend test requires --friend <name-or-handle>')
+if (passed && !args.notes) errors.push('recording a passed friend test requires --notes with observed remote behavior')
+if (passed && !args.sha) errors.push('recording a passed friend test requires --sha <expected bundleSha256>')
+if (args.sha && !/^[0-9a-f]{64}$/i.test(args.sha)) errors.push('--sha must be a 64-character hex bundle SHA')
+if (args.sha && publishResult && String(args.sha).toLowerCase() !== String(publishResult.bundleSha256 || '').toLowerCase()) {
+  errors.push(`--sha ${args.sha} does not match publish result bundleSha256 ${publishResult.bundleSha256 || '(missing)'}`)
+}
 
 if (errors.length > 0) {
   console.error('PearCup friend test result refused:')
@@ -38,6 +45,7 @@ const result = {
   bundleSha256: publishResult.bundleSha256 || '',
   friend: args.friend || 'friend',
   evidence: {
+    expectedBundleSha256: args.sha || '',
     friendOpenedFinalPearBrowserLink: args.friendOpened,
     friendReachedGamesWithoutFallbackOrBootError: args.reachedGames,
     hostAndFriendCompletedLiveP2PJoin: args.joinedP2p,
@@ -56,13 +64,24 @@ console.log(`published url - ${result.publishedUrl}`)
 function validatePublishResult (result) {
   if (result.app !== 'PearCup') errors.push('publish result app must be PearCup')
   if (result.status !== 'published-and-smoked') errors.push('publish result status must be published-and-smoked')
-  if (!/^hyper:\/\/[0-9a-f]{64}\//i.test(String(result.publishedUrl || ''))) {
+  const publishedDrive = (String(result.publishedUrl || '').match(/^hyper:\/\/([0-9a-f]{64})\//i) || [])[1] || ''
+  if (!publishedDrive) {
     errors.push('publish result must include a hyper://<drive-key>/ publishedUrl')
   }
   if (!/^[0-9a-f]{64}$/i.test(String(result.driveKey || ''))) errors.push('publish result must include a 64-hex driveKey')
+  if (publishedDrive && String(result.driveKey || '').toLowerCase() !== publishedDrive.toLowerCase()) {
+    errors.push('publish result driveKey must match the publishedUrl drive key')
+  }
   if (!/^[0-9a-f]{64}$/i.test(String(result.bundleSha256 || ''))) errors.push('publish result must include a 64-hex bundleSha256')
   if (!result.friendTest || result.friendTest.status !== 'pending-remote-friend') {
     errors.push('publish result must still be pending remote friend verification')
+  }
+  const evidence = result.evidence || {}
+  if (evidence.exactBundlePublishedGatewayPreflight !== true) {
+    errors.push('publish result must prove exact bundle published-gateway preflight passed')
+  }
+  if (evidence.postPublishSmokePassed !== true) {
+    errors.push('publish result must prove post-publish smoke passed')
   }
 }
 
@@ -85,7 +104,8 @@ function parseArgs (argv) {
     notes: '',
     friend: '',
     out: '',
-    publishResult: ''
+    publishResult: '',
+    sha: ''
   }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
@@ -97,6 +117,8 @@ function parseArgs (argv) {
     else if (arg.startsWith('--friend=')) parsed.friend = arg.slice('--friend='.length)
     else if (arg === '--notes') parsed.notes = argv[++i]
     else if (arg.startsWith('--notes=')) parsed.notes = arg.slice('--notes='.length)
+    else if (arg === '--sha') parsed.sha = argv[++i]
+    else if (arg.startsWith('--sha=')) parsed.sha = arg.slice('--sha='.length)
     else if (arg === '--friend-opened') parsed.friendOpened = true
     else if (arg === '--reached-games') parsed.reachedGames = true
     else if (arg === '--joined-p2p') parsed.joinedP2p = true
