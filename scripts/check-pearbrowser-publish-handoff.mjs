@@ -257,6 +257,12 @@ function validateApprovedPublishWrapper () {
   if (!wrapper.includes('record:friend-test') || !wrapper.includes('recordCommand')) {
     errors.push('approved publish wrapper result receipt must include a friend-test record command')
   }
+  if (!wrapper.includes('latestFriendTestRecordCommand') || !wrapper.includes('remote friend-test record command after publish')) {
+    errors.push('approved publish wrapper dry-run must print the latest remote friend-test record command')
+  }
+  if (!wrapper.includes('record:friend-test:latest --')) {
+    errors.push('approved publish wrapper dry-run friend-test command must use the latest handoff helper')
+  }
   if (!wrapper.includes('record:friend-test -- --publish-result') || !wrapper.includes('--sha ${receipt.bundleSha256')) {
     errors.push('approved publish wrapper friend-test record command must require the exact bundle SHA')
   }

@@ -34,6 +34,16 @@ const publishCommand = `node ${publishArgs.map(arg => JSON.stringify(arg)).join(
 const postPublishSmokeCommand = `npm ${postPublishSmokeArgs('hyper://<drive-key>/').map(arg => JSON.stringify(arg)).join(' ')}`
 const localPublishedLinkProofCommand = publishedLinkProofCommand(receipt)
 const publishResultPath = publishResultReceiptPath(receipt, receiptPath)
+const latestFriendTestRecordCommand = [
+  'npm run record:friend-test:latest --',
+  '--friend "<friend-name>"',
+  '--room-code "<observed-room-code>"',
+  '--friend-opened',
+  '--reached-games',
+  '--joined-p2p',
+  '--started-penalty-clash',
+  '--notes "<what both sides observed>"'
+].join(' ')
 
 if (!args.publish) {
   console.log('PearCup approved publish dry-run passed')
@@ -51,6 +61,8 @@ if (!args.publish) {
   console.log(postPublishSmokeCommand)
   console.log('post-publish smoke preflight - passed')
   console.log(`publish result receipt will be written to: ${publishResultPath}`)
+  console.log('remote friend-test record command after publish:')
+  console.log(latestFriendTestRecordCommand)
   process.exit(0)
 }
 
@@ -64,6 +76,8 @@ if (localPublishedLinkProofCommand) {
 }
 console.log('post-publish smoke preflight - passed')
 console.log(`publish result receipt will be written to: ${publishResultPath}`)
+console.log('remote friend-test record command after publish:')
+console.log(latestFriendTestRecordCommand)
 console.log(publishCommand)
 
 const result = spawnSync(process.execPath, publishArgs, {
@@ -95,7 +109,7 @@ if (smokeResult.stderr) process.stderr.write(smokeResult.stderr)
 if (smokeResult.error) throw smokeResult.error
 if (smokeResult.status !== 0) process.exit(smokeResult.status == null ? 1 : smokeResult.status)
 
-writePublishResultReceipt({
+const publishReceipt = writePublishResultReceipt({
   receipt,
   receiptPath,
   publishResultPath,
@@ -107,6 +121,8 @@ writePublishResultReceipt({
 
 console.log('PearCup approved publish verified')
 console.log(`publish result receipt - ${publishResultPath}`)
+console.log('remote friend-test record command:')
+console.log(publishReceipt.friendTest.recordCommand)
 process.exit(0)
 
 function validateReceipt (receipt, receiptPath) {
@@ -259,6 +275,7 @@ function writePublishResultReceipt ({
     }
   }
   writeFileSync(publishResultPath, JSON.stringify(result, null, 2) + '\n')
+  return result
 }
 
 function trimForReceipt (text) {
