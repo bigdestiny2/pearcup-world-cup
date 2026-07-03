@@ -200,6 +200,23 @@ invite support, requires every P2P boot-readiness marker, and checks that the
 published stadium, ball, confetti, mascot, crest, and generated avatar assets are
 non-empty.
 
+After the friend completes the real PearBrowser test, record the result against the
+same durable handoff. The helper reads `.pearcup-release/latest/pearcup-release-receipt.json`
+and supplies the exact `pearcup-publish-result.json` path plus bundle SHA for you:
+
+```
+npm run record:friend-test:latest -- \
+  --friend "<friend-name>" \
+  --friend-opened \
+  --reached-games \
+  --joined-p2p \
+  --started-penalty-clash \
+  --notes "<what both sides observed>"
+```
+
+Use `--failed --notes "<what failed>"` with the same command if the remote test does
+not pass; the recorder keeps the result pending for a retry.
+
 ## Status: bundling fixed + boots
 The latest local candidate is verified by the repo scripts above. The last released
 Pear runtime pointer is still

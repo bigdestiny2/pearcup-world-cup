@@ -266,6 +266,9 @@ function validateVerification (verification) {
   if (!sourceChecks.includes('node --test scripts/record-friend-test-result.test.mjs')) {
     errors.push('receipt verification must include friend verification receipt tests before build')
   }
+  if (!sourceChecks.includes('node --test scripts/record-latest-friend-test-result.test.mjs')) {
+    errors.push('receipt verification must include latest friend-test recorder tests before build')
+  }
   if (!sourceChecks.includes('node --test scripts/publish-approved-pearcup.test.mjs')) {
     errors.push('receipt verification must include approved publish wrapper tests before build')
   }
@@ -303,6 +306,7 @@ function validateVerification (verification) {
     'design/kawaii-app/peer-net.test.js',
     'design/kawaii-app/peer-preview-smoke.test.js',
     'scripts/record-friend-test-result.test.mjs',
+    'scripts/record-latest-friend-test-result.test.mjs',
     'scripts/publish-approved-pearcup.test.mjs',
     'scripts/prepare-pearbrowser-release.test.mjs',
     'scripts/check-pear-seamless.test.mjs'

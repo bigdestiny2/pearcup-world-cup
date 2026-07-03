@@ -26,6 +26,7 @@ mkdirSync(out, { recursive: true })
 runNode('scripts/check-kawaii-runtime.mjs')
 runNpm('test:kawaii-peer')
 runNodeTest('scripts/record-friend-test-result.test.mjs')
+runNodeTest('scripts/record-latest-friend-test-result.test.mjs')
 runNodeTest('scripts/publish-approved-pearcup.test.mjs')
 runNodeTest('scripts/prepare-pearbrowser-release.test.mjs')
 runNodeTest('scripts/check-pear-seamless.test.mjs')
@@ -67,6 +68,7 @@ const receipt = {
       'node scripts/check-kawaii-runtime.mjs',
       'npm run test:kawaii-peer',
       'node --test scripts/record-friend-test-result.test.mjs',
+      'node --test scripts/record-latest-friend-test-result.test.mjs',
       'node --test scripts/publish-approved-pearcup.test.mjs',
       'node --test scripts/prepare-pearbrowser-release.test.mjs',
       'node --test scripts/check-pear-seamless.test.mjs',
@@ -87,6 +89,7 @@ const receipt = {
       'design/kawaii-app/peer-net.test.js',
       'design/kawaii-app/peer-preview-smoke.test.js',
       'scripts/record-friend-test-result.test.mjs',
+      'scripts/record-latest-friend-test-result.test.mjs',
       'scripts/publish-approved-pearcup.test.mjs',
       'scripts/prepare-pearbrowser-release.test.mjs',
       'scripts/check-pear-seamless.test.mjs'
