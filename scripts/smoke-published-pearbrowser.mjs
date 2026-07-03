@@ -120,8 +120,30 @@ function checkFallbackContract (html, label) {
 
 function checkBootLoader (bootLoader) {
   if (!bootLoader) return
-  for (const ref of ['./peer-net.js', './peer-match.js', './peer-lobby.js', './watch-sync.js', './app.js']) {
-    if (!bootLoader.includes(ref)) errors.push(`published pearcup-boot.js does not load ${ref}`)
+  for (const ref of [
+    './settlement-receipts.js',
+    './worker-sim.js',
+    './storage-sim.js',
+    './transport-sim.js',
+    './worker-runtime.js',
+    './settlement-service.js',
+    './worker-client.js',
+    './peer-net.js',
+    './peer-match.js',
+    './peer-lobby.js',
+    './watch-sync.js',
+    './app.js'
+  ]) {
+    if (!bootLoader.includes(ref)) errors.push(`published pearcup-boot.js does not bundle ${ref}`)
+  }
+  for (const [needle, message] of [
+    ['PearCupWorkerClient', 'published pearcup-boot.js must bundle the worker client for settlement evidence'],
+    ['PearCupSettlementService', 'published pearcup-boot.js must bundle the settlement service'],
+    ['PearCupWorkerSim', 'published pearcup-boot.js must bundle the worker simulator'],
+    ['PearCupStorageSim', 'published pearcup-boot.js must bundle settlement storage replay helpers'],
+    ['PearCupTransportSim', 'published pearcup-boot.js must bundle P2P settlement replay helpers']
+  ]) {
+    if (!bootLoader.includes(needle)) errors.push(message)
   }
   if (!bootLoader.includes('pearcup:runtime-self-test') || !bootLoader.includes('runBootRuntimeSelfTest')) {
     errors.push('published pearcup-boot.js does not include the Pear runtime Games/invite self-test')

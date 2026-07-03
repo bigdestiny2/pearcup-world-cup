@@ -557,6 +557,11 @@ function validateSmokeContracts () {
       'pearcupRuntimeSelfTestGuest',
       'pearcup:runtime-self-test',
       'PearCupPeerMatch.host()',
+      'PearCupWorkerClient',
+      'PearCupSettlementService',
+      'PearCupWorkerSim',
+      'PearCupStorageSim',
+      'PearCupTransportSim',
       'published mascot art',
       '--gateway uses port 4190'
     ]) {
