@@ -260,7 +260,9 @@ npm run record:friend-test:latest -- \
 ```
 
 Use `--failed --notes "<what failed>"` with the same command if the remote test does
-not pass; the recorder keeps the result pending for a retry.
+not pass; the recorder keeps the result pending for a retry. The recorder refuses to
+overwrite an existing `pearcup-friend-test-result.json` unless `--force` is supplied,
+so use `--force` only when intentionally replacing stale or incorrect evidence.
 
 ## Status: bundling fixed + boots
 The latest local candidate is verified by the repo scripts above. The last released

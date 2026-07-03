@@ -10,6 +10,11 @@ const errors = []
 if (!args.publishResult) errors.push('missing --publish-result <pearcup-publish-result.json>')
 const publishResultPath = args.publishResult ? resolve(args.publishResult) : ''
 const publishResult = publishResultPath && existsSync(publishResultPath) ? readJson(publishResultPath, 'publish result') : null
+const resultPath = args.out
+  ? resolve(args.out)
+  : publishResultPath
+    ? join(dirname(publishResultPath), 'pearcup-friend-test-result.json')
+    : ''
 if (publishResultPath && !publishResult) errors.push(`publish result does not exist or is unreadable: ${publishResultPath}`)
 
 if (publishResult) validatePublishResult(publishResult, publishResultPath)
@@ -27,6 +32,9 @@ if (args.roomCode && !/^[a-z0-9-]{3,32}$/i.test(args.roomCode)) errors.push('--r
 if (args.sha && publishResult && String(args.sha).toLowerCase() !== String(publishResult.bundleSha256 || '').toLowerCase()) {
   errors.push(`--sha ${args.sha} does not match publish result bundleSha256 ${publishResult.bundleSha256 || '(missing)'}`)
 }
+if (resultPath && existsSync(resultPath) && !args.force) {
+  errors.push(`friend test result already exists: ${resultPath}; use --force to replace it intentionally`)
+}
 
 if (errors.length > 0) {
   console.error('PearCup friend test result refused:')
@@ -34,9 +42,6 @@ if (errors.length > 0) {
   process.exit(1)
 }
 
-const resultPath = args.out
-  ? resolve(args.out)
-  : join(dirname(publishResultPath), 'pearcup-friend-test-result.json')
 const result = {
   app: 'PearCup',
   status: passed ? 'remote-friend-verified' : 'remote-friend-failed',
@@ -207,7 +212,8 @@ function parseArgs (argv) {
     roomCode: '',
     out: '',
     publishResult: '',
-    sha: ''
+    sha: '',
+    force: false
   }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
@@ -228,6 +234,7 @@ function parseArgs (argv) {
     else if (arg === '--joined-p2p') parsed.joinedP2p = true
     else if (arg === '--started-penalty-clash') parsed.startedPenaltyClash = true
     else if (arg === '--failed') parsed.failed = true
+    else if (arg === '--force') parsed.force = true
     else throw new Error(`unknown argument: ${arg}`)
   }
   return parsed

@@ -102,6 +102,57 @@ test('refuses malformed observed room codes', () => {
   assert.match(result.stderr, /--room-code must be/)
 })
 
+test('refuses to overwrite an existing friend-test result without force', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-existing-result-'))
+  const publishResult = writePublishResult(dir)
+  const out = join(dir, 'friend-result.json')
+  writeFileSync(out, JSON.stringify({ status: 'remote-friend-verified', preserved: true }, null, 2) + '\n')
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--out', out,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /friend test result already exists/)
+  assert.equal(JSON.parse(readFileSync(out, 'utf8')).preserved, true)
+})
+
+test('allows intentional overwrite of an existing friend-test result with force', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-force-result-'))
+  const publishResult = writePublishResult(dir)
+  const out = join(dir, 'friend-result.json')
+  writeFileSync(out, JSON.stringify({ status: 'stale-result', preserved: true }, null, 2) + '\n')
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--out', out,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined after intentional overwrite',
+    '--force'
+  ])
+
+  assert.equal(result.status, 0, result.stderr || result.stdout)
+  const receipt = JSON.parse(readFileSync(out, 'utf8'))
+  assert.equal(receipt.status, 'remote-friend-verified')
+  assert.equal(receipt.evidence.observedRoomCode, 'wdk8yv')
+  assert.equal(receipt.preserved, undefined)
+})
+
 test('refuses a passed friend test when the SHA does not match the publish result', () => {
   const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-wrong-sha-'))
   const publishResult = writePublishResult(dir)

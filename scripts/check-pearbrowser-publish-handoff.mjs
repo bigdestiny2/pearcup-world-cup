@@ -682,6 +682,8 @@ function validateSmokeContracts () {
       'host and friend complete a live P2P invite join',
       'host and friend can start Penalty Clash from the joined room',
       'recording a passed friend test requires --room-code',
+      'friend test result already exists',
+      'use --force to replace it intentionally',
       'observedRoomCode',
       'sourceGitHead',
       'validateSourceReleaseReceiptBinding',
