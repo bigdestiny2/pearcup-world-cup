@@ -293,6 +293,8 @@ function validateVerification (verification) {
     'bootReady=p2p',
     'p2pModules=ready',
     'appBooted=true',
+    'appBootedDataset=true',
+    'activeScreenDataset present',
     'uiHydrated=true',
     'teamCards>=32',
     'avatarImages include avatars/',
@@ -304,6 +306,8 @@ function validateVerification (verification) {
     'routeButtons include games',
     'runtimeSelfTest=ready',
     'runtimeSelfTest.activeScreen=games',
+    'runtimeSelfTest.activeScreenDataset=games',
+    'runtimeSelfTest.appBootedDataset=true',
     'runtimeSelfTest.activeNav includes Games',
     'runtimeSelfTest.hasLobbyMascot=true',
     'runtimeSelfTest.generatedAvatarImages include avatars/',
@@ -312,7 +316,9 @@ function validateVerification (verification) {
     'runtimeSelfTest.peerMatch.active=true',
     'runtimeSelfTest.peerHandshake.started=true',
     'runtimeSelfTest.peerHandshake.guest.p2pModules=ready',
-    'runtimeSelfTest.peerHandshake.guest.activeScreen=games'
+    'runtimeSelfTest.peerHandshake.guest.activeScreen=games',
+    'runtimeSelfTest.peerHandshake.guest.activeScreenDataset=games',
+    'runtimeSelfTest.peerHandshake.guest.appBootedDataset=true'
   ]) {
     if (!bootProbeRequirements.includes(required)) {
       errors.push(`receipt bootProbeContract must require ${required}`)
@@ -406,9 +412,13 @@ function validateSmokeContracts () {
     for (const required of [
       'pearcup:runtime-self-test',
       'runtime self-test activeScreen',
+      'runtime self-test activeScreenDataset',
+      'runtime self-test appBootedDataset',
       'runtime self-test invite link did not include ?join=',
       'runtime self-test did not leave a hosted peer match active',
       'runtime self-test did not complete hidden guest invite handshake',
+      'runtime self-test guest activeScreenDataset',
+      'runtime self-test guest appBootedDataset',
       'runtime self-test guest did not join the hosted peer match'
     ]) {
       if (!runtimeSmoke.includes(required)) errors.push(`actual Pear runtime smoke is missing contract text: ${required}`)

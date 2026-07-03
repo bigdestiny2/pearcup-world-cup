@@ -87,6 +87,8 @@ const receipt = {
         'bootReady=p2p',
         'p2pModules=ready',
         'appBooted=true',
+        'appBootedDataset=true',
+        'activeScreenDataset present',
         'uiHydrated=true',
         'teamCards>=32',
         'avatarImages include avatars/',
@@ -98,6 +100,8 @@ const receipt = {
         'routeButtons include games',
         'runtimeSelfTest=ready',
         'runtimeSelfTest.activeScreen=games',
+        'runtimeSelfTest.activeScreenDataset=games',
+        'runtimeSelfTest.appBootedDataset=true',
         'runtimeSelfTest.activeNav includes Games',
         'runtimeSelfTest.hasLobbyMascot=true',
         'runtimeSelfTest.generatedAvatarImages include avatars/',
@@ -106,7 +110,9 @@ const receipt = {
         'runtimeSelfTest.peerMatch.active=true',
         'runtimeSelfTest.peerHandshake.started=true',
         'runtimeSelfTest.peerHandshake.guest.p2pModules=ready',
-        'runtimeSelfTest.peerHandshake.guest.activeScreen=games'
+        'runtimeSelfTest.peerHandshake.guest.activeScreen=games',
+        'runtimeSelfTest.peerHandshake.guest.activeScreenDataset=games',
+        'runtimeSelfTest.peerHandshake.guest.appBootedDataset=true'
       ]
     },
     servedPreviewContract: {

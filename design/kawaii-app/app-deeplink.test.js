@@ -20,6 +20,7 @@ const deepLinkSource = [
   sliceFunctionBlock('completeProfileOnboarding', 'renderGameLobby')
 ].join('\n')
 
+const runtimeDiagnosticsSource = sliceFunctionBlock('syncRuntimeScreenDiagnostics', 'setView')
 const p2pGuardSource = sliceFunctionBlock('assertP2PModulesReady', 'boot')
 
 function bareControllerCallLines (source, globalName, methods) {
@@ -169,6 +170,26 @@ test('renderGameLobby friend buttons use the window-scoped peer controller', () 
   assert.doesNotMatch(appSource, /window\.PearCupLobby\) \{ PearCupLobby\./)
   assert.doesNotMatch(appSource, /window\.PearCupWatchSync\) PearCupWatchSync\./)
   assert.doesNotMatch(appSource, /window\.PearCupWatchSync\) \{ PearCupWatchSync\./)
+})
+
+test('runtime diagnostics mirror normal app boot and active screen', () => {
+  const context = {
+    document: {
+      documentElement: { dataset: {} },
+      querySelector: selector => selector === '.screen.is-active' ? { id: 'home' } : null
+    },
+    window: { __pearcupAppBooted: true }
+  }
+  context.globalThis = context
+  vm.createContext(context)
+  vm.runInContext(runtimeDiagnosticsSource, context, { filename: 'app-runtime-diagnostics.js' })
+
+  context.syncRuntimeScreenDiagnostics()
+  assert.equal(context.document.documentElement.dataset.pearcupActiveScreen, 'home')
+  assert.equal(context.document.documentElement.dataset.pearcupAppBooted, 'true')
+
+  context.syncRuntimeScreenDiagnostics('games')
+  assert.equal(context.document.documentElement.dataset.pearcupActiveScreen, 'games')
 })
 
 test('hydrated app does not make executable bare P2P controller calls', () => {

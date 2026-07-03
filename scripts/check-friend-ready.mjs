@@ -146,6 +146,9 @@ async function checkPreviewUrl (url) {
     if (!app.includes('assertP2PModulesReady') || !app.includes('pearcupP2pModules')) {
       errors.push('preview app.js can mark boot success without P2P module readiness')
     }
+    if (!app.includes('syncRuntimeScreenDiagnostics') || !app.includes('pearcupActiveScreen') || !app.includes('pearcupAppBooted')) {
+      errors.push('preview app.js does not expose normal route/app boot diagnostics')
+    }
     if (!app.includes('bootRuntimeDiagnostics') || !app.includes('profileChipReady')) {
       errors.push('preview app.js boot probe does not prove hydrated UI and P2P controllers')
     }

@@ -714,6 +714,15 @@ function resetScrollPosition () {
   setTimeout(() => window.scrollTo(0, 0), 640)
 }
 
+function syncRuntimeScreenDiagnostics (view) {
+  if (typeof document === 'undefined' || !document.documentElement) return
+  const active = view || (document.querySelector('.screen.is-active') && document.querySelector('.screen.is-active').id) || ''
+  if (active) document.documentElement.dataset.pearcupActiveScreen = active
+  if (typeof window !== 'undefined' && window.__pearcupAppBooted) {
+    document.documentElement.dataset.pearcupAppBooted = 'true'
+  }
+}
+
 function setView (view) {
   state.view = view
   persist()
@@ -722,6 +731,7 @@ function setView (view) {
   $$('.topnav button').forEach(button => {
     button.classList.toggle('is-active', button.dataset.view === view)
   })
+  syncRuntimeScreenDiagnostics(view)
   if (view === 'bracket') scheduleBracketConnectors()
   if (view === 'games') renderGames()
   resetScrollPosition()
@@ -4257,6 +4267,8 @@ function sendBootReadyProbe (backend) {
     p2pModules: ds.pearcupP2pModules || null,
     backend,
     appBooted: Boolean(window.__pearcupAppBooted),
+    appBootedDataset: ds.pearcupAppBooted || null,
+    activeScreen: ds.pearcupActiveScreen || null,
     modules: {
       net: ds.pearcupPeerNetModule || null,
       match: ds.pearcupPeerMatchModule || null,
@@ -4354,8 +4366,10 @@ function runtimeSelfTestSnapshot (status, errors = [], extra = {}) {
     errors,
     bootReady: document.documentElement.dataset.pearcupBootReady || null,
     p2pModules: document.documentElement.dataset.pearcupP2pModules || null,
+    appBootedDataset: document.documentElement.dataset.pearcupAppBooted || null,
     backend: document.documentElement.dataset.pearcupPeerNet || null,
     activeScreen: active ? active.id : null,
+    activeScreenDataset: document.documentElement.dataset.pearcupActiveScreen || null,
     activeNav: Array.from(document.querySelectorAll('.topnav button.is-active')).map(el => el.textContent.trim()),
     hasGamesLobby: Boolean(document.querySelector('#gameLobby')),
     hasLobbyMascot: Boolean(active && active.querySelector('img.lobby-mascot[src="assets/mascot.png"]')),
@@ -4396,8 +4410,10 @@ function runtimeSelfTestGuestSnapshot (iframe) {
     booted: ds.pearcupBooted || null,
     bootReady: ds.pearcupBootReady || null,
     p2pModules: ds.pearcupP2pModules || null,
+    appBootedDataset: ds.pearcupAppBooted || null,
     joinState: ds.pearcupJoinState || null,
     activeScreen: doc && doc.querySelector('.screen.is-active') ? doc.querySelector('.screen.is-active').id : null,
+    activeScreenDataset: ds.pearcupActiveScreen || null,
     bootError: doc && doc.querySelector('#bootErrorBar') ? doc.querySelector('#bootErrorBar').textContent : null,
     peerMatch: peerState
       ? {
@@ -4576,6 +4592,8 @@ try {
   if (typeof window !== 'undefined') {
     window.__pearcupAppBooted = true
     document.documentElement.setAttribute('data-pearcup-booted', 'true')
+    document.documentElement.dataset.pearcupAppBooted = 'true'
+    syncRuntimeScreenDiagnostics()
     try { window.sessionStorage && window.sessionStorage.removeItem('pearcupBootRetryVisualShell') } catch (e) {}
     const bar = document.getElementById('bootErrorBar')
     if (bar && !/^PearCup boot error:/.test(bar.textContent || '')) bar.remove()

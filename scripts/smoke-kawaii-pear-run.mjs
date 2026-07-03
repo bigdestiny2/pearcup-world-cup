@@ -229,6 +229,8 @@ function validateBootProbe (payload, bridgeEvents = []) {
   if (payload.bootReady !== 'p2p') errors.push(`boot probe bootReady mismatch: ${payload.bootReady || '(missing)'}`)
   if (payload.p2pModules !== 'ready') errors.push(`boot probe p2pModules mismatch: ${payload.p2pModules || '(missing)'}`)
   if (payload.appBooted !== true) errors.push('boot probe appBooted was not true')
+  if (payload.appBootedDataset !== 'true') errors.push(`boot probe appBootedDataset was ${payload.appBootedDataset || '(missing)'}`)
+  if (!payload.activeScreen) errors.push('boot probe activeScreen dataset was missing')
   const modules = payload.modules || {}
   for (const name of ['net', 'match', 'lobby', 'watch']) {
     if (modules[name] !== 'ready') errors.push(`boot probe module ${name} was ${modules[name] || '(missing)'}`)
@@ -261,7 +263,9 @@ function validateBootProbe (payload, bridgeEvents = []) {
   }
   if (selfTestPayload.bootReady !== 'p2p') errors.push(`runtime self-test bootReady was ${selfTestPayload.bootReady || '(missing)'}`)
   if (selfTestPayload.p2pModules !== 'ready') errors.push(`runtime self-test p2pModules was ${selfTestPayload.p2pModules || '(missing)'}`)
+  if (selfTestPayload.appBootedDataset !== 'true') errors.push(`runtime self-test appBootedDataset was ${selfTestPayload.appBootedDataset || '(missing)'}`)
   if (selfTestPayload.activeScreen !== 'games') errors.push(`runtime self-test activeScreen was ${selfTestPayload.activeScreen || '(missing)'}`)
+  if (selfTestPayload.activeScreenDataset !== 'games') errors.push(`runtime self-test activeScreenDataset was ${selfTestPayload.activeScreenDataset || '(missing)'}`)
   if (!Array.isArray(selfTestPayload.activeNav) || !selfTestPayload.activeNav.includes('Games')) {
     errors.push('runtime self-test did not mark Games as active in the top nav')
   }
@@ -286,8 +290,10 @@ function validateBootProbe (payload, bridgeEvents = []) {
   }
   const guest = peerHandshake.guest || {}
   if (guest.booted !== 'true') errors.push(`runtime self-test guest booted was ${guest.booted || '(missing)'}`)
+  if (guest.appBootedDataset !== 'true') errors.push(`runtime self-test guest appBootedDataset was ${guest.appBootedDataset || '(missing)'}`)
   if (guest.p2pModules !== 'ready') errors.push(`runtime self-test guest p2pModules was ${guest.p2pModules || '(missing)'}`)
   if (guest.activeScreen !== 'games') errors.push(`runtime self-test guest activeScreen was ${guest.activeScreen || '(missing)'}`)
+  if (guest.activeScreenDataset !== 'games') errors.push(`runtime self-test guest activeScreenDataset was ${guest.activeScreenDataset || '(missing)'}`)
   if (guest.bootError) errors.push(`runtime self-test guest showed boot error: ${guest.bootError}`)
   const guestPeerMatch = guest.peerMatch || {}
   if (guestPeerMatch.started !== true || guestPeerMatch.code !== selfTestPayload.inviteCode) {
