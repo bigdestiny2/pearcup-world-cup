@@ -247,6 +247,12 @@ function validateVerification (verification) {
   if (!sourceChecks.includes('npm run test:kawaii-peer')) {
     errors.push('receipt verification must include P2P/deep-link tests before build')
   }
+  if (!sourceChecks.includes('node --test scripts/record-friend-test-result.test.mjs')) {
+    errors.push('receipt verification must include friend verification receipt tests before build')
+  }
+  if (!sourceChecks.includes('node --test scripts/publish-approved-pearcup.test.mjs')) {
+    errors.push('receipt verification must include approved publish wrapper tests before build')
+  }
   if (!sourceChecks.includes('npm run smoke:kawaii-p2p-preview')) {
     errors.push('receipt verification must include explicit P2P preview/PearBrowser smoke before build')
   }
@@ -274,7 +280,8 @@ function validateVerification (verification) {
     'design/kawaii-app/peer-match.test.js',
     'design/kawaii-app/peer-net.test.js',
     'design/kawaii-app/peer-preview-smoke.test.js',
-    'scripts/record-friend-test-result.test.mjs'
+    'scripts/record-friend-test-result.test.mjs',
+    'scripts/publish-approved-pearcup.test.mjs'
   ]) {
     if (!coverage.includes(required)) errors.push(`receipt verification must list required coverage: ${required}`)
   }

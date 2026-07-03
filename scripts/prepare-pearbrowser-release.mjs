@@ -21,6 +21,8 @@ mkdirSync(out, { recursive: true })
 
 runNode('scripts/check-kawaii-runtime.mjs')
 runNpm('test:kawaii-peer')
+runNodeTest('scripts/record-friend-test-result.test.mjs')
+runNodeTest('scripts/publish-approved-pearcup.test.mjs')
 runNpm('smoke:kawaii-p2p-preview')
 runNpm('smoke:kawaii-pear-run')
 runNpm('smoke:pearbrowser-serve')
@@ -58,6 +60,8 @@ const receipt = {
     sourceChecksBeforeBuild: [
       'node scripts/check-kawaii-runtime.mjs',
       'npm run test:kawaii-peer',
+      'node --test scripts/record-friend-test-result.test.mjs',
+      'node --test scripts/publish-approved-pearcup.test.mjs',
       'npm run smoke:kawaii-p2p-preview',
       'npm run smoke:kawaii-pear-run',
       'npm run smoke:pearbrowser-serve',
@@ -74,7 +78,8 @@ const receipt = {
       'design/kawaii-app/peer-match.test.js',
       'design/kawaii-app/peer-net.test.js',
       'design/kawaii-app/peer-preview-smoke.test.js',
-      'scripts/record-friend-test-result.test.mjs'
+      'scripts/record-friend-test-result.test.mjs',
+      'scripts/publish-approved-pearcup.test.mjs'
     ],
     bootProbeContract: {
       command: 'npm run smoke:kawaii-pear-run',
@@ -204,6 +209,17 @@ function runNpm (scriptName) {
   if (result.status !== 0) {
     const detail = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
     throw new Error(`npm run ${scriptName} failed${detail ? `:\n${detail}` : ''}`)
+  }
+}
+
+function runNodeTest (script) {
+  const result = spawnSync(process.execPath, ['--test', join(root, script)], {
+    cwd: root,
+    encoding: 'utf8'
+  })
+  if (result.status !== 0) {
+    const detail = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+    throw new Error(`node --test ${script} failed${detail ? `:\n${detail}` : ''}`)
   }
 }
 
