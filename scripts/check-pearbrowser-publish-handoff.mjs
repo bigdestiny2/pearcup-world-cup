@@ -281,6 +281,9 @@ function validateVerification (verification) {
   if (!sourceChecks.includes('node --test scripts/check-pear-seamless.test.mjs')) {
     errors.push('receipt verification must include seamless gate tests before build')
   }
+  if (!sourceChecks.includes('node --test scripts/smoke-published-pearbrowser.test.mjs')) {
+    errors.push('receipt verification must include published smoke regression tests before build')
+  }
   if (!sourceChecks.includes('npm run smoke:kawaii-p2p-preview')) {
     errors.push('receipt verification must include explicit P2P preview/PearBrowser smoke before build')
   }
@@ -313,7 +316,8 @@ function validateVerification (verification) {
     'scripts/publish-approved-pearcup.test.mjs',
     'scripts/publish-approved-latest-pearcup.test.mjs',
     'scripts/prepare-pearbrowser-release.test.mjs',
-    'scripts/check-pear-seamless.test.mjs'
+    'scripts/check-pear-seamless.test.mjs',
+    'scripts/smoke-published-pearbrowser.test.mjs'
   ]) {
     if (!coverage.includes(required)) errors.push(`receipt verification must list required coverage: ${required}`)
   }

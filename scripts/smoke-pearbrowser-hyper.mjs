@@ -148,7 +148,7 @@ function checkBootContract () {
   const watchSync = readText('watch-sync.js') || ''
   const styles = readText('styles.css') || ''
 
-  assertText(html, 'fallback loaded the visual shell', 'index.html keeps the visible boot failure notice')
+  checkFallbackContract(html)
   assertText(html, './pearcup-boot.js', 'index.html loads the PearCup boot bundle')
   assertText(html, 'p2pModulesReady', 'index.html fallback must check P2P readiness before accepting hydration')
   assertText(html, 'pearcupP2pModules', 'index.html fallback must require app-level P2P readiness')
@@ -186,6 +186,25 @@ function checkBootContract () {
   assertText(watchSync, 'pearcupWatchSyncModule', 'watch-sync.js must mark module readiness')
   assertText(styles, "url('assets/stadium-bg.png')", 'styles.css references the Penalty Clash stadium art')
   assertText(styles, "url('assets/ball.png')", 'styles.css references the Penalty Clash ball art')
+}
+
+function checkFallbackContract (html) {
+  for (const [needle, message] of [
+    ['function notice (title, detail)', 'index.html defines the visible boot failure notice renderer'],
+    ["bar.id = 'bootErrorBar'", 'index.html renders fallback/boot errors into #bootErrorBar'],
+    ["bar.textContent = title + (detail ? '\\n' + detail : '')", 'index.html surfaces fallback error details in #bootErrorBar'],
+    ["sendBootProbe({ event: 'pearcup:fallback-notice'", 'index.html reports fallback notices through the boot probe'],
+    ["function clearNotice ()", 'index.html defines fallback notice cleanup'],
+    ['if (bar) bar.remove()', 'index.html removes stale fallback notices after boot'],
+    ["root.addEventListener('pearcup:booted', clearNotice)", 'index.html clears fallback notices when the app boots'],
+    ["notice('PearCup fallback loaded the visual shell, but the app did not finish booting.'", 'index.html keeps the visual-shell failure notice'],
+    ["notice('PearCup app script loaded, but boot did not complete.'", 'index.html keeps the app-loaded boot failure notice'],
+    ["notice('PearCup fallback failed.'", 'index.html keeps the script-load fallback failure notice'],
+    ["root.addEventListener('error'", 'index.html surfaces renderer errors through the fallback banner'],
+    ["root.addEventListener('unhandledrejection'", 'index.html surfaces renderer promise errors through the fallback banner']
+  ]) {
+    assertText(html, needle, message)
+  }
 }
 
 function checkAssetPayload () {

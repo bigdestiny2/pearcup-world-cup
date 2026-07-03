@@ -31,6 +31,7 @@ runNodeTest('scripts/publish-approved-pearcup.test.mjs')
 runNodeTest('scripts/publish-approved-latest-pearcup.test.mjs')
 runNodeTest('scripts/prepare-pearbrowser-release.test.mjs')
 runNodeTest('scripts/check-pear-seamless.test.mjs')
+runNodeTest('scripts/smoke-published-pearbrowser.test.mjs')
 runNpm('smoke:kawaii-p2p-preview')
 runNpm('smoke:kawaii-pear-run')
 runNpm('smoke:pearbrowser-serve')
@@ -74,6 +75,7 @@ const receipt = {
       'node --test scripts/publish-approved-latest-pearcup.test.mjs',
       'node --test scripts/prepare-pearbrowser-release.test.mjs',
       'node --test scripts/check-pear-seamless.test.mjs',
+      'node --test scripts/smoke-published-pearbrowser.test.mjs',
       'npm run smoke:kawaii-p2p-preview',
       'npm run smoke:kawaii-pear-run',
       'npm run smoke:pearbrowser-serve',
@@ -95,7 +97,8 @@ const receipt = {
       'scripts/publish-approved-pearcup.test.mjs',
       'scripts/publish-approved-latest-pearcup.test.mjs',
       'scripts/prepare-pearbrowser-release.test.mjs',
-      'scripts/check-pear-seamless.test.mjs'
+      'scripts/check-pear-seamless.test.mjs',
+      'scripts/smoke-published-pearbrowser.test.mjs'
     ],
     bootProbeContract: {
       command: 'npm run smoke:kawaii-pear-run',

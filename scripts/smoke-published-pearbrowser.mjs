@@ -82,12 +82,7 @@ function checkIndex (html, label) {
   if (!html.includes('./peer-lobby.js')) errors.push(`${label} does not load ./peer-lobby.js`)
   if (!html.includes('./watch-sync.js')) errors.push(`${label} does not load ./watch-sync.js`)
   if (!html.includes('./app.js')) errors.push(`${label} does not load ./app.js`)
-  if (!html.includes('fallback loaded the visual shell')) {
-    errors.push(`${label} does not keep the visible boot failure notice`)
-  }
-  if (!html.includes('p2pModulesReady') || !html.includes('pearcupP2pModules')) {
-    errors.push(`${label} fallback can accept hydration without P2P readiness`)
-  }
+  checkFallbackContract(html, label)
   for (const marker of ['pearcupPeerNetModule', 'pearcupPeerMatchModule', 'pearcupPeerLobbyModule', 'pearcupWatchSyncModule']) {
     if (!html.includes(marker)) errors.push(`${label} fallback does not require ${marker}`)
   }
@@ -97,6 +92,29 @@ function checkIndex (html, label) {
   for (const ref of ['src="./peer-net.js"', 'src="./peer-match.js"', 'src="./peer-lobby.js"', 'src="./watch-sync.js"']) {
     const refIndex = html.indexOf(ref)
     if (refIndex >= 0 && appIndex >= 0 && refIndex > appIndex) errors.push(`${label} loads ${ref} after app.js`)
+  }
+}
+
+function checkFallbackContract (html, label) {
+  const required = [
+    ['function notice (title, detail)', 'does not define the visible boot failure notice renderer'],
+    ["bar.id = 'bootErrorBar'", 'does not render fallback/boot errors into #bootErrorBar'],
+    ["bar.textContent = title + (detail ? '\\n' + detail : '')", 'does not surface fallback error details in #bootErrorBar'],
+    ["sendBootProbe({ event: 'pearcup:fallback-notice'", 'does not report fallback notices through the boot probe'],
+    ["function clearNotice ()", 'does not define fallback notice cleanup'],
+    ['if (bar) bar.remove()', 'does not remove stale fallback notices after boot'],
+    ["root.addEventListener('pearcup:booted', clearNotice)", 'does not clear fallback notices when the app boots'],
+    ["notice('PearCup fallback loaded the visual shell, but the app did not finish booting.'", 'does not keep the visual-shell failure notice'],
+    ["notice('PearCup app script loaded, but boot did not complete.'", 'does not keep the app-loaded boot failure notice'],
+    ["notice('PearCup fallback failed.'", 'does not keep the script-load fallback failure notice'],
+    ["root.addEventListener('error'", 'does not surface renderer errors through the fallback banner'],
+    ["root.addEventListener('unhandledrejection'", 'does not surface renderer promise errors through the fallback banner']
+  ]
+  for (const [needle, message] of required) {
+    if (!html.includes(needle)) errors.push(`${label} fallback ${message}`)
+  }
+  if (!html.includes('p2pModulesReady') || !html.includes('pearcupP2pModules')) {
+    errors.push(`${label} fallback can accept hydration without P2P readiness`)
   }
 }
 
