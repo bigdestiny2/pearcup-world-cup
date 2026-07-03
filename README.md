@@ -13,7 +13,7 @@ PearCup is the World Cup bracket, watch party, and P2P minigame app being built 
 - `design/kawaii-app/` - **canonical build** (self-contained Pear app: own `package.json`, `index.cjs`, P2P modules).
 - `app/` - earlier base prototype; QVAC/WDK hardening ports FROM here INTO the kawaii build.
 - `docs/` - full technical specification, Pear runtime boundary, and architecture notes.
-- `index.cjs` / `package.json` / `scripts/` - base-app Pear entrypoint, manifest, preview helpers.
+- `index.cjs` / `package.json` / `scripts/` - repo-level helpers, release gates, and legacy base-app entrypoint.
 
 ## Run Locally (canonical build)
 
@@ -22,6 +22,9 @@ cd design/kawaii-app
 npm install          # restores git-ignored node_modules (required before pear stage)
 pear run --dev .     # Pear desktop window with live local files
 ```
+
+From the repo root, `npm run dev`, `npm run dev:devtools`, `npm run stage`,
+`npm run release`, and `npm run seed` all route to this canonical Kawaii app.
 
 Current friend-test preview path from the repo root:
 
@@ -47,7 +50,7 @@ candidate.
 
 ```sh
 npm run preview   # http://127.0.0.1:4174/
-npm install && npm run dev   # with Pear CLI/runtime
+pear run --dev .  # legacy root Pear package only
 ```
 
 ## Test

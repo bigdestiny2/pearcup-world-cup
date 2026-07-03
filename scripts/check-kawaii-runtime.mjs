@@ -14,6 +14,8 @@ if (pkg) {
   checkStageIncludes(pkg)
   checkDependencies(pkg)
 }
+const rootPkg = readRootJson('package.json')
+if (rootPkg) checkRootLaunchScripts(rootPkg)
 checkBootBundleFresh()
 checkRendererHtml()
 
@@ -110,6 +112,22 @@ function checkDependencies (pkg) {
   }
 }
 
+function checkRootLaunchScripts (pkg) {
+  const scripts = pkg.scripts || {}
+  for (const [name, expected] of Object.entries({
+    dev: 'cd design/kawaii-app && pear run --dev .',
+    'dev:devtools': 'cd design/kawaii-app && pear run --dev --devtools .',
+    'link:new': 'cd design/kawaii-app && pear touch',
+    stage: 'cd design/kawaii-app && pear stage "$PEAR_LINK" .',
+    release: 'cd design/kawaii-app && pear release "$PEAR_LINK"',
+    seed: 'cd design/kawaii-app && pear seed "$PEAR_LINK"'
+  })) {
+    if (scripts[name] !== expected) {
+      errors.push(`root package script "${name}" must route to the canonical design/kawaii-app Pear build`)
+    }
+  }
+}
+
 function checkRendererHtml () {
   let html = ''
   try {
@@ -171,6 +189,15 @@ function readJson (filePath) {
     return JSON.parse(readFileSync(join(appRoot, filePath), 'utf8'))
   } catch (err) {
     errors.push(`could not read ${filePath}: ${err.message}`)
+    return null
+  }
+}
+
+function readRootJson (filePath) {
+  try {
+    return JSON.parse(readFileSync(join(root, filePath), 'utf8'))
+  } catch (err) {
+    errors.push(`could not read root ${filePath}: ${err.message}`)
     return null
   }
 }
