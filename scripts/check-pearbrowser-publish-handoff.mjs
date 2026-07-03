@@ -180,6 +180,9 @@ function validateApprovedPublishWrapper () {
   if (!wrapper.includes('pending-remote-friend')) {
     errors.push('approved publish wrapper result receipt must preserve the remote friend verification gate')
   }
+  if (!wrapper.includes('record:friend-test') || !wrapper.includes('recordCommand')) {
+    errors.push('approved publish wrapper result receipt must include a friend-test record command')
+  }
 }
 
 function validatePublishHandoff (handoff, bundle, bundleSha256, receiptPath) {

@@ -7322,9 +7322,9 @@ function renderGameLobby () {
   if (quick) quick.addEventListener('click', () => startMatch(practice(LOBBY_PLAYERS[Math.floor(Math.random() * LOBBY_PLAYERS.length)])))
   $$('#gameLobby .lobby-challenge').forEach(btn => btn.addEventListener('click', () => showStakeConfirm(LOBBY_PLAYERS[Number(btn.dataset.lobby)])))
   const invite = $('#inviteFriendBtn')
-  if (invite) invite.addEventListener('click', () => window.PearCupPeerMatch && PearCupPeerMatch.host())
+  if (invite) invite.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.host())
   const joinFriend = $('#joinFriendBtn')
-  if (joinFriend) joinFriend.addEventListener('click', () => window.PearCupPeerMatch && PearCupPeerMatch.promptJoin())
+  if (joinFriend) joinFriend.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.promptJoin())
   renderPeerBackendBadge()
   // Live matchmaking: announce on the lobby topic + render online peers.
   if (window.PearCupLobby) { PearCupLobby.join(); PearCupLobby.renderList() }
