@@ -153,6 +153,7 @@ function writeFixture (dir, overrides = {}, publishResultOverrides = {}) {
     publishedUrl: `hyper://${drive}/`,
     driveKey: drive,
     bundleSha256: sha,
+    approvedPublishCommand: `node "/repo/scripts/publish-approved-pearcup.mjs" --receipt "${receiptPath}" --sha ${sha} --publish`,
     localPublishedLinkProofCommand: 'npm run serve:pearbrowser-published -- --receipt release.json --port 4191',
     friendTest: {
       status: 'pending-remote-friend',

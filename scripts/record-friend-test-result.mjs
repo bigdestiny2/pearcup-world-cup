@@ -80,6 +80,10 @@ function validatePublishResult (result, resultPath) {
     errors.push('publish result driveKey must match the publishedUrl drive key')
   }
   if (!/^[0-9a-f]{64}$/i.test(String(result.bundleSha256 || ''))) errors.push('publish result must include a 64-hex bundleSha256')
+  if (!String(result.approvedPublishCommand || '').includes('publish-approved-pearcup.mjs') ||
+    !String(result.approvedPublishCommand || '').includes('--publish')) {
+    errors.push('publish result must include the approvedPublishCommand wrapper used for publish')
+  }
   const releaseReceiptPath = result.receipt ? resolve(result.receipt) : ''
   const releaseReceipt = releaseReceiptPath && existsSync(releaseReceiptPath)
     ? readJson(releaseReceiptPath, 'source release receipt')

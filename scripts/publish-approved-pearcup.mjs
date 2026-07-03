@@ -34,6 +34,7 @@ if (errors.length > 0) {
 
 const publishArgs = receipt.publishHandoff.args
 const publishCommand = `node ${publishArgs.map(arg => JSON.stringify(arg)).join(' ')}`
+const approvedPublishCommand = approvedWrapperPublishCommand(receiptPath, receipt.bundleSha256, args.gateway)
 const postPublishSmokeCommand = `npm ${postPublishSmokeArgs('hyper://<drive-key>/').map(arg => JSON.stringify(arg)).join(' ')}`
 const localPublishedLinkProofCommand = publishedLinkProofCommand(receipt)
 const publishResultPath = publishResultReceiptPath(receipt, receiptPath)
@@ -55,7 +56,9 @@ if (!args.publish) {
   console.log(`bundle sha256 - ${receipt.bundleSha256}`)
   console.log(`source git head - ${receipt.sourceGitHead || '(missing)'}`)
   console.log(`source dirty - ${sourceDirtyLabel(receipt)}`)
-  console.log('publish command, add --publish to run after explicit approval:')
+  console.log('approved wrapper publish command, after explicit approval:')
+  console.log(approvedPublishCommand)
+  console.log('raw PearBrowser publish command that the wrapper will run internally:')
   console.log(publishCommand)
   console.log('exact bundle published-gateway preflight - passed')
   console.log('exact bundle Pear runtime preflight - passed')
@@ -78,6 +81,8 @@ console.log(`bundle - ${resolve(receipt.bundle)}`)
 console.log(`bundle sha256 - ${receipt.bundleSha256}`)
 console.log(`source git head - ${receipt.sourceGitHead || '(missing)'}`)
 console.log(`source dirty - ${sourceDirtyLabel(receipt)}`)
+console.log('raw PearBrowser publish command that the wrapper will run internally:')
+console.log(publishCommand)
 console.log('exact bundle published-gateway preflight - passed')
 console.log('exact bundle Pear runtime preflight - passed')
 if (localPublishedLinkProofCommand) {
@@ -88,7 +93,6 @@ console.log('post-publish smoke preflight - passed')
 console.log(`publish result receipt will be written to: ${publishResultPath}`)
 console.log('remote friend-test record command after publish:')
 console.log(latestFriendTestRecordCommand)
-console.log(publishCommand)
 
 const result = spawnSync(process.execPath, publishArgs, {
   cwd: root,
@@ -300,6 +304,7 @@ function writePublishResultReceipt ({
     bundleSha256: receipt.bundleSha256 || '',
     publishedUrl,
     driveKey,
+    approvedPublishCommand,
     publishCommand,
     postPublishSmokeCommand: postPublishCommand,
     localPublishedLinkProofCommand,
@@ -334,6 +339,19 @@ function trimForReceipt (text) {
 function sourceDirtyLabel (receipt) {
   if (!Object.prototype.hasOwnProperty.call(receipt || {}, 'sourceDirty')) return '(missing)'
   return receipt.sourceDirty ? 'yes' : 'no'
+}
+
+function approvedWrapperPublishCommand (receiptPath, bundleSha256, gateway) {
+  const commandArgs = [
+    resolve(root, 'scripts', 'publish-approved-pearcup.mjs'),
+    '--receipt',
+    receiptPath,
+    '--sha',
+    bundleSha256
+  ]
+  if (gateway) commandArgs.push('--gateway', gateway)
+  commandArgs.push('--publish')
+  return `node ${commandArgs.map(arg => JSON.stringify(arg)).join(' ')}`
 }
 
 function publishedLinkProofCommand (receipt) {

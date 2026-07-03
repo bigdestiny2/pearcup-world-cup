@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { test } from 'node:test'
 
@@ -32,6 +33,16 @@ test('approved publish wrapper rejects non-http gateways before publish', () => 
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /--gateway must be an http:\/\/ or https:\/\/ URL/)
   assert.doesNotMatch(result.stdout + result.stderr, /PearCup approved publish starting/)
+})
+
+test('approved publish wrapper prints the wrapper command as the publish path', () => {
+  const source = readFileSync(script, 'utf8')
+
+  assert.match(source, /approvedWrapperPublishCommand/)
+  assert.match(source, /approved wrapper publish command, after explicit approval/)
+  assert.match(source, /raw PearBrowser publish command that the wrapper will run internally/)
+  assert.match(source, /approvedPublishCommand/)
+  assert.doesNotMatch(source, /publish command, add --publish to run after explicit approval/)
 })
 
 function run (args) {

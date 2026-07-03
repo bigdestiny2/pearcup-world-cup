@@ -248,8 +248,20 @@ function validateApprovedPublishWrapper () {
   if (!wrapper.includes('source git head - ${receipt.sourceGitHead') || !wrapper.includes('source dirty - ${sourceDirtyLabel(receipt)}')) {
     errors.push('approved publish wrapper must print the release source git binding before publish')
   }
+  if (!wrapper.includes('approvedWrapperPublishCommand') || !wrapper.includes('approved wrapper publish command, after explicit approval')) {
+    errors.push('approved publish wrapper dry-run must print the SHA-gated wrapper command as the publish path')
+  }
+  if (!wrapper.includes('raw PearBrowser publish command that the wrapper will run internally')) {
+    errors.push('approved publish wrapper must label the raw PearBrowser publish command as internal')
+  }
+  if (wrapper.includes('publish command, add --publish to run after explicit approval')) {
+    errors.push('approved publish wrapper must not label the raw PearBrowser publish script as the approved publish command')
+  }
   if (!wrapper.includes('exactBundlePearRuntimePreflight')) {
     errors.push('approved publish wrapper result receipt must preserve the exact bundle Pear runtime proof field')
+  }
+  if (!wrapper.includes('approvedPublishCommand')) {
+    errors.push('approved publish wrapper result receipt must preserve the approved wrapper publish command')
   }
   if (wrapper.includes('localPublishedBrowserCommand')) {
     errors.push('approved publish wrapper must not write the deprecated localPublishedBrowserCommand field')
@@ -676,6 +688,7 @@ function validateSmokeContracts () {
       'source release receipt sourceGitHead',
       'clean source release receipt',
       'source release receipt postPublishVerification.resultPath',
+      'approvedPublishCommand',
       'exactBundlePearRuntimePreflight',
       'publish result must prove exact bundle Pear runtime preflight passed'
     ]) {

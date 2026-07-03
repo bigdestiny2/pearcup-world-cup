@@ -184,6 +184,28 @@ test('refuses publish-result receipts without source release binding', () => {
   assert.match(result.stderr, /clean source release receipt/)
 })
 
+test('refuses publish-result receipts without the approved wrapper publish command', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-no-approved-command-'))
+  const publishResult = writePublishResult(dir, {
+    approvedPublishCommand: ''
+  })
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /approvedPublishCommand wrapper/)
+})
+
 test('refuses publish-result receipts whose source release receipt is missing', () => {
   const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-missing-release-receipt-'))
   const publishResult = writePublishResult(dir, {
@@ -379,6 +401,7 @@ function writePublishResult (dir, overrides = {}, releaseReceiptOverrides = {}, 
     publishedUrl: `hyper://${driveKey}/`,
     driveKey,
     bundleSha256,
+    approvedPublishCommand: `node "/repo/scripts/publish-approved-pearcup.mjs" --receipt "${join(dir, 'pearcup-release-receipt.json')}" --sha ${bundleSha256} --publish`,
     localPublishedLinkProofCommand: 'npm run serve:pearbrowser-published -- --receipt release.json --port 4191',
     friendTest: {
       status: 'pending-remote-friend',
