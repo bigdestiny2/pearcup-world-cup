@@ -456,7 +456,8 @@ function validateVerification (verification) {
     'local gateway serves ?join= deep links',
     'local gateway reuses published PearBrowser smoke',
     'published-style smoke rejects preview-only paths',
-    'published-style smoke verifies app/boot/P2P/assets contract before publish'
+    'published-style smoke verifies app/boot/P2P/assets contract before publish',
+    'published-style smoke verifies worker/settlement stack before publish'
   ]) {
     if (!localPublishedGatewayRequirements.includes(required)) {
       errors.push(`receipt localPublishedGatewayContract must require ${required}`)
@@ -474,9 +475,11 @@ function validateVerification (verification) {
     'local proof server uses a browser-safe fetch port',
     'published-link smoke fetches root and ?join= deep-link HTML',
     'published-link smoke verifies app/boot/P2P/assets contract before publish',
+    'published-link smoke verifies worker/settlement stack before publish',
     'published-link smoke verifies generated avatar and game art assets',
     'published-link smoke rejects preview-only paths',
     'published-link smoke verifies hyper invite code paths do not leak localhost',
+    'exact PearBrowser bundle is a manifest renderer payload; actual Pear runtime proof comes from source package smoke',
     'live browser runtime proof remains the remote friend gate'
   ]) {
     if (!localPublishedLinkRequirements.includes(required)) {
