@@ -18,6 +18,7 @@ const publishResultPath = join(out, 'pearcup-publish-result.json')
 
 if (args.force && args.out && existsSync(out)) {
   assertSafeForceOut(out)
+  assertNoProtectedEvidence(out)
   rmSync(out, { recursive: true, force: true })
 }
 if (existsSync(bundle)) throw new Error(`bundle output already exists: ${bundle}`)
@@ -310,12 +311,13 @@ function listFiles (dir, acc = []) {
 }
 
 function parseArgs (argv) {
-  const parsed = { force: false }
+  const parsed = { force: false, forceEvidence: false }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--out') parsed.out = argv[++i]
     else if (arg.startsWith('--out=')) parsed.out = arg.slice('--out='.length)
     else if (arg === '--force') parsed.force = true
+    else if (arg === '--force-evidence') parsed.forceEvidence = true
   }
   return parsed
 }
@@ -325,6 +327,17 @@ function assertSafeForceOut (outPath) {
   const tmpRoot = resolve(tmpdir())
   if (isInside(outPath, releaseRoot) || isInside(outPath, tmpRoot)) return
   throw new Error(`--force may only remove outputs inside ${releaseRoot} or ${tmpRoot}: ${outPath}`)
+}
+
+function assertNoProtectedEvidence (outPath) {
+  if (args.forceEvidence) return
+  const protectedFiles = [
+    'pearcup-publish-result.json',
+    'pearcup-friend-test-result.json'
+  ].map(file => join(outPath, file))
+  const found = protectedFiles.filter(file => existsSync(file))
+  if (found.length === 0) return
+  throw new Error(`--force refuses to remove publish/friend evidence (${found.join(', ')}); use --force-evidence only when intentionally replacing stale or incorrect evidence`)
 }
 
 function isInside (target, parent) {

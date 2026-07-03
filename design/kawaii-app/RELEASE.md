@@ -138,6 +138,10 @@ That writes the exact bundle and `pearcup-release-receipt.json` to the ignored
 `.pearcup-release/latest/` directory, then rechecks that exact receipt. The handoff
 path is safe to rerun because the script only uses `--force` inside
 `.pearcup-release/` or the system temp directory; it refuses arbitrary delete paths.
+It also refuses to remove existing `pearcup-publish-result.json` or
+`pearcup-friend-test-result.json` evidence unless `--force-evidence` is supplied, so
+do not regenerate the latest handoff over a completed publish/friend session by
+accident.
 Use the printed SHA and approved command from `check:publish-handoff:latest` for the
 explicit publish approval.
 

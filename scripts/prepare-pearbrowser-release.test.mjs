@@ -31,3 +31,33 @@ test('release prep force refuses to delete outside the durable handoff or temp r
     rmSync(unsafeOut, { recursive: true, force: true })
   }
 })
+
+test('release prep force refuses to delete existing publish or friend evidence', () => {
+  const releaseRoot = resolve(root, '.pearcup-release')
+  mkdirSync(releaseRoot, { recursive: true })
+  const out = mkdtempSync(join(releaseRoot, 'evidence-guard-'))
+  const publishResult = join(out, 'pearcup-publish-result.json')
+  const friendResult = join(out, 'pearcup-friend-test-result.json')
+  writeFileSync(publishResult, '{"status":"published-and-smoked"}\n')
+  writeFileSync(friendResult, '{"status":"remote-friend-verified"}\n')
+
+  try {
+    const result = spawnSync(process.execPath, [
+      script,
+      '--out',
+      out,
+      '--force'
+    ], {
+      cwd: root,
+      encoding: 'utf8'
+    })
+
+    assert.notEqual(result.status, 0)
+    assert.match(result.stderr, /refuses to remove publish\/friend evidence/)
+    assert.match(result.stderr, /--force-evidence/)
+    assert.equal(existsSync(publishResult), true)
+    assert.equal(existsSync(friendResult), true)
+  } finally {
+    rmSync(out, { recursive: true, force: true })
+  }
+})
