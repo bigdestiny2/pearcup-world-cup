@@ -397,13 +397,15 @@ function validateSmokeContracts () {
   const publishedSmokePath = join(root, 'scripts', 'smoke-published-pearbrowser.mjs')
   const publishedServerPath = join(root, 'scripts', 'serve-pearbrowser-published-local.mjs')
   const friendReadyPath = join(root, 'scripts', 'check-friend-ready.mjs')
+  const seamlessPath = join(root, 'scripts', 'check-pear-seamless.mjs')
   for (const [filePath, label] of [
     [runtimeSmokePath, 'actual Pear runtime smoke'],
     [servedSmokePath, 'served PearBrowser preview smoke'],
     [localPublishedSmokePath, 'local published-gateway smoke'],
     [publishedSmokePath, 'published PearBrowser smoke'],
     [publishedServerPath, 'local published browser server'],
-    [friendReadyPath, 'friend-ready preview gate']
+    [friendReadyPath, 'friend-ready preview gate'],
+    [seamlessPath, 'seamless readiness gate']
   ]) {
     if (!existsSync(filePath)) errors.push(`${label} script is missing`)
   }
@@ -489,6 +491,19 @@ function validateSmokeContracts () {
       'generated avatar p-aria'
     ]) {
       if (!friendReady.includes(required)) errors.push(`friend-ready preview gate is missing contract text: ${required}`)
+    }
+  }
+  if (existsSync(seamlessPath)) {
+    const seamless = readFileSync(seamlessPath, 'utf8')
+    for (const required of [
+      'runExactReceiptPublishedProof',
+      'serve-pearbrowser-published-local.mjs',
+      'smoke-published-pearbrowser.mjs',
+      'Exact receipt published-link proof',
+      '--strict-port',
+      '--proof-port 4190 is blocked'
+    ]) {
+      if (!seamless.includes(required)) errors.push(`seamless readiness gate is missing contract text: ${required}`)
     }
   }
 }
