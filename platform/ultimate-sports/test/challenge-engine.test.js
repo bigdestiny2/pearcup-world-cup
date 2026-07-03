@@ -90,6 +90,31 @@ test('accepted live-prediction challenge materializes a policy-aware market', ()
   assert.equal(market.marketType, 'scoreline-lock')
   assert.equal(market.mode, 'sponsor-prize')
   assert.deepEqual(market.options, ['home-win', 'draw', 'away-win'])
+  assert.equal(market.predictionShape, 'exact-scoreline')
+  assert.deepEqual(market.inputTemplate, { homeScore: 0, awayScore: 0, lockBeforeMinute: 60 })
+  assert.equal(market.scoringConfig.exactScorePoints, 3)
+})
+
+test('accepted head-to-head bracket challenge materializes a two-player duel pool', () => {
+  const app = createRoomWithPlayers()
+  const challengeId = acceptChallenge(app, {
+    challengeType: 'head-to-head-duel',
+    duel: {
+      title: 'My bracket vs yours'
+    }
+  })
+  const dispatched = app.dispatchMaterializedChallenge(challengeId, {
+    settlementMode: 'demo'
+  })
+  const pool = dispatched.event.payload
+
+  assert.equal(dispatched.materialization.command.type, 'pool:create')
+  assert.equal(pool.rules.variant, 'head-to-head-duel')
+  assert.equal(pool.maxEntries, 2)
+  assert.equal(pool.title, 'My bracket vs yours')
+  assert.equal(pool.metadata.challengeId, challengeId)
+  assert.deepEqual(pool.metadata.participantUserIds, ['alice', 'bob'])
+  assert.equal(dispatched.view.pools[pool.poolId].metadata.duel.title, 'My bracket vs yours')
 })
 
 test('accepted side-quest challenge materializes a two-player side quest pool', () => {

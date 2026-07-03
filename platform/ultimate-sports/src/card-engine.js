@@ -24,6 +24,8 @@ function createPredictionCard (input = {}) {
   const cardType = input.cardType || 'group-stage-card'
   if (!CARD_TYPES.includes(cardType)) throw new RangeError(`cardType must be one of: ${CARD_TYPES.join(', ')}`)
   const fields = (input.fields || []).map(normalizeField)
+  const scoringConfig = cloneJson(input.scoringConfig || {})
+  if (cardType === 'watch-party-bingo' && scoringConfig.lineBonus == null) scoringConfig.lineBonus = 2
   return {
     cardId: input.cardId || stableId(`card-${cardType}`, {
       competitionId: input.competitionId,
@@ -33,6 +35,7 @@ function createPredictionCard (input = {}) {
     cardType,
     title: input.title || cardType,
     fields,
+    scoringConfig,
     lockPolicy: input.lockPolicy || 'event-lock'
   }
 }
@@ -49,7 +52,8 @@ function normalizeField (field, index) {
     options: cloneJson(field.options || []),
     weight: Number(field.weight || 1),
     tolerance: Number(field.tolerance || 0),
-    required: field.required !== false
+    required: field.required !== false,
+    metadata: normalizeFieldMetadata(field)
   }
 }
 
@@ -106,13 +110,19 @@ function scorePredictionCard ({ card, submission, results = {} } = {}) {
       points: correct ? field.weight : 0
     }
   })
+  const bingo = card.cardType === 'watch-party-bingo'
+    ? scoreBingoLines({ card, detail })
+    : null
+  const fieldScore = detail.reduce((sum, row) => sum + row.points, 0)
+  const fieldPossibleScore = detail.reduce((sum, row) => sum + row.weight, 0)
   return {
     cardId: card.cardId,
     submissionId: submission && submission.submissionId,
     userId: submission && submission.userId,
-    score: detail.reduce((sum, row) => sum + row.points, 0),
-    possibleScore: detail.reduce((sum, row) => sum + row.weight, 0),
+    score: fieldScore + (bingo ? bingo.lineBonusPoints : 0),
+    possibleScore: fieldPossibleScore + (bingo ? bingo.possibleLineBonusPoints : 0),
     correctCount: detail.filter(row => row.correct).length,
+    bingo,
     detail
   }
 }
@@ -166,6 +176,91 @@ function scoreFieldCorrect (field, answer, actual) {
   return answer === actual
 }
 
+function normalizeFieldMetadata (field) {
+  const metadata = cloneJson(field.metadata || {})
+  ;['row', 'col', 'rowIndex', 'columnIndex'].forEach(key => {
+    if (Object.prototype.hasOwnProperty.call(field, key) && !Object.prototype.hasOwnProperty.call(metadata, key)) {
+      metadata[key] = field[key]
+    }
+  })
+  return metadata
+}
+
+function scoreBingoLines ({ card, detail }) {
+  const lineBonus = Number(card.scoringConfig && card.scoringConfig.lineBonus || 0)
+  const positions = card.fields.map(field => {
+    const row = positionValue(field.metadata && (field.metadata.row ?? field.metadata.rowIndex))
+    const col = positionValue(field.metadata && (field.metadata.col ?? field.metadata.columnIndex))
+    if (row == null || col == null) return null
+    const rowDetail = detail.find(item => item.fieldId === field.fieldId)
+    return {
+      fieldId: field.fieldId,
+      row,
+      col,
+      correct: Boolean(rowDetail && rowDetail.correct)
+    }
+  }).filter(Boolean)
+
+  if (positions.length === 0) {
+    return {
+      lineBonus,
+      completedLines: [],
+      lineBonusPoints: 0,
+      possibleLines: [],
+      possibleLineBonusPoints: 0
+    }
+  }
+
+  const rows = uniqueNumbers(positions.map(position => position.row))
+  const cols = uniqueNumbers(positions.map(position => position.col))
+  const cells = new Map(positions.map(position => [`${position.row}:${position.col}`, position]))
+  const possibleLines = []
+  rows.forEach(row => {
+    const lineCells = cols.map(col => cells.get(`${row}:${col}`))
+    if (lineCells.every(Boolean)) possibleLines.push(bingoLine('row', row, lineCells))
+  })
+  cols.forEach(col => {
+    const lineCells = rows.map(row => cells.get(`${row}:${col}`))
+    if (lineCells.every(Boolean)) possibleLines.push(bingoLine('column', col, lineCells))
+  })
+  if (rows.length === cols.length) {
+    const diagonalDown = rows.map((row, index) => cells.get(`${row}:${cols[index]}`))
+    const diagonalUp = rows.map((row, index) => cells.get(`${row}:${cols[cols.length - index - 1]}`))
+    if (diagonalDown.every(Boolean)) possibleLines.push(bingoLine('diagonal', 0, diagonalDown))
+    if (diagonalUp.every(Boolean)) possibleLines.push(bingoLine('diagonal', 1, diagonalUp))
+  }
+  const completedLines = possibleLines.filter(line => line.fieldIds.every(fieldId => {
+    const cell = positions.find(position => position.fieldId === fieldId)
+    return cell && cell.correct
+  }))
+
+  return {
+    lineBonus,
+    completedLines,
+    lineBonusPoints: completedLines.length * lineBonus,
+    possibleLines,
+    possibleLineBonusPoints: possibleLines.length * lineBonus
+  }
+}
+
+function positionValue (value) {
+  const number = Number(value)
+  return Number.isInteger(number) ? number : null
+}
+
+function uniqueNumbers (values) {
+  return [...new Set(values)].sort((left, right) => left - right)
+}
+
+function bingoLine (lineType, index, cells) {
+  return {
+    lineId: `${lineType}:${index}`,
+    lineType,
+    index,
+    fieldIds: cells.map(cell => cell.fieldId)
+  }
+}
+
 function scoreRowSort (left, right) {
   if (right.score !== left.score) return right.score - left.score
   if (right.correctCount !== left.correctCount) return right.correctCount - left.correctCount
@@ -181,5 +276,6 @@ module.exports = {
   scorePredictionCard,
   resolvePredictionCard,
   scoreFieldCorrect,
+  scoreBingoLines,
   scoreRowSort
 }

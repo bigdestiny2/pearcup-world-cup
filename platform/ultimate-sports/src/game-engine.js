@@ -32,6 +32,8 @@ function createPeerGameSession (input = {}) {
     spectators: cloneJson(input.spectators || []),
     topicHash: input.topicHash || `pearcup:v2:game:${gameId}`,
     stakeMode,
+    challengeId: input.challengeId || null,
+    stake: cloneJson(input.stake || null),
     resolverVersion: input.resolverVersion || `${input.gameType}-v1`,
     status: input.status || 'invited'
   }

@@ -100,6 +100,113 @@ test('head-to-head duel returns the winning user from shared results', () => {
   assert.equal(duel.rows[0].userId, 'left-user')
 })
 
+test('head-to-head duel pools resolve only the challenged player pair', () => {
+  const duelPool = pool.createPool({
+    poolId: 'pool-duel',
+    competitionId: 'duel-competition',
+    variant: 'head-to-head-duel',
+    metadata: {
+      challengeId: 'duel-challenge',
+      challengerUserId: 'alice',
+      targetUserId: 'bob',
+      participantUserIds: ['alice', 'bob']
+    }
+  })
+  const snapshot = feed.createResultSnapshot({
+    competitionId: 'duel-competition',
+    results: {
+      semi1: { winnerEntrantId: 'red', roundNumber: 1 },
+      semi2: { winnerEntrantId: 'gold', roundNumber: 1 },
+      final: { winnerEntrantId: 'red', roundNumber: 2 }
+    }
+  })
+  const alice = lockedEntry('alice', 'head-to-head-duel', { semi1: 'red', semi2: 'gold', final: 'red' })
+  const bob = lockedEntry('bob', 'head-to-head-duel', { semi1: 'blue', semi2: 'gold', final: 'gold' })
+  const spectator = lockedEntry('spectator', 'head-to-head-duel', { semi1: 'red', semi2: 'gold', final: 'red' })
+  const resolved = pool.resolvePoolWinners({
+    pool: duelPool,
+    entries: [spectator, bob, alice],
+    resultSnapshot: snapshot
+  })
+
+  assert.equal(resolved.variant, 'head-to-head-duel')
+  assert.equal(resolved.ready, true)
+  assert.deepEqual(resolved.participantUserIds, ['alice', 'bob'])
+  assert.deepEqual(resolved.winnerUserIds, ['alice'])
+  assert.deepEqual(resolved.leaderboard.map(row => row.userId), ['alice', 'bob'])
+  assert.equal(resolved.leaderboard[0].score, 4)
+  assert.equal(resolved.leaderboard[1].score, 1)
+})
+
+test('side quest pools rank users by selected semi-finalist scoring totals', () => {
+  const rules = prediction.createPoolRules({
+    variant: 'side-quest',
+    config: {
+      condition: 'my-semi-finalists-score-more',
+      targetRoundNames: ['semi-final']
+    }
+  })
+  const sideQuestPool = pool.createPool({
+    poolId: 'pool-side-quest',
+    competitionId: 'cup-side-quest',
+    title: 'Semi-final scorers',
+    rules,
+    metadata: {
+      sideQuest: {
+        condition: 'my-semi-finalists-score-more'
+      }
+    }
+  })
+  const snapshot = feed.createResultSnapshot({
+    competitionId: 'cup-side-quest',
+    results: {
+      semi1: {
+        roundName: 'Semi-final',
+        homeEntrantId: 'red',
+        awayEntrantId: 'blue',
+        homeScore: 2,
+        awayScore: 1
+      },
+      semi2: {
+        roundName: 'Semi-final',
+        homeEntrantId: 'gold',
+        awayEntrantId: 'green',
+        homeScore: 0,
+        awayScore: 3
+      },
+      final: {
+        roundName: 'Final',
+        homeEntrantId: 'red',
+        awayEntrantId: 'green',
+        homeScore: 1,
+        awayScore: 0
+      }
+    }
+  })
+  const alice = lockedEntry('alice', 'side-quest', { semiFinalistIds: ['red', 'gold'] })
+  const bob = lockedEntry('bob', 'side-quest', {
+    semi1: { entrantId: 'blue' },
+    semi2: { entrantId: 'green' }
+  })
+  const aliceRow = scoring.scoreSideQuestEntry({
+    entry: alice,
+    resultSnapshot: snapshot,
+    config: rules.config
+  })
+  const resolved = pool.resolvePoolWinners({
+    pool: sideQuestPool,
+    entries: [alice, bob],
+    resultSnapshot: snapshot
+  })
+
+  assert.deepEqual(aliceRow.selectedEntrantIds, ['red', 'gold'])
+  assert.equal(aliceRow.score, 2)
+  assert.equal(aliceRow.detail.length, 4)
+  assert.deepEqual(resolved.winnerUserIds, ['bob'])
+  assert.equal(resolved.leaderboard[0].score, 4)
+  assert.equal(resolved.leaderboard[0].variant, 'side-quest')
+})
+
 test('live prediction markets lock submissions and resolve room winners', () => {
   const market = livePrediction.createPredictionMarket({
     roomId: 'room-final',
@@ -145,6 +252,95 @@ test('live prediction markets lock submissions and resolve room winners', () => 
   assert.equal(resolved.rows[1].score, 0)
 })
 
+test('scoreline lock rewards exact final scores ahead of result-class picks', () => {
+  const market = livePrediction.lockPredictionMarket(livePrediction.createPredictionMarket({
+    roomId: 'room-scoreline',
+    competitionId: 'cup-live',
+    fixtureId: 'final',
+    marketType: 'scoreline-lock'
+  }))
+  const resolved = livePrediction.resolvePredictionMarket({
+    market,
+    predictions: [
+      livePrediction.submitWatchPrediction({
+        market: { ...market, status: 'open' },
+        userId: 'exact',
+        outcome: { homeScore: 2, awayScore: 1, lockBeforeMinute: 60 }
+      }),
+      livePrediction.submitWatchPrediction({
+        market: { ...market, status: 'open' },
+        userId: 'result-class',
+        outcome: { homeScore: 1, awayScore: 0, lockBeforeMinute: 60 }
+      }),
+      livePrediction.submitWatchPrediction({
+        market: { ...market, status: 'open' },
+        userId: 'miss',
+        outcome: { homeScore: 0, awayScore: 2, lockBeforeMinute: 60 }
+      })
+    ],
+    result: { homeScore: 2, awayScore: 1 }
+  })
+
+  assert.equal(market.predictionShape, 'exact-scoreline')
+  assert.deepEqual(market.inputTemplate, { homeScore: 0, awayScore: 0, lockBeforeMinute: 60 })
+  assert.deepEqual(resolved.winnerUserIds, ['exact'])
+  assert.equal(resolved.rows[0].score, 3)
+  assert.equal(resolved.rows[0].exact, true)
+  assert.equal(resolved.rows[1].score, 1)
+  assert.equal(resolved.rows[1].resultClassHit, true)
+  assert.equal(livePrediction.scorelineResultClass({ homeScore: 1, awayScore: 1 }), 'draw')
+})
+
+test('player prop markets score first scorer and stat totals', () => {
+  const market = livePrediction.lockPredictionMarket(livePrediction.createPredictionMarket({
+    roomId: 'room-props',
+    competitionId: 'cup-live',
+    fixtureId: 'final',
+    marketType: 'player-prop'
+  }))
+  const openMarket = { ...market, status: 'open' }
+  const resolved = livePrediction.resolvePredictionMarket({
+    market,
+    predictions: [
+      livePrediction.submitWatchPrediction({
+        market: openMarket,
+        userId: 'first-scorer',
+        outcome: { playerId: 'p9', prop: 'first-scorer' }
+      }),
+      livePrediction.submitWatchPrediction({
+        market: openMarket,
+        userId: 'shots-near',
+        outcome: { playerId: 'p10', prop: 'shots', value: 4 }
+      }),
+      livePrediction.submitWatchPrediction({
+        market: openMarket,
+        userId: 'miss',
+        outcome: { playerId: 'p11', prop: 'cards', value: 1 }
+      })
+    ],
+    result: {
+      firstScorerId: 'p9',
+      players: {
+        p10: { shots: 5, assists: 1, cards: 0 },
+        p11: { cards: 0 }
+      }
+    }
+  })
+
+  assert.equal(market.predictionShape, 'player-prop')
+  assert.deepEqual(market.inputTemplate, { playerId: null, prop: 'first-scorer', value: true })
+  assert.deepEqual(market.options, ['first-scorer', 'shots', 'assists', 'cards'])
+  assert.deepEqual(livePrediction.marketOptionsFor('player-prop'), ['first-scorer', 'shots', 'assists', 'cards'])
+  assert.deepEqual(resolved.winnerUserIds, ['first-scorer'])
+  assert.equal(resolved.rows[0].score, 3)
+  assert.equal(resolved.rows[0].prop, 'first-scorer')
+  assert.equal(resolved.rows[1].score, 2)
+  assert.equal(resolved.rows[1].prop, 'shots')
+  assert.equal(resolved.rows[1].valueHit, true)
+  assert.equal(resolved.rows[2].score, 0)
+  assert.equal(livePrediction.normalizePlayerProp('assist'), 'assists')
+})
+
 test('momentum duel markets and watch-party streaks resolve deterministically', () => {
   const momentum = livePrediction.createPredictionMarket({
     roomId: 'room-momentum',
@@ -152,8 +348,46 @@ test('momentum duel markets and watch-party streaks resolve deterministically', 
     marketType: 'momentum-duel',
     options: livePrediction.marketOptionsFor('momentum-duel')
   })
+  const openMomentum = { ...momentum, status: 'open' }
+  const momentumResolved = livePrediction.resolvePredictionMarket({
+    market: livePrediction.lockPredictionMarket(momentum),
+    predictions: [
+      livePrediction.submitWatchPrediction({
+        market: openMomentum,
+        userId: 'home-fan',
+        outcome: { side: 'home-pressure', windowMinutes: 10 }
+      }),
+      livePrediction.submitWatchPrediction({
+        market: openMomentum,
+        userId: 'away-fan',
+        outcome: { side: 'away-pressure', windowMinutes: 10 }
+      }),
+      livePrediction.submitWatchPrediction({
+        market: openMomentum,
+        userId: 'balanced-fan',
+        outcome: { side: 'balanced', windowMinutes: 10 }
+      })
+    ],
+    result: {
+      windowMinutes: 10,
+      homePressure: 8,
+      awayPressure: 5
+    }
+  })
+
   assert.equal(momentum.marketType, 'momentum-duel')
+  assert.equal(momentum.predictionShape, 'momentum-window')
+  assert.deepEqual(momentum.inputTemplate, { side: 'home-pressure', windowMinutes: 10 })
+  assert.equal(momentum.scoringConfig.windowMinutes, 10)
+  assert.equal(momentum.scoringConfig.balancedThreshold, 2)
   assert.deepEqual(momentum.options, ['home-pressure', 'away-pressure', 'balanced'])
+  assert.deepEqual(momentumResolved.winnerUserIds, ['home-fan'])
+  assert.equal(momentumResolved.rows[0].actualSide, 'home-pressure')
+  assert.equal(momentumResolved.rows[0].pressureDelta, 3)
+  assert.equal(livePrediction.actualForMomentumDuel({
+    result: { pressure: { home: 4, away: 3 } },
+    scoringConfig: { balancedThreshold: 2 }
+  }).side, 'balanced')
 
   const marketA = livePrediction.lockPredictionMarket(livePrediction.createPredictionMarket({
     marketId: 'streak-a',

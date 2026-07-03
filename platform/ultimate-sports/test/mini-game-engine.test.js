@@ -47,6 +47,52 @@ test('penalty clash resolves shots against opponent keeper reads', () => {
   assert.equal(typeof resolved.resultHash, 'string')
 })
 
+test('free-kick duel resolves aim, curve, wall reads, and keeper reads', () => {
+  const session = game.createPeerGameSession({
+    gameId: 'free-kick-game',
+    gameType: 'free-kick-duel',
+    players: ['alice', 'bob'],
+    stakeMode: 'demo'
+  })
+  const resolved = miniGame.resolveMiniGame({
+    session,
+    reveals: [
+      {
+        gameId: 'free-kick-game',
+        playerId: 'alice',
+        input: {
+          attempts: [
+            { aim: 'top-left', curve: 9, power: 82, keeperRead: 'top-right' },
+            { aim: 'near-post', curve: 4, power: 76, wallRead: 'near-post' },
+            { aim: 'wide', curve: 6, power: 70, keeperRead: 'center' }
+          ]
+        }
+      },
+      {
+        gameId: 'free-kick-game',
+        playerId: 'bob',
+        input: {
+          attempts: [
+            { aim: 'top-right', curve: 1, power: 84, keeperRead: 'top-left' },
+            { aim: 'near-post', curve: 2, power: 72, wallRead: 'near-post' },
+            { aim: 'center', curve: 0, power: 80, keeperRead: 'center' }
+          ]
+        }
+      }
+    ],
+    result: { attemptCount: 3 }
+  })
+
+  assert.deepEqual(resolved.winnerUserIds, ['alice'])
+  assert.equal(resolved.rows[0].userId, 'alice')
+  assert.equal(resolved.rows[0].score, 6)
+  assert.equal(resolved.rows[0].detail[0].goal, true)
+  assert.equal(resolved.rows[0].detail[1].points, 3)
+  assert.equal(resolved.rows[0].detail[2].points, 0)
+  assert.equal(resolved.rows[1].detail[1].wallRead, 'near-post')
+  assert.equal(resolved.rows[1].detail[1].goal, false)
+})
+
 test('trivia duel uses correctness first and response time as tie break', () => {
   const session = game.createPeerGameSession({
     gameId: 'trivia-game',

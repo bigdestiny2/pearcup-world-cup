@@ -83,6 +83,81 @@ function createCompetition (input = {}) {
   }
 }
 
+function createCompetitionEntrant (input = {}, entrantShape = 'team') {
+  return normalizeEntrants([input], input.shape || entrantShape)[0]
+}
+
+function addEntrantToCompetition (competition, entrantInput = {}) {
+  if (!competition || typeof competition !== 'object') throw new TypeError('competition is required')
+  const entrant = createCompetitionEntrant(entrantInput, competition.template && competition.template.entrantShape || 'team')
+  if ((competition.entrantIds || []).includes(entrant.entrantId)) {
+    throw new Error(`entrant already exists: ${entrant.entrantId}`)
+  }
+  const entrants = cloneJson(competition.entrants || []).concat(entrant)
+  return {
+    ...competition,
+    entrants,
+    entrantIds: entrants.map(item => item.entrantId)
+  }
+}
+
+function createFixture (input = {}) {
+  assertNonEmptyString(input.competitionId, 'competitionId')
+  const sourceSlots = input.sourceSlots || (input.entrantIds || []).map(entrantId => ({
+    type: 'entrant',
+    entrantId
+  }))
+  if (!Array.isArray(sourceSlots) || sourceSlots.length === 0) throw new TypeError('sourceSlots or entrantIds are required')
+  const fixtureIndex = Number.isFinite(Number(input.fixtureIndex)) ? Number(input.fixtureIndex) : 0
+
+  return {
+    fixtureId: input.fixtureId || stableId(`fixture-${input.competitionId}`, {
+      stageId: input.stageId || `${input.competitionId}:stage:manual`,
+      sourceSlots,
+      startsAt: input.startsAt || null
+    }),
+    competitionId: input.competitionId,
+    stageId: input.stageId || `${input.competitionId}:stage:manual`,
+    roundNumber: Number.isFinite(Number(input.roundNumber)) ? Number(input.roundNumber) : 1,
+    roundName: input.roundName || 'Manual Fixture',
+    fixtureIndex,
+    startsAt: input.startsAt || null,
+    status: input.status || 'scheduled',
+    sourceSlots: cloneJson(sourceSlots),
+    resultFields: cloneJson(input.resultFields || ['winnerEntrantId']),
+    metadata: cloneJson(input.metadata || {}),
+    result: cloneJson(input.result || null)
+  }
+}
+
+function scheduleFixtureForCompetition (competition, fixtureInput = {}) {
+  if (!competition || typeof competition !== 'object') throw new TypeError('competition is required')
+  const fixture = createFixture({
+    ...fixtureInput,
+    competitionId: fixtureInput.competitionId || competition.competitionId,
+    fixtureIndex: fixtureInput.fixtureIndex == null ? (competition.fixtures || []).length : fixtureInput.fixtureIndex
+  })
+  if ((competition.fixtureIds || []).includes(fixture.fixtureId)) {
+    throw new Error(`fixture already exists: ${fixture.fixtureId}`)
+  }
+  const fixtures = cloneJson(competition.fixtures || []).concat(fixture)
+  return {
+    ...competition,
+    fixtures,
+    fixtureIds: fixtures.map(item => item.fixtureId)
+  }
+}
+
+function updateCompetitionStatus (competition, update = {}) {
+  if (!competition || typeof competition !== 'object') throw new TypeError('competition is required')
+  assertNonEmptyString(update.status, 'status')
+  return {
+    ...competition,
+    status: update.status,
+    statusUpdatedAt: update.updatedAt || new Date().toISOString()
+  }
+}
+
 function normalizeEntrants (entrants, entrantShape = 'team') {
   return ensureArray(entrants, 'entrants').map((entrant, index) => {
     if (typeof entrant === 'string') {
@@ -340,6 +415,11 @@ function entrantIdFromValue (value, fallback) {
 module.exports = {
   createCompetitionTemplate,
   createCompetition,
+  createCompetitionEntrant,
+  addEntrantToCompetition,
+  createFixture,
+  scheduleFixtureForCompetition,
+  updateCompetitionStatus,
   normalizeEntrants,
   generateFixturesForTemplate,
   generateSingleEliminationFixtures,

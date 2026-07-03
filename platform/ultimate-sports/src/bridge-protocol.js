@@ -15,6 +15,10 @@ const BRIDGE_ACTIONS = Object.freeze([
   'catalogCompatibility',
   'createLaunchPlan',
   'createLaunchScenario',
+  'createLaunchMatrix',
+  'createExperience',
+  'createSurface',
+  'createChallengeWagerPlan',
   'materializeChallenge',
   'dispatchMaterializedChallenge',
   'view',
@@ -118,6 +122,14 @@ function routeAction (platform, action, payload) {
       return platform.createLaunchPlan(payload.input || payload)
     case 'createLaunchScenario':
       return platform.createLaunchScenario(payload.input || payload)
+    case 'createLaunchMatrix':
+      return platform.createLaunchMatrix(payload.input || payload)
+    case 'createExperience':
+      return platform.createExperience(payload.input || payload)
+    case 'createSurface':
+      return platform.createSurface(payload.surfaceId, payload.input || {})
+    case 'createChallengeWagerPlan':
+      return platform.createChallengeWagerPlan(payload.challengeId || payload.challengeRef || payload.challenge, payload.input || {})
     case 'materializeChallenge':
       return platform.materializeChallenge(payload.challengeId || payload.challengeRef || payload, payload.options || {})
     case 'dispatchMaterializedChallenge':

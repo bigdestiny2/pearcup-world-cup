@@ -47,6 +47,32 @@ test('round robin templates generate every entrant pairing once', () => {
   ])
 })
 
+test('single-elimination templates scale across 4, 8, 16, 32, and 64 entrants', () => {
+  ;[4, 8, 16, 32, 64].forEach(size => {
+    const tournament = competition.createCompetition({
+      competitionId: `bracket-${size}`,
+      title: `Bracket ${size}`,
+      templateConfig: {
+        kind: 'single-elimination',
+        sportOrCategory: size === 64 ? 'basketball' : 'soccer',
+        entrantShape: 'team'
+      },
+      entrants: Array.from({ length: size }, (_, index) => ({
+        entrantId: `seed-${index + 1}`,
+        name: `Seed ${index + 1}`,
+        seed: index + 1
+      }))
+    })
+    const firstRound = tournament.fixtures.filter(fixture => fixture.roundNumber === 1)
+    const final = tournament.fixtures.filter(fixture => fixture.roundName === 'Final')
+
+    assert.equal(tournament.fixtures.length, size - 1)
+    assert.equal(firstRound.length, size / 2)
+    assert.equal(final.length, 1)
+    assert.equal(tournament.fixtures[tournament.fixtures.length - 1].sourceSlots.every(slot => slot.type === 'winner'), true)
+  })
+})
+
 test('fight-card and awards templates expose result fields for card predictions', () => {
   const fightTemplate = competition.createCompetitionTemplate({
     kind: 'fight-card',
@@ -183,3 +209,129 @@ test('creator result corrections create corrected snapshots for replayed settlem
   assert.equal(app.view().resultSnapshots[corrected.payload.snapshotId].correction.reason, 'scoreboard typo')
 })
 
+test('runtime replays creator entrant and fixture management before local settlement', () => {
+  const app = runtime.createPlatformRuntime()
+  app.dispatch({
+    type: 'competition:create',
+    actorId: 'organizer',
+    occurredAt: '2026-07-03T17:00:00.000Z',
+    payload: {
+      competitionId: 'local-managed',
+      title: 'Local Managed League',
+      organizerId: 'organizer',
+      status: 'draft',
+      templateConfig: {
+        kind: 'creator-custom',
+        sportOrCategory: 'local',
+        entrantShape: 'team',
+        resultPolicy: 'host-entered'
+      },
+      entrants: []
+    }
+  })
+  app.dispatch({
+    type: 'competition:addEntrant',
+    actorId: 'organizer',
+    occurredAt: '2026-07-03T17:01:00.000Z',
+    payload: {
+      competitionId: 'local-managed',
+      entrant: { entrantId: 'pub-red', name: 'Pub Red' }
+    }
+  })
+  app.dispatch({
+    type: 'competition:addEntrant',
+    actorId: 'organizer',
+    occurredAt: '2026-07-03T17:02:00.000Z',
+    payload: {
+      competitionId: 'local-managed',
+      entrant: { entrantId: 'pub-blue', name: 'Pub Blue' }
+    }
+  })
+  app.dispatch({
+    type: 'competition:scheduleFixture',
+    actorId: 'organizer',
+    occurredAt: '2026-07-03T17:03:00.000Z',
+    payload: {
+      competitionId: 'local-managed',
+      fixture: {
+        fixtureId: 'local-final',
+        roundName: 'Pub Final',
+        entrantIds: ['pub-red', 'pub-blue'],
+        startsAt: '2026-07-03T19:00:00.000Z'
+      }
+    }
+  })
+  app.dispatch({
+    type: 'competition:updateStatus',
+    actorId: 'organizer',
+    occurredAt: '2026-07-03T17:04:00.000Z',
+    payload: {
+      competitionId: 'local-managed',
+      status: 'open'
+    }
+  })
+  app.dispatch({
+    type: 'pool:create',
+    actorId: 'organizer',
+    occurredAt: '2026-07-03T17:05:00.000Z',
+    payload: {
+      poolId: 'local-managed-pool',
+      competitionId: 'local-managed',
+      variant: 'classic-bracket',
+      mode: 'demo'
+    }
+  })
+  const entry = app.dispatch({
+    type: 'prediction:submit',
+    actorId: 'player',
+    occurredAt: '2026-07-03T17:06:00.000Z',
+    payload: {
+      poolId: 'local-managed-pool',
+      userId: 'player',
+      entryType: 'bracket',
+      picks: { 'local-final': 'pub-red' }
+    }
+  })
+  app.dispatch({
+    type: 'prediction:lock',
+    actorId: 'system',
+    occurredAt: '2026-07-03T17:07:00.000Z',
+    payload: { entryId: entry.payload.entryId }
+  })
+  const result = app.dispatch({
+    type: 'result:record',
+    actorId: 'organizer',
+    occurredAt: '2026-07-03T20:00:00.000Z',
+    payload: {
+      competitionId: 'local-managed',
+      sourcePolicy: 'host-entered',
+      sourceActorId: 'organizer',
+      results: {
+        'local-final': { winnerEntrantId: 'pub-red', roundNumber: 1 }
+      }
+    }
+  })
+  const settlement = app.dispatch({
+    type: 'pool:resolve',
+    actorId: 'system',
+    occurredAt: '2026-07-03T20:01:00.000Z',
+    payload: {
+      poolId: 'local-managed-pool',
+      resultSnapshotId: result.payload.snapshotId
+    }
+  })
+  const view = app.view()
+
+  assert.equal(view.competitions['local-managed'].entrantIds.length, 2)
+  assert.equal(view.competitions['local-managed'].fixtureIds[0], 'local-final')
+  assert.equal(view.competitions['local-managed'].status, 'open')
+  assert.deepEqual(settlement.payload.winnerUserIds, ['player'])
+  assert.throws(() => app.dispatch({
+    type: 'competition:addEntrant',
+    actorId: 'intruder',
+    payload: {
+      competitionId: 'local-managed',
+      entrant: { entrantId: 'pub-green', name: 'Pub Green' }
+    }
+  }), /not a competition host/)
+})

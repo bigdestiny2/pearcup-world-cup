@@ -2,17 +2,22 @@
 
 const attestation = require('./attestation-engine')
 const card = require('./card-engine')
+const compliance = require('./compliance-engine')
 const competition = require('./competition-engine')
+const creator = require('./creator-engine')
 const dispute = require('./dispute-engine')
 const draft = require('./draft-engine')
+const engagement = require('./engagement-engine')
 const eventLog = require('./event-log')
 const feed = require('./feed-engine')
 const game = require('./game-engine')
 const identity = require('./identity-engine')
 const livePrediction = require('./live-prediction-engine')
 const miniGame = require('./mini-game-engine')
+const notification = require('./notification-engine')
 const pool = require('./pool-engine')
 const prediction = require('./prediction-engine')
+const qvac = require('./qvac-engine')
 const room = require('./room-engine')
 const settlement = require('./settlement-engine')
 const wallet = require('./wallet-engine')
@@ -142,9 +147,323 @@ function createPlatformRuntime ({ events = [] } = {}) {
         })
         return append('AttestationCreated', item, actorId, command.occurredAt)
       }
+      case 'qvac:summarizeRoom': {
+        const targetRoom = payload.room || current.rooms[payload.roomId]
+        if (!targetRoom) throw new Error(`room not found: ${payload.roomId}`)
+        const evidenceEvents = qvacEvidenceEvents({
+          log,
+          payload,
+          fallbackEvents: eventsForRoom(log.events(), targetRoom.roomId)
+        })
+        const item = qvac.createRoomSummary({
+          ...payload,
+          room: targetRoom,
+          competition: current.competitions[targetRoom.competitionId] || null,
+          evidenceEvents,
+          feedFrames: payload.feedFrames || feedFramesForCompetition(current, targetRoom.competitionId, targetRoom.fixtureId),
+          resultSnapshots: payload.resultSnapshots || resultSnapshotsForCompetition(current, targetRoom.competitionId),
+          marketResolutions: payload.marketResolutions || marketResolutionsForRoom(current, targetRoom.roomId),
+          gameResolutions: payload.gameResolutions || gameResolutionsForRoom(current, targetRoom.roomId),
+          challenges: payload.challenges || roomChallengesForRoom(current, targetRoom.roomId),
+          messages: payload.messages || roomMessagesForRoom(current, targetRoom.roomId),
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('QvacRoomSummaryCreated', item, actorId, command.occurredAt)
+      }
+      case 'qvac:createCommentary': {
+        const feedFrame = payload.feedFrame || current.feedFrames[payload.frameId]
+        if (!feedFrame && !payload.feedEvent) throw new Error(`feed frame not found: ${payload.frameId}`)
+        const evidenceEvents = qvacEvidenceEvents({
+          log,
+          payload,
+          fallbackEvents: feedFrame
+            ? log.events().filter(event => event.payload && event.payload.frameId === feedFrame.frameId)
+            : []
+        })
+        const item = qvac.createCommentaryFrame({
+          ...payload,
+          feedFrame,
+          evidenceEvents,
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('QvacCommentaryCreated', item, actorId, command.occurredAt)
+      }
+      case 'qvac:createCreatorDraft': {
+        const item = qvac.createCreatorAssistantDraft({
+          ...payload,
+          organizerId: payload.organizerId || actorId,
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('QvacCreatorDraftCreated', item, actorId, command.occurredAt)
+      }
+      case 'qvac:createTriviaBank': {
+        const item = qvac.createTriviaQuestionBank({
+          ...payload,
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('QvacTriviaBankCreated', item, actorId, command.occurredAt)
+      }
+      case 'creator:draftCompetition': {
+        const item = creator.createCreatorCompetitionDraft({
+          ...payload,
+          organizerId: payload.organizerId || actorId
+        })
+        return append('CreatorCompetitionDraftCreated', item, actorId, command.occurredAt)
+      }
+      case 'creator:addEntrant': {
+        const targetDraft = payload.draft || current.creatorCompetitionDrafts[payload.draftId]
+        if (!targetDraft) throw new Error(`creator draft not found: ${payload.draftId}`)
+        requireCreatorDraftOrganizer(targetDraft, payload.organizerId || actorId)
+        const next = creator.addEntrantToCreatorDraft(targetDraft, payload.entrant || payload)
+        const entrant = next.entrants[next.entrants.length - 1]
+        return append('CreatorCompetitionDraftEntrantAdded', {
+          draftId: targetDraft.draftId,
+          entrant,
+          draft: next
+        }, actorId, command.occurredAt)
+      }
+      case 'creator:seedBracket': {
+        const targetDraft = payload.draft || current.creatorCompetitionDrafts[payload.draftId]
+        if (!targetDraft) throw new Error(`creator draft not found: ${payload.draftId}`)
+        requireCreatorDraftOrganizer(targetDraft, payload.organizerId || actorId)
+        const next = creator.seedCreatorBracketDraft(targetDraft, {
+          ...payload,
+          startsAt: payload.startsAt || command.occurredAt
+        })
+        return append('CreatorCompetitionDraftSeeded', {
+          draftId: targetDraft.draftId,
+          draft: next,
+          bracket: next.bracket
+        }, actorId, command.occurredAt)
+      }
+      case 'creator:createPublishPlan': {
+        const targetDraft = payload.draft || current.creatorCompetitionDrafts[payload.draftId]
+        if (!targetDraft) throw new Error(`creator draft not found: ${payload.draftId}`)
+        requireCreatorDraftOrganizer(targetDraft, payload.organizerId || actorId)
+        const plan = creator.createCreatorPublishPlan(targetDraft, {
+          ...payload,
+          hostUserId: payload.hostUserId || actorId,
+          occurredAt: payload.occurredAt || command.occurredAt
+        })
+        return append('CreatorCompetitionPublishPlanCreated', plan, actorId, command.occurredAt)
+      }
+      case 'qvac:reviewMessage': {
+        const message = payload.message || current.roomMessages[payload.messageId]
+        if (!message && !payload.body) throw new Error(`message not found: ${payload.messageId}`)
+        if (message && message.roomId) requireRoomModerator(current, message.roomId, payload.moderatorUserId || actorId)
+        const evidenceEvents = qvacEvidenceEvents({
+          log,
+          payload,
+          fallbackEvents: message
+            ? log.events().filter(event => event.payload && event.payload.messageId === message.messageId)
+            : []
+        })
+        const item = qvac.createModerationReview({
+          ...payload,
+          message,
+          userId: payload.userId || message && message.userId || null,
+          roomId: payload.roomId || message && message.roomId || null,
+          evidenceEvents,
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('QvacModerationReviewCreated', item, actorId, command.occurredAt)
+      }
+      case 'engagement:createReplay': {
+        const session = payload.session || current.gameSessions[payload.gameId]
+        if (!session) throw new Error(`game not found: ${payload.gameId}`)
+        const item = engagement.createSpectatorReplay({
+          ...payload,
+          session,
+          resolution: payload.resolution || current.gameResolutions[session.gameId] || null,
+          commitments: payload.commitments || Object.values(current.gameCommitments).filter(commitment => commitment.gameId === session.gameId),
+          reveals: payload.reveals || Object.values(current.gameReveals).filter(reveal => reveal.gameId === session.gameId),
+          evidenceEvents: payload.evidenceEvents || log.events().filter(event => eventTouchesTarget(event, 'game', session.gameId)),
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('SpectatorReplayCreated', item, actorId, command.occurredAt)
+      }
+      case 'engagement:createLadder': {
+        const item = engagement.createDemoLadderSnapshot({
+          ...payload,
+          sessions: payload.sessions || Object.values(current.gameSessions),
+          gameResolutions: payload.gameResolutions || Object.values(current.gameResolutions),
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('DemoLadderSnapshotCreated', item, actorId, command.occurredAt)
+      }
+      case 'engagement:createRematch': {
+        const sourceGame = payload.sourceGame || payload.session || current.gameSessions[payload.gameId || payload.sourceGameId]
+        if (!sourceGame) throw new Error(`game not found: ${payload.gameId || payload.sourceGameId}`)
+        const item = engagement.createRematchProposal({
+          ...payload,
+          sourceGame,
+          sourceResult: payload.sourceResult || current.gameResolutions[sourceGame.gameId] || null,
+          requestedByUserId: payload.requestedByUserId || actorId,
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('RematchProposalCreated', item, actorId, command.occurredAt)
+      }
+      case 'engagement:createShareCard': {
+        const subject = payload.subject || shareSubjectFor(current, payload)
+        const item = engagement.createShareCard({
+          ...payload,
+          subject,
+          userId: payload.userId || actorId,
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('ShareCardCreated', item, actorId, command.occurredAt)
+      }
+      case 'engagement:createCreatorGallery': {
+        const item = engagement.createCreatorTemplateGallery({
+          ...payload,
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('CreatorTemplateGalleryCreated', item, actorId, command.occurredAt)
+      }
+      case 'engagement:createContentCalendar': {
+        const item = engagement.createContentCalendar({
+          ...payload,
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('ContentCalendarCreated', item, actorId, command.occurredAt)
+      }
+      case 'notification:create': {
+        const item = notification.createNotification({
+          ...payload,
+          userId: payload.userId || actorId,
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('NotificationCreated', item, actorId, command.occurredAt)
+      }
+      case 'notification:generate': {
+        const batch = notification.createNotificationBatch({
+          events: log.events(),
+          view: current,
+          existingNotifications: current.notifications,
+          eventRoot: log.root(),
+          audienceUserIds: payload.audienceUserIds || [],
+          horizonMinutes: payload.horizonMinutes,
+          now: payload.now || command.occurredAt,
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('NotificationBatchCreated', batch, actorId, command.occurredAt)
+      }
+      case 'notification:markRead':
+      case 'notification:dismiss':
+      case 'notification:archive': {
+        const item = current.notifications[payload.notificationId]
+        if (!item) throw new Error(`notification not found: ${payload.notificationId}`)
+        if (item.userId !== (payload.userId || actorId)) throw new Error(`notification does not belong to user ${payload.userId || actorId}`)
+        const update = notification.updateNotificationStatus(item, {
+          status: notificationStatusForCommand(command.type),
+          updatedAt: payload.updatedAt || command.occurredAt
+        })
+        return append('NotificationStatusUpdated', update, actorId, command.occurredAt)
+      }
+      case 'compliance:upsertProfile': {
+        const profile = compliance.createComplianceProfile({
+          ...payload,
+          userId: payload.userId || actorId,
+          updatedAt: payload.updatedAt || command.occurredAt
+        })
+        return append('ComplianceProfileUpserted', profile, actorId, command.occurredAt)
+      }
+      case 'compliance:setLimit': {
+        const limit = compliance.createResponsiblePlayLimit({
+          ...payload,
+          userId: payload.userId || actorId,
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('ResponsiblePlayLimitSet', limit, actorId, command.occurredAt)
+      }
+      case 'compliance:recordExposure': {
+        const exposure = compliance.createPlayExposure({
+          ...payload,
+          userId: payload.userId || actorId,
+          occurredAt: payload.occurredAt || command.occurredAt
+        })
+        return append('ResponsiblePlayExposureRecorded', exposure, actorId, command.occurredAt)
+      }
+      case 'compliance:declarePayoutRecipient': {
+        const declaration = compliance.createPayoutRecipientDeclaration({
+          ...payload,
+          userId: payload.userId || actorId,
+          declaredAt: payload.declaredAt || command.occurredAt
+        })
+        return append('PayoutRecipientDeclared', declaration, actorId, command.occurredAt)
+      }
+      case 'compliance:createReadinessPanel': {
+        const userId = payload.userId || actorId
+        const proposedExposure = payload.proposedExposure
+          ? compliance.createPlayExposure({
+              ...payload.proposedExposure,
+              userId: payload.proposedExposure.userId || userId,
+              occurredAt: payload.proposedExposure.occurredAt || command.occurredAt
+            })
+          : null
+        const panel = compliance.createReadinessPanel({
+          ...payload,
+          userId,
+          profile: payload.profile || current.complianceProfiles[userId] || null,
+          payoutDeclarations: payload.payoutDeclarations || itemsByIds(
+            current.payoutRecipientDeclarations,
+            current.payoutRecipientDeclarationsByUser[userId]
+          ),
+          limits: payload.limits || itemsByIds(
+            current.responsiblePlayLimits,
+            current.responsiblePlayLimitsByUser[userId]
+          ),
+          exposures: payload.exposures || itemsByIds(
+            current.responsiblePlayExposures,
+            current.responsiblePlayExposuresByUser[userId]
+          ),
+          proposedExposure,
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('ReadinessPanelCreated', panel, actorId, command.occurredAt)
+      }
       case 'competition:create': {
         const item = competition.createCompetition(payload)
         return append('CompetitionCreated', item, actorId, command.occurredAt)
+      }
+      case 'competition:addEntrant': {
+        const targetCompetition = payload.competition || current.competitions[payload.competitionId]
+        if (!targetCompetition) throw new Error(`competition not found: ${payload.competitionId}`)
+        requireCompetitionHost(current, targetCompetition, payload.organizerId || actorId)
+        const next = competition.addEntrantToCompetition(targetCompetition, payload.entrant || payload)
+        const entrant = next.entrants[next.entrants.length - 1]
+        return append('CompetitionEntrantAdded', {
+          competitionId: targetCompetition.competitionId,
+          entrant,
+          competition: next
+        }, actorId, command.occurredAt)
+      }
+      case 'competition:scheduleFixture': {
+        const targetCompetition = payload.competition || current.competitions[payload.competitionId]
+        if (!targetCompetition) throw new Error(`competition not found: ${payload.competitionId}`)
+        requireCompetitionHost(current, targetCompetition, payload.organizerId || actorId)
+        const next = competition.scheduleFixtureForCompetition(targetCompetition, payload.fixture || payload)
+        const fixture = next.fixtures[next.fixtures.length - 1]
+        return append('FixtureScheduled', {
+          competitionId: targetCompetition.competitionId,
+          fixture,
+          competition: next
+        }, actorId, command.occurredAt)
+      }
+      case 'competition:updateStatus': {
+        const targetCompetition = payload.competition || current.competitions[payload.competitionId]
+        if (!targetCompetition) throw new Error(`competition not found: ${payload.competitionId}`)
+        requireCompetitionHost(current, targetCompetition, payload.organizerId || actorId)
+        const next = competition.updateCompetitionStatus(targetCompetition, {
+          status: payload.status,
+          updatedAt: payload.updatedAt || command.occurredAt
+        })
+        return append('CompetitionStatusUpdated', {
+          competitionId: targetCompetition.competitionId,
+          status: next.status,
+          statusUpdatedAt: next.statusUpdatedAt,
+          competition: next
+        }, actorId, command.occurredAt)
       }
       case 'pool:create': {
         const item = pool.createPool(payload)
@@ -235,7 +554,9 @@ function createPlatformRuntime ({ events = [] } = {}) {
           challengeType: payload.challengeType,
           gameType: payload.gameType,
           marketType: payload.marketType,
+          duel: payload.duel,
           sideQuest: payload.sideQuest,
+          stake: payload.stake,
           createdAt: payload.createdAt || command.occurredAt
         })
         return append('RoomChallengeCreated', item, actorId, command.occurredAt)
@@ -577,6 +898,40 @@ function derivePlatformView (events = []) {
     auditBundles: {},
     attestations: {},
     attestationsByTarget: {},
+    qvacRecords: {},
+    qvacRecordsByTarget: {},
+    qvacRoomSummaries: {},
+    qvacRoomSummariesByRoom: {},
+    qvacCommentaryFrames: {},
+    qvacCommentaryByRoom: {},
+    qvacCreatorDrafts: {},
+    creatorCompetitionDrafts: {},
+    creatorPublishPlans: {},
+    qvacTriviaBanks: {},
+    qvacModerationReviews: {},
+    qvacModerationReviewsByMessage: {},
+    spectatorReplays: {},
+    spectatorReplaysByGame: {},
+    demoLadders: {},
+    rematchProposals: {},
+    rematchProposalsByGame: {},
+    shareCards: {},
+    shareCardsByTarget: {},
+    creatorTemplateGalleries: {},
+    contentCalendars: {},
+    notifications: {},
+    notificationBatches: {},
+    notificationsByUser: {},
+    notificationInboxSummaries: {},
+    complianceProfiles: {},
+    responsiblePlayLimits: {},
+    responsiblePlayLimitsByUser: {},
+    responsiblePlayExposures: {},
+    responsiblePlayExposuresByUser: {},
+    payoutRecipientDeclarations: {},
+    payoutRecipientDeclarationsByUser: {},
+    readinessPanels: {},
+    readinessPanelsByTarget: {},
     pools: {},
     rooms: {},
     roomParticipants: {},
@@ -653,8 +1008,104 @@ function derivePlatformView (events = []) {
           .filter(attestationId => attestationId !== payload.attestationId)
         view.attestationsByTarget[targetKey(payload.targetType, payload.targetId)].push(payload.attestationId)
         break
+      case 'QvacRoomSummaryCreated':
+        indexQvacRecord(view, payload)
+        view.qvacRoomSummaries[payload.qvacRecordId] = payload
+        appendIndexedId(view.qvacRoomSummariesByRoom, payload.targetId, payload.qvacRecordId)
+        break
+      case 'QvacCommentaryCreated':
+        indexQvacRecord(view, payload)
+        view.qvacCommentaryFrames[payload.qvacRecordId] = payload
+        appendIndexedId(view.qvacCommentaryByRoom, payload.body && payload.body.roomId || payload.targetId, payload.qvacRecordId)
+        break
+      case 'QvacCreatorDraftCreated':
+        indexQvacRecord(view, payload)
+        view.qvacCreatorDrafts[payload.qvacRecordId] = payload
+        break
+      case 'CreatorCompetitionDraftCreated':
+        view.creatorCompetitionDrafts[payload.draftId] = payload
+        break
+      case 'CreatorCompetitionDraftEntrantAdded':
+      case 'CreatorCompetitionDraftSeeded':
+        view.creatorCompetitionDrafts[payload.draftId] = payload.draft
+        break
+      case 'CreatorCompetitionPublishPlanCreated':
+        view.creatorPublishPlans[payload.creatorPublishPlanId] = payload
+        break
+      case 'QvacTriviaBankCreated':
+        indexQvacRecord(view, payload)
+        view.qvacTriviaBanks[payload.qvacRecordId] = payload
+        break
+      case 'QvacModerationReviewCreated':
+        indexQvacRecord(view, payload)
+        view.qvacModerationReviews[payload.qvacRecordId] = payload
+        appendIndexedId(view.qvacModerationReviewsByMessage, payload.targetId, payload.qvacRecordId)
+        break
+      case 'SpectatorReplayCreated':
+        view.spectatorReplays[payload.replayId] = payload
+        appendIndexedId(view.spectatorReplaysByGame, payload.gameId, payload.replayId)
+        break
+      case 'DemoLadderSnapshotCreated':
+        view.demoLadders[payload.ladderId] = payload
+        break
+      case 'RematchProposalCreated':
+        view.rematchProposals[payload.rematchId] = payload
+        appendIndexedId(view.rematchProposalsByGame, payload.sourceGameId, payload.rematchId)
+        break
+      case 'ShareCardCreated':
+        view.shareCards[payload.shareCardId] = payload
+        appendIndexedId(view.shareCardsByTarget, targetKey(payload.targetType, payload.targetId), payload.shareCardId)
+        break
+      case 'CreatorTemplateGalleryCreated':
+        view.creatorTemplateGalleries[payload.galleryId] = payload
+        break
+      case 'ContentCalendarCreated':
+        view.contentCalendars[payload.calendarId] = payload
+        break
+      case 'NotificationCreated':
+        view.notifications[payload.notificationId] = payload
+        break
+      case 'NotificationBatchCreated':
+        view.notificationBatches[payload.notificationBatchId] = payload
+        ;(payload.notifications || []).forEach(item => {
+          view.notifications[item.notificationId] = item
+        })
+        break
+      case 'NotificationStatusUpdated':
+        if (view.notifications[payload.notificationId]) {
+          view.notifications[payload.notificationId] = notification.applyNotificationStatusUpdate(view.notifications[payload.notificationId], payload)
+        }
+        break
+      case 'ComplianceProfileUpserted':
+        view.complianceProfiles[payload.userId] = payload
+        break
+      case 'ResponsiblePlayLimitSet':
+        view.responsiblePlayLimits[payload.limitId] = payload
+        appendIndexedId(view.responsiblePlayLimitsByUser, payload.userId, payload.limitId)
+        break
+      case 'ResponsiblePlayExposureRecorded':
+        view.responsiblePlayExposures[payload.exposureId] = payload
+        appendIndexedId(view.responsiblePlayExposuresByUser, payload.userId, payload.exposureId)
+        break
+      case 'PayoutRecipientDeclared':
+        view.payoutRecipientDeclarations[payload.declarationId] = payload
+        appendIndexedId(view.payoutRecipientDeclarationsByUser, payload.userId, payload.declarationId)
+        break
+      case 'ReadinessPanelCreated':
+        view.readinessPanels[payload.readinessPanelId] = payload
+        appendIndexedId(
+          view.readinessPanelsByTarget,
+          targetKey(payload.targetType || 'user', payload.targetId || payload.userId),
+          payload.readinessPanelId
+        )
+        break
       case 'CompetitionCreated':
         view.competitions[payload.competitionId] = payload
+        break
+      case 'CompetitionEntrantAdded':
+      case 'FixtureScheduled':
+      case 'CompetitionStatusUpdated':
+        view.competitions[payload.competitionId] = payload.competition
         break
       case 'PoolCreated':
         view.pools[payload.poolId] = payload
@@ -806,6 +1257,10 @@ function derivePlatformView (events = []) {
   Object.values(view.feedAdapters).forEach(adapter => {
     view.feedStates[adapter.adapterId] = feed.replayFeedFrames(feedFramesForAdapter(view, adapter.adapterId), { adapter })
   })
+  view.notificationsByUser = notification.indexNotificationsByUser(view.notifications)
+  Object.keys(view.notificationsByUser).forEach(userId => {
+    view.notificationInboxSummaries[userId] = notification.summarizeNotificationInbox(view.notifications, userId)
+  })
   view.walletBalances = wallet.deriveLedgerBalances(Object.values(view.walletLedgerEntries), view.walletAccounts)
   return view
 }
@@ -833,6 +1288,24 @@ function requireRoomModerator (view, roomId, userId) {
     throw new Error(`user ${userId} is not a room moderator`)
   }
   return participant
+}
+
+function requireCompetitionHost (view, competition, userId) {
+  if (!competition || typeof competition !== 'object') throw new TypeError('competition is required')
+  if (!userId) throw new Error('userId is required')
+  if (competition.organizerId && competition.organizerId === userId) return true
+  const hostedRoom = Object.values(view.rooms || {})
+    .find(room => room.competitionId === competition.competitionId && room.hostUserId === userId)
+  if (hostedRoom) return true
+  if (!competition.organizerId && userId === 'host') return true
+  throw new Error(`user ${userId} is not a competition host for ${competition.competitionId}`)
+}
+
+function requireCreatorDraftOrganizer (draft, userId) {
+  if (!draft || typeof draft !== 'object') throw new TypeError('creator draft is required')
+  if (!userId) throw new Error('userId is required')
+  if (draft.organizerId === userId) return true
+  throw new Error(`user ${userId} is not the organizer for creator draft ${draft.draftId}`)
 }
 
 function settlementResultForPlan (view, plan = {}) {
@@ -893,6 +1366,12 @@ function ledgerTypeForCommand (commandType) {
   return commandType.replace('wallet:', '')
 }
 
+function notificationStatusForCommand (commandType) {
+  if (commandType === 'notification:markRead') return 'read'
+  if (commandType === 'notification:dismiss') return 'dismissed'
+  return 'archived'
+}
+
 function walletAccountForLedgerCommand (view, payload = {}) {
   const account = payload.account || view.walletAccounts[payload.accountId]
   if (!account) throw new Error(`wallet account not found: ${payload.accountId}`)
@@ -935,24 +1414,120 @@ function feedFramesForAdapter (view, adapterId, frameIds = null) {
     .filter(frame => frame.adapterId === adapterId && (!selectedFrameIds || selectedFrameIds.has(frame.frameId)))
 }
 
+function feedFramesForCompetition (view, competitionId, fixtureId = null) {
+  return Object.values(view.feedFrames || {})
+    .filter(frame => frame.competitionId === competitionId && (!fixtureId || frame.fixtureId === fixtureId))
+}
+
+function resultSnapshotsForCompetition (view, competitionId) {
+  return Object.values(view.resultSnapshots || {})
+    .filter(snapshot => snapshot.competitionId === competitionId)
+}
+
+function marketResolutionsForRoom (view, roomId) {
+  return Object.values(view.marketResolutions || {})
+    .filter(resolution => resolution.market && resolution.market.roomId === roomId)
+    .concat(Object.values(view.streakResolutions || {}).filter(resolution => resolution.roomId === roomId))
+}
+
+function gameResolutionsForRoom (view, roomId) {
+  return Object.values(view.gameResolutions || {})
+    .filter(result => {
+      const session = view.gameSessions && view.gameSessions[result.gameId]
+      return session && session.roomId === roomId
+    })
+}
+
+function roomChallengesForRoom (view, roomId) {
+  return Object.values(view.roomChallenges || {}).filter(challenge => challenge.roomId === roomId)
+}
+
+function roomMessagesForRoom (view, roomId) {
+  return Object.values(view.roomMessages || {}).filter(message => message.roomId === roomId)
+}
+
+function eventsForRoom (events = [], roomId) {
+  return events.filter(event => {
+    const payload = event.payload || {}
+    return payload.roomId === roomId || payload.body && payload.body.roomId === roomId || payload.room && payload.room.roomId === roomId
+  })
+}
+
+function qvacEvidenceEvents ({ log, payload = {}, fallbackEvents = [] }) {
+  const evidenceEventIds = payload.evidenceEventIds || payload.sourceEventIds || []
+  if (payload.evidenceEvents) return payload.evidenceEvents
+  if (evidenceEventIds.length) return log.events().filter(event => evidenceEventIds.includes(event.eventId))
+  return fallbackEvents
+}
+
+function shareSubjectFor (view, payload = {}) {
+  const targetType = payload.targetType || payload.subjectType
+  const targetId = payload.targetId || payload.subjectId
+  if (targetType === 'pool') return view.poolSettlements[targetId] || view.pools[targetId]
+  if (targetType === 'game') return view.gameResolutions[targetId] || view.gameSessions[targetId]
+  if (targetType === 'market') return view.marketResolutions[targetId] || view.streakResolutions[targetId] || view.markets[targetId]
+  if (targetType === 'receipt') return view.settlementReceipts[targetId]
+  if (targetType === 'replay') return view.spectatorReplays[targetId]
+  if (targetType === 'ladder') return view.demoLadders[targetId]
+  if (targetType === 'room') return view.rooms[targetId]
+  return payload.subject || {}
+}
+
 function targetKey (targetType, targetId) {
   return `${targetType}:${targetId}`
 }
 
+function indexQvacRecord (view, payload) {
+  view.qvacRecords[payload.qvacRecordId] = payload
+  appendIndexedId(view.qvacRecordsByTarget, targetKey(payload.targetType, payload.targetId), payload.qvacRecordId)
+}
+
+function appendIndexedId (index, key, id) {
+  if (!key || !id) return
+  if (!index[key]) index[key] = []
+  index[key] = index[key].filter(existing => existing !== id)
+  index[key].push(id)
+}
+
+function itemsByIds (collection = {}, ids = []) {
+  return (ids || []).map(id => collection[id]).filter(Boolean)
+}
+
 function disputeTargetExists (view, targetType, targetId) {
   if (!targetType || !targetId) return false
+  if (targetType === 'spectator-replay') return Boolean(view.spectatorReplays[targetId])
+  if (targetType === 'demo-ladder') return Boolean(view.demoLadders[targetId])
+  if (targetType === 'rematch') return Boolean(view.rematchProposals[targetId])
+  if (targetType === 'share-card') return Boolean(view.shareCards[targetId])
+  if (targetType === 'creator-template-gallery') return Boolean(view.creatorTemplateGalleries[targetId])
+  if (targetType === 'content-calendar') return Boolean(view.contentCalendars[targetId])
+  if (targetType === 'qvac-record') return Boolean(view.qvacRecords[targetId])
+  if (targetType === 'qvac-room-summary') return Boolean(view.qvacRoomSummaries[targetId])
+  if (targetType === 'qvac-commentary') return Boolean(view.qvacCommentaryFrames[targetId])
+  if (targetType === 'qvac-creator-draft') return Boolean(view.qvacCreatorDrafts[targetId])
+  if (targetType === 'qvac-trivia-bank') return Boolean(view.qvacTriviaBanks[targetId])
+  if (targetType === 'qvac-moderation-review') return Boolean(view.qvacModerationReviews[targetId])
+  if (targetType === 'compliance-profile') {
+    return Boolean(view.complianceProfiles[targetId] || Object.values(view.complianceProfiles).some(item => item.complianceProfileId === targetId))
+  }
+  if (targetType === 'responsible-limit') return Boolean(view.responsiblePlayLimits[targetId])
+  if (targetType === 'play-exposure') return Boolean(view.responsiblePlayExposures[targetId])
+  if (targetType === 'payout-recipient') return Boolean(view.payoutRecipientDeclarations[targetId])
+  if (targetType === 'readiness-panel') return Boolean(view.readinessPanels[targetId])
   if (targetType === 'receipt') return Boolean(view.settlementReceipts[targetId])
   if (targetType === 'wallet-account') return Boolean(view.walletAccounts[targetId])
   if (targetType === 'wallet-entry') return Boolean(view.walletLedgerEntries[targetId])
   if (targetType === 'payout-route') return Boolean(view.payoutRoutes[targetId])
   if (targetType === 'feed-adapter') return Boolean(view.feedAdapters[targetId])
   if (targetType === 'feed-frame') return Boolean(view.feedFrames[targetId])
+  if (targetType === 'notification') return Boolean(view.notifications[targetId])
   if (targetType === 'result-snapshot') return Boolean(view.resultSnapshots[targetId])
   if (targetType === 'pool') return Boolean(view.pools[targetId] || view.poolSettlements[targetId])
   if (targetType === 'game') return Boolean(view.gameSessions[targetId] || view.gameResolutions[targetId])
   if (targetType === 'card') return Boolean(view.cards[targetId] || view.cardResolutions[targetId])
   if (targetType === 'draft') return Boolean(view.draftSlates[targetId] || view.draftResolutions[targetId])
   if (targetType === 'market') return Boolean(view.markets[targetId] || view.marketResolutions[targetId] || view.streakResolutions[targetId])
+  if (targetType === 'room') return Boolean(view.rooms[targetId])
   if (targetType === 'room-message') return Boolean(view.roomMessages[targetId])
   return false
 }
@@ -963,18 +1538,37 @@ function eventsForAuditTarget (events = [], targetType, targetId) {
 
 function eventTouchesTarget (event = {}, targetType, targetId) {
   const payload = event.payload || {}
+  if (targetType === 'spectator-replay') return payload.replayId === targetId
+  if (targetType === 'demo-ladder') return payload.ladderId === targetId
+  if (targetType === 'rematch') return payload.rematchId === targetId
+  if (targetType === 'share-card') return payload.shareCardId === targetId
+  if (targetType === 'creator-template-gallery') return payload.galleryId === targetId
+  if (targetType === 'content-calendar') return payload.calendarId === targetId
+  if (targetType === 'qvac-record') return payload.qvacRecordId === targetId
+  if (targetType === 'qvac-room-summary') return payload.qvacRecordId === targetId && payload.lane === 'room-summary'
+  if (targetType === 'qvac-commentary') return payload.qvacRecordId === targetId && payload.lane === 'commentary'
+  if (targetType === 'qvac-creator-draft') return payload.qvacRecordId === targetId && payload.lane === 'creator-assistant'
+  if (targetType === 'qvac-trivia-bank') return payload.qvacRecordId === targetId && payload.lane === 'trivia-bank'
+  if (targetType === 'qvac-moderation-review') return payload.qvacRecordId === targetId && payload.lane === 'moderation-helper'
+  if (targetType === 'compliance-profile') return payload.userId === targetId || payload.complianceProfileId === targetId
+  if (targetType === 'responsible-limit') return payload.limitId === targetId
+  if (targetType === 'play-exposure') return payload.exposureId === targetId
+  if (targetType === 'payout-recipient') return payload.declarationId === targetId
+  if (targetType === 'readiness-panel') return payload.readinessPanelId === targetId
   if (targetType === 'receipt') return payload.receiptId === targetId || payload.body && payload.body.receiptId === targetId
   if (targetType === 'wallet-account') return payload.accountId === targetId
   if (targetType === 'wallet-entry') return payload.entryId === targetId || Array.isArray(payload.entries) && payload.entries.some(entry => entry.entryId === targetId)
   if (targetType === 'payout-route') return payload.routeId === targetId
   if (targetType === 'feed-adapter') return payload.adapterId === targetId
   if (targetType === 'feed-frame') return payload.frameId === targetId || Array.isArray(payload.sourceFeedEventIds) && payload.sourceFeedEventIds.includes(targetId)
+  if (targetType === 'notification') return payload.notificationId === targetId || Array.isArray(payload.notifications) && payload.notifications.some(item => item.notificationId === targetId)
   if (targetType === 'result-snapshot') return payload.snapshotId === targetId || payload.resultSnapshotId === targetId
   if (targetType === 'pool') return payload.poolId === targetId || payload.body && payload.body.poolId === targetId
   if (targetType === 'game') return payload.gameId === targetId
   if (targetType === 'card') return payload.cardId === targetId
   if (targetType === 'draft') return payload.slateId === targetId
   if (targetType === 'market') return payload.marketId === targetId || payload.market && payload.market.marketId === targetId || payload.streakId === targetId
+  if (targetType === 'room') return payload.roomId === targetId || payload.body && payload.body.roomId === targetId
   if (targetType === 'room-message') return payload.messageId === targetId
   return false
 }
@@ -984,14 +1578,28 @@ module.exports = {
   derivePlatformView,
   gameInputKey,
   feedFramesForAdapter,
+  feedFramesForCompetition,
+  resultSnapshotsForCompetition,
+  marketResolutionsForRoom,
+  gameResolutionsForRoom,
+  roomChallengesForRoom,
+  roomMessagesForRoom,
+  eventsForRoom,
+  shareSubjectFor,
+  notificationStatusForCommand,
   requireRoomParticipant,
   requireRoomModerator,
+  requireCompetitionHost,
+  requireCreatorDraftOrganizer,
   settlementResultForPlan,
   assertRoomAccess,
   inviteByCode,
   isUserBanned,
   isUserMuted,
   targetKey,
+  indexQvacRecord,
+  appendIndexedId,
+  itemsByIds,
   disputeTargetExists,
   eventsForAuditTarget,
   eventTouchesTarget

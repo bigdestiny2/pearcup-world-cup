@@ -22,6 +22,7 @@ function verifyPlatform (options = {}) {
     manifest,
     checked: {
       sourceFiles: manifest.requiredSourceFiles.length,
+      docs: (manifest.requiredDocs || []).length,
       exports: manifest.requiredExports.length,
       scenarios: manifest.scenarioIds.length,
       tests: manifest.testFiles.length
@@ -34,6 +35,7 @@ function checkRequiredFiles ({ rootDir, manifest, errors }) {
     manifest.entrypoint,
     manifest.facade && manifest.facade.module,
     ...manifest.requiredSourceFiles,
+    ...(manifest.requiredDocs || []),
     ...manifest.testFiles
   ].filter(Boolean)
   files.forEach(relativePath => {
@@ -128,10 +130,10 @@ if (require.main === module) {
     report.errors.forEach(error => console.error(`- ${error}`))
     process.exit(1)
   }
-  console.log(`Ultimate sports platform verification passed: ${report.checked.sourceFiles} source files, ${report.checked.scenarios} scenarios, ${report.checked.tests} tests.`)
+  const docSummary = report.checked.docs ? `, ${report.checked.docs} docs` : ''
+  console.log(`Ultimate sports platform verification passed: ${report.checked.sourceFiles} source files${docSummary}, ${report.checked.scenarios} scenarios, ${report.checked.tests} tests.`)
 }
 
 module.exports = {
   verifyPlatform
 }
-

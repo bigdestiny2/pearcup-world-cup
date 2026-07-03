@@ -118,6 +118,62 @@ test('fantasy-lite draft scores small rosters from athlete stats', () => {
   }), /cannot repeat/)
 })
 
+test('watch-party bingo scores completed rows, columns, and diagonals', () => {
+  const bingo = card.createPredictionCard({
+    competitionId: 'watch-night',
+    cardType: 'watch-party-bingo',
+    title: 'Watch Bingo',
+    fields: bingoFields([
+      'Goal',
+      'Corner',
+      'Card',
+      'Save',
+      'VAR',
+      'Comeback',
+      'Penalty',
+      'Shot',
+      'Late winner'
+    ]),
+    scoringConfig: { lineBonus: 2 }
+  })
+  const rowAndColumn = card.createCardSubmission({
+    card: bingo,
+    userId: 'row-column',
+    answers: {
+      goal: 'yes',
+      corner: 'yes',
+      card: 'yes',
+      save: 'yes',
+      var: 'no',
+      comeback: 'no',
+      penalty: 'yes',
+      shot: 'no',
+      'late-winner': 'no'
+    }
+  })
+  const perfect = card.createCardSubmission({
+    card: bingo,
+    userId: 'perfect',
+    answers: Object.fromEntries(bingo.fields.map(field => [field.fieldId, 'yes']))
+  })
+  const results = Object.fromEntries(bingo.fields.map(field => [field.fieldId, 'yes']))
+  const row = card.scorePredictionCard({ card: bingo, submission: rowAndColumn, results })
+  const resolution = card.resolvePredictionCard({
+    card: bingo,
+    submissions: [rowAndColumn, perfect],
+    results
+  })
+
+  assert.equal(bingo.scoringConfig.lineBonus, 2)
+  assert.equal(row.correctCount, 5)
+  assert.equal(row.bingo.completedLines.length, 2)
+  assert.deepEqual(row.bingo.completedLines.map(line => line.lineId), ['row:0', 'column:0'])
+  assert.equal(row.score, 9)
+  assert.equal(row.possibleScore, 25)
+  assert.deepEqual(resolution.winnerUserIds, ['perfect'])
+  assert.equal(resolution.rows[0].bingo.completedLines.length, 8)
+})
+
 test('runtime replays prediction card and draft entry lifecycles', () => {
   const app = platform.createUltimateSportsPlatform()
   app.dispatch({
@@ -227,6 +283,19 @@ test('runtime replays prediction card and draft entry lifecycles', () => {
   assert.equal(Object.keys(view.draftEntries).length, 2)
   assert.equal(view.draftResolutions['runtime-draft'].tied, true)
 })
+
+function bingoFields (labels) {
+  return labels.map((label, index) => ({
+    fieldId: label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
+    fieldType: 'bingo-cell',
+    label,
+    options: ['yes', 'no'],
+    metadata: {
+      row: Math.floor(index / 3),
+      col: index % 3
+    }
+  }))
+}
 
 test('generic P2P game commitments verify reveals and detect state hash disagreement', () => {
   const session = game.startPeerGameSession(game.createPeerGameSession({

@@ -164,6 +164,43 @@ function scoreHeadToHeadDuel ({ leftEntry, rightEntry, resultSnapshot, scoreEntr
   }
 }
 
+function scoreSideQuestEntry ({ entry, resultSnapshot, config = {} } = {}) {
+  const selectedEntrantIds = normalizeSideQuestSelections(entry && entry.picks)
+  const results = resultSnapshot && resultSnapshot.results && typeof resultSnapshot.results === 'object'
+    ? resultSnapshot.results
+    : {}
+  const targetResults = Object.keys(results)
+    .sort()
+    .map(fixtureId => [fixtureId, results[fixtureId] || {}])
+    .filter(([fixtureId, result]) => sideQuestFixtureMatches({ fixtureId, result, config }))
+
+  const detail = targetResults.flatMap(([fixtureId, result]) => {
+    return selectedEntrantIds.map(entrantId => {
+      const points = scoreForEntrantInResult(result, entrantId)
+      return {
+        fixtureId,
+        roundNumber: result.roundNumber || null,
+        roundName: result.roundName || null,
+        entrantId,
+        points
+      }
+    })
+  })
+
+  return {
+    entryId: entry && entry.entryId,
+    userId: entry && entry.userId,
+    variant: 'side-quest',
+    condition: config.condition || 'entrant-score-race',
+    selectedEntrantIds,
+    score: detail.reduce((sum, row) => sum + row.points, 0),
+    possibleScore: null,
+    correctCount: detail.filter(row => row.points > 0).length,
+    scoredCount: detail.length,
+    detail
+  }
+}
+
 function rankScoreboard (rows) {
   const ranked = cloneJson(rows || [])
     .sort((left, right) => {
@@ -182,11 +219,107 @@ function rankScoreboard (rows) {
   return ranked
 }
 
+function normalizeSideQuestSelections (picks = {}) {
+  const direct = directSideQuestSelection(picks)
+  const values = direct == null
+    ? valueSelections(picks)
+    : Array.isArray(direct) ? direct : valueSelections(direct)
+  return [...new Set(values.map(selectionId).filter(Boolean))]
+}
+
+function directSideQuestSelection (picks) {
+  if (Array.isArray(picks)) return picks
+  if (!picks || typeof picks !== 'object') return null
+  return picks.entrantIds ||
+    picks.selectedEntrantIds ||
+    picks.semiFinalistIds ||
+    picks.semifinalistIds ||
+    picks.athleteIds ||
+    null
+}
+
+function valueSelections (value) {
+  if (Array.isArray(value)) return value.flatMap(item => valueSelections(item))
+  if (!value || typeof value !== 'object') return [value]
+  return Object.values(value).flatMap(item => valueSelections(item))
+}
+
+function selectionId (value) {
+  if (typeof value === 'string') return value
+  if (!value || typeof value !== 'object') return null
+  return value.entrantId || value.teamId || value.playerId || value.athleteId || value.id || null
+}
+
+function sideQuestFixtureMatches ({ fixtureId, result, config = {} }) {
+  const targetFixtureIds = new Set(config.targetFixtureIds || [])
+  if (targetFixtureIds.size) return targetFixtureIds.has(fixtureId)
+
+  const targetRoundNumbers = new Set((config.targetRoundNumbers || []).map(Number))
+  if (targetRoundNumbers.size && targetRoundNumbers.has(Number(result.roundNumber))) return true
+
+  const targetRoundNames = new Set((config.targetRoundNames || []).map(normalizeRoundName))
+  const roundName = normalizeRoundName(result.roundName || result.round || result.stage || '')
+  if (targetRoundNames.size && targetRoundNames.has(roundName)) return true
+
+  const condition = normalizeRoundName(config.condition || '')
+  if (condition.includes('semi')) {
+    return roundName.includes('semi') ||
+      normalizeRoundName(fixtureId).includes('semi') ||
+      normalizeRoundName(result.roundType || '').includes('semi')
+  }
+  return !targetFixtureIds.size && !targetRoundNumbers.size && !targetRoundNames.size
+}
+
+function scoreForEntrantInResult (result = {}, entrantId) {
+  const mapped = scoreFromResultMaps(result, entrantId)
+  if (mapped != null) return mapped
+
+  const sides = [
+    { entrantId: result.homeEntrantId || result.homeId || result.homeTeamId, score: result.homeScore ?? result.homeGoals },
+    { entrantId: result.awayEntrantId || result.awayId || result.awayTeamId, score: result.awayScore ?? result.awayGoals },
+    { entrantId: result.fighterA || result.redEntrantId, score: result.fighterAScore ?? result.redScore },
+    { entrantId: result.fighterB || result.blueEntrantId, score: result.fighterBScore ?? result.blueScore },
+    { entrantId: result.winnerEntrantId || result.winnerId || result.winner, score: result.winnerScore }
+  ]
+  const side = sides.find(item => item.entrantId === entrantId)
+  return normalizeScoreValue(side && side.score)
+}
+
+function scoreFromResultMaps (result, entrantId) {
+  const maps = [
+    result.entrantScores,
+    result.scores,
+    result.scoreByEntrantId,
+    result.statsByEntrantId
+  ]
+  for (const map of maps) {
+    if (!map || !Object.prototype.hasOwnProperty.call(map, entrantId)) continue
+    return normalizeScoreValue(map[entrantId])
+  }
+  return null
+}
+
+function normalizeScoreValue (value) {
+  if (value && typeof value === 'object') {
+    return normalizeScoreValue(value.score ?? value.points ?? value.goals ?? value.total)
+  }
+  const number = Number(value || 0)
+  return Number.isFinite(number) ? number : 0
+}
+
+function normalizeRoundName (value) {
+  return String(value == null ? '' : value).trim().toLowerCase().replace(/[_\s]+/g, '-')
+}
+
 module.exports = {
   scoreClassicBracket,
   scoreConfidenceCard,
   scoreSurvivorEntry,
   scoreUpsetBountyBracket,
   scoreHeadToHeadDuel,
+  scoreSideQuestEntry,
+  normalizeSideQuestSelections,
+  sideQuestFixtureMatches,
+  scoreForEntrantInResult,
   rankScoreboard
 }

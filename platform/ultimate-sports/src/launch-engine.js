@@ -22,8 +22,16 @@ function createLaunchPlan (input = {}) {
   const competitionId = input.competitionId || stableId(`launch-${fit.fitId}`, { title })
   const roomId = input.roomId || `${competitionId}:room:main`
   const hostUserId = input.hostUserId || input.actorId || 'host'
-  const variants = selectedVariants({ stack, input })
+  const requestedVariants = selectedVariants({ stack, input })
   const miniGames = selectedMiniGames({ stack, input })
+  const templateSelection = selectTemplateForLaunch({
+    fit,
+    variants: requestedVariants,
+    input,
+    explicitVariantSelection: hasExplicitVariantSelection(input)
+  })
+  const templateKind = templateSelection.templateKind
+  const variants = templateSelection.variants
   const gates = gatesForMode(settlementMode, input.gates)
   const baseAt = input.occurredAt || DEFAULT_LAUNCH_AT
   const commands = []
@@ -42,7 +50,7 @@ function createLaunchPlan (input = {}) {
       startsAt: input.startsAt || null,
       status: input.status || 'draft',
       templateConfig: {
-        kind: input.templateKind || stack.templateKind,
+        kind: templateKind,
         sportOrCategory: fit.category,
         entrantShape: fit.entrantShape,
         resultPolicy: fit.resultPolicy,
@@ -119,8 +127,11 @@ function createLaunchPlan (input = {}) {
     title,
     competitionId,
     roomId,
+    templateKind,
     settlementMode,
+    requestedPoolVariants: requestedVariants,
     poolVariants: variants,
+    droppedPoolVariants: templateSelection.droppedVariants,
     miniGames,
     gates,
     commands,
@@ -144,11 +155,153 @@ function createLaunchScenario (input = {}) {
     launchPlan: {
       launchPlanId: plan.launchPlanId,
       fitId: plan.fit.fitId,
+      templateKind: plan.templateKind,
       settlementMode: plan.settlementMode,
+      poolVariantIds: plan.poolVariants.map(variant => variant.variantId),
+      droppedVariantIds: plan.droppedPoolVariants.map(variant => variant.variantId),
+      miniGameTypes: plan.miniGames.map(miniGame => miniGame.gameType),
       activationTasks: plan.activationTasks,
       checklist: plan.checklist
     }
   }
+}
+
+function createLaunchMatrix (input = {}) {
+  const settlementMode = input.settlementMode || 'demo'
+  const fitIds = input.fitIds || catalog.listEventFits()
+    .filter(fit => !input.category || fit.category === input.category)
+    .map(fit => fit.fitId)
+  const rows = fitIds.map(fitId => launchMatrixRow({ fitId, settlementMode, input }))
+  return {
+    launchMatrixId: input.launchMatrixId || stableId('launch-matrix', {
+      fitIds,
+      settlementMode
+    }),
+    settlementMode,
+    fitIds,
+    rows,
+    counts: {
+      fits: rows.length,
+      primaryLaunchable: rows.filter(row => row.primary.launchable).length,
+      variants: rows.reduce((sum, row) => sum + row.variantCoverage.length, 0),
+      variantsInPrimaryPlan: rows.reduce((sum, row) => {
+        return sum + row.variantCoverage.filter(item => item.coverage === 'primary').length
+      }, 0),
+      variantsInAlternatePlans: rows.reduce((sum, row) => {
+        return sum + row.variantCoverage.filter(item => item.coverage === 'alternate').length
+      }, 0),
+      miniGames: rows.reduce((sum, row) => sum + row.miniGameCoverage.length, 0),
+      coveredMiniGames: rows.reduce((sum, row) => {
+        return sum + row.miniGameCoverage.filter(item => item.coverage !== 'missing').length
+      }, 0)
+    }
+  }
+}
+
+function launchMatrixRow ({ fitId, settlementMode, input }) {
+  const stack = catalog.recommendProductStack({
+    fitId,
+    settlementMode,
+    maxVariants: input.maxVariants || 99,
+    maxMiniGames: input.maxMiniGames || 99
+  })
+  const competitionId = `${input.competitionPrefix || 'matrix'}-${fitId}`
+  const roomId = `${competitionId}:room`
+  const plan = createLaunchPlan({
+    fitId,
+    settlementMode,
+    stack,
+    competitionId,
+    roomId,
+    title: input.titlePrefix ? `${input.titlePrefix} ${stack.fit.title}` : stack.fit.title,
+    entrants: input.entrantsByFitId && input.entrantsByFitId[fitId],
+    players: input.players || []
+  })
+  const primaryVariantIds = new Set(plan.poolVariants.map(variant => variant.variantId))
+  const variantCoverage = stack.poolVariants.map(variant => {
+    if (primaryVariantIds.has(variant.variantId)) {
+      return {
+        variantId: variant.variantId,
+        title: variant.title,
+        coverage: 'primary',
+        templateKind: plan.templateKind,
+        poolId: poolIdFor({ input: {}, competitionId, variantId: variant.variantId })
+      }
+    }
+    const alternate = createLaunchPlan({
+      fitId,
+      settlementMode,
+      variantIds: [variant.variantId],
+      miniGameTypes: [],
+      competitionId: `${competitionId}-${variant.variantId}`,
+      roomId: `${competitionId}-${variant.variantId}:room`,
+      title: `${stack.fit.title} ${variant.title}`
+    })
+    return {
+      variantId: variant.variantId,
+      title: variant.title,
+      coverage: 'alternate',
+      templateKind: alternate.templateKind,
+      launchPlanId: alternate.launchPlanId,
+      poolId: alternate.poolVariants[0] && poolIdFor({
+        input: {},
+        competitionId: alternate.competitionId,
+        variantId: alternate.poolVariants[0].variantId
+      })
+    }
+  })
+  const miniGameCoverage = stack.miniGames.map(miniGame => {
+    const command = plan.commands.find(command => commandCoversMiniGame(command, miniGame.gameType))
+    const task = plan.activationTasks.find(task => task.gameType === miniGame.gameType)
+    return {
+      gameType: miniGame.gameType,
+      title: miniGame.title,
+      commandType: miniGame.commandType,
+      coverage: command ? 'command' : task ? 'activation-task' : 'missing',
+      command: command
+        ? {
+            type: command.type,
+            marketType: command.payload.marketType || null,
+            gameType: command.payload.gameType || null
+          }
+        : null,
+      task: task
+        ? {
+            type: task.type,
+            requiredPlayers: task.requiredPlayers
+          }
+        : null
+    }
+  })
+
+  return {
+    fitId,
+    title: stack.fit.title,
+    category: stack.fit.category,
+    primary: {
+      launchable: true,
+      launchPlanId: plan.launchPlanId,
+      competitionId: plan.competitionId,
+      roomId: plan.roomId,
+      templateKind: plan.templateKind,
+      commandCount: plan.commands.length,
+      activationTaskCount: plan.activationTasks.length,
+      droppedVariantIds: plan.droppedPoolVariants.map(variant => variant.variantId)
+    },
+    checklist: plan.checklist,
+    variantCoverage,
+    miniGameCoverage,
+    allVariantsCovered: variantCoverage.every(item => item.coverage === 'primary' || item.coverage === 'alternate'),
+    allMiniGamesCovered: miniGameCoverage.every(item => item.coverage !== 'missing')
+  }
+}
+
+function commandCoversMiniGame (command, gameType) {
+  if (!command || !command.payload) return false
+  if (command.type === 'game:create') return command.payload.gameType === gameType
+  if (command.type === 'draft:create') return gameType === 'peer-mini-fantasy'
+  if (command.type === 'market:create') return command.payload.marketId && command.payload.marketId.endsWith(`:market:${gameType}`)
+  return false
 }
 
 function selectedVariants ({ stack, input }) {
@@ -160,6 +313,50 @@ function selectedVariants ({ stack, input }) {
     if (!variant) throw new Error(`variant ${variantId} is not compatible with ${stack.fit.fitId}`)
     return variant
   })
+}
+
+function hasExplicitVariantSelection (input = {}) {
+  return Array.isArray(input.variantIds) || Array.isArray(input.selectedVariantIds)
+}
+
+function selectTemplateForLaunch ({ fit, variants, input, explicitVariantSelection }) {
+  const templateKinds = fit.templateKinds || []
+  const requestedTemplateKind = input.templateKind || null
+  const candidates = (requestedTemplateKind ? [requestedTemplateKind] : templateKinds).map((templateKind, templateIndex) => {
+    if (!templateKinds.includes(templateKind)) {
+      throw new Error(`template ${templateKind} is not compatible with ${fit.fitId}`)
+    }
+    const compatibleVariants = variants.filter(variant => variant.templateKinds.includes(templateKind))
+    const compatibleIds = new Set(compatibleVariants.map(variant => variant.variantId))
+    return {
+      templateKind,
+      templateIndex,
+      variants: compatibleVariants,
+      droppedVariants: variants.filter(variant => !compatibleIds.has(variant.variantId)),
+      weight: compatibleVariants.reduce((sum, variant) => {
+        const index = variants.findIndex(item => item.variantId === variant.variantId)
+        return sum + (variants.length - index)
+      }, 0)
+    }
+  })
+
+  if (explicitVariantSelection) {
+    const exact = candidates.find(candidate => candidate.droppedVariants.length === 0)
+    if (!exact) {
+      throw new Error(`variant set is not compatible with a single ${fit.fitId} template: ${variants.map(variant => variant.variantId).join(', ')}`)
+    }
+    return exact
+  }
+
+  const best = candidates.sort((left, right) => {
+    if (left.variants.length !== right.variants.length) return right.variants.length - left.variants.length
+    if (left.weight !== right.weight) return right.weight - left.weight
+    return left.templateIndex - right.templateIndex
+  })[0]
+  if (!best || best.variants.length === 0 && variants.length > 0) {
+    throw new Error(`no launch template can host variants for ${fit.fitId}`)
+  }
+  return best
 }
 
 function selectedMiniGames ({ stack, input }) {
@@ -186,6 +383,7 @@ function cardCommandsFor ({ variants, fit, competitionId, hostUserId, baseAt, co
         competitionId,
         cardType: cardTypeForVariant(variant.variantId, fit),
         title: variant.title,
+        scoringConfig: defaultCardScoringConfigForVariant(variant.variantId),
         fields: defaultCardFieldsForVariant(variant.variantId, fit)
       }
     }))
@@ -233,6 +431,9 @@ function miniGameCommandsFor ({ miniGames, competitionId, roomId, hostUserId, ba
             fixtureId: input.fixtureId || null,
             marketType,
             options: defaultMarketOptions(marketType),
+            predictionShape: livePrediction.predictionShapeForMarket(marketType),
+            inputTemplate: livePrediction.inputTemplateForMarket(marketType),
+            scoringConfig: livePrediction.scoringConfigForMarket(marketType),
             mode: settlementMode,
             gates
           }
@@ -312,7 +513,8 @@ function defaultEntrantsForFit (fit = {}) {
   }
   if (fit.templateKinds && fit.templateKinds[0] === 'fight-card') {
     return [
-      { boutId: 'main', fighterA: 'fighter-a', fighterB: 'fighter-b', mainEvent: true }
+      { entrantId: 'fighter-a', name: 'Fighter A', seed: 1 },
+      { entrantId: 'fighter-b', name: 'Fighter B', seed: 2 }
     ]
   }
 
@@ -329,7 +531,11 @@ function defaultFixturesConfigForFit (fit = {}) {
     return { categories: defaultEntrantsForFit(fit) }
   }
   if (fit.templateKinds && fit.templateKinds[0] === 'fight-card') {
-    return { bouts: defaultEntrantsForFit(fit) }
+    return {
+      bouts: [
+        { boutId: 'main', fighterA: 'fighter-a', fighterB: 'fighter-b', mainEvent: true }
+      ]
+    }
   }
   return {}
 }
@@ -354,17 +560,33 @@ function cardTypeForVariant (variantId, fit) {
 
 function defaultCardFieldsForVariant (variantId, fit) {
   if (variantId === 'watch-party-bingo') {
-    return ['Goal', 'Save', 'Card', 'Comeback', 'Review'].map(label => ({
+    return [
+      'Goal',
+      'Corner',
+      'Yellow card',
+      'Save',
+      'VAR review',
+      'Comeback',
+      'Penalty',
+      'Shot on target',
+      'Late winner'
+    ].map((label, index) => ({
       fieldId: slugify(label),
       fieldType: 'bingo-cell',
       label,
-      options: ['yes', 'no']
+      options: ['yes', 'no'],
+      metadata: {
+        row: Math.floor(index / 3),
+        col: index % 3
+      }
     }))
   }
   if (variantId === 'player-prop') {
     return [
       { fieldId: 'first-scorer', fieldType: 'single-choice', label: 'First scorer' },
-      { fieldId: 'shots', fieldType: 'numeric-total', label: 'Shots', tolerance: 1 }
+      { fieldId: 'shots', fieldType: 'numeric-total', label: 'Shots', tolerance: 1 },
+      { fieldId: 'assists', fieldType: 'numeric-total', label: 'Assists' },
+      { fieldId: 'cards', fieldType: 'numeric-total', label: 'Cards' }
     ]
   }
   if (fit.templateKinds[0] === 'awards-card') {
@@ -378,6 +600,19 @@ function defaultCardFieldsForVariant (variantId, fit) {
     { fieldId: 'total-goals', fieldType: 'numeric-total', label: 'Total goals', tolerance: 1 },
     { fieldId: 'golden-boot', fieldType: 'single-choice', label: 'Golden boot' }
   ]
+}
+
+function defaultCardScoringConfigForVariant (variantId) {
+  if (variantId === 'watch-party-bingo') {
+    return {
+      lineBonus: 2,
+      grid: {
+        rows: 3,
+        cols: 3
+      }
+    }
+  }
+  return {}
 }
 
 function marketTypeForMiniGame (gameType) {
@@ -396,5 +631,6 @@ function defaultMarketOptions (marketType) {
 module.exports = {
   DEFAULT_LAUNCH_AT,
   createLaunchPlan,
-  createLaunchScenario
+  createLaunchScenario,
+  createLaunchMatrix
 }

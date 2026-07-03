@@ -1,5 +1,6 @@
 'use strict'
 
+const creator = require('./creator-engine')
 const { stableId } = require('./util')
 
 function soccerKnockoutScenario (input = {}) {
@@ -203,12 +204,119 @@ function seriesPlayoffScenario (input = {}) {
   }
 }
 
+function ultimateDayInLifeScenario (input = {}) {
+  const organizerId = input.organizerId || 'organizer'
+  const competitionId = input.competitionId || 'scenario-ultimate-day'
+  const draftId = input.draftId || `${competitionId}:draft`
+  const roomId = input.roomId || `${competitionId}:room:main`
+  const variantIds = input.variantIds || ['classic-bracket', 'confidence']
+  const entrants = input.entrants || [
+    { entrantId: 'red', name: 'Red Local', seed: 1 },
+    { entrantId: 'blue', name: 'Blue Local', seed: 2 },
+    { entrantId: 'gold', name: 'Gold Local', seed: 3 },
+    { entrantId: 'green', name: 'Green Local', seed: 4 }
+  ]
+  const draft = creator.createCreatorCompetitionDraft({
+    draftId,
+    competitionId,
+    title: input.title || 'Ultimate Day In Life Cup',
+    organizerId,
+    category: 'local',
+    sportOrCategory: 'local',
+    entrantShape: 'team',
+    supportedPoolVariants: variantIds,
+    entrants
+  })
+  const seeded = creator.seedCreatorBracketDraft(draft, {
+    competitionId,
+    startsAt: input.startsAt || '2026-07-03T09:00:00.000Z'
+  })
+  const publishPlan = creator.createCreatorPublishPlan(seeded, {
+    competitionId,
+    roomId,
+    variantIds,
+    settlementMode: input.settlementMode || 'demo',
+    roomStatus: 'live',
+    publishStatus: 'open',
+    occurredAt: '2026-07-03T09:03:00.000Z'
+  })
+
+  const setupCommands = [
+    {
+      type: 'creator:draftCompetition',
+      actorId: organizerId,
+      occurredAt: '2026-07-03T09:00:00.000Z',
+      payload: {
+        draftId,
+        competitionId,
+        title: draft.title,
+        organizerId,
+        category: 'local',
+        sportOrCategory: 'local',
+        entrantShape: 'team',
+        supportedPoolVariants: variantIds,
+        entrants
+      }
+    },
+    {
+      type: 'creator:seedBracket',
+      actorId: organizerId,
+      occurredAt: '2026-07-03T09:01:00.000Z',
+      payload: {
+        draftId,
+        competitionId,
+        startsAt: input.startsAt || '2026-07-03T09:00:00.000Z'
+      }
+    },
+    {
+      type: 'creator:createPublishPlan',
+      actorId: organizerId,
+      occurredAt: '2026-07-03T09:02:00.000Z',
+      payload: {
+        draftId,
+        competitionId,
+        roomId,
+        variantIds,
+        settlementMode: input.settlementMode || 'demo',
+        roomStatus: 'live',
+        publishStatus: 'open'
+      }
+    }
+  ]
+  const participantCommands = [
+    roomJoinCommand({ roomId, userId: 'fan-a', username: 'Fan A', occurredAt: '2026-07-03T09:10:00.000Z' }),
+    roomJoinCommand({ roomId, userId: 'fan-b', username: 'Fan B', occurredAt: '2026-07-03T09:11:00.000Z' }),
+    walletAccountCommand({ userId: 'fan-a', accountId: `${competitionId}:wallet:fan-a`, occurredAt: '2026-07-03T09:12:00.000Z' }),
+    walletAccountCommand({ userId: 'fan-b', accountId: `${competitionId}:wallet:fan-b`, occurredAt: '2026-07-03T09:13:00.000Z' })
+  ]
+
+  return {
+    scenarioId: 'ultimate-day-in-life',
+    title: input.title || 'Ultimate Day In Life Cup',
+    topics: [
+      { kind: 'creator', id: organizerId },
+      ...publishPlan.topics
+    ],
+    commands: setupCommands.concat(publishPlan.commands, participantCommands),
+    dayInLife: {
+      organizerId,
+      competitionId,
+      draftId,
+      roomId,
+      poolIds: Object.fromEntries(variantIds.map(variantId => [variantId, `${competitionId}:pool:${variantId}`])),
+      participantUserIds: ['fan-a', 'fan-b'],
+      entrantIds: entrants.map(entrant => entrant.entrantId)
+    }
+  }
+}
+
 function scenarioById (scenarioId, input = {}) {
   if (scenarioId === 'soccer-knockout') return soccerKnockoutScenario(input)
   if (scenarioId === 'creator-bracket') return creatorBracketScenario(input)
   if (scenarioId === 'fight-card') return fightCardScenario(input)
   if (scenarioId === 'awards-card') return awardsScenario(input)
   if (scenarioId === 'series-playoff') return seriesPlayoffScenario(input)
+  if (scenarioId === 'ultimate-day-in-life') return ultimateDayInLifeScenario(input)
   throw new Error(`unknown scenario: ${scenarioId}`)
 }
 
@@ -219,12 +327,40 @@ function scenarioRunId (scenario) {
   })
 }
 
+function roomJoinCommand ({ roomId, userId, username, occurredAt }) {
+  return {
+    type: 'room:join',
+    actorId: userId,
+    occurredAt,
+    payload: {
+      roomId,
+      userId,
+      username
+    }
+  }
+}
+
+function walletAccountCommand ({ userId, accountId, occurredAt }) {
+  return {
+    type: 'wallet:createAccount',
+    actorId: userId,
+    occurredAt,
+    payload: {
+      accountId,
+      userId,
+      mode: 'demo-credit',
+      currency: 'CREDITS'
+    }
+  }
+}
+
 module.exports = {
   soccerKnockoutScenario,
   creatorBracketScenario,
   fightCardScenario,
   awardsScenario,
   seriesPlayoffScenario,
+  ultimateDayInLifeScenario,
   scenarioById,
   scenarioRunId
 }

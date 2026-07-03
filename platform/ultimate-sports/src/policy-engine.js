@@ -21,7 +21,35 @@ const ALWAYS_CASUAL_COMMANDS = Object.freeze([
   'dispute:resolve',
   'audit:export',
   'attestation:create',
+  'qvac:summarizeRoom',
+  'qvac:createCommentary',
+  'qvac:createCreatorDraft',
+  'qvac:createTriviaBank',
+  'qvac:reviewMessage',
+  'creator:draftCompetition',
+  'creator:addEntrant',
+  'creator:seedBracket',
+  'creator:createPublishPlan',
+  'engagement:createReplay',
+  'engagement:createLadder',
+  'engagement:createRematch',
+  'engagement:createShareCard',
+  'engagement:createCreatorGallery',
+  'engagement:createContentCalendar',
+  'compliance:upsertProfile',
+  'compliance:setLimit',
+  'compliance:recordExposure',
+  'compliance:declarePayoutRecipient',
+  'compliance:createReadinessPanel',
+  'notification:create',
+  'notification:generate',
+  'notification:markRead',
+  'notification:dismiss',
+  'notification:archive',
   'competition:create',
+  'competition:addEntrant',
+  'competition:scheduleFixture',
+  'competition:updateStatus',
   'room:create',
   'room:join',
   'room:leave',
@@ -149,6 +177,8 @@ function assertCommandAllowed (input = {}) {
 
 function inferCommandSettlementMode ({ command = {}, view = {} } = {}) {
   const payload = command.payload || {}
+  if (ALWAYS_CASUAL_COMMANDS.includes(command.type)) return 'none'
+
   const direct = firstAllowedMode([
     payload.mode,
     payload.settlementMode,
@@ -160,7 +190,6 @@ function inferCommandSettlementMode ({ command = {}, view = {} } = {}) {
   ])
   if (direct) return direct
 
-  if (ALWAYS_CASUAL_COMMANDS.includes(command.type)) return 'none'
   if (POOL_BOUND_COMMANDS.includes(command.type)) return poolBoundMode({ command, view })
   if (MARKET_BOUND_COMMANDS.includes(command.type)) return marketBoundMode({ command, view })
   if (GAME_BOUND_COMMANDS.includes(command.type)) return gameBoundMode({ command, view })

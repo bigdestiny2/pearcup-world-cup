@@ -3,7 +3,7 @@
 const { assertNonEmptyString, cloneJson, stableId } = require('./util')
 
 const ROOM_ROLES = Object.freeze(['viewer', 'streamer', 'host', 'moderator'])
-const CHALLENGE_TYPES = Object.freeze(['peer-game', 'live-prediction', 'side-quest'])
+const CHALLENGE_TYPES = Object.freeze(['peer-game', 'live-prediction', 'head-to-head-duel', 'side-quest'])
 const MODERATION_ACTIONS = Object.freeze(['hide-message', 'restore-message', 'report-message'])
 
 function createWatchRoom (input = {}) {
@@ -126,7 +126,9 @@ function createRoomChallenge ({
   challengeType = 'peer-game',
   gameType = null,
   marketType = null,
+  duel = null,
   sideQuest = null,
+  stake = null,
   createdAt = new Date().toISOString()
 } = {}) {
   assertNonEmptyString(roomId, 'roomId')
@@ -143,7 +145,9 @@ function createRoomChallenge ({
       challengeType,
       gameType,
       marketType,
+      duel,
       sideQuest,
+      stake,
       createdAt
     }),
     roomId,
@@ -152,7 +156,9 @@ function createRoomChallenge ({
     challengeType,
     gameType,
     marketType,
+    duel: cloneJson(duel || null),
     sideQuest: cloneJson(sideQuest || null),
+    stake: cloneJson(stake || null),
     createdAt,
     status: 'pending'
   }

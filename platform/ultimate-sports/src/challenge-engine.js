@@ -23,6 +23,9 @@ function materializeAcceptedChallenge ({
   if (challenge.challengeType === 'live-prediction') {
     return materializeLivePredictionChallenge({ challenge, room, competition, settlementMode, gates, occurredAt })
   }
+  if (challenge.challengeType === 'head-to-head-duel') {
+    return materializeHeadToHeadDuelChallenge({ challenge, room, competition, settlementMode, gates, occurredAt })
+  }
   if (challenge.challengeType === 'side-quest') {
     return materializeSideQuestChallenge({ challenge, room, competition, settlementMode, gates, occurredAt })
   }
@@ -45,6 +48,7 @@ function materializePeerGameChallenge ({ challenge, room, settlementMode, stakeM
       roomId: room.roomId,
       players: [challenge.challengerUserId, challenge.targetUserId],
       stakeMode: normalizedStakeMode,
+      stake: cloneJson(challenge.stake || null),
       gates: cloneJson(gates),
       challengeId: challenge.challengeId
     }
@@ -72,7 +76,11 @@ function materializeLivePredictionChallenge ({ challenge, room, competition, set
       fixtureId: room.fixtureId || null,
       marketType,
       options: marketOptionsFor(marketType),
+      predictionShape: livePrediction.predictionShapeForMarket(marketType),
+      inputTemplate: livePrediction.inputTemplateForMarket(marketType),
+      scoringConfig: livePrediction.scoringConfigForMarket(marketType),
       mode: settlementMode,
+      stake: cloneJson(challenge.stake || null),
       gates: cloneJson(gates),
       challengeId: challenge.challengeId
     }
@@ -81,6 +89,41 @@ function materializeLivePredictionChallenge ({ challenge, room, competition, set
     challenge,
     command,
     topics: [{ kind: 'room', id: room.roomId }, { kind: 'market', id: command.payload.marketId }]
+  })
+}
+
+function materializeHeadToHeadDuelChallenge ({ challenge, room, competition, settlementMode, gates, occurredAt }) {
+  const duel = challenge.duel || {}
+  const command = {
+    type: 'pool:create',
+    actorId: challenge.challengerUserId,
+    occurredAt,
+    payload: {
+      poolId: stableId(`challenge-head-to-head-${challenge.challengeId}`, {
+        challengeId: challenge.challengeId,
+        duel
+      }),
+      competitionId: room.competitionId || competition && competition.competitionId,
+      title: duel.title || 'Head-to-head bracket duel',
+      variant: 'head-to-head-duel',
+      mode: settlementMode,
+      maxEntries: 2,
+      gates: cloneJson(gates),
+      metadata: {
+        challengeId: challenge.challengeId,
+        roomId: room.roomId,
+        challengerUserId: challenge.challengerUserId,
+        targetUserId: challenge.targetUserId,
+        participantUserIds: [challenge.challengerUserId, challenge.targetUserId],
+        stake: cloneJson(challenge.stake || null),
+        duel: cloneJson(duel)
+      }
+    }
+  }
+  return materialization({
+    challenge,
+    command,
+    topics: [{ kind: 'room', id: room.roomId }, { kind: 'pool', id: command.payload.poolId }]
   })
 }
 
@@ -105,6 +148,7 @@ function materializeSideQuestChallenge ({ challenge, room, competition, settleme
         roomId: room.roomId,
         challengerUserId: challenge.challengerUserId,
         targetUserId: challenge.targetUserId,
+        stake: cloneJson(challenge.stake || null),
         sideQuest: cloneJson(sideQuest)
       }
     }
@@ -138,6 +182,7 @@ module.exports = {
   materializeAcceptedChallenge,
   materializePeerGameChallenge,
   materializeLivePredictionChallenge,
+  materializeHeadToHeadDuelChallenge,
   materializeSideQuestChallenge,
   marketOptionsFor
 }

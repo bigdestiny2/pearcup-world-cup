@@ -13,6 +13,7 @@ test('platform manifest verifier passes current scaffold contract', () => {
   assert.equal(report.ok, true)
   assert.equal(report.errors.length, 0)
   assert.ok(report.checked.sourceFiles >= 20)
+  assert.equal(report.checked.docs, 2)
   assert.ok(report.checked.tests >= 10)
   assert.ok(report.manifest.requiredExports.includes('platform'))
 })
@@ -30,4 +31,3 @@ test('platform manifest verifier catches missing exports and scenarios', () => {
   assert.ok(report.errors.some(error => error.includes('missing entrypoint export: missingExport')))
   assert.ok(report.errors.some(error => error.includes('scenario missing-scenario failed')))
 })
-
