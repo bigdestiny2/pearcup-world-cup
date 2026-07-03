@@ -111,8 +111,8 @@ function checkWorktree () {
     return
   }
   const message = `git worktree has ${lines.length} uncommitted path${lines.length === 1 ? '' : 's'}`
-  if (args.requireClean) errors.push(message)
-  else notes.push(`${message}; rerun with --require-clean to make this a hard release gate`)
+  if (!args.allowDirty) errors.push(message)
+  else notes.push(`${message}; --allow-dirty was used, so this is not a publish-ready proof`)
 }
 
 function extractLineValue (text, pattern) {
@@ -139,13 +139,14 @@ function parseArgs (argv) {
   const parsed = {
     full: false,
     gateway: 'http://127.0.0.1:17208/',
-    requireClean: false,
+    allowDirty: false,
     url: ''
   }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--full') parsed.full = true
-    else if (arg === '--require-clean') parsed.requireClean = true
+    else if (arg === '--require-clean') parsed.allowDirty = false
+    else if (arg === '--allow-dirty') parsed.allowDirty = true
     else if (arg === '--gateway') parsed.gateway = argv[++i]
     else if (arg.startsWith('--gateway=')) parsed.gateway = arg.slice('--gateway='.length)
     else if (arg === '--url') parsed.url = argv[++i]

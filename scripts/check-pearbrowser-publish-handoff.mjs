@@ -266,10 +266,12 @@ function validateVerification (verification) {
     errors.push('receipt verification must include local published-gateway smoke against the exact bundle')
   }
   for (const required of [
+    'design/kawaii-app/index-entry.test.js',
     'design/kawaii-app/app-deeplink.test.js',
     'design/kawaii-app/peer-match.test.js',
     'design/kawaii-app/peer-net.test.js',
-    'design/kawaii-app/peer-preview-smoke.test.js'
+    'design/kawaii-app/peer-preview-smoke.test.js',
+    'scripts/record-friend-test-result.test.mjs'
   ]) {
     if (!coverage.includes(required)) errors.push(`receipt verification must list required coverage: ${required}`)
   }

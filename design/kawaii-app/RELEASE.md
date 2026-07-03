@@ -130,12 +130,19 @@ payload can be confirmed before publishing/pinning it.
 Before any publish/pin handoff, run:
 
 ```
+npm run check:pear-seamless:preview
+# lower-level receipt-only check:
 npm run check:publish-handoff
 # or, for an already-prepared candidate:
 node scripts/check-pearbrowser-publish-handoff.mjs --receipt /path/to/pearcup-release-receipt.json
 ```
 
-That recomputes every file hash from the receipt, reruns the Hyper payload smoke,
+`check:pear-seamless:preview` is the top-level release gate: it prepares a fresh
+candidate, validates the approved publish dry-run, runs the release-scope audit,
+checks the live `4186` preview, and now hard-fails on a dirty worktree unless
+`--allow-dirty` is passed for an exploratory run.
+
+The lower-level handoff check recomputes every file hash from the receipt, reruns the Hyper payload smoke,
 checks the manifest/asset/P2P contract, verifies that the receipt includes the
 deep-link/P2P source coverage, the actual Pear launch smoke, the served-preview
 contract, the local `/app/<drive>/` gateway smoke, and the hydrated UI/controller

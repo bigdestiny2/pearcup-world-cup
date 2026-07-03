@@ -69,10 +69,12 @@ const receipt = {
       `node scripts/smoke-pearbrowser-published-local.mjs --bundle ${bundle}`
     ],
     requiredCoverage: [
+      'design/kawaii-app/index-entry.test.js',
       'design/kawaii-app/app-deeplink.test.js',
       'design/kawaii-app/peer-match.test.js',
       'design/kawaii-app/peer-net.test.js',
-      'design/kawaii-app/peer-preview-smoke.test.js'
+      'design/kawaii-app/peer-preview-smoke.test.js',
+      'scripts/record-friend-test-result.test.mjs'
     ],
     bootProbeContract: {
       command: 'npm run smoke:kawaii-pear-run',
