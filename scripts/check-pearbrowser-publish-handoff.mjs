@@ -162,6 +162,9 @@ function validateApprovedPublishWrapper () {
   if (!wrapper.includes('--gateway')) {
     errors.push('approved publish wrapper must pass optional --gateway through to published smoke')
   }
+  if (!wrapper.includes('--gateway uses port 4190')) {
+    errors.push('approved publish wrapper must reject browser-blocked gateway port 4190')
+  }
   if (!wrapper.includes('runPostPublishSmokePreflight') || !wrapper.includes('--check') || !wrapper.includes('smoke-published-pearbrowser.mjs')) {
     errors.push('approved publish wrapper must syntax-check the post-publish smoke before publishing')
   }

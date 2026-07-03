@@ -290,6 +290,9 @@ function validateGateway (value) {
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
       errors.push('--gateway must be an http:// or https:// URL')
     }
+    if (url.port === '4190') {
+      errors.push('--gateway uses port 4190, which browser/fetch clients block; use 4191 or another browser-safe port')
+    }
   } catch (err) {
     errors.push(`--gateway is not a valid URL: ${value}`)
   }
