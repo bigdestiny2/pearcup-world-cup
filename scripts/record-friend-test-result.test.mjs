@@ -184,6 +184,96 @@ test('refuses publish-result receipts without source release binding', () => {
   assert.match(result.stderr, /clean source release receipt/)
 })
 
+test('refuses publish-result receipts whose source release receipt is missing', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-missing-release-receipt-'))
+  const publishResult = writePublishResult(dir, {
+    receipt: join(dir, 'missing-pearcup-release-receipt.json')
+  }, {}, { skipReleaseReceipt: true })
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /source release receipt does not exist/)
+})
+
+test('refuses publish-result receipts from a different source release commit', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-release-source-mismatch-'))
+  const publishResult = writePublishResult(dir, {}, {
+    sourceGitHead: '0000000000000000000000000000000000000000'
+  })
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /does not match source release receipt sourceGitHead/)
+})
+
+test('refuses publish-result receipts for a different source bundle SHA', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-release-bundle-mismatch-'))
+  const publishResult = writePublishResult(dir, {}, {
+    bundleSha256: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+  })
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /does not match source release receipt bundleSha256/)
+})
+
+test('refuses publish-result receipts recorded from an unexpected result path', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-release-path-mismatch-'))
+  const publishResult = writePublishResult(dir, {}, {
+    postPublishVerification: {
+      resultPath: join(dir, 'other-publish-result.json')
+    }
+  })
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /does not match source release receipt postPublishVerification\.resultPath/)
+})
+
 test('refuses publish-result receipts without exact-bundle Pear runtime proof', () => {
   const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-no-runtime-proof-'))
   const publishResult = writePublishResult(dir, {
@@ -276,7 +366,7 @@ test('failed friend-test records still require notes but do not require a SHA', 
   assert.deepEqual(receipt.remaining, ['repeat remote friend PearBrowser test after fixing noted issue'])
 })
 
-function writePublishResult (dir, overrides = {}) {
+function writePublishResult (dir, overrides = {}, releaseReceiptOverrides = {}, opts = {}) {
   const file = join(dir, 'publish-result.json')
   const receipt = {
     app: 'PearCup',
@@ -308,6 +398,20 @@ function writePublishResult (dir, overrides = {}) {
     ...overrides
   }
   writeFileSync(file, JSON.stringify(receipt, null, 2) + '\n')
+  if (receipt.receipt && !opts.skipReleaseReceipt) {
+    writeFileSync(receipt.receipt, JSON.stringify({
+      app: 'PearCup',
+      sourceGitHead: receipt.sourceGitHead,
+      sourceGitBranch: receipt.sourceGitBranch,
+      sourceDirty: receipt.sourceDirty,
+      sourceGitStatus: receipt.sourceGitStatus,
+      bundleSha256: receipt.bundleSha256,
+      postPublishVerification: {
+        resultPath: file
+      },
+      ...releaseReceiptOverrides
+    }, null, 2) + '\n')
+  }
   return file
 }
 

@@ -672,8 +672,10 @@ function validateSmokeContracts () {
       'recording a passed friend test requires --room-code',
       'observedRoomCode',
       'sourceGitHead',
+      'validateSourceReleaseReceiptBinding',
       'source release receipt sourceGitHead',
       'clean source release receipt',
+      'source release receipt postPublishVerification.resultPath',
       'exactBundlePearRuntimePreflight',
       'publish result must prove exact bundle Pear runtime preflight passed'
     ]) {

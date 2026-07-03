@@ -12,7 +12,7 @@ const publishResultPath = args.publishResult ? resolve(args.publishResult) : ''
 const publishResult = publishResultPath && existsSync(publishResultPath) ? readJson(publishResultPath, 'publish result') : null
 if (publishResultPath && !publishResult) errors.push(`publish result does not exist or is unreadable: ${publishResultPath}`)
 
-if (publishResult) validatePublishResult(publishResult)
+if (publishResult) validatePublishResult(publishResult, publishResultPath)
 const passed = args.friendOpened && args.reachedGames && args.joinedP2p && args.startedPenaltyClash
 if (!passed && !args.failed) {
   errors.push('recording a passed friend test requires --friend-opened --reached-games --joined-p2p --started-penalty-clash, or use --failed with --notes')
@@ -68,7 +68,7 @@ console.log(`status - ${result.status}`)
 console.log(`result - ${resultPath}`)
 console.log(`published url - ${result.publishedUrl}`)
 
-function validatePublishResult (result) {
+function validatePublishResult (result, resultPath) {
   if (result.app !== 'PearCup') errors.push('publish result app must be PearCup')
   if (result.status !== 'published-and-smoked') errors.push('publish result status must be published-and-smoked')
   const publishedDrive = (String(result.publishedUrl || '').match(/^hyper:\/\/([0-9a-f]{64})\//i) || [])[1] || ''
@@ -80,7 +80,15 @@ function validatePublishResult (result) {
     errors.push('publish result driveKey must match the publishedUrl drive key')
   }
   if (!/^[0-9a-f]{64}$/i.test(String(result.bundleSha256 || ''))) errors.push('publish result must include a 64-hex bundleSha256')
-  if (!String(result.receipt || '')) errors.push('publish result must include the source release receipt path')
+  const releaseReceiptPath = result.receipt ? resolve(result.receipt) : ''
+  const releaseReceipt = releaseReceiptPath && existsSync(releaseReceiptPath)
+    ? readJson(releaseReceiptPath, 'source release receipt')
+    : null
+  if (!String(result.receipt || '')) {
+    errors.push('publish result must include the source release receipt path')
+  } else if (!releaseReceipt) {
+    errors.push(`publish result source release receipt does not exist or is unreadable: ${releaseReceiptPath}`)
+  }
   if (!/^[0-9a-f]{40}$/i.test(String(result.sourceGitHead || ''))) {
     errors.push('publish result must include the source release receipt sourceGitHead')
   }
@@ -119,6 +127,33 @@ function validatePublishResult (result) {
   }
   if (evidence.postPublishSmokePassed !== true) {
     errors.push('publish result must prove post-publish smoke passed')
+  }
+  if (releaseReceipt) validateSourceReleaseReceiptBinding(result, resultPath, releaseReceipt, releaseReceiptPath)
+}
+
+function validateSourceReleaseReceiptBinding (result, resultPath, receipt, receiptPath) {
+  if (receipt.app !== 'PearCup') errors.push('source release receipt app must be PearCup')
+  if (String(receipt.bundleSha256 || '').toLowerCase() !== String(result.bundleSha256 || '').toLowerCase()) {
+    errors.push(`publish result bundleSha256 ${result.bundleSha256 || '(missing)'} does not match source release receipt bundleSha256 ${receipt.bundleSha256 || '(missing)'}`)
+  }
+  if (String(receipt.sourceGitHead || '').toLowerCase() !== String(result.sourceGitHead || '').toLowerCase()) {
+    errors.push(`publish result sourceGitHead ${result.sourceGitHead || '(missing)'} does not match source release receipt sourceGitHead ${receipt.sourceGitHead || '(missing)'}`)
+  }
+  if (receipt.sourceDirty !== false || result.sourceDirty !== false) {
+    errors.push('publish result and source release receipt must both come from clean source')
+  }
+  const expectedResultPath = receipt &&
+    receipt.postPublishVerification &&
+    receipt.postPublishVerification.resultPath
+    ? resolve(receipt.postPublishVerification.resultPath)
+    : ''
+  if (!expectedResultPath) {
+    errors.push('source release receipt must include postPublishVerification.resultPath')
+  } else if (expectedResultPath !== resolve(resultPath)) {
+    errors.push(`publish result path ${resolve(resultPath)} does not match source release receipt postPublishVerification.resultPath ${expectedResultPath}`)
+  }
+  if (resolve(result.receipt || '') !== receiptPath) {
+    errors.push('publish result receipt path must resolve to the loaded source release receipt')
   }
 }
 
