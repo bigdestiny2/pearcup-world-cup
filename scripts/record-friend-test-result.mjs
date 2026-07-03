@@ -49,6 +49,14 @@ const result = {
   publishedUrl: publishResult.publishedUrl || '',
   driveKey: publishResult.driveKey || '',
   bundleSha256: publishResult.bundleSha256 || '',
+  approvedPublishCommand: publishResult.approvedPublishCommand || '',
+  postPublishSmokeCommand: publishResult.postPublishSmokeCommand || '',
+  localPublishedLinkProofCommand: publishResult.localPublishedLinkProofCommand || '',
+  publishEvidence: {
+    exactBundlePublishedGatewayPreflight: publishResult.evidence && publishResult.evidence.exactBundlePublishedGatewayPreflight === true,
+    exactBundlePearRuntimePreflight: publishResult.evidence && publishResult.evidence.exactBundlePearRuntimePreflight === true,
+    postPublishSmokePassed: publishResult.evidence && publishResult.evidence.postPublishSmokePassed === true
+  },
   friend: args.friend || 'friend',
   evidence: {
     expectedBundleSha256: args.sha || '',

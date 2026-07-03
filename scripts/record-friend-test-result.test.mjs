@@ -35,6 +35,11 @@ test('records a passed remote friend test only with exact SHA and observed notes
   assert.equal(receipt.evidence.expectedBundleSha256, bundleSha256)
   assert.equal(receipt.evidence.observedRoomCode, 'wdk8yv')
   assert.equal(receipt.evidence.hostAndFriendCompletedLiveP2PJoin, true)
+  assert.match(receipt.approvedPublishCommand, /publish-approved-pearcup\.mjs/)
+  assert.equal(receipt.publishEvidence.exactBundlePublishedGatewayPreflight, true)
+  assert.equal(receipt.publishEvidence.exactBundlePearRuntimePreflight, true)
+  assert.equal(receipt.publishEvidence.postPublishSmokePassed, true)
+  assert.match(receipt.localPublishedLinkProofCommand, /serve:pearbrowser-published/)
 })
 
 test('refuses a passed friend test when the operator omits the exact bundle SHA', () => {
@@ -469,6 +474,7 @@ function writePublishResult (dir, overrides = {}, releaseReceiptOverrides = {}, 
     driveKey,
     bundleSha256,
     approvedPublishCommand: `node "/repo/scripts/publish-approved-pearcup.mjs" --receipt "${join(dir, 'pearcup-release-receipt.json')}" --sha ${bundleSha256} --publish`,
+    postPublishSmokeCommand: `npm run smoke:pearbrowser-published -- --url hyper://${driveKey}/`,
     localPublishedLinkProofCommand: 'npm run serve:pearbrowser-published -- --receipt release.json --port 4191',
     friendTest: {
       status: 'pending-remote-friend',

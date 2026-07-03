@@ -243,7 +243,9 @@ source commit do not match `.pearcup-release/latest/pearcup-release-receipt.json
 The lower-level recorder also opens the source release receipt named by the publish
 result and refuses to record a pass if the source commit, clean source state, bundle
 SHA, expected `postPublishVerification.resultPath`, or `approvedPublishCommand`
-receipt/SHA do not match.
+receipt/SHA do not match. The final friend-test result copies the approved publish
+command, local published-link proof command, post-publish smoke command, and publish
+preflight booleans so the recorded remote result remains auditable on its own.
 
 ```
 npm run record:friend-test:latest -- \

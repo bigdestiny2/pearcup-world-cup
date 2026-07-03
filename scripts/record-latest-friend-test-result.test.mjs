@@ -33,6 +33,9 @@ test('latest friend-test recorder binds publish result and SHA from the release 
   assert.equal(recorded.evidence.expectedBundleSha256, sha)
   assert.equal(recorded.evidence.observedRoomCode, 'pzw7kb')
   assert.equal(recorded.evidence.hostAndFriendStartedPenaltyClash, true)
+  assert.match(recorded.approvedPublishCommand, /publish-approved-pearcup\.mjs/)
+  assert.equal(recorded.publishEvidence.exactBundlePearRuntimePreflight, true)
+  assert.equal(recorded.publishEvidence.postPublishSmokePassed, true)
 })
 
 test('latest friend-test recorder refuses manual SHA overrides', () => {
@@ -175,6 +178,7 @@ function writeFixture (dir, overrides = {}, publishResultOverrides = {}) {
     driveKey: drive,
     bundleSha256: sha,
     approvedPublishCommand: `node "/repo/scripts/publish-approved-pearcup.mjs" --receipt "${receiptPath}" --sha ${sha} --publish`,
+    postPublishSmokeCommand: `npm run smoke:pearbrowser-published -- --url hyper://${drive}/`,
     localPublishedLinkProofCommand: 'npm run serve:pearbrowser-published -- --receipt release.json --port 4191',
     friendTest: {
       status: 'pending-remote-friend',
