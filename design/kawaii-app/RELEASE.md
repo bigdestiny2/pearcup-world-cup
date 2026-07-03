@@ -177,11 +177,24 @@ To dry-run that final approval wrapper without publishing:
 
 ```
 npm run publish:approved -- --receipt /path/to/pearcup-release-receipt.json --sha <bundle-sha> --dry-run
+# or, for the durable handoff:
+npm run publish:approved:latest -- --dry-run
 ```
 
 If PearBrowser's local gateway is not on the default `http://127.0.0.1:17208/`,
 append `--gateway http://127.0.0.1:<port>/` to the approved publish command; the
 wrapper passes it through to the post-publish smoke.
+
+When the exact durable handoff SHA has been explicitly approved, use the latest helper
+to avoid copying the receipt path or SHA by hand:
+
+```
+npm run publish:approved:latest -- --publish
+```
+
+It reads `.pearcup-release/latest/pearcup-release-receipt.json`, supplies the exact
+receipt and bundle SHA to the approved wrapper, and still will not publish unless
+`--publish` is present.
 
 The approved wrapper runs this after publish/pin. You can also smoke the actual
 PearBrowser-served link manually before inviting friends:

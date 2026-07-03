@@ -272,6 +272,9 @@ function validateVerification (verification) {
   if (!sourceChecks.includes('node --test scripts/publish-approved-pearcup.test.mjs')) {
     errors.push('receipt verification must include approved publish wrapper tests before build')
   }
+  if (!sourceChecks.includes('node --test scripts/publish-approved-latest-pearcup.test.mjs')) {
+    errors.push('receipt verification must include latest approved publish wrapper tests before build')
+  }
   if (!sourceChecks.includes('node --test scripts/prepare-pearbrowser-release.test.mjs')) {
     errors.push('receipt verification must include release handoff prep tests before build')
   }
@@ -308,6 +311,7 @@ function validateVerification (verification) {
     'scripts/record-friend-test-result.test.mjs',
     'scripts/record-latest-friend-test-result.test.mjs',
     'scripts/publish-approved-pearcup.test.mjs',
+    'scripts/publish-approved-latest-pearcup.test.mjs',
     'scripts/prepare-pearbrowser-release.test.mjs',
     'scripts/check-pear-seamless.test.mjs'
   ]) {

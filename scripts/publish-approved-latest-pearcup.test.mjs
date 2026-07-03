@@ -1,0 +1,89 @@
+import assert from 'node:assert/strict'
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import { spawnSync } from 'node:child_process'
+import { test } from 'node:test'
+
+const root = resolve(new URL('..', import.meta.url).pathname)
+const script = join(root, 'scripts', 'publish-approved-latest-pearcup.mjs')
+const sha = '63209b225cc27814520b07a686cb5d7f08176ad4b43cbd2891752757b4de1fd5'
+
+test('latest approved publish supplies receipt and SHA to the approved wrapper command', () => {
+  const receipt = writeFixture()
+  const result = run(['--latest-receipt', receipt, '--print-resolved'])
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, /publish-approved-pearcup\.mjs/)
+  assert.match(result.stdout, new RegExp(`--receipt" "${escapeRegExp(receipt)}`))
+  assert.match(result.stdout, new RegExp(`--sha" "${sha}`))
+})
+
+test('latest approved publish refuses manual SHA overrides', () => {
+  const receipt = writeFixture()
+  const result = run(['--latest-receipt', receipt, '--sha', sha, '--dry-run'])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /supplies --sha from the durable handoff receipt/)
+  assert.doesNotMatch(result.stdout + result.stderr, /PearCup approved publish dry-run passed/)
+})
+
+function writeFixture () {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-latest-publish-'))
+  const bundle = join(dir, 'bundle')
+  mkdirSync(bundle)
+  writeFileSync(join(bundle, 'manifest.json'), JSON.stringify({
+    name: 'PearCup',
+    entry: '/index.html',
+    permissions: ['swarm.v1']
+  }, null, 2) + '\n')
+  writeFileSync(join(bundle, 'index.html'), '<!doctype html><title>PearCup</title>\n')
+
+  const publishScript = join(dir, 'publish-and-pin.js')
+  writeFileSync(publishScript, 'console.log("hyper://0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef/")\n')
+
+  const receiptPath = join(dir, 'pearcup-release-receipt.json')
+  writeFileSync(receiptPath, JSON.stringify({
+    app: 'PearCup',
+    bundle,
+    bundleSha256: sha,
+    files: [
+      {
+        path: '/index.html',
+        bytes: 37,
+        sha256: '6f9d93770c36f7c78e47f385f4d8e7b0e0a122f489f4b4a608ee29480a5d6dd4'
+      },
+      {
+        path: '/manifest.json',
+        bytes: 77,
+        sha256: '6bc3504ee8406f8ddb78943b82991b38c89ea5c7118cb42b063db4de1cb0900c'
+      }
+    ],
+    totals: { files: 2, bytes: 114 },
+    publishHandoff: {
+      approvalRequired: true,
+      appName: 'pearcup',
+      args: [publishScript, bundle, '--name', 'pearcup'],
+      updatesExistingDrive: false
+    },
+    postPublishVerification: {
+      required: true,
+      command: 'npm run smoke:pearbrowser-published -- --url hyper://<drive-key>/',
+      enforcedByApprovedWrapper: true,
+      resultPath: join(dir, 'pearcup-publish-result.json'),
+      resultRequiresRemoteFriend: true
+    }
+  }, null, 2) + '\n')
+  return receiptPath
+}
+
+function run (args) {
+  return spawnSync(process.execPath, [script, ...args], {
+    cwd: root,
+    encoding: 'utf8'
+  })
+}
+
+function escapeRegExp (value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}

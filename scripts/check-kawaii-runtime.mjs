@@ -137,6 +137,7 @@ function checkRootReleaseHandoffScripts (pkg) {
   const expected = {
     'prepare:pearbrowser-release:handoff': 'node --check scripts/prepare-pearbrowser-release.mjs && node scripts/prepare-pearbrowser-release.mjs --out .pearcup-release/latest --force',
     'check:publish-handoff:latest': 'node --check scripts/check-pearbrowser-publish-handoff.mjs && node scripts/check-pearbrowser-publish-handoff.mjs --receipt .pearcup-release/latest/pearcup-release-receipt.json',
+    'publish:approved:latest': 'node --check scripts/publish-approved-latest-pearcup.mjs && node scripts/publish-approved-latest-pearcup.mjs',
     'record:friend-test:latest': 'node --check scripts/record-latest-friend-test-result.mjs && node scripts/record-latest-friend-test-result.mjs'
   }
   for (const [name, command] of Object.entries(expected)) {

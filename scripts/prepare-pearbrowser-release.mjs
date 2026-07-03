@@ -28,6 +28,7 @@ runNpm('test:kawaii-peer')
 runNodeTest('scripts/record-friend-test-result.test.mjs')
 runNodeTest('scripts/record-latest-friend-test-result.test.mjs')
 runNodeTest('scripts/publish-approved-pearcup.test.mjs')
+runNodeTest('scripts/publish-approved-latest-pearcup.test.mjs')
 runNodeTest('scripts/prepare-pearbrowser-release.test.mjs')
 runNodeTest('scripts/check-pear-seamless.test.mjs')
 runNpm('smoke:kawaii-p2p-preview')
@@ -70,6 +71,7 @@ const receipt = {
       'node --test scripts/record-friend-test-result.test.mjs',
       'node --test scripts/record-latest-friend-test-result.test.mjs',
       'node --test scripts/publish-approved-pearcup.test.mjs',
+      'node --test scripts/publish-approved-latest-pearcup.test.mjs',
       'node --test scripts/prepare-pearbrowser-release.test.mjs',
       'node --test scripts/check-pear-seamless.test.mjs',
       'npm run smoke:kawaii-p2p-preview',
@@ -91,6 +93,7 @@ const receipt = {
       'scripts/record-friend-test-result.test.mjs',
       'scripts/record-latest-friend-test-result.test.mjs',
       'scripts/publish-approved-pearcup.test.mjs',
+      'scripts/publish-approved-latest-pearcup.test.mjs',
       'scripts/prepare-pearbrowser-release.test.mjs',
       'scripts/check-pear-seamless.test.mjs'
     ],
