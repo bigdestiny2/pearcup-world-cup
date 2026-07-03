@@ -161,6 +161,7 @@ async function checkPreviewUrl (url) {
       ['pearcupRuntimeSelfTestGuest', 'preview app.js runtime self-test does not mark hidden guest instances'],
       ['pearcup:runtime-self-test', 'preview app.js does not emit the runtime self-test probe'],
       ['PearCupPeerMatch.host()', 'preview app.js runtime self-test does not exercise friend invite hosting'],
+      ['leaveGameToLobby', 'preview app.js does not expose a visible lobby escape from active Penalty Clash matches'],
       ['AVATAR_PORTRAITS', 'preview app.js does not hydrate the generated avatar portrait map'],
       ['avatars/p-aria.png', 'preview app.js does not reference generated avatar p-aria'],
       ['avatars/p-tariq.png', 'preview app.js does not reference generated avatar p-tariq'],

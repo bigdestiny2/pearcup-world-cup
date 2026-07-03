@@ -192,6 +192,7 @@ function checkApp (app) {
     ['pearcupPendingJoin', 'published app.js does not expose pending join diagnostics'],
     ['completeProfileOnboarding', 'published app.js can drop first-run friend invite flow'],
     ['peerMatch.join(code)', 'published app.js does not auto-join friend invite links'],
+    ['leaveGameToLobby', 'published app.js does not expose a visible lobby escape from active Penalty Clash matches'],
     ['Round of 32', 'published app.js does not keep current Round of 32 bracket state'],
     ['AVATAR_PORTRAITS', 'published app.js does not hydrate the generated avatar portrait map'],
     ['avatars/p-aria.png', 'published app.js does not reference generated avatar p-aria'],

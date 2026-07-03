@@ -171,6 +171,7 @@ function checkBootContract () {
   assertText(app, 'emitBootReadyMarker', 'app.js emits a positive boot-ready diagnostic')
   assertText(app, 'Penalty Clash · Lobby', 'app.js contains the Penalty Clash lobby')
   assertText(app, 'p2pBackendBadge', 'app.js surfaces the active P2P backend in the Games lobby')
+  assertText(app, 'leaveGameToLobby', 'app.js exposes a visible lobby escape from active Penalty Clash matches')
   assertText(app, 'assertP2PModulesReady', 'app.js must assert P2P modules before marking boot success')
   assertText(app, 'pearcupP2pModules', 'app.js must expose P2P module readiness diagnostics')
   assertText(app, 'syncRuntimeScreenDiagnostics', 'app.js must mirror normal route readiness diagnostics')

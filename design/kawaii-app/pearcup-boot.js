@@ -13163,6 +13163,19 @@ function ensureShootoutDom () {
         </div>
       </div>`)
   }
+  const actions = $('.game-actions')
+  if (actions && !$('#leaveGameToLobby')) {
+    const lobby = document.createElement('button')
+    lobby.className = 'secondary-button'
+    lobby.id = 'leaveGameToLobby'
+    lobby.type = 'button'
+    lobby.innerHTML = `
+      <span class="button-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-5v-5h-4v5H5a1 1 0 0 1-1-1Z"/></svg>
+      </span>
+      Lobby`
+    actions.insertBefore(lobby, actions.firstChild)
+  }
   const grid = $('#aimGrid')
   if (grid && !grid.dataset.bound) {
     grid.dataset.bound = '1'
@@ -13182,6 +13195,8 @@ function ensureShootoutDom () {
   }
   const back = $('#backToLobby')
   if (back && !back.dataset.bound) { back.dataset.bound = '1'; back.addEventListener('click', leaveMatch) }
+  const lobby = $('#leaveGameToLobby')
+  if (lobby && !lobby.dataset.bound) { lobby.dataset.bound = '1'; lobby.addEventListener('click', leaveMatch) }
   ;[['#advanceGameRound', 'Random kick'], ['#spectateGame', 'Rematch']].forEach(([sel, label]) => {
     const btn = $(sel)
     if (btn && !btn.dataset.relabel) {
