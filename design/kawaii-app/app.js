@@ -2695,7 +2695,7 @@ function applyFeedTick (ev, st) {
   }
   // Watch room key follows the current match — re-join if it changed (e.g. sim → live).
   if (window.PearCupWatchSync && document.querySelector('#watch')?.classList.contains('is-active')) {
-    PearCupWatchSync.ensureRoom()
+    window.PearCupWatchSync.ensureRoom()
   }
 }
 
@@ -2885,7 +2885,7 @@ function renderWatch () {
   $('#voiceToggle').classList.toggle('is-live', state.voice)
 
   // Join the shared watch room for this match (chat + reactions + presence sync).
-  if (window.PearCupWatchSync) { PearCupWatchSync.ensureRoom(); PearCupWatchSync.bindReactionBar(); PearCupWatchSync.updatePresence() }
+  if (window.PearCupWatchSync) { window.PearCupWatchSync.ensureRoom(); window.PearCupWatchSync.bindReactionBar(); window.PearCupWatchSync.updatePresence() }
 }
 
 function currentGameRound () {
@@ -3213,7 +3213,7 @@ function kickOutcome (aim, dive, powerPct, entropy) {
 
 function kickEntropy (aim, dive, nonce) {
   const s = `${aim}|${dive}|${nonce}`
-  const h = (window.PearCupPeerNet && PearCupPeerNet.digest) ? parseInt(PearCupPeerNet.digest(s), 16) : hashString(s)
+  const h = (window.PearCupPeerNet && window.PearCupPeerNet.digest) ? parseInt(window.PearCupPeerNet.digest(s), 16) : hashString(s)
   return h >>> 0
 }
 
@@ -3347,7 +3347,7 @@ function ensureShootoutDom () {
     grid.addEventListener('click', event => {
       const zone = event.target.closest('.aim-zone')
       if (!zone) return
-      if (window.PearCupPeerMatch && PearCupPeerMatch.isActive()) PearCupPeerMatch.onZone(zone.dataset.zone)
+      if (window.PearCupPeerMatch && window.PearCupPeerMatch.isActive()) window.PearCupPeerMatch.onZone(zone.dataset.zone)
       else takeKick(zone.dataset.zone)
     })
   }
@@ -3746,7 +3746,7 @@ function renderGameLobby () {
   if (joinFriend) joinFriend.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.promptJoin())
   renderPeerBackendBadge()
   // Live matchmaking: announce on the lobby topic + render online peers.
-  if (window.PearCupLobby) { PearCupLobby.join(); PearCupLobby.renderList() }
+  if (window.PearCupLobby) { window.PearCupLobby.join(); window.PearCupLobby.renderList() }
 }
 
 // Staked AI challenge: explicit consent before any wallet debit (practice stays free).
@@ -4122,7 +4122,7 @@ function bindEvents () {
   $('#advanceGameRound').addEventListener('click', () => {
     const zone = AIM_ZONES[Math.floor(Math.random() * AIM_ZONES.length)]
     // Peer match: route through the peer controller so both clients stay in lockstep.
-    if (window.PearCupPeerMatch && PearCupPeerMatch.isActive()) { PearCupPeerMatch.onZone(zone); return }
+    if (window.PearCupPeerMatch && window.PearCupPeerMatch.isActive()) { window.PearCupPeerMatch.onZone(zone); return }
     const so = ensureShootout()
     if (so.phase === 'over') { ensureShootout(true); hideOverlay(); renderGames(); return }
     if (so.phase === 'aim' && !so.busy) takeKick(zone)
@@ -4145,7 +4145,7 @@ function bindEvents () {
     })
     state.chat = state.chat.slice(-8)
     const last = state.chat[state.chat.length - 1]
-    if (window.PearCupWatchSync) PearCupWatchSync.broadcastChat(last.user, last.text, last.time)
+    if (window.PearCupWatchSync) window.PearCupWatchSync.broadcastChat(last.user, last.text, last.time)
     input.value = ''
     persist()
     renderWatch()

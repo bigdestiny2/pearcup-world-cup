@@ -7,12 +7,16 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = parseArgs(process.argv.slice(2))
 const host = args.host || '127.0.0.1'
-const requestedPort = Number(args.port || 4190)
+const requestedPort = Number(args.port || 4191)
 const strictPort = Boolean(args.strictPort)
 const drive = (args.drive || '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef').toLowerCase()
 const bundle = resolveBundle(args)
+const blockedBrowserFetchPorts = new Set([4190])
 
 if (!/^[0-9a-f]{64}$/i.test(drive)) throw new Error('--drive must be a 64-hex Hyperdrive key')
+if (blockedBrowserFetchPorts.has(requestedPort)) {
+  throw new Error('--port 4190 is blocked by browser/fetch clients; use 4191 or another browser-safe port')
+}
 if (!existsSync(bundle) || !statSync(bundle).isDirectory()) throw new Error(`bundle does not exist: ${bundle}`)
 
 serve(requestedPort)

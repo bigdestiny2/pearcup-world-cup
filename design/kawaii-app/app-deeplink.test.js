@@ -152,7 +152,11 @@ test('completeProfileOnboarding keeps the normal home flow without an invite', (
 test('renderGameLobby friend buttons use the window-scoped peer controller', () => {
   assert.match(appSource, /window\.PearCupPeerMatch && window\.PearCupPeerMatch\.host\(\)/)
   assert.match(appSource, /window\.PearCupPeerMatch && window\.PearCupPeerMatch\.promptJoin\(\)/)
-  assert.doesNotMatch(appSource, /window\.PearCupPeerMatch && PearCupPeerMatch\.(host|promptJoin)\(\)/)
+  assert.doesNotMatch(appSource, /window\.PearCupPeerMatch && PearCupPeerMatch\./)
+  assert.doesNotMatch(appSource, /window\.PearCupPeerNet && PearCupPeerNet\./)
+  assert.doesNotMatch(appSource, /window\.PearCupLobby\) \{ PearCupLobby\./)
+  assert.doesNotMatch(appSource, /window\.PearCupWatchSync\) PearCupWatchSync\./)
+  assert.doesNotMatch(appSource, /window\.PearCupWatchSync\) \{ PearCupWatchSync\./)
 })
 
 test('assertP2PModulesReady marks the app ready only when every P2P module is attached', () => {

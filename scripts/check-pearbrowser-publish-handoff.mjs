@@ -339,14 +339,16 @@ function validateVerification (verification) {
       errors.push(`receipt localPublishedGatewayContract must require ${required}`)
     }
   }
-  if (localPublishedBrowserContract.command !== 'npm run serve:pearbrowser-published -- --receipt <receipt>') {
+  if (localPublishedBrowserContract.command !== 'npm run serve:pearbrowser-published -- --receipt <receipt> --port 4191') {
     errors.push('receipt localPublishedBrowserContract must document the exact-receipt browser server command')
   }
-  if (!String(localPublishedBrowserContract.exactReceiptCommand || '').includes('serve:pearbrowser-published')) {
+  if (!String(localPublishedBrowserContract.exactReceiptCommand || '').includes('serve:pearbrowser-published') ||
+    !String(localPublishedBrowserContract.exactReceiptCommand || '').includes('--port 4191')) {
     errors.push('receipt localPublishedBrowserContract must include an exact receipt command')
   }
   for (const required of [
     'exact receipt bundle boots at /app/<64-hex-drive>/',
+    'local proof server uses a browser-safe fetch port',
     'browser reports bootReady=p2p',
     'browser reports p2pModules=ready',
     'Games route activates from published-style URL',
@@ -427,7 +429,8 @@ function validateSmokeContracts () {
       'pearcupRuntimeSelfTestGuest',
       'pearcup:runtime-self-test',
       'PearCupPeerMatch.host()',
-      'published mascot art'
+      'published mascot art',
+      '--gateway uses port 4190'
     ]) {
       if (!publishedSmoke.includes(required)) errors.push(`published PearBrowser smoke is missing contract text: ${required}`)
     }
@@ -439,9 +442,13 @@ function validateSmokeContracts () {
       'PearBrowser local published deep link:',
       '/app/${drive}/',
       'resolveGatewayRequest',
-      '--receipt'
+      '--receipt',
+      'args.port || 4191'
     ]) {
       if (!publishedServer.includes(required)) errors.push(`local published browser server is missing contract text: ${required}`)
+    }
+    if (publishedServer.includes('args.port || 4190')) {
+      errors.push('local published browser server must not default to blocked fetch port 4190')
     }
   }
   if (existsSync(friendReadyPath)) {

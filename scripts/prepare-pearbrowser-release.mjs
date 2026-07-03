@@ -129,10 +129,11 @@ const receipt = {
       ]
     },
     localPublishedBrowserContract: {
-      command: 'npm run serve:pearbrowser-published -- --receipt <receipt>',
-      exactReceiptCommand: `npm run serve:pearbrowser-published -- --receipt ${receiptPath}`,
+      command: 'npm run serve:pearbrowser-published -- --receipt <receipt> --port 4191',
+      exactReceiptCommand: `npm run serve:pearbrowser-published -- --receipt ${receiptPath} --port 4191`,
       requires: [
         'exact receipt bundle boots at /app/<64-hex-drive>/',
+        'local proof server uses a browser-safe fetch port',
         'browser reports bootReady=p2p',
         'browser reports p2pModules=ready',
         'Games route activates from published-style URL',

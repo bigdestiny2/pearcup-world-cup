@@ -161,6 +161,15 @@ function checkApp (app) {
   ]) {
     if (!app.includes(needle)) errors.push(message)
   }
+  for (const [pattern, message] of [
+    [/window\.PearCupPeerMatch && PearCupPeerMatch\./, 'published app.js still uses bare PearCupPeerMatch after a window guard'],
+    [/window\.PearCupPeerNet && PearCupPeerNet\./, 'published app.js still uses bare PearCupPeerNet after a window guard'],
+    [/window\.PearCupLobby\) \{ PearCupLobby\./, 'published app.js still uses bare PearCupLobby after a window guard'],
+    [/window\.PearCupWatchSync\) PearCupWatchSync\./, 'published app.js still uses bare PearCupWatchSync after a window guard'],
+    [/window\.PearCupWatchSync\) \{ PearCupWatchSync\./, 'published app.js still uses bare PearCupWatchSync after a window guard']
+  ]) {
+    if (pattern.test(app)) errors.push(message)
+  }
   if (/\bItaly\b/.test(app)) errors.push('published app.js must not include Italy as a current competition team')
 }
 
@@ -267,6 +276,10 @@ function normalizeAppUrl (parsed) {
     return null
   }
 
+  if (url.port === '4190') {
+    errors.push('--url uses port 4190, which browser/fetch clients block; use 4191 or another browser-safe port')
+    return null
+  }
   url.hash = ''
   url.search = ''
   if (!url.pathname.endsWith('/')) url.pathname += '/'
@@ -278,6 +291,10 @@ function validGatewayUrl (value) {
     const url = new URL(value)
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
       errors.push('--gateway must be an http:// or https:// URL')
+      return false
+    }
+    if (url.port === '4190') {
+      errors.push('--gateway uses port 4190, which browser/fetch clients block; use 4191 or another browser-safe port')
       return false
     }
     return true
