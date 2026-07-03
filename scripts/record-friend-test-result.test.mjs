@@ -159,6 +159,31 @@ test('refuses publish-result receipts without the local published-link proof com
   assert.match(result.stderr, /local published-link proof command/)
 })
 
+test('refuses publish-result receipts without source release binding', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-no-source-binding-'))
+  const publishResult = writePublishResult(dir, {
+    receipt: '',
+    sourceGitHead: '',
+    sourceDirty: undefined
+  })
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /source release receipt/)
+  assert.match(result.stderr, /clean source release receipt/)
+})
+
 test('refuses publish-result receipts without exact-bundle Pear runtime proof', () => {
   const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-no-runtime-proof-'))
   const publishResult = writePublishResult(dir, {
@@ -256,6 +281,11 @@ function writePublishResult (dir, overrides = {}) {
   const receipt = {
     app: 'PearCup',
     status: 'published-and-smoked',
+    receipt: join(dir, 'pearcup-release-receipt.json'),
+    sourceGitHead: '2573450565f8bf61eb64d38159fe5c553cf21b65',
+    sourceGitBranch: 'main',
+    sourceDirty: false,
+    sourceGitStatus: [],
     publishedUrl: `hyper://${driveKey}/`,
     driveKey,
     bundleSha256,

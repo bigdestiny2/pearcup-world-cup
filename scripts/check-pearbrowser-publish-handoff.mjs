@@ -240,6 +240,9 @@ function validateApprovedPublishWrapper () {
   if (!wrapper.includes('localPublishedLinkProofCommand')) {
     errors.push('approved publish wrapper result receipt must preserve the local published-link proof command field')
   }
+  if (!wrapper.includes('sourceGitHead') || !wrapper.includes('sourceDirty')) {
+    errors.push('approved publish wrapper result receipt must preserve the release source git binding')
+  }
   if (!wrapper.includes('exactBundlePearRuntimePreflight')) {
     errors.push('approved publish wrapper result receipt must preserve the exact bundle Pear runtime proof field')
   }
@@ -661,6 +664,9 @@ function validateSmokeContracts () {
       'host and friend can start Penalty Clash from the joined room',
       'recording a passed friend test requires --room-code',
       'observedRoomCode',
+      'sourceGitHead',
+      'source release receipt sourceGitHead',
+      'clean source release receipt',
       'exactBundlePearRuntimePreflight',
       'publish result must prove exact bundle Pear runtime preflight passed'
     ]) {

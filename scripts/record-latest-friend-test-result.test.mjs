@@ -102,6 +102,11 @@ function writeFixture (dir, overrides = {}) {
   const publishResult = {
     app: 'PearCup',
     status: 'published-and-smoked',
+    receipt: join(dir, 'pearcup-release-receipt.json'),
+    sourceGitHead: currentGitHead(),
+    sourceGitBranch: 'main',
+    sourceDirty: false,
+    sourceGitStatus: [],
     publishedUrl: `hyper://${drive}/`,
     driveKey: drive,
     bundleSha256: sha,

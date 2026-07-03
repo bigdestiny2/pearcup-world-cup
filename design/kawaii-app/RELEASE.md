@@ -224,7 +224,10 @@ non-empty.
 
 After the friend completes the real PearBrowser test, record the result against the
 same durable handoff. The helper reads `.pearcup-release/latest/pearcup-release-receipt.json`
-and supplies the exact `pearcup-publish-result.json` path plus bundle SHA for you:
+and supplies the exact `pearcup-publish-result.json` path plus bundle SHA for you.
+The publish result must also carry the source release receipt path, clean
+`sourceGitHead`, exact-bundle published-gateway preflight, exact-bundle Pear runtime
+preflight, and post-publish smoke evidence before the friend result can be recorded:
 
 ```
 npm run record:friend-test:latest -- \

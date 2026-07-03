@@ -42,6 +42,10 @@ const result = {
   status: passed ? 'remote-friend-verified' : 'remote-friend-failed',
   recordedAt: new Date().toISOString(),
   publishResult: publishResultPath,
+  releaseReceipt: publishResult.receipt || '',
+  sourceGitHead: publishResult.sourceGitHead || '',
+  sourceGitBranch: publishResult.sourceGitBranch || '',
+  sourceDirty: publishResult.sourceDirty,
   publishedUrl: publishResult.publishedUrl || '',
   driveKey: publishResult.driveKey || '',
   bundleSha256: publishResult.bundleSha256 || '',
@@ -76,6 +80,13 @@ function validatePublishResult (result) {
     errors.push('publish result driveKey must match the publishedUrl drive key')
   }
   if (!/^[0-9a-f]{64}$/i.test(String(result.bundleSha256 || ''))) errors.push('publish result must include a 64-hex bundleSha256')
+  if (!String(result.receipt || '')) errors.push('publish result must include the source release receipt path')
+  if (!/^[0-9a-f]{40}$/i.test(String(result.sourceGitHead || ''))) {
+    errors.push('publish result must include the source release receipt sourceGitHead')
+  }
+  if (result.sourceDirty !== false) {
+    errors.push('publish result must come from a clean source release receipt')
+  }
   if (!result.friendTest || result.friendTest.status !== 'pending-remote-friend') {
     errors.push('publish result must still be pending remote friend verification')
   }
