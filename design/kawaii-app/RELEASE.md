@@ -127,12 +127,28 @@ records those source checks, the explicit boot-probe contract, the served-previe
 contract, the local published-gateway contract, and the bundle smoke so the exact
 payload can be confirmed before publishing/pinning it.
 
+When a remote friend is actually queued up, prefer the durable local handoff path:
+
+```
+npm run prepare:pearbrowser-release:handoff
+npm run check:publish-handoff:latest
+```
+
+That writes the exact bundle and `pearcup-release-receipt.json` to the ignored
+`.pearcup-release/latest/` directory, then rechecks that exact receipt. The handoff
+path is safe to rerun because the script only uses `--force` inside
+`.pearcup-release/` or the system temp directory; it refuses arbitrary delete paths.
+Use the printed SHA and approved command from `check:publish-handoff:latest` for the
+explicit publish approval.
+
 Before any publish/pin handoff, run:
 
 ```
 npm run check:pear-seamless:preview
 # lower-level receipt-only check:
 npm run check:publish-handoff
+# stable friend-test handoff:
+npm run check:publish-handoff:latest
 # or, for an already-prepared candidate:
 node scripts/check-pearbrowser-publish-handoff.mjs --receipt /path/to/pearcup-release-receipt.json
 ```

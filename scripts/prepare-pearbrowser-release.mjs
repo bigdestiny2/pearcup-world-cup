@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
@@ -16,6 +16,10 @@ const bundle = join(out, 'bundle')
 const receiptPath = join(out, 'pearcup-release-receipt.json')
 const publishResultPath = join(out, 'pearcup-publish-result.json')
 
+if (args.force && args.out && existsSync(out)) {
+  assertSafeForceOut(out)
+  rmSync(out, { recursive: true, force: true })
+}
 if (existsSync(bundle)) throw new Error(`bundle output already exists: ${bundle}`)
 mkdirSync(out, { recursive: true })
 
@@ -23,6 +27,7 @@ runNode('scripts/check-kawaii-runtime.mjs')
 runNpm('test:kawaii-peer')
 runNodeTest('scripts/record-friend-test-result.test.mjs')
 runNodeTest('scripts/publish-approved-pearcup.test.mjs')
+runNodeTest('scripts/prepare-pearbrowser-release.test.mjs')
 runNodeTest('scripts/check-pear-seamless.test.mjs')
 runNpm('smoke:kawaii-p2p-preview')
 runNpm('smoke:kawaii-pear-run')
@@ -63,6 +68,7 @@ const receipt = {
       'npm run test:kawaii-peer',
       'node --test scripts/record-friend-test-result.test.mjs',
       'node --test scripts/publish-approved-pearcup.test.mjs',
+      'node --test scripts/prepare-pearbrowser-release.test.mjs',
       'node --test scripts/check-pear-seamless.test.mjs',
       'npm run smoke:kawaii-p2p-preview',
       'npm run smoke:kawaii-pear-run',
@@ -82,6 +88,7 @@ const receipt = {
       'design/kawaii-app/peer-preview-smoke.test.js',
       'scripts/record-friend-test-result.test.mjs',
       'scripts/publish-approved-pearcup.test.mjs',
+      'scripts/prepare-pearbrowser-release.test.mjs',
       'scripts/check-pear-seamless.test.mjs'
     ],
     bootProbeContract: {
@@ -239,11 +246,25 @@ function listFiles (dir, acc = []) {
 }
 
 function parseArgs (argv) {
-  const parsed = {}
+  const parsed = { force: false }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--out') parsed.out = argv[++i]
     else if (arg.startsWith('--out=')) parsed.out = arg.slice('--out='.length)
+    else if (arg === '--force') parsed.force = true
   }
   return parsed
+}
+
+function assertSafeForceOut (outPath) {
+  const releaseRoot = resolve(root, '.pearcup-release')
+  const tmpRoot = resolve(tmpdir())
+  if (isInside(outPath, releaseRoot) || isInside(outPath, tmpRoot)) return
+  throw new Error(`--force may only remove outputs inside ${releaseRoot} or ${tmpRoot}: ${outPath}`)
+}
+
+function isInside (target, parent) {
+  const normalizedTarget = resolve(target)
+  const normalizedParent = resolve(parent)
+  return normalizedTarget === normalizedParent || normalizedTarget.startsWith(normalizedParent + '/')
 }

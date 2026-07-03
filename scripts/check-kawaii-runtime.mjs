@@ -15,7 +15,10 @@ if (pkg) {
   checkDependencies(pkg)
 }
 const rootPkg = readRootJson('package.json')
-if (rootPkg) checkRootLaunchScripts(rootPkg)
+if (rootPkg) {
+  checkRootLaunchScripts(rootPkg)
+  checkRootReleaseHandoffScripts(rootPkg)
+}
 checkRootLegacyPearGuard()
 checkBootBundleFresh()
 checkRendererHtml()
@@ -125,6 +128,19 @@ function checkRootLaunchScripts (pkg) {
   })) {
     if (scripts[name] !== expected) {
       errors.push(`root package script "${name}" must route to the canonical design/kawaii-app Pear build`)
+    }
+  }
+}
+
+function checkRootReleaseHandoffScripts (pkg) {
+  const scripts = pkg.scripts || {}
+  const expected = {
+    'prepare:pearbrowser-release:handoff': 'node --check scripts/prepare-pearbrowser-release.mjs && node scripts/prepare-pearbrowser-release.mjs --out .pearcup-release/latest --force',
+    'check:publish-handoff:latest': 'node --check scripts/check-pearbrowser-publish-handoff.mjs && node scripts/check-pearbrowser-publish-handoff.mjs --receipt .pearcup-release/latest/pearcup-release-receipt.json'
+  }
+  for (const [name, command] of Object.entries(expected)) {
+    if (scripts[name] !== command) {
+      errors.push(`root package script "${name}" must keep the durable .pearcup-release/latest handoff path`)
     }
   }
 }
