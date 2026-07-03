@@ -1573,6 +1573,7 @@ function createBracketSettlementWorker (eventStore) {
   const rootObject = typeof window !== 'undefined' ? window : globalThis
   return PearCupWorkerClient.createAutoWorkerClient({
     rootObject,
+    preferLocal: !integrationRuntime.canUseRealMoney,
     local: () => {
       const tetherWdk = createBracketUiTetherWdkAdapter()
       const worker = PearCupWorkerSim.createWorkerSim({
@@ -1595,6 +1596,7 @@ function createPenaltySettlementWorker (eventStore) {
   const rootObject = typeof window !== 'undefined' ? window : globalThis
   return PearCupWorkerClient.createAutoWorkerClient({
     rootObject,
+    preferLocal: !integrationRuntime.canUseRealMoney,
     local: () => PearCupWorkerClient.createLocalWorkerClient({
       runtime: integrationRuntime,
       workerFactory: PearCupWorkerSim,
@@ -1827,7 +1829,8 @@ async function resolveBracketSettlement (selectedPool) {
     qvacActorId: qvacActor,
     wdkActorId: tetherActor
   }, {
-    actorId: 'settlement-worker'
+    actorId: 'settlement-worker',
+    requireLive: integrationRuntime.canUseRealMoney
   })
   const settlementSummary = settlementResult.summary
   const serviceStatus = settlementService.status()
@@ -3025,7 +3028,8 @@ async function resolvePenaltyRound (roundOverride) {
     wdkActorId: tetherActor,
     payoutRecipients
   }, {
-    actorId: 'settlement-worker'
+    actorId: 'settlement-worker',
+    requireLive: integrationRuntime.canUseRealMoney
   })
   const settlementSummary = settlementResult.summary
   const serviceStatus = settlementService.status()

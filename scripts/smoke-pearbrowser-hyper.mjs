@@ -112,8 +112,21 @@ function checkRendererReferences () {
   if (bootIndex < 0 && appIndex < 0) errors.push('index.html must load ./pearcup-boot.js or ./app.js')
   if (bootIndex >= 0) {
     const bootLoader = readText('pearcup-boot.js') || ''
-    for (const ref of ['./peer-net.js', './peer-match.js', './peer-lobby.js', './watch-sync.js', './app.js']) {
-      if (!bootLoader.includes(ref)) errors.push(`pearcup-boot.js must load ${ref}`)
+    for (const ref of [
+      './settlement-receipts.js',
+      './worker-sim.js',
+      './storage-sim.js',
+      './transport-sim.js',
+      './worker-runtime.js',
+      './settlement-service.js',
+      './worker-client.js',
+      './peer-net.js',
+      './peer-match.js',
+      './peer-lobby.js',
+      './watch-sync.js',
+      './app.js'
+    ]) {
+      if (!bootLoader.includes(ref)) errors.push(`pearcup-boot.js must bundle ${ref}`)
     }
   } else {
     if (!scriptRefs.includes('./peer-net.js')) errors.push('index.html must load ./peer-net.js')
@@ -142,6 +155,7 @@ function checkRendererReferences () {
 function checkBootContract () {
   const html = readText('index.html') || ''
   const app = readText('app.js') || ''
+  const boot = readText('pearcup-boot.js') || ''
   const peerNet = readText('peer-net.js') || ''
   const peerMatch = readText('peer-match.js') || ''
   const peerLobby = readText('peer-lobby.js') || ''
@@ -173,6 +187,13 @@ function checkBootContract () {
   assertText(app, 'completeProfileOnboarding', 'profile save must preserve pending friend invite deep links')
   assertText(app, 'Round of 32', 'app.js keeps Round of 32 as the current round')
   assertNotText(app, /\bItaly\b/, 'app.js must not include Italy as a current competition team')
+  assertText(app, 'preferLocal: !integrationRuntime.canUseRealMoney', 'app.js must keep demo settlements on the local worker client')
+  assertText(app, 'requireLive: integrationRuntime.canUseRealMoney', 'app.js must pass demo/live mode to settlement receipt requests')
+  assertText(boot, 'PearCupWorkerClient', 'pearcup-boot.js must bundle the worker client for settlement evidence')
+  assertText(boot, 'PearCupSettlementService', 'pearcup-boot.js must bundle the settlement service')
+  assertText(boot, 'PearCupWorkerSim', 'pearcup-boot.js must bundle the worker simulator')
+  assertText(boot, 'PearCupStorageSim', 'pearcup-boot.js must bundle settlement storage replay helpers')
+  assertText(boot, 'PearCupTransportSim', 'pearcup-boot.js must bundle P2P settlement replay helpers')
   assertText(peerNet, 'pear.swarm.v1', 'peer-net.js probes PearBrowser swarm.v1')
   assertText(peerNet, 'pearcup.peer-net.v1', 'peer-net.js uses the PearCup peer protocol name')
   assertText(peerNet, 'broadcast-channel', 'peer-net.js keeps plain-browser dev fallback')

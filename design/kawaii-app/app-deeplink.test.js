@@ -172,6 +172,12 @@ test('renderGameLobby friend buttons use the window-scoped peer controller', () 
   assert.doesNotMatch(appSource, /window\.PearCupWatchSync\) \{ PearCupWatchSync\./)
 })
 
+test('settlement receipt calls preserve demo mode through the worker bridge', () => {
+  assert.match(appSource, /createAutoWorkerClient\([\s\S]*?preferLocal: !integrationRuntime\.canUseRealMoney[\s\S]*?createLocalWorkerClient/)
+  assert.match(appSource, /settleBracketPoolWithReceipt\([\s\S]*?actorId: 'settlement-worker',\s*requireLive: integrationRuntime\.canUseRealMoney/)
+  assert.match(appSource, /settleGameRoundWithReceipt\([\s\S]*?actorId: 'settlement-worker',\s*requireLive: integrationRuntime\.canUseRealMoney/)
+})
+
 test('runtime diagnostics mirror normal app boot and active screen', () => {
   const context = {
     document: {
