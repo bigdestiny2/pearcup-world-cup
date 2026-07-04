@@ -22,6 +22,8 @@ test('latest launch status reports release-ready but unpublished handoff', () =>
   assert.equal(status.publish.ready, false)
   assert.equal(status.friend.ready, false)
   assert.equal(status.complete, false)
+  assert.match(status.exactPreviewCommand, /serve-latest-pearbrowser-preview\.mjs/)
+  assert.match(status.exactPreviewCommand, /--port 4186/)
   assert.match(status.next, /explicit approval/)
   assert.match(status.next, new RegExp(sha))
 })
@@ -72,6 +74,8 @@ test('latest launch status can point operators at a clean release checkout', () 
   assert.match(source, /alternateReadyRelease/)
   assert.match(source, /worktree', 'list', '--porcelain/)
   assert.match(source, /Use clean release checkout/)
+  assert.match(source, /exactPreviewCommand/)
+  assert.match(source, /serve-latest-pearbrowser-preview\.mjs/)
   assert.match(source, /npm run publish:approved:latest -- --publish/)
 })
 
@@ -155,6 +159,11 @@ function writeReceipt (dir, overrides = {}) {
     sourceDirty: false,
     sourceGitStatus: [],
     bundleSha256: sha,
+    verification: {
+      exactReleasePreviewContract: {
+        exactReceiptCommand: `node scripts/serve-latest-pearbrowser-preview.mjs --receipt ${receiptPath} --port 4186`
+      }
+    },
     postPublishVerification: {
       resultPath: join(dir, 'pearcup-publish-result.json')
     },

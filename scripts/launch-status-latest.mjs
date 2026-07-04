@@ -33,6 +33,7 @@ const status = {
   publish,
   friend,
   complete: release.ready && publish.ready && friend.ready,
+  exactPreviewCommand: exactPreviewCommandFor(receipt, receiptPath),
   publishGateway,
   next: nextStep(release, publish, friend, receipt, alternateReadyRelease, publishGateway)
 }
@@ -169,7 +170,11 @@ function printHuman (status) {
   if (status.alternateReadyRelease) {
     console.log(`clean release checkout - ${status.alternateReadyRelease.worktree}`)
     console.log(`clean release receipt - ${status.alternateReadyRelease.receipt}`)
+    if (status.alternateReadyRelease.exactPreviewCommand) {
+      console.log(`exact preview - cd ${JSON.stringify(status.alternateReadyRelease.worktree)} && ${status.alternateReadyRelease.exactPreviewCommand}`)
+    }
   }
+  if (!status.alternateReadyRelease && status.exactPreviewCommand) console.log(`exact preview - ${status.exactPreviewCommand}`)
   if (status.publish.publishedUrl) console.log(`published url - ${status.publish.publishedUrl}`)
   if (status.friend.roomCode) console.log(`friend room code - ${status.friend.roomCode}`)
   if (warnings.length > 0) for (const warning of warnings) console.log(`warning - ${warning}`)
@@ -231,6 +236,7 @@ function findAlternateReadyRelease (current) {
     return {
       worktree: worktreePath,
       receipt: alternateReceiptPath,
+      exactPreviewCommand: exactPreviewCommandFor(alternateReceipt, alternateReceiptPath),
       bundleSha256: alternateReceipt.bundleSha256,
       sourceGitHead: alternateReceipt.sourceGitHead
     }
@@ -273,6 +279,16 @@ function readJsonOptional (filePath) {
   } catch (err) {
     return null
   }
+}
+
+function exactPreviewCommandFor (receipt, filePath) {
+  const command = receipt &&
+    receipt.verification &&
+    receipt.verification.exactReleasePreviewContract &&
+    receipt.verification.exactReleasePreviewContract.exactReceiptCommand
+  if (command) return String(command)
+  if (!receipt || !receipt.bundleSha256) return ''
+  return `node scripts/serve-latest-pearbrowser-preview.mjs --receipt ${JSON.stringify(resolve(filePath))} --port 4186`
 }
 
 function detectPearBrowserGateway () {
