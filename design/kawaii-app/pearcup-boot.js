@@ -1,7 +1,7 @@
 // Generated PearCup renderer boot loader.
 // Regenerate with: npm run build:kawaii-boot
 // Sources: ./core.js, ./adapters.js, ./qvac-referee.js, ./tether-wdk-bridge.js, ./runtime-settings.js, ./runtime-config.js, ./settlement-receipts.js, ./worker-sim.js, ./storage-sim.js, ./transport-sim.js, ./worker-runtime.js, ./settlement-service.js, ./worker-client.js, ./peer-net.js, ./peer-match.js, ./peer-lobby.js, ./watch-sync.js, ./app.js
-// Evidence markers live in loaded scripts: PearCupWorkerClient, PearCupSettlementService, PearCupWorkerSim, PearCupStorageSim, PearCupTransportSim, runBootRuntimeSelfTest, pearcup:runtime-self-test, runRuntimePeerHandshakeSelfTest, pearcupRuntimeSelfTestGuest
+// Evidence markers live in loaded scripts: PearCupPeerNet, PearCupWorkerClient, PearCupSettlementService, PearCupWorkerSim, PearCupStorageSim, PearCupTransportSim, showOperatorLiveDataSettings, runBootRuntimeSelfTest, pearcup:runtime-self-test, runRuntimePeerHandshakeSelfTest, pearcupRuntimeSelfTestGuest
 (function bootPearCupRenderer (root) {
   if (root.__pearcupBootLoaderStarted) return
   root.__pearcupBootLoaderStarted = true

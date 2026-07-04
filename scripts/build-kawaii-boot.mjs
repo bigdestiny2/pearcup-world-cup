@@ -52,11 +52,13 @@ if (args.has('--check')) {
 function buildBundle () {
   const refs = sourceFiles.map(file => `./${file}`)
   const evidenceMarkers = [
+    'PearCupPeerNet',
     'PearCupWorkerClient',
     'PearCupSettlementService',
     'PearCupWorkerSim',
     'PearCupStorageSim',
     'PearCupTransportSim',
+    'showOperatorLiveDataSettings',
     'runBootRuntimeSelfTest',
     'pearcup:runtime-self-test',
     'runRuntimePeerHandshakeSelfTest',
