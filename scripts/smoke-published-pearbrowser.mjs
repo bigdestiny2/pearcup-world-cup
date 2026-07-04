@@ -202,6 +202,8 @@ function checkApp (app) {
     ['runtimeBracketEvidence', 'published app.js runtime self-test does not collect Bracket render evidence'],
     ['Bracket board rendered', 'published app.js runtime self-test does not fail blank Bracket boards'],
     ['Bracket route did not render generated avatar images', 'published app.js runtime self-test does not prove Bracket generated avatars'],
+    ['watchChallengePanel', 'published app.js runtime self-test does not prove the Watch challenge panel'],
+    ['Watch route did not render the challenge panel', 'published app.js runtime self-test does not fail missing Watch challenge panels'],
     ['runRuntimeHashRouteSelfTest', 'published app.js runtime self-test does not prove same-document hash route changes'],
     ['Same-document hash route changes did not activate Bracket, Games, and Watch', 'published app.js runtime self-test does not fail stuck hash route changes'],
     ['runRuntimePeerHandshakeSelfTest', 'published app.js runtime self-test does not launch a hidden guest invite join'],
@@ -279,6 +281,16 @@ function checkWatchSync (watchSync) {
   if (!watchSync) return
   if (!watchSync.includes('PearCupPeerNet')) errors.push('published watch-sync.js does not use shared PearCup peer transport')
   if (!watchSync.includes('pearcupWatchSyncModule')) errors.push('published watch-sync.js does not mark module readiness')
+  for (const [needle, message] of [
+    ['function challenge (peerId)', 'published watch-sync.js does not expose same-room watcher challenges'],
+    ['function acceptChallenge', 'published watch-sync.js cannot accept same-room watcher challenges'],
+    ['function renderChallengeList', 'published watch-sync.js cannot render challengeable watchers'],
+    ['watch-peer-challenge', 'published watch-sync.js does not bind challenge buttons'],
+    ['root.PearCupPeerMatch.host', 'published watch-sync.js does not host Penalty Clash from Watch challenges'],
+    ['root.PearCupPeerMatch.join', 'published watch-sync.js does not join Penalty Clash from Watch challenges']
+  ]) {
+    if (!watchSync.includes(needle)) errors.push(message)
+  }
 }
 
 async function fetchText (url, label, opts = {}) {

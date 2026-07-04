@@ -4601,6 +4601,7 @@ function runtimeHashRouteEvidence (view) {
   const active = document.querySelector('.screen.is-active')
   const board = document.querySelector('#bracketBoard')
   const boardRect = board && typeof board.getBoundingClientRect === 'function' ? board.getBoundingClientRect() : null
+  const watchChallengeList = document.querySelector('#watchChallengeList')
   return {
     view,
     hash: location.hash || '',
@@ -4610,7 +4611,10 @@ function runtimeHashRouteEvidence (view) {
     boardVisible: Boolean(board && boardRect && boardRect.width > 0 && boardRect.height > 0),
     matchCards: document.querySelectorAll('#bracketBoard .bracket-match').length,
     inviteButton: Boolean(document.querySelector('#inviteFriendBtn')),
-    watchActive: Boolean(document.querySelector('#watch.screen.is-active'))
+    watchActive: Boolean(document.querySelector('#watch.screen.is-active')),
+    watchChallengePanel: Boolean(document.querySelector('.watch-challenge-panel')),
+    watchChallengeList: Boolean(watchChallengeList),
+    watchChallengeText: watchChallengeList ? watchChallengeList.textContent.trim() : ''
   }
 }
 
@@ -4685,6 +4689,10 @@ async function runBootRuntimeSelfTest () {
         if (route.activeScreen !== view) errors.push(`Hash route ${view} activeScreen was ${route.activeScreen || '(missing)'}`)
         if (route.activeScreenDataset !== view) errors.push(`Hash route ${view} activeScreenDataset was ${route.activeScreenDataset || '(missing)'}`)
         if (route.passed !== true) errors.push(`Hash route ${view} did not pass`)
+        if (view === 'watch') {
+          if (route.watchChallengePanel !== true) errors.push('Watch route did not render the challenge panel')
+          if (route.watchChallengeList !== true) errors.push('Watch route did not render the challenge list')
+        }
       }
     }
     setView('games')

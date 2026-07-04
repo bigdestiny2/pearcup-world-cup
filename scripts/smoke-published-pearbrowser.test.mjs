@@ -62,6 +62,25 @@ test('published smoke rejects localhost proxy invite links', async () => {
   }
 })
 
+test('published smoke rejects watch sync without same-room challenges', async () => {
+  const server = await startFixtureServer({
+    watchSyncJs: [
+      'PearCupPeerNet',
+      'pearcupWatchSyncModule'
+    ].join('\n')
+  })
+
+  try {
+    const result = await runSmoke(server.gateway)
+
+    assert.notEqual(result.status, 0)
+    assert.match(result.stderr, /published watch-sync\.js does not expose same-room watcher challenges/)
+    assert.match(result.stderr, /published watch-sync\.js does not host Penalty Clash from Watch challenges/)
+  } finally {
+    await server.close()
+  }
+})
+
 function runSmoke (gateway) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [script, '--drive', drive, '--gateway', gateway], {
@@ -85,7 +104,7 @@ function runSmoke (gateway) {
   })
 }
 
-function startFixtureServer ({ indexHtml = validIndexHtml(), peerMatchJs = validPeerMatchJs() }) {
+function startFixtureServer ({ indexHtml = validIndexHtml(), peerMatchJs = validPeerMatchJs(), watchSyncJs = validWatchSyncJs() }) {
   const files = new Map([
     ['index.html', text(indexHtml, 'text/html; charset=utf-8')],
     ['manifest.json', text(JSON.stringify({
@@ -128,6 +147,7 @@ function startFixtureServer ({ indexHtml = validIndexHtml(), peerMatchJs = valid
       '// pearcupPendingJoin completeProfileOnboarding peerMatch.join(code) Round of 32 AVATAR_PORTRAITS',
       '// avatars/p-aria.png avatars/p-tariq.png assets/mascot.png runBootRuntimeSelfTest',
       '// runtimeBracketEvidence Bracket board rendered Bracket route did not render generated avatar images',
+      '// watchChallengePanel Watch route did not render the challenge panel',
       '// runRuntimeHashRouteSelfTest Same-document hash route changes did not activate Bracket, Games, and Watch',
       '// runRuntimePeerHandshakeSelfTest pearcupRuntimeSelfTestGuest pearcup:runtime-self-test',
       '// PearCupPeerMatch.host()'
@@ -144,10 +164,7 @@ function startFixtureServer ({ indexHtml = validIndexHtml(), peerMatchJs = valid
       'PearCupPeerMatch',
       'pearcupPeerLobbyModule'
     ].join('\n'), 'text/javascript; charset=utf-8')],
-    ['watch-sync.js', text([
-      'PearCupPeerNet',
-      'pearcupWatchSyncModule'
-    ].join('\n'), 'text/javascript; charset=utf-8')]
+    ['watch-sync.js', text(watchSyncJs, 'text/javascript; charset=utf-8')]
   ])
 
   for (const asset of [
@@ -236,6 +253,19 @@ function validPeerMatchJs () {
     'pearcupPeerMatchStarted',
     'hyperLaunchBase',
     'hyper://'
+  ].join('\n')
+}
+
+function validWatchSyncJs () {
+  return [
+    'PearCupPeerNet',
+    'pearcupWatchSyncModule',
+    'function challenge (peerId) {}',
+    'function acceptChallenge () {}',
+    'function renderChallengeList () {}',
+    'watch-peer-challenge',
+    'root.PearCupPeerMatch.host',
+    'root.PearCupPeerMatch.join'
   ].join('\n')
 }
 

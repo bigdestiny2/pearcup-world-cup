@@ -271,6 +271,10 @@ function validateBootProbe (payload, bridgeEvents = []) {
     if (route.passed !== true) errors.push(`runtime self-test hash route ${view} did not pass`)
     if (route.activeScreen !== view) errors.push(`runtime self-test hash route ${view} activeScreen was ${route.activeScreen || '(missing)'}`)
     if (route.activeScreenDataset !== view) errors.push(`runtime self-test hash route ${view} activeScreenDataset was ${route.activeScreenDataset || '(missing)'}`)
+    if (view === 'watch') {
+      if (route.watchChallengePanel !== true) errors.push('runtime self-test Watch route did not render the challenge panel')
+      if (route.watchChallengeList !== true) errors.push('runtime self-test Watch route did not render the challenge list')
+    }
   }
   if (selfTestPayload.appBootedDataset !== 'true') errors.push(`runtime self-test appBootedDataset was ${selfTestPayload.appBootedDataset || '(missing)'}`)
   if (selfTestPayload.activeScreen !== 'games') errors.push(`runtime self-test activeScreen was ${selfTestPayload.activeScreen || '(missing)'}`)
