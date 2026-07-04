@@ -33,6 +33,7 @@ runNodeTest('scripts/publish-approved-pearcup.test.mjs')
 runNodeTest('scripts/publish-approved-latest-pearcup.test.mjs')
 runNodeTest('scripts/prepare-pearbrowser-release.test.mjs')
 runNodeTest('scripts/check-pear-seamless.test.mjs')
+runNodeTest('scripts/serve-latest-pearbrowser-preview.test.mjs')
 runNodeTest('scripts/smoke-published-pearbrowser.test.mjs')
 runNpm('smoke:kawaii-p2p-preview')
 runNpm('smoke:kawaii-pear-run')
@@ -84,6 +85,7 @@ const receipt = {
       'node --test scripts/publish-approved-latest-pearcup.test.mjs',
       'node --test scripts/prepare-pearbrowser-release.test.mjs',
       'node --test scripts/check-pear-seamless.test.mjs',
+      'node --test scripts/serve-latest-pearbrowser-preview.test.mjs',
       'node --test scripts/smoke-published-pearbrowser.test.mjs',
       'npm run smoke:kawaii-p2p-preview',
       'npm run smoke:kawaii-pear-run',
@@ -108,6 +110,7 @@ const receipt = {
       'scripts/publish-approved-latest-pearcup.test.mjs',
       'scripts/prepare-pearbrowser-release.test.mjs',
       'scripts/check-pear-seamless.test.mjs',
+      'scripts/serve-latest-pearbrowser-preview.test.mjs',
       'scripts/smoke-published-pearbrowser.test.mjs'
     ],
     pearBrowserSwarmContract: {
@@ -201,6 +204,15 @@ const receipt = {
         'served styles reference stadium/ball/confetti art',
         'served generated avatar assets are non-empty',
         'served mascot/stadium assets are non-empty'
+      ]
+    },
+    exactReleasePreviewContract: {
+      command: 'node scripts/serve-latest-pearbrowser-preview.mjs --receipt <receipt> --port 4186',
+      exactReceiptCommand: `node scripts/serve-latest-pearbrowser-preview.mjs --receipt ${receiptPath} --port 4186`,
+      requires: [
+        'exact receipt bundle sha is recomputed before serving',
+        'preview server runs against the release bundle with source refresh disabled',
+        'preview source diagnostics report the release bundle SHA'
       ]
     },
     localPublishedGatewayContract: {

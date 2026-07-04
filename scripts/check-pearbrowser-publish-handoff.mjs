@@ -349,6 +349,10 @@ function validateVerification (verification) {
   const servedPreviewRequirements = Array.isArray(servedPreviewContract.requires)
     ? servedPreviewContract.requires
     : []
+  const exactReleasePreviewContract = verification.exactReleasePreviewContract || {}
+  const exactReleasePreviewRequirements = Array.isArray(exactReleasePreviewContract.requires)
+    ? exactReleasePreviewContract.requires
+    : []
   const localPublishedGatewayContract = verification.localPublishedGatewayContract || {}
   const localPublishedGatewayRequirements = Array.isArray(localPublishedGatewayContract.requires)
     ? localPublishedGatewayContract.requires
@@ -384,6 +388,9 @@ function validateVerification (verification) {
   }
   if (!sourceChecks.includes('node --test scripts/check-pear-seamless.test.mjs')) {
     errors.push('receipt verification must include seamless gate tests before build')
+  }
+  if (!sourceChecks.includes('node --test scripts/serve-latest-pearbrowser-preview.test.mjs')) {
+    errors.push('receipt verification must include exact release preview launcher tests before build')
   }
   if (!sourceChecks.includes('node --test scripts/smoke-published-pearbrowser.test.mjs')) {
     errors.push('receipt verification must include published smoke regression tests before build')
@@ -424,6 +431,7 @@ function validateVerification (verification) {
     'scripts/publish-approved-latest-pearcup.test.mjs',
     'scripts/prepare-pearbrowser-release.test.mjs',
     'scripts/check-pear-seamless.test.mjs',
+    'scripts/serve-latest-pearbrowser-preview.test.mjs',
     'scripts/smoke-published-pearbrowser.test.mjs'
   ]) {
     if (!coverage.includes(required)) errors.push(`receipt verification must list required coverage: ${required}`)
@@ -534,6 +542,22 @@ function validateVerification (verification) {
       errors.push(`receipt servedPreviewContract must require ${required}`)
     }
   }
+  if (exactReleasePreviewContract.command !== 'node scripts/serve-latest-pearbrowser-preview.mjs --receipt <receipt> --port 4186') {
+    errors.push('receipt exactReleasePreviewContract must document the exact receipt preview command')
+  }
+  if (!String(exactReleasePreviewContract.exactReceiptCommand || '').includes('serve-latest-pearbrowser-preview.mjs') ||
+    !String(exactReleasePreviewContract.exactReceiptCommand || '').includes('--port 4186')) {
+    errors.push('receipt exactReleasePreviewContract must include an exact receipt command')
+  }
+  for (const required of [
+    'exact receipt bundle sha is recomputed before serving',
+    'preview server runs against the release bundle with source refresh disabled',
+    'preview source diagnostics report the release bundle SHA'
+  ]) {
+    if (!exactReleasePreviewRequirements.includes(required)) {
+      errors.push(`receipt exactReleasePreviewContract must require ${required}`)
+    }
+  }
   if (localPublishedGatewayContract.command !== 'npm run smoke:pearbrowser-published-local') {
     errors.push('receipt localPublishedGatewayContract must be tied to npm run smoke:pearbrowser-published-local')
   }
@@ -583,6 +607,7 @@ function validateSmokeContracts () {
   const runtimeSmokePath = join(root, 'scripts', 'smoke-kawaii-pear-run.mjs')
   const exactBundleRuntimeSmokePath = join(root, 'scripts', 'smoke-published-pearbrowser-runtime.mjs')
   const servedSmokePath = join(root, 'scripts', 'smoke-pearbrowser-serve.mjs')
+  const exactPreviewPath = join(root, 'scripts', 'serve-latest-pearbrowser-preview.mjs')
   const localPublishedSmokePath = join(root, 'scripts', 'smoke-pearbrowser-published-local.mjs')
   const publishedSmokePath = join(root, 'scripts', 'smoke-published-pearbrowser.mjs')
   const publishedServerPath = join(root, 'scripts', 'serve-pearbrowser-published-local.mjs')
@@ -595,6 +620,7 @@ function validateSmokeContracts () {
     [runtimeSmokePath, 'actual Pear runtime smoke'],
     [exactBundleRuntimeSmokePath, 'exact-bundle Pear runtime smoke'],
     [servedSmokePath, 'served PearBrowser preview smoke'],
+    [exactPreviewPath, 'exact release preview launcher'],
     [localPublishedSmokePath, 'local published-gateway smoke'],
     [publishedSmokePath, 'published PearBrowser smoke'],
     [publishedServerPath, 'local published browser server'],
@@ -667,6 +693,20 @@ function validateSmokeContracts () {
       'assets/mascot.png'
     ]) {
       if (!servedSmoke.includes(required)) errors.push(`served PearBrowser preview smoke is missing contract text: ${required}`)
+    }
+  }
+  if (existsSync(exactPreviewPath)) {
+    const exactPreview = readFileSync(exactPreviewPath, 'utf8')
+    for (const required of [
+      'PearCup exact preview release receipt verified',
+      'serve-pearbrowser-hyper.mjs',
+      '--bundle',
+      '--strict-port',
+      'bundleInventorySha256',
+      'does not match receipt',
+      '--port 4190 is blocked'
+    ]) {
+      if (!exactPreview.includes(required)) errors.push(`exact release preview launcher is missing contract text: ${required}`)
     }
   }
   if (existsSync(localPublishedSmokePath)) {
