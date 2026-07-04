@@ -40,6 +40,28 @@ test('published smoke rejects fallback text without the boot-error banner contra
   }
 })
 
+test('published smoke rejects localhost proxy invite links', async () => {
+  const server = await startFixtureServer({
+    peerMatchJs: [
+      'pearcupPeerMatchModule',
+      'pearcupPeerMatchState',
+      'pearcupPeerMatchStarted',
+      'hyperLaunchBase',
+      'hyper://',
+      'const invite = location.origin + location.pathname'
+    ].join('\n')
+  })
+
+  try {
+    const result = await runSmoke(server.gateway)
+
+    assert.notEqual(result.status, 0)
+    assert.match(result.stderr, /published peer-match\.js still shares localhost proxy invite links/)
+  } finally {
+    await server.close()
+  }
+})
+
 function runSmoke (gateway) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [script, '--drive', drive, '--gateway', gateway], {
@@ -63,7 +85,7 @@ function runSmoke (gateway) {
   })
 }
 
-function startFixtureServer ({ indexHtml }) {
+function startFixtureServer ({ indexHtml = validIndexHtml(), peerMatchJs = validPeerMatchJs() }) {
   const files = new Map([
     ['index.html', text(indexHtml, 'text/html; charset=utf-8')],
     ['manifest.json', text(JSON.stringify({
@@ -114,11 +136,7 @@ function startFixtureServer ({ indexHtml }) {
       'broadcast-channel',
       'pearcupPeerNetModule'
     ].join('\n'), 'text/javascript; charset=utf-8')],
-    ['peer-match.js', text([
-      'pearcupPeerMatchModule',
-      'hyperLaunchBase',
-      'hyper://'
-    ].join('\n'), 'text/javascript; charset=utf-8')],
+    ['peer-match.js', text(peerMatchJs, 'text/javascript; charset=utf-8')],
     ['peer-lobby.js', text([
       'PearCupPeerNet',
       'PearCupPeerMatch',
@@ -171,6 +189,52 @@ function startFixtureServer ({ indexHtml }) {
       })
     })
   })
+}
+
+function validIndexHtml () {
+  return `<!doctype html>
+    <title>PearCup Prototype</title>
+    <script src="./pearcup-boot.js"></script>
+    <script src="./peer-net.js"></script>
+    <script src="./peer-match.js"></script>
+    <script src="./peer-lobby.js"></script>
+    <script src="./watch-sync.js"></script>
+    <script src="./app.js"></script>
+    <script>
+      function notice (title, detail) {
+        const bar = document.createElement('div')
+        bar.id = 'bootErrorBar'
+        bar.textContent = title + (detail ? '\\n' + detail : '')
+        sendBootProbe({ event: 'pearcup:fallback-notice', title, detail })
+      }
+      function clearNotice () {
+        const bar = document.getElementById('bootErrorBar')
+        if (bar) bar.remove()
+      }
+      function sendBootProbe () {}
+      function p2pModulesReady () { return window.pearcupP2pModules === 'ready' }
+      var pearcupPeerNetModule = true
+      var pearcupPeerMatchModule = true
+      var pearcupPeerLobbyModule = true
+      var pearcupWatchSyncModule = true
+      const root = document.documentElement
+      root.addEventListener('pearcup:booted', clearNotice)
+      root.addEventListener('error', function () {})
+      root.addEventListener('unhandledrejection', function () {})
+      notice('PearCup fallback loaded the visual shell, but the app did not finish booting.', 'waiting')
+      notice('PearCup app script loaded, but boot did not complete.', 'waiting')
+      notice('PearCup fallback failed.', 'script')
+    </script>`
+}
+
+function validPeerMatchJs () {
+  return [
+    'pearcupPeerMatchModule',
+    'pearcupPeerMatchState',
+    'pearcupPeerMatchStarted',
+    'hyperLaunchBase',
+    'hyper://'
+  ].join('\n')
 }
 
 function text (value, type) {
