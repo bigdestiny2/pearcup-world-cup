@@ -47,6 +47,17 @@ test('seamless published proof uses the server-advertised browser-safe URL', () 
   assert.doesNotMatch(source, /'--strict-port'/)
 })
 
+test('seamless preview URL check verifies exact release bundle files', () => {
+  const source = readFileSync(script, 'utf8')
+
+  assert.match(source, /checkLiveUrlMatchesBundle/)
+  assert.match(source, /Live preview exact release bundle files/)
+  assert.match(source, /Live preview URL is not serving the exact release bundle/)
+  for (const file of ['index.html', 'pearcup-boot.js', 'app.js', 'watch-sync.js']) {
+    assert.match(source, new RegExp(`'${file.replace('.', '\\.')}'`))
+  }
+})
+
 function run (args) {
   return spawnSync(process.execPath, [script, ...args], {
     cwd: root,

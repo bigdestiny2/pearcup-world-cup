@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
@@ -50,6 +51,10 @@ if (errors.length === 0) {
 
 if (errors.length === 0 && args.url) {
   runNode('Live preview URL readiness', 'scripts/check-friend-ready.mjs', ['--url', args.url])
+}
+
+if (errors.length === 0 && args.url) {
+  await checkLiveUrlMatchesBundle(args.url)
 }
 
 if (errors.length === 0) {
@@ -107,6 +112,81 @@ function run (label, command, commandArgs) {
   }
   checks.push(label)
   return { ok: true, output }
+}
+
+async function checkLiveUrlMatchesBundle (rawUrl) {
+  if (!bundlePath) {
+    errors.push('Live preview exact bundle check could not run because bundle path is missing')
+    return
+  }
+  let base
+  try {
+    base = new URL(rawUrl)
+  } catch (err) {
+    errors.push(`Live preview exact bundle check received an invalid URL: ${rawUrl}`)
+    return
+  }
+  const files = [
+    'index.html',
+    'pearcup-boot.js',
+    'app.js',
+    'peer-net.js',
+    'peer-match.js',
+    'peer-lobby.js',
+    'watch-sync.js',
+    'styles.css',
+    'manifest.json'
+  ]
+  const errorCountBefore = errors.length
+  const mismatches = []
+  for (const file of files) {
+    const served = await fetchBytes(new URL(file, ensureTrailingSlash(base)), `live preview ${file}`)
+    if (!served) continue
+    const expectedPath = join(bundlePath, file)
+    let expected
+    try {
+      expected = readFileSync(expectedPath)
+    } catch (err) {
+      errors.push(`Live preview exact bundle check could not read ${expectedPath}: ${err.message}`)
+      continue
+    }
+    const servedHash = sha256(served)
+    const expectedHash = sha256(expected)
+    if (servedHash !== expectedHash) {
+      mismatches.push(`${file} served ${servedHash} but release bundle has ${expectedHash}`)
+    }
+  }
+  if (mismatches.length > 0) {
+    errors.push(`Live preview URL is not serving the exact release bundle:\n${mismatches.map(item => `  - ${item}`).join('\n')}`)
+  } else if (errors.length === errorCountBefore) {
+    checks.push('Live preview exact release bundle files')
+  }
+}
+
+async function fetchBytes (url, label) {
+  try {
+    const res = await fetch(url, { cache: 'no-store' })
+    if (!res.ok) {
+      errors.push(`${label} returned HTTP ${res.status}`)
+      return null
+    }
+    return Buffer.from(await res.arrayBuffer())
+  } catch (err) {
+    errors.push(`${label} could not be fetched: ${err.message}`)
+    return null
+  }
+}
+
+function ensureTrailingSlash (url) {
+  const next = new URL(url.href)
+  if (!next.pathname.endsWith('/')) next.pathname += '/'
+  next.search = ''
+  next.hash = ''
+  return next
+}
+
+function sha256 (data) {
+  return createHash('sha256').update(data).digest('hex')
 }
 
 async function runExactReceiptPublishedProof () {
