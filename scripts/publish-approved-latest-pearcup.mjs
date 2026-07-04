@@ -8,6 +8,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = parseArgs(process.argv.slice(2))
 const receiptPath = resolve(args.receipt || join(root, '.pearcup-release', 'latest', 'pearcup-release-receipt.json'))
 const publishGateway = gatewayFromForwarded(args.forwarded) || normalizeGateway(process.env.PEARCUP_PEARBROWSER_GATEWAY || detectPearBrowserGateway())
+const forwardedArgs = withDefaultGateway(args.forwarded, publishGateway)
 const errors = []
 let currentGitState = null
 
@@ -44,7 +45,7 @@ const resolvedArgs = [
   receiptPath,
   '--sha',
   bundleSha256,
-  ...args.forwarded
+  ...forwardedArgs
 ]
 
 if (args.printResolved) {
@@ -188,6 +189,11 @@ function readJsonOptional (filePath) {
 function approvedLatestPublishCommand (gateway) {
   const command = 'npm run publish:approved:latest -- --publish'
   return gateway ? `${command} --gateway ${gateway}` : `${command} --gateway http://127.0.0.1:<PearBrowser-gateway-port>/`
+}
+
+function withDefaultGateway (forwarded, gateway) {
+  if (!gateway || gatewayFromForwarded(forwarded)) return forwarded
+  return [...forwarded, '--gateway', gateway]
 }
 
 function gatewayFromForwarded (forwarded) {

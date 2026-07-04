@@ -19,6 +19,33 @@ test('latest approved publish supplies receipt and SHA to the approved wrapper c
   assert.match(result.stdout, new RegExp(`--sha" "${sha}`))
 })
 
+test('latest approved publish auto-forwards configured PearBrowser gateway', () => {
+  const receipt = writeFixture()
+  const result = run(['--latest-receipt', receipt, '--print-resolved'], {
+    PEARCUP_PEARBROWSER_GATEWAY: 'http://127.0.0.1:55409'
+  })
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, /"--gateway" "http:\/\/127\.0\.0\.1:55409\/"/)
+})
+
+test('latest approved publish keeps an explicit gateway over configured default', () => {
+  const receipt = writeFixture()
+  const result = run([
+    '--latest-receipt',
+    receipt,
+    '--print-resolved',
+    '--gateway',
+    'http://127.0.0.1:55555/'
+  ], {
+    PEARCUP_PEARBROWSER_GATEWAY: 'http://127.0.0.1:55409/'
+  })
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, /"--gateway" "http:\/\/127\.0\.0\.1:55555\/"/)
+  assert.doesNotMatch(result.stdout, /55409/)
+})
+
 test('latest approved publish refuses manual SHA overrides', () => {
   const receipt = writeFixture()
   const result = run(['--latest-receipt', receipt, '--sha', sha, '--dry-run'])
@@ -112,10 +139,11 @@ function writeFixture (overrides = {}) {
   return receiptPath
 }
 
-function run (args) {
+function run (args, env = {}) {
   return spawnSync(process.execPath, [script, ...args], {
     cwd: root,
-    encoding: 'utf8'
+    encoding: 'utf8',
+    env: { ...process.env, ...env }
   })
 }
 
