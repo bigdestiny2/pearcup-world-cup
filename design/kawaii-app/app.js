@@ -2878,6 +2878,13 @@ function renderWatch () {
             <img class="couch-img" src="assets/${gi === 0 ? 'couch' : 'couch2'}.png" alt="">
           </div>
         </div>`).join('')}
+    </div>
+    <div class="watch-challenge-panel">
+      <div class="watch-challenge-head">
+        <p class="eyebrow">Penalty Clash</p>
+        <strong>Challenge watchers</strong>
+      </div>
+      <div class="watch-challenge-list" id="watchChallengeList"></div>
     </div>`
 
   $('#languageTabs').innerHTML = WATCH_LANGS.map(language => `
@@ -2910,7 +2917,12 @@ function renderWatch () {
   $('#voiceToggle').classList.toggle('is-live', state.voice)
 
   // Join the shared watch room for this match (chat + reactions + presence sync).
-  if (window.PearCupWatchSync) { window.PearCupWatchSync.ensureRoom(); window.PearCupWatchSync.bindReactionBar(); window.PearCupWatchSync.updatePresence() }
+  if (window.PearCupWatchSync) {
+    window.PearCupWatchSync.ensureRoom()
+    window.PearCupWatchSync.bindReactionBar()
+    window.PearCupWatchSync.updatePresence()
+    if (typeof window.PearCupWatchSync.renderChallengeList === 'function') window.PearCupWatchSync.renderChallengeList()
+  }
 }
 
 function currentGameRound () {

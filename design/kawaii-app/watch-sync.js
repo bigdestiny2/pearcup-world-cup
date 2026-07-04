@@ -18,8 +18,11 @@
 
   const WS = { channel: null, topic: null, self: null, peers: new Map(), heartbeat: null }
   const $ = s => document.querySelector(s)
+  const esc = s => (typeof escapeHtml === 'function' ? escapeHtml(s) : String(s))
 
   function selfId () { return WS.self || (WS.self = Net.newPeerId()) }
+  function selfName () { return (typeof state !== 'undefined' && state.username) || 'guest' }
+  function selfTeam () { return (typeof state !== 'undefined' && state.team) || 'br' }
 
   function matchKey () {
     try {
@@ -47,18 +50,29 @@
   }
 
   function send (m) { if (WS.channel) WS.channel.send({ ...m, from: selfId() }) }
-  function ping () { send({ t: 'here', name: (typeof state !== 'undefined' && state.username) || 'guest' }) }
+  function ping () { send({ t: 'here', name: selfName(), team: selfTeam() }) }
 
   function onMsg (m) {
     if (!m || m.from === selfId()) return
     switch (m.t) {
       case 'here':
-        if (!WS.peers.has(m.from)) { WS.peers.set(m.from, m.name || 'guest'); ping() } // reply so they learn me
-        else WS.peers.set(m.from, m.name || 'guest')
+        if (!WS.peers.has(m.from)) { WS.peers.set(m.from, peerFromMessage(m)); ping() } // reply so they learn me
+        else WS.peers.set(m.from, peerFromMessage(m))
         updatePresence(); break
       case 'bye': WS.peers.delete(m.from); updatePresence(); break
       case 'chat': receiveChat(m); break
       case 'react': floatReaction(m.emoji); break
+      case 'challenge':
+        if (m.to === selfId()) acceptChallenge(m)
+        break
+    }
+  }
+
+  function peerFromMessage (m) {
+    return {
+      peerId: m.from,
+      name: m.name || 'guest',
+      team: m.team || 'br'
     }
   }
 
@@ -94,6 +108,46 @@
     if (label) label.textContent = n <= 1 ? 'Just you' : `${n} watching together`
     const count = $('#spectatorCount')
     if (count) count.textContent = `${n} peers watching`
+    renderChallengeList()
+  }
+
+  function challenge (peerId) {
+    const peer = WS.peers.get(peerId)
+    if (!peer || !root.PearCupPeerMatch) return
+    const code = Net.newRoomCode()
+    root.PearCupPeerMatch.host(code, true)
+    send({ t: 'challenge', to: peerId, code, name: selfName(), team: selfTeam() })
+  }
+
+  function acceptChallenge (m) {
+    if (!root.PearCupPeerMatch) return
+    if (typeof showToast === 'function') showToast(`${esc(m.name || 'A watcher')} challenged you — joining Penalty Clash…`)
+    if (typeof setView === 'function') setView('games')
+    root.PearCupPeerMatch.join(m.code)
+  }
+
+  function renderChallengeList () {
+    const host = $('#watchChallengeList')
+    if (!host) return
+    const peers = [...WS.peers.values()]
+    if (!peers.length) {
+      host.innerHTML = '<p class="watch-challenge-empty">No challengers in this room yet.</p>'
+      return
+    }
+    host.innerHTML = peers.map(peer => {
+      const team = typeof teamById === 'function' ? teamById(peer.team) : { flag: '⚽', name: peer.team || 'team' }
+      return `
+        <div class="watch-challenge-card">
+          ${typeof avatarSvg === 'function' ? avatarSvg(peer.name, team, true) : ''}
+          <div>
+            <strong>${esc(peer.name)}</strong>
+            <span>${esc(team.flag || '⚽')} watching with you</span>
+          </div>
+          <button class="primary-button compact-action watch-peer-challenge" data-watch-peer="${esc(peer.peerId)}" type="button">Challenge</button>
+        </div>`
+    }).join('')
+    host.querySelectorAll('.watch-peer-challenge').forEach(btn =>
+      btn.addEventListener('click', () => challenge(btn.dataset.watchPeer)))
   }
 
   function leave () {
@@ -112,6 +166,6 @@
     })
   }
 
-  root.PearCupWatchSync = { ensureRoom, broadcastChat, react, bindReactionBar, updatePresence, leave, peerCount: () => WS.peers.size + 1 }
+  root.PearCupWatchSync = { ensureRoom, broadcastChat, react, bindReactionBar, updatePresence, renderChallengeList, challenge, leave, peerCount: () => WS.peers.size + 1, _state: WS }
   markModule('ready')
 })(typeof window !== 'undefined' ? window : globalThis)

@@ -527,3 +527,33 @@ test('PearBrowser swarm watch sync shares presence and chat', async () => {
   host.context.PearCupWatchSync.leave()
   guest.context.PearCupWatchSync.leave()
 })
+
+test('PearBrowser swarm watch room challenges route into Penalty Clash', async () => {
+  const swarm = createPearBrowserSwarmHub()
+  const host = createClient({ pear: swarm.pear, name: 'Host', team: 'br' })
+  const guest = createClient({ pear: swarm.pear, name: 'Guest', team: 'jp' })
+  appendId(host.document, 'watchChallengeList')
+  appendId(guest.document, 'watchChallengeList')
+
+  host.context.PearCupWatchSync.ensureRoom()
+  guest.context.PearCupWatchSync.ensureRoom()
+
+  await waitFor(() => {
+    return host.context.PearCupWatchSync.peerCount() === 2 &&
+      guest.context.PearCupWatchSync.peerCount() === 2
+  }, 'watch room challenge presence')
+
+  assert.match(host.document.querySelector('#watchChallengeList').innerHTML, /Guest/)
+  assert.match(guest.document.querySelector('#watchChallengeList').innerHTML, /Host/)
+
+  const guestPeerId = host.context.PearCupWatchSync._state.peers.values().next().value.peerId
+  host.context.PearCupWatchSync.challenge(guestPeerId)
+  await waitForStartedMatch(host, guest)
+  assert.ok(guest.toasts.some(message => /challenged you/.test(message)))
+  await driveFirstKick(host, guest)
+
+  host.context.PearCupWatchSync.leave()
+  guest.context.PearCupWatchSync.leave()
+  host.context.PearCupPeerMatch.leave(true)
+  guest.context.PearCupPeerMatch.leave(true)
+})
