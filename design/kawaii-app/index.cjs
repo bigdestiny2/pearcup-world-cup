@@ -85,8 +85,11 @@ function patchPearIpcRootFileLookups () {
 function normalizeRootRendererUrl (url) {
   if (url === '' || url === '/' || url === '//') return '/index.html'
   if (url[0] === '?') return '/index.html' + url
+  if (url[0] === '#') return '/index.html' + url
   if (url.startsWith('/?')) return '/index.html' + url.slice(1)
   if (url.startsWith('//?')) return '/index.html' + url.slice(2)
+  if (url.startsWith('/#')) return '/index.html' + url.slice(1)
+  if (url.startsWith('//#')) return '/index.html' + url.slice(2)
   if (url[0] !== '/' && url[0] !== '+') return url
 
   const plus = url.indexOf('+')

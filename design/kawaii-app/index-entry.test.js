@@ -37,8 +37,12 @@ test('Pear entry normalizes root renderer requests without dropping deep links',
     ['?join=abc123', '/index.html?join=abc123'],
     ['/?join=abc123', '/index.html?join=abc123'],
     ['//?join=abc123', '/index.html?join=abc123'],
+    ['#games', '/index.html#games'],
+    ['/#games', '/index.html#games'],
+    ['//#games', '/index.html#games'],
     ['/+esm-wrap', '/index.html+esm-wrap'],
     ['//+esm-wrap', '/index.html+esm-wrap'],
+    ['/+esm-wrap?join=abc123', '/index.html+esm-wrap?join=abc123'],
     ['/app.js', '/app.js'],
     ['app.js', 'app.js'],
     ['/index.cjs+esm-wrap', '/index.cjs+esm-wrap']
@@ -55,6 +59,7 @@ test('Pear entry forces packaged classic scripts through raw bridge lookup', () 
   assert.equal(shouldServeRawClassicScript('app', 'app', '/app.js'), true)
   assert.equal(shouldServeRawClassicScript('app', 'app', '/peer-net.js?cache=1'), true)
   assert.equal(shouldServeRawClassicScript('app', 'app', '/watch-sync.js#hash'), true)
+  assert.equal(shouldServeRawClassicScript('app', 'app', '/pearcup-boot.js?bootfix=abc#hash'), true)
 
   assert.equal(shouldServeRawClassicScript('app', 'raw', '/app.js'), false)
   assert.equal(shouldServeRawClassicScript('asset', 'app', '/app.js'), false)
