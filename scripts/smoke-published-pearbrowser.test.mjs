@@ -262,8 +262,13 @@ function validWatchSyncJs () {
     'pearcupWatchSyncModule',
     'function challenge (peerId) {}',
     'function acceptChallenge () {}',
+    'function declineChallenge () {}',
     'function renderChallengeList () {}',
     'watch-peer-challenge',
+    'watch-peer-accept',
+    'watch-peer-decline',
+    'challenge-accept',
+    'challenge-decline',
     'root.PearCupPeerMatch.host',
     'root.PearCupPeerMatch.join'
   ].join('\n')

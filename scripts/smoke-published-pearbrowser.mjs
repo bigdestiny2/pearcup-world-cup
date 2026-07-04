@@ -284,8 +284,13 @@ function checkWatchSync (watchSync) {
   for (const [needle, message] of [
     ['function challenge (peerId)', 'published watch-sync.js does not expose same-room watcher challenges'],
     ['function acceptChallenge', 'published watch-sync.js cannot accept same-room watcher challenges'],
+    ['function declineChallenge', 'published watch-sync.js cannot decline same-room watcher challenges'],
     ['function renderChallengeList', 'published watch-sync.js cannot render challengeable watchers'],
     ['watch-peer-challenge', 'published watch-sync.js does not bind challenge buttons'],
+    ['watch-peer-accept', 'published watch-sync.js does not render challenge accept buttons'],
+    ['watch-peer-decline', 'published watch-sync.js does not render challenge decline buttons'],
+    ['challenge-accept', 'published watch-sync.js does not acknowledge accepted Watch challenges'],
+    ['challenge-decline', 'published watch-sync.js does not acknowledge declined Watch challenges'],
     ['root.PearCupPeerMatch.host', 'published watch-sync.js does not host Penalty Clash from Watch challenges'],
     ['root.PearCupPeerMatch.join', 'published watch-sync.js does not join Penalty Clash from Watch challenges']
   ]) {
