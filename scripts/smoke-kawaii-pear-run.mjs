@@ -103,6 +103,7 @@ if (fatal || earlyExit || bootProbeErrors.length > 0 || unexpectedWarnings.lengt
   console.log(`${smokeLabel} passed (${durationMs}ms)`)
   console.log(`ok - launched ${appRoot} with temp store`)
   console.log('ok - renderer reported P2P boot-ready through Pear bridge probe')
+  console.log('ok - renderer rendered the Bracket route in the actual Pear app')
   console.log('ok - renderer routed to Games and opened a friend invite in the actual Pear app')
   console.log('ok - hidden guest app joined the invite and completed the peer handshake')
   console.log('ok - no fallback/script-wrapper/P2P-module/fatal renderer errors observed')
@@ -234,7 +235,7 @@ function validateBootProbe (payload, bridgeEvents = []) {
 
   const selfTestPayload = events.filter(event => event && event.event === 'pearcup:runtime-self-test').pop()
   if (!selfTestPayload) {
-    errors.push('Pear renderer did not report the runtime Games/invite self-test')
+    errors.push('Pear renderer did not report the runtime Bracket/Games/invite self-test')
     return errors
   }
   if (selfTestPayload.status !== 'ready') {
@@ -245,6 +246,19 @@ function validateBootProbe (payload, bridgeEvents = []) {
   }
   if (selfTestPayload.bootReady !== 'p2p') errors.push(`runtime self-test bootReady was ${selfTestPayload.bootReady || '(missing)'}`)
   if (selfTestPayload.p2pModules !== 'ready') errors.push(`runtime self-test p2pModules was ${selfTestPayload.p2pModules || '(missing)'}`)
+  const bracket = selfTestPayload.bracket || {}
+  if (bracket.activeScreen !== 'bracket') errors.push(`runtime self-test bracket activeScreen was ${bracket.activeScreen || '(missing)'}`)
+  if (bracket.activeScreenDataset !== 'bracket') errors.push(`runtime self-test bracket activeScreenDataset was ${bracket.activeScreenDataset || '(missing)'}`)
+  if (bracket.boardVisible !== true) errors.push('runtime self-test did not show a visible Bracket board')
+  if (Number(bracket.matchCards || 0) < 31) errors.push(`runtime self-test Bracket match cards was ${bracket.matchCards || '(missing)'}`)
+  if (Number(bracket.pickButtons || 0) < 32) errors.push(`runtime self-test Bracket pick buttons was ${bracket.pickButtons || '(missing)'}`)
+  const roundTitles = Array.isArray(bracket.roundTitles) ? bracket.roundTitles : []
+  for (const title of ['Round of 32', 'Round of 16', 'Quarterfinals', 'Semifinals', 'Final']) {
+    if (!roundTitles.includes(title)) errors.push(`runtime self-test Bracket missing ${title}`)
+  }
+  if (!Array.isArray(bracket.generatedAvatarImages) || !bracket.generatedAvatarImages.some(src => /avatars\//.test(String(src)))) {
+    errors.push('runtime self-test did not render generated avatar images in Bracket')
+  }
   if (selfTestPayload.appBootedDataset !== 'true') errors.push(`runtime self-test appBootedDataset was ${selfTestPayload.appBootedDataset || '(missing)'}`)
   if (selfTestPayload.activeScreen !== 'games') errors.push(`runtime self-test activeScreen was ${selfTestPayload.activeScreen || '(missing)'}`)
   if (selfTestPayload.activeScreenDataset !== 'games') errors.push(`runtime self-test activeScreenDataset was ${selfTestPayload.activeScreenDataset || '(missing)'}`)

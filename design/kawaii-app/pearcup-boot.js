@@ -14207,6 +14207,7 @@ function runtimeSelfTestSnapshot (status, errors = [], extra = {}) {
     inviteModalOpen: Boolean(modal) || extra.inviteModalOpen === true,
     inviteCode: (modalCode && modalCode.textContent.trim()) || extra.inviteCode || '',
     inviteLink: (link && link.textContent.trim()) || extra.inviteLink || '',
+    bracket: extra.bracket || null,
     peerMatch: peerState
       ? {
           active: Boolean(peerState.active),
@@ -14317,6 +14318,41 @@ function isRuntimeSelfTestGuest () {
   }
 }
 
+function waitForRuntimeCondition (predicate, timeoutMs = 3000, intervalMs = 80) {
+  return new Promise(resolve => {
+    const startedAt = Date.now()
+    const poll = () => {
+      let passed = false
+      try { passed = Boolean(predicate()) } catch (e) {}
+      if (passed) {
+        resolve(true)
+        return
+      }
+      if (Date.now() - startedAt > timeoutMs) {
+        resolve(false)
+        return
+      }
+      setTimeout(poll, intervalMs)
+    }
+    poll()
+  })
+}
+
+function runtimeBracketEvidence () {
+  const board = document.querySelector('#bracketBoard')
+  const rect = board && typeof board.getBoundingClientRect === 'function' ? board.getBoundingClientRect() : null
+  return {
+    activeScreen: document.querySelector('.screen.is-active') ? document.querySelector('.screen.is-active').id : null,
+    activeScreenDataset: document.documentElement.dataset.pearcupActiveScreen || null,
+    boardVisible: Boolean(board && rect && rect.width > 0 && rect.height > 0),
+    matchCards: document.querySelectorAll('#bracketBoard .bracket-match').length,
+    pickButtons: document.querySelectorAll('#bracketBoard [data-pick]').length,
+    roundTitles: Array.from(document.querySelectorAll('#bracketBoard .round-title')).map(el => el.textContent.trim()),
+    connectorPathLength: (document.querySelector('#bracketLines path') && document.querySelector('#bracketLines path').getAttribute('d') || '').length,
+    generatedAvatarImages: Array.from(document.querySelectorAll('#bracket svg.avatar-art image')).map(el => el.getAttribute('href') || '').filter(Boolean).slice(0, 8)
+  }
+}
+
 async function runBootRuntimeSelfTest () {
   const errors = []
   const evidence = {}
@@ -14324,7 +14360,28 @@ async function runBootRuntimeSelfTest () {
     if (document.documentElement.dataset.pearcupBootReady !== 'p2p') errors.push('bootReady was not p2p')
     if (document.documentElement.dataset.pearcupP2pModules !== 'ready') errors.push('P2P modules were not ready')
     if (!window.PearCupPeerMatch || typeof window.PearCupPeerMatch.host !== 'function') errors.push('PearCupPeerMatch.host missing')
+    setView('bracket')
+    await waitForRuntimeCondition(() => {
+      const bracketAvatars = Array.from(document.querySelectorAll('#bracket svg.avatar-art image'))
+      return document.documentElement.dataset.pearcupActiveScreen === 'bracket' &&
+        document.querySelectorAll('#bracketBoard .bracket-match').length >= 31 &&
+        bracketAvatars.some(el => /avatars\//.test(el.getAttribute('href') || ''))
+    }, 5000)
+    evidence.bracket = runtimeBracketEvidence()
+    if (evidence.bracket.activeScreen !== 'bracket') errors.push('Bracket route did not become active')
+    if (evidence.bracket.activeScreenDataset !== 'bracket') errors.push('Bracket route did not update active screen diagnostics')
+    if (evidence.bracket.boardVisible !== true) errors.push('Bracket board did not become visible')
+    if (evidence.bracket.matchCards < 31) errors.push(`Bracket board rendered ${evidence.bracket.matchCards} match cards`)
+    if (evidence.bracket.pickButtons < 32) errors.push(`Bracket board rendered ${evidence.bracket.pickButtons} pick buttons`)
+    for (const title of ['Round of 32', 'Round of 16', 'Quarterfinals', 'Semifinals', 'Final']) {
+      if (!evidence.bracket.roundTitles.includes(title)) errors.push(`Bracket board missing ${title}`)
+    }
+    if (!evidence.bracket.generatedAvatarImages.some(src => /avatars\//.test(src))) errors.push('Bracket route did not render generated avatar images')
     setView('games')
+    await waitForRuntimeCondition(() =>
+      document.documentElement.dataset.pearcupActiveScreen === 'games' &&
+      document.querySelector('#gameLobby')
+    )
     const active = document.querySelector('.screen.is-active')
     if (!active || active.id !== 'games') errors.push('Games route did not become active')
     if (!document.querySelector('#inviteFriendBtn')) errors.push('Invite button did not render')
