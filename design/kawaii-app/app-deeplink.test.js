@@ -20,6 +20,7 @@ const deepLinkSource = [
   sliceFunctionBlock('completeProfileOnboarding', 'renderGameLobby')
 ].join('\n')
 
+const startupViewSource = sliceFunctionBlock('normalizeStartupView', 'syncRuntimeScreenDiagnostics')
 const runtimeDiagnosticsSource = sliceFunctionBlock('syncRuntimeScreenDiagnostics', 'setView')
 const p2pGuardSource = sliceFunctionBlock('assertP2PModulesReady', 'boot')
 
@@ -80,6 +81,19 @@ function createP2PGuardHarness ({ globals = {}, dataset = {} } = {}) {
   vm.createContext(context)
   vm.runInContext(p2pGuardSource, context, { filename: 'app-p2p-guard-functions.js' })
   return context
+}
+
+function createStartupViewHarness ({ hash = '', view = 'onboarding' } = {}) {
+  const calls = { views: [] }
+  const context = {
+    location: { hash },
+    state: { view },
+    setView: nextView => { calls.views.push(nextView) }
+  }
+  context.globalThis = context
+  vm.createContext(context)
+  vm.runInContext(startupViewSource, context, { filename: 'app-startup-view-functions.js' })
+  return { calls, context }
 }
 
 test('tryJoinFriendInvite sanitizes ?join= and opens the peer match on Games', () => {
@@ -160,6 +174,29 @@ test('completeProfileOnboarding keeps the normal home flow without an invite', (
   assert.deepEqual(harness.calls.views, ['home'])
   assert.deepEqual(harness.calls.toasts, ['guest_beta joined as Brazil'])
   assert.equal(harness.context.document.documentElement.dataset.pearcupPendingJoin, undefined)
+})
+
+test('startup view resolves bracket hash deep links before saved state', () => {
+  const harness = createStartupViewHarness({ hash: '#/bracket', view: 'games' })
+
+  assert.equal(harness.context.startupViewFromHash(), 'bracket')
+  assert.equal(harness.context.resolveStartupView(), 'bracket')
+
+  harness.context.applyStartupView()
+
+  assert.deepEqual(harness.calls.views, ['bracket'])
+})
+
+test('startup view falls back to saved view and normalizes profile to onboarding', () => {
+  const saved = createStartupViewHarness({ hash: '', view: 'watch' })
+  assert.equal(saved.context.resolveStartupView(), 'watch')
+
+  const profile = createStartupViewHarness({ hash: '#profile', view: 'games' })
+  assert.equal(profile.context.resolveStartupView(), 'onboarding')
+})
+
+test('boot gives friend invite deep links priority over hash startup views', () => {
+  assert.match(appSource, /if \(!tryJoinFriendInvite\(\)\) applyStartupView\(\)/)
 })
 
 test('renderGameLobby friend buttons use the window-scoped peer controller', () => {

@@ -10546,6 +10546,32 @@ function resetScrollPosition () {
   setTimeout(() => window.scrollTo(0, 0), 640)
 }
 
+function normalizeStartupView (value) {
+  const clean = String(value || '')
+    .trim()
+    .replace(/^#+/, '')
+    .replace(/^\/+/, '')
+    .toLowerCase()
+  if (clean === 'profile') return 'onboarding'
+  return ['onboarding', 'home', 'bracket', 'watch', 'games'].includes(clean) ? clean : ''
+}
+
+function startupViewFromHash () {
+  try {
+    return normalizeStartupView(location && location.hash)
+  } catch (e) {
+    return ''
+  }
+}
+
+function resolveStartupView () {
+  return startupViewFromHash() || normalizeStartupView(state.view) || 'onboarding'
+}
+
+function applyStartupView () {
+  setView(resolveStartupView())
+}
+
 function syncRuntimeScreenDiagnostics (view) {
   if (typeof document === 'undefined' || !document.documentElement) return
   const active = view || (document.querySelector('.screen.is-active') && document.querySelector('.screen.is-active').id) || ''
@@ -14452,7 +14478,7 @@ function boot () {
     persist()
   }
   // Deep link: ?join=<code> auto-joins a friend's peer match, including first-run users.
-  tryJoinFriendInvite()
+  if (!tryJoinFriendInvite()) applyStartupView()
   window.addEventListener('load', resetScrollPosition)
   window.addEventListener('pageshow', resetScrollPosition)
   window.addEventListener('resize', scheduleBracketConnectors)
