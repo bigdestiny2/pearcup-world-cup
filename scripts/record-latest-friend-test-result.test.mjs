@@ -166,6 +166,14 @@ test('latest friend-test recorder refuses publish results with an approved comma
   assert.match(result.stderr, /approvedPublishCommand must target the publish result bundle SHA/)
 })
 
+test('latest friend-test recorder refusal can point at a clean release checkout', () => {
+  const source = readFileSync(script, 'utf8')
+  assert.match(source, /findAlternateReadyRelease/)
+  assert.match(source, /clean release checkout/)
+  assert.match(source, /publish from the clean checkout first/)
+  assert.match(source, /record:friend-test:latest/)
+})
+
 function writeFixture (dir, overrides = {}, publishResultOverrides = {}) {
   const receiptPath = join(dir, 'pearcup-release-receipt.json')
   const publishResult = {
