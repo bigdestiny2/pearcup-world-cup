@@ -38,6 +38,15 @@ test('seamless gate supports binding checks to a provided release receipt', () =
   assert.match(packageJson.scripts['check:pear-seamless:latest'], /--url http:\/\/127\.0\.0\.1:4186\//)
 })
 
+test('seamless published proof uses the server-advertised browser-safe URL', () => {
+  const source = readFileSync(script, 'utf8')
+
+  assert.match(source, /extractPublishedProofUrl/)
+  assert.match(source, /new URL\('\/', proofUrl\)\.href/)
+  assert.match(source, /published proof server used port/)
+  assert.doesNotMatch(source, /'--strict-port'/)
+})
+
 function run (args) {
   return spawnSync(process.execPath, [script, ...args], {
     cwd: root,

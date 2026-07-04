@@ -748,7 +748,8 @@ function validateSmokeContracts () {
       'serve-pearbrowser-published-local.mjs',
       'smoke-published-pearbrowser.mjs',
       'Exact receipt published-link proof',
-      '--strict-port',
+      'extractPublishedProofUrl',
+      "new URL('/', proofUrl).href",
       '--proof-port 4190 is blocked'
     ]) {
       if (!seamless.includes(required)) errors.push(`seamless readiness gate is missing contract text: ${required}`)

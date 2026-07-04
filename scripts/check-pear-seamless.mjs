@@ -110,14 +110,13 @@ function run (label, command, commandArgs) {
 }
 
 async function runExactReceiptPublishedProof () {
-  const port = String(args.proofPort)
+  const requestedPort = String(args.proofPort)
   const server = spawn(process.execPath, [
     join(root, 'scripts', 'serve-pearbrowser-published-local.mjs'),
     '--receipt',
     receiptPath,
     '--port',
-    port,
-    '--strict-port'
+    requestedPort
   ], {
     cwd: root,
     stdio: ['ignore', 'pipe', 'pipe']
@@ -134,16 +133,34 @@ async function runExactReceiptPublishedProof () {
 
   try {
     await waitForPublishedProofServer(() => /PearBrowser local published URL:/.test(output), () => closed, () => output)
+    const proofUrl = extractPublishedProofUrl(output)
+    if (!proofUrl) throw new Error('published proof server did not print a usable URL')
+    if (proofUrl.port && proofUrl.port !== requestedPort) {
+      notes.push(`published proof server used port ${proofUrl.port} because ${requestedPort} was unavailable`)
+    }
     runNode('Exact receipt published-link proof', 'scripts/smoke-published-pearbrowser.mjs', [
       '--drive',
       proofDrive,
       '--gateway',
-      `http://127.0.0.1:${port}/`
+      new URL('/', proofUrl).href
     ])
   } catch (err) {
     errors.push(`Exact receipt published-link proof failed: ${err.message}${output.trim() ? `\n${output.trim()}` : ''}`)
   } finally {
     await stopServer(server, () => closed)
+  }
+}
+
+function extractPublishedProofUrl (output) {
+  const match = String(output || '').match(/^PearBrowser local published URL:\s*(https?:\/\/\S+)$/m)
+  if (!match) return null
+  try {
+    const url = new URL(match[1])
+    const expectedPath = `/app/${proofDrive}/`
+    if (url.pathname !== expectedPath) throw new Error(`expected ${expectedPath}`)
+    return url
+  } catch (err) {
+    throw new Error(`published proof server printed an invalid URL: ${match[1]}`)
   }
 }
 
