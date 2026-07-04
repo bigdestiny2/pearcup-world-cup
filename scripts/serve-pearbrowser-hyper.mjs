@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { createReadStream, existsSync, mkdtempSync, readdirSync, statSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { createReadStream, existsSync, mkdtempSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { dirname, extname, join, normalize, resolve, sep } from 'node:path'
@@ -41,6 +42,59 @@ function runNode (script, scriptArgs) {
   }
 }
 
+function previewState () {
+  const git = readGitState()
+  return {
+    app: 'PearCup',
+    preview: 'pearbrowser-hyper',
+    sourceRoot: root,
+    sourceGitHead: git.head,
+    sourceDirty: git.status.length > 0,
+    sourceGitStatusCount: git.status.length,
+    bundle,
+    bundleSha256: bundleInventorySha256(bundle),
+    refreshFromSource
+  }
+}
+
+function readGitState () {
+  const head = runGit(['rev-parse', 'HEAD']).trim()
+  const status = runGit(['status', '--short'])
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+  return { head, status }
+}
+
+function runGit (gitArgs) {
+  const result = spawnSync('git', gitArgs, {
+    cwd: root,
+    encoding: 'utf8'
+  })
+  return result.status === 0 ? result.stdout : ''
+}
+
+function bundleInventorySha256 (bundlePath) {
+  const inventory = listFiles(bundlePath).map(filePath => {
+    const data = readFileSync(filePath)
+    const hash = createHash('sha256').update(data).digest('hex')
+    const relativePath = filePath.slice(bundlePath.length).replace(/\\/g, '/')
+    return `${hash}  ${relativePath}\n`
+  }).join('')
+  return createHash('sha256').update(inventory).digest('hex')
+}
+
+function listFiles (dir) {
+  const files = []
+  for (const entry of readdirSync(dir)) {
+    const filePath = join(dir, entry)
+    const stat = statSync(filePath)
+    if (stat.isDirectory()) files.push(...listFiles(filePath))
+    else if (stat.isFile()) files.push(filePath)
+  }
+  return files.sort()
+}
+
 function serve (port) {
   const server = createServer((req, res) => {
     try {
@@ -48,6 +102,10 @@ function serve (port) {
     } catch (err) {
       const detail = err && err.stack ? err.stack : String(err)
       return send(res, 500, `PearCup preview rebuild failed\n${detail}\n`, 'text/plain; charset=utf-8')
+    }
+
+    if (isPreviewStateRequest(req.url || '/')) {
+      return sendJson(res, previewState())
     }
 
     const filePath = resolveRequestPath(bundle, req.url || '/')
@@ -133,6 +191,14 @@ function resolveRequestPath (bundlePath, url) {
   if (normalized.startsWith('..') || normalized.includes(`${sep}..${sep}`)) return null
   const filePath = resolve(bundlePath, normalized)
   return filePath.startsWith(bundlePath + sep) || filePath === bundlePath ? filePath : null
+}
+
+function isPreviewStateRequest (url) {
+  return String(url).split(/[?#]/)[0] === '/__pearcup-preview-state.json'
+}
+
+function sendJson (res, data) {
+  send(res, 200, `${JSON.stringify(data, null, 2)}\n`, 'application/json; charset=utf-8')
 }
 
 function send (res, status, body, type) {

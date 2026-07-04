@@ -53,6 +53,10 @@ test('seamless preview URL check verifies exact release bundle files', () => {
   assert.match(source, /checkLiveUrlMatchesBundle/)
   assert.match(source, /Live preview exact release bundle files/)
   assert.match(source, /Live preview URL is not serving the exact release bundle/)
+  assert.match(source, /__pearcup-preview-state\.json/)
+  assert.match(source, /preview state:/)
+  assert.match(source, /source git head/)
+  assert.match(source, /server bundle sha256/)
   for (const file of ['index.html', 'pearcup-boot.js', 'app.js', 'watch-sync.js']) {
     assert.match(source, new RegExp(`'${file.replace('.', '\\.')}'`))
   }

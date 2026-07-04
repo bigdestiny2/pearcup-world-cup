@@ -139,6 +139,7 @@ async function checkLiveUrlMatchesBundle (rawUrl) {
   ]
   const errorCountBefore = errors.length
   const mismatches = []
+  const previewState = await fetchPreviewState(base)
   for (const file of files) {
     const served = await fetchBytes(new URL(file, ensureTrailingSlash(base)), `live preview ${file}`)
     if (!served) continue
@@ -156,11 +157,38 @@ async function checkLiveUrlMatchesBundle (rawUrl) {
       mismatches.push(`${file} served ${servedHash} but release bundle has ${expectedHash}`)
     }
   }
+  if (previewState && previewState.bundleSha256 && bundleSha256 && previewState.bundleSha256 !== bundleSha256) {
+    mismatches.push(`preview state reports bundle ${previewState.bundleSha256} but release receipt has ${bundleSha256}`)
+  }
   if (mismatches.length > 0) {
-    errors.push(`Live preview URL is not serving the exact release bundle:\n${mismatches.map(item => `  - ${item}`).join('\n')}`)
+    errors.push(`Live preview URL is not serving the exact release bundle:\n${mismatches.map(item => `  - ${item}`).join('\n')}\n${describePreviewState(previewState)}`)
   } else if (errors.length === errorCountBefore) {
     checks.push('Live preview exact release bundle files')
   }
+}
+
+async function fetchPreviewState (base) {
+  try {
+    const res = await fetch(new URL('__pearcup-preview-state.json', ensureTrailingSlash(base)), { cache: 'no-store' })
+    if (!res.ok) return null
+    return await res.json()
+  } catch (err) {
+    return null
+  }
+}
+
+function describePreviewState (state) {
+  if (!state) return 'preview state - unavailable; restart preview with scripts/serve-pearbrowser-hyper.mjs for source diagnostics'
+  return [
+    'preview state:',
+    `  - source root: ${state.sourceRoot || '(missing)'}`,
+    `  - source git head: ${state.sourceGitHead || '(missing)'}`,
+    `  - source dirty: ${state.sourceDirty ? 'yes' : 'no'}`,
+    `  - dirty path count: ${Number.isFinite(Number(state.sourceGitStatusCount)) ? Number(state.sourceGitStatusCount) : '(missing)'}`,
+    `  - server bundle: ${state.bundle || '(missing)'}`,
+    `  - server bundle sha256: ${state.bundleSha256 || '(missing)'}`,
+    `  - source auto-refresh: ${state.refreshFromSource === false ? 'off' : 'on'}`
+  ].join('\n')
 }
 
 async function fetchBytes (url, label) {

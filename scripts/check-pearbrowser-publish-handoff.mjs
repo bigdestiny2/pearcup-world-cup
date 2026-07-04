@@ -518,6 +518,7 @@ function validateVerification (verification) {
   for (const required of [
     'initial boot bundle includes runtime self-test',
     'refreshed boot bundle includes runtime self-test',
+    'served preview exposes source checkout and bundle diagnostics',
     'served index requires every P2P readiness marker',
     'served app includes runtime self-test',
     'served app includes hidden guest invite handshake self-test',
@@ -651,6 +652,9 @@ function validateSmokeContracts () {
     const servedSmoke = readFileSync(servedSmokePath, 'utf8')
     for (const required of [
       'assertServedRuntimeContract',
+      'assertPreviewState',
+      '__pearcup-preview-state.json',
+      'sourceGitHead',
       'runBootRuntimeSelfTest',
       'runtimeBracketEvidence',
       'Bracket board rendered',

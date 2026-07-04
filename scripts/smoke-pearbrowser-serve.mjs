@@ -38,6 +38,7 @@ try {
   if (!firstBoot.includes('pearcup:runtime-self-test') || !firstBoot.includes('runBootRuntimeSelfTest')) {
     throw new Error('initial boot bundle is missing the Pear runtime Games/invite self-test')
   }
+  await assertPreviewState(url, 'initial')
   await assertServedRuntimeContract(url, 'initial')
 
   bumpSourceMtime()
@@ -50,6 +51,7 @@ try {
   if (!secondBoot.includes('pearcup:runtime-self-test') || !secondBoot.includes('runBootRuntimeSelfTest')) {
     throw new Error('refreshed boot bundle is missing the Pear runtime Games/invite self-test')
   }
+  await assertPreviewState(url, 'refreshed')
   await assertServedRuntimeContract(url, 'refreshed')
 
   const refreshedBundle = await waitForNewBundle(initialBundle)
@@ -104,6 +106,21 @@ async function assertServedRuntimeContract (url, label) {
   await fetchBytes(new URL('/assets/stadium-bg.png', url), `${label} stadium art`, 10_000)
   await fetchBytes(new URL('/avatars/p-aria.png', url), `${label} generated avatar p-aria`, 5_000)
   await fetchBytes(new URL('/avatars/p-tariq.png', url), `${label} generated avatar p-tariq`, 5_000)
+}
+
+async function assertPreviewState (url, label) {
+  const raw = await fetchText(new URL('/__pearcup-preview-state.json', url), `${label} preview source state`)
+  let state
+  try {
+    state = JSON.parse(raw)
+  } catch (err) {
+    throw new Error(`${label} preview source state is not valid JSON: ${err.message}`)
+  }
+  if (state.app !== 'PearCup') throw new Error(`${label} preview source state app is not PearCup`)
+  if (state.preview !== 'pearbrowser-hyper') throw new Error(`${label} preview source state has the wrong preview kind`)
+  if (!String(state.sourceRoot || '').includes('pearcup-world-cup')) throw new Error(`${label} preview source state is missing sourceRoot`)
+  if (!/^[0-9a-f]{40}$/i.test(String(state.sourceGitHead || ''))) throw new Error(`${label} preview source state is missing sourceGitHead`)
+  if (!/^[0-9a-f]{64}$/i.test(String(state.bundleSha256 || ''))) throw new Error(`${label} preview source state is missing bundleSha256`)
 }
 
 function matchOutput (pattern, label) {
