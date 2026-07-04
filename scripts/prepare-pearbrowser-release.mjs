@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const browserPublishScript = locateBrowserPublishScript()
+const PEARBROWSER_GATEWAY_SAFE_MAX_BYTES = 500_000
 const args = parseArgs(process.argv.slice(2))
 const out = args.out
   ? resolve(args.out)
@@ -50,6 +51,7 @@ const files = listFiles(bundle).map(filePath => {
     sha256: createHash('sha256').update(data).digest('hex')
   }
 }).sort((a, b) => a.path.localeCompare(b.path))
+assertGatewaySafeFileSizes(files)
 
 const manifest = JSON.parse(readFileSync(join(bundle, 'manifest.json'), 'utf8'))
 const bundleSha256 = createHash('sha256')
@@ -227,6 +229,15 @@ const receipt = {
         'exact PearBrowser bundle is a manifest renderer payload; exact renderer Pear runtime proof comes from temporary Pear app smoke',
         'live browser runtime proof remains the remote friend gate'
       ]
+    },
+    pearBrowserGatewayFileSizeContract: {
+      maxFileBytes: PEARBROWSER_GATEWAY_SAFE_MAX_BYTES,
+      largestFileBytes: files.reduce((max, file) => Math.max(max, file.bytes), 0),
+      requires: [
+        'every packaged file stays under the observed PearBrowser gateway fetch limit',
+        'renderer boot uses a small loader instead of a monolithic bundle',
+        'generated avatar and game art assets are publish-safe sizes'
+      ]
     }
   },
   publishHandoff: {
@@ -349,6 +360,16 @@ function listFiles (dir, acc = []) {
     else if (entry.isFile()) acc.push(filePath)
   }
   return acc
+}
+
+function assertGatewaySafeFileSizes (files) {
+  const oversized = files.filter(file => file.bytes > PEARBROWSER_GATEWAY_SAFE_MAX_BYTES)
+  if (oversized.length === 0) return
+  const detail = oversized
+    .sort((a, b) => b.bytes - a.bytes)
+    .map(file => `${file.path} ${file.bytes} bytes`)
+    .join('\n')
+  throw new Error(`release bundle has files above PearBrowser gateway-safe size ${PEARBROWSER_GATEWAY_SAFE_MAX_BYTES} bytes:\n${detail}`)
 }
 
 function parseArgs (argv) {

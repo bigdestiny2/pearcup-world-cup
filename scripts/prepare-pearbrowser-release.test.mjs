@@ -16,6 +16,15 @@ test('release prep can locate PearBrowser publisher from environment override', 
   assert.match(source, /01-browser['"], ['"]pearbrowser-desktop['"], ['"]scripts['"], ['"]publish-and-pin\.js/)
 })
 
+test('release prep enforces PearBrowser gateway-safe file sizes', () => {
+  const source = readFileSync(script, 'utf8')
+
+  assert.match(source, /PEARBROWSER_GATEWAY_SAFE_MAX_BYTES = 500_000/)
+  assert.match(source, /function assertGatewaySafeFileSizes/)
+  assert.match(source, /assertGatewaySafeFileSizes\(files\)/)
+  assert.match(source, /pearBrowserGatewayFileSizeContract/)
+})
+
 test('release prep force refuses to delete outside the durable handoff or temp roots', () => {
   const unsafeOut = mkdtempSync(join(root, 'unsafe-release-force-'))
   const marker = join(unsafeOut, 'bundle', 'keep.txt')
