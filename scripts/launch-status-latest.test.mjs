@@ -110,6 +110,33 @@ test('latest launch status rejects incomplete remote friend evidence', () => {
   assert.match(status.next, /remote friend open/)
 })
 
+test('latest launch status rejects stale friend evidence for another bundle', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-launch-status-stale-friend-'))
+  const receipt = writeReceipt(dir)
+  const publishResult = writePublishResult(dir, receipt)
+  writeFriendResult(dir, receipt, publishResult, {
+    bundleSha256: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+    evidence: {
+      expectedBundleSha256: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+      friendOpenedFinalPearBrowserLink: true,
+      friendReachedGamesWithoutFallbackOrBootError: true,
+      hostAndFriendCompletedLiveP2PJoin: true,
+      hostAndFriendStartedPenaltyClash: true,
+      observedRoomCode: 'pzw7kb',
+      notes: 'remote friend evidence belongs to a previous bundle'
+    }
+  })
+
+  const result = run(['--receipt', receipt, '--json', '--require-complete'])
+  assert.notEqual(result.status, 0)
+
+  const status = JSON.parse(result.stdout)
+  assert.equal(status.release.ready, true)
+  assert.equal(status.publish.ready, true)
+  assert.equal(status.friend.ready, false)
+  assert.match(status.friend.issue, /bundle SHA does not match/)
+})
+
 function writeReceipt (dir, overrides = {}) {
   const receiptPath = join(dir, 'pearcup-release-receipt.json')
   writeFileSync(receiptPath, JSON.stringify({
