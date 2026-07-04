@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = parseArgs(process.argv.slice(2))
 const receiptPath = resolve(args.receipt || join(root, '.pearcup-release', 'latest', 'pearcup-release-receipt.json'))
+const publishGateway = normalizeGateway(args.gateway || process.env.PEARCUP_PEARBROWSER_GATEWAY || detectPearBrowserGateway())
 const errors = []
 const warnings = []
 
@@ -32,7 +33,8 @@ const status = {
   publish,
   friend,
   complete: release.ready && publish.ready && friend.ready,
-  next: nextStep(release, publish, friend, receipt, alternateReadyRelease)
+  publishGateway,
+  next: nextStep(release, publish, friend, receipt, alternateReadyRelease, publishGateway)
 }
 
 if (args.json) {
@@ -140,16 +142,21 @@ function inspectFriendResult (result, filePath, publishResult, receipt) {
   return status
 }
 
-function nextStep (release, publish, friend, receipt, alternateReadyRelease) {
+function nextStep (release, publish, friend, receipt, alternateReadyRelease, gateway) {
   if (!release.ready) {
     if (alternateReadyRelease) {
-      return `Use clean release checkout ${alternateReadyRelease.worktree}; after explicit approval of SHA ${alternateReadyRelease.bundleSha256}, run: cd ${JSON.stringify(alternateReadyRelease.worktree)} && npm run publish:approved:latest -- --publish`
+      return `Use clean release checkout ${alternateReadyRelease.worktree}; after explicit approval of SHA ${alternateReadyRelease.bundleSha256}, run: cd ${JSON.stringify(alternateReadyRelease.worktree)} && ${approvedLatestPublishCommand(gateway)}`
     }
     return 'Regenerate the latest release handoff from a clean commit.'
   }
-  if (!publish.ready) return `After explicit approval of SHA ${receipt.bundleSha256}, run: npm run publish:approved:latest -- --publish`
+  if (!publish.ready) return `After explicit approval of SHA ${receipt.bundleSha256}, run: ${approvedLatestPublishCommand(gateway)}`
   if (!friend.ready) return 'Have the remote friend open the final PearBrowser link, join P2P, start Penalty Clash, then run: npm run record:friend-test:latest -- --friend "<friend-name>" --room-code "<observed-room-code>" --friend-opened --reached-games --joined-p2p --started-penalty-clash --notes "<what both sides observed>"'
   return 'Launch complete: latest bundle is published and remote-friend verified.'
+}
+
+function approvedLatestPublishCommand (gateway) {
+  const command = 'npm run publish:approved:latest -- --publish'
+  return gateway ? `${command} --gateway ${gateway}` : `${command} --gateway http://127.0.0.1:<PearBrowser-gateway-port>/`
 }
 
 function printHuman (status) {
@@ -268,8 +275,36 @@ function readJsonOptional (filePath) {
   }
 }
 
+function detectPearBrowserGateway () {
+  const result = spawnSync('lsof', ['-nP', '-iTCP', '-sTCP:LISTEN'], {
+    encoding: 'utf8'
+  })
+  if (result.status !== 0) return ''
+  const lines = String(result.stdout || '').split(/\r?\n/)
+  for (const line of lines) {
+    if (!/\bPearBrows\b/.test(line)) continue
+    const match = line.match(/TCP\s+127\.0\.0\.1:(\d+)\s+\(LISTEN\)/)
+    if (match && match[1] !== '4190') return `http://127.0.0.1:${match[1]}/`
+  }
+  return ''
+}
+
+function normalizeGateway (value) {
+  if (!value) return ''
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return ''
+    if (url.port === '4190') return ''
+    if (!url.pathname.endsWith('/')) url.pathname = `${url.pathname}/`
+    return url.href
+  } catch (err) {
+    return ''
+  }
+}
+
 function parseArgs (argv) {
   const parsed = {
+    gateway: '',
     json: false,
     receipt: '',
     requireComplete: false,
@@ -278,6 +313,8 @@ function parseArgs (argv) {
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--json') parsed.json = true
+    else if (arg === '--gateway') parsed.gateway = argv[++i]
+    else if (arg.startsWith('--gateway=')) parsed.gateway = arg.slice('--gateway='.length)
     else if (arg === '--receipt') parsed.receipt = argv[++i]
     else if (arg.startsWith('--receipt=')) parsed.receipt = arg.slice('--receipt='.length)
     else if (arg === '--require-complete') parsed.requireComplete = true

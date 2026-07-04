@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = parseArgs(process.argv.slice(2))
 const receiptPath = resolve(args.receipt || join(root, '.pearcup-release', 'latest', 'pearcup-release-receipt.json'))
+const publishGateway = gatewayFromForwarded(args.forwarded) || normalizeGateway(process.env.PEARCUP_PEARBROWSER_GATEWAY || detectPearBrowserGateway())
 const errors = []
 let currentGitState = null
 
@@ -32,7 +33,7 @@ if (errors.length > 0) {
   if (alternate) {
     console.error(`clean release checkout - ${alternate.worktree}`)
     console.error(`clean release receipt - ${alternate.receipt}`)
-    console.error(`next - cd ${JSON.stringify(alternate.worktree)} && npm run publish:approved:latest -- --publish`)
+    console.error(`next - cd ${JSON.stringify(alternate.worktree)} && ${approvedLatestPublishCommand(publishGateway)}`)
   }
   process.exit(1)
 }
@@ -181,6 +182,47 @@ function readJsonOptional (filePath) {
     return JSON.parse(readFileSync(filePath, 'utf8'))
   } catch (err) {
     return null
+  }
+}
+
+function approvedLatestPublishCommand (gateway) {
+  const command = 'npm run publish:approved:latest -- --publish'
+  return gateway ? `${command} --gateway ${gateway}` : `${command} --gateway http://127.0.0.1:<PearBrowser-gateway-port>/`
+}
+
+function gatewayFromForwarded (forwarded) {
+  for (let i = 0; i < forwarded.length; i++) {
+    const arg = forwarded[i]
+    if (arg === '--gateway') return normalizeGateway(forwarded[i + 1])
+    if (arg.startsWith('--gateway=')) return normalizeGateway(arg.slice('--gateway='.length))
+  }
+  return ''
+}
+
+function detectPearBrowserGateway () {
+  const result = spawnSync('lsof', ['-nP', '-iTCP', '-sTCP:LISTEN'], {
+    encoding: 'utf8'
+  })
+  if (result.status !== 0) return ''
+  const lines = String(result.stdout || '').split(/\r?\n/)
+  for (const line of lines) {
+    if (!/\bPearBrows\b/.test(line)) continue
+    const match = line.match(/TCP\s+127\.0\.0\.1:(\d+)\s+\(LISTEN\)/)
+    if (match && match[1] !== '4190') return `http://127.0.0.1:${match[1]}/`
+  }
+  return ''
+}
+
+function normalizeGateway (value) {
+  if (!value) return ''
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return ''
+    if (url.port === '4190') return ''
+    if (!url.pathname.endsWith('/')) url.pathname = `${url.pathname}/`
+    return url.href
+  } catch (err) {
+    return ''
   }
 }
 
