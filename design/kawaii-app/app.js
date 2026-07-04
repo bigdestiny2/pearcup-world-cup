@@ -740,6 +740,17 @@ function applyStartupView () {
   setView(resolveStartupView())
 }
 
+function handleStartupHashChange () {
+  const nextView = startupViewFromHash()
+  if (!nextView || nextView === state.view) return
+  setView(nextView)
+}
+
+function bindStartupRouteEvents () {
+  if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return
+  window.addEventListener('hashchange', handleStartupHashChange)
+}
+
 function syncRuntimeScreenDiagnostics (view) {
   if (typeof document === 'undefined' || !document.documentElement) return
   const active = view || (document.querySelector('.screen.is-active') && document.querySelector('.screen.is-active').id) || ''
@@ -4647,6 +4658,7 @@ function boot () {
   }
   // Deep link: ?join=<code> auto-joins a friend's peer match, including first-run users.
   if (!tryJoinFriendInvite()) applyStartupView()
+  bindStartupRouteEvents()
   window.addEventListener('load', resetScrollPosition)
   window.addEventListener('pageshow', resetScrollPosition)
   window.addEventListener('resize', scheduleBracketConnectors)

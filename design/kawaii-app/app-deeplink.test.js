@@ -84,10 +84,13 @@ function createP2PGuardHarness ({ globals = {}, dataset = {} } = {}) {
 }
 
 function createStartupViewHarness ({ hash = '', view = 'onboarding' } = {}) {
-  const calls = { views: [] }
+  const calls = { events: [], views: [] }
   const context = {
     location: { hash },
     state: { view },
+    window: {
+      addEventListener: (type, fn) => { calls.events.push({ type, fn }) }
+    },
     setView: nextView => { calls.views.push(nextView) }
   }
   context.globalThis = context
@@ -185,6 +188,25 @@ test('startup view resolves bracket hash deep links before saved state', () => {
   harness.context.applyStartupView()
 
   assert.deepEqual(harness.calls.views, ['bracket'])
+})
+
+test('startup hash changes switch routes without a full reload', () => {
+  const harness = createStartupViewHarness({ hash: '#games', view: 'bracket' })
+
+  harness.context.handleStartupHashChange()
+
+  assert.deepEqual(harness.calls.views, ['games'])
+})
+
+test('boot binds hashchange route handling for PearBrowser same-document navigation', () => {
+  const harness = createStartupViewHarness({ hash: '#watch', view: 'home' })
+
+  harness.context.bindStartupRouteEvents()
+
+  assert.equal(harness.calls.events.length, 1)
+  assert.equal(harness.calls.events[0].type, 'hashchange')
+  harness.calls.events[0].fn()
+  assert.deepEqual(harness.calls.views, ['watch'])
 })
 
 test('startup view falls back to saved view and normalizes profile to onboarding', () => {
