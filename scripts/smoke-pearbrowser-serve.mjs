@@ -94,7 +94,7 @@ async function assertServedRuntimeContract (url, label) {
   if (!index.includes('pearcupPeerMatchModule') || !index.includes('pearcupWatchSyncModule')) {
     throw new Error(`${label} index fallback does not require every P2P readiness marker`)
   }
-  for (const needle of ['runBootRuntimeSelfTest', 'runRuntimePeerHandshakeSelfTest', 'pearcupRuntimeSelfTestGuest', 'pearcup:runtime-self-test', 'syncRuntimeScreenDiagnostics', 'pearcupActiveScreen', 'pearcupAppBooted', 'PearCupPeerMatch.host()', 'avatars/p-aria.png', 'avatars/p-tariq.png', 'assets/mascot.png']) {
+  for (const needle of ['runBootRuntimeSelfTest', 'runtimeBracketEvidence', 'Bracket board rendered', 'Bracket route did not render generated avatar images', 'runRuntimePeerHandshakeSelfTest', 'pearcupRuntimeSelfTestGuest', 'pearcup:runtime-self-test', 'syncRuntimeScreenDiagnostics', 'pearcupActiveScreen', 'pearcupAppBooted', 'PearCupPeerMatch.host()', 'avatars/p-aria.png', 'avatars/p-tariq.png', 'assets/mascot.png']) {
     if (!app.includes(needle)) throw new Error(`${label} app.js is missing ${needle}`)
   }
   for (const needle of ["url('assets/stadium-bg.png')", "url('assets/ball.png')", "url('assets/confetti.png')"]) {

@@ -157,6 +157,9 @@ async function checkPreviewUrl (url) {
     }
     for (const [needle, message] of [
       ['runBootRuntimeSelfTest', 'preview app.js does not include the Pear runtime Games/invite self-test'],
+      ['runtimeBracketEvidence', 'preview app.js runtime self-test does not collect Bracket render evidence'],
+      ['Bracket board rendered', 'preview app.js runtime self-test does not fail blank Bracket boards'],
+      ['Bracket route did not render generated avatar images', 'preview app.js runtime self-test does not prove Bracket generated avatars'],
       ['runRuntimePeerHandshakeSelfTest', 'preview app.js runtime self-test does not launch a hidden guest invite join'],
       ['pearcupRuntimeSelfTestGuest', 'preview app.js runtime self-test does not mark hidden guest instances'],
       ['pearcup:runtime-self-test', 'preview app.js does not emit the runtime self-test probe'],
