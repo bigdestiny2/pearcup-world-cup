@@ -108,6 +108,17 @@ const receipt = {
       'scripts/check-pear-seamless.test.mjs',
       'scripts/smoke-published-pearbrowser.test.mjs'
     ],
+    pearBrowserSwarmContract: {
+      command: 'npm run test:kawaii-peer',
+      requires: [
+        'PearBrowser swarm.v1 channel queues hello until a peer connects',
+        'PearBrowser swarm PeerNet and PeerMatch integrate across two clients',
+        'PearBrowser swarm lobby challenge routes into a peer match',
+        'PearBrowser swarm watch sync shares presence and chat',
+        'PearBrowser invite links use hyper://<drive>/?join=<room>',
+        'PearBrowser game, lobby, and watch channels use backend=pearbrowser-swarm-v1'
+      ]
+    },
     bootProbeContract: {
       command: 'npm run smoke:kawaii-pear-run',
       requires: [

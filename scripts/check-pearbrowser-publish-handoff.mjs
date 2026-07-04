@@ -357,6 +357,10 @@ function validateVerification (verification) {
   const localPublishedLinkRequirements = Array.isArray(localPublishedLinkContract.requires)
     ? localPublishedLinkContract.requires
     : []
+  const pearBrowserSwarmContract = verification.pearBrowserSwarmContract || {}
+  const pearBrowserSwarmRequirements = Array.isArray(pearBrowserSwarmContract.requires)
+    ? pearBrowserSwarmContract.requires
+    : []
   if (!sourceChecks.includes('node scripts/check-kawaii-runtime.mjs')) {
     errors.push('receipt verification must include Kawaii runtime source check before build')
   }
@@ -425,6 +429,21 @@ function validateVerification (verification) {
     if (!coverage.includes(required)) errors.push(`receipt verification must list required coverage: ${required}`)
   }
   validateP2PSmokeCoverage()
+  if (pearBrowserSwarmContract.command !== 'npm run test:kawaii-peer') {
+    errors.push('receipt pearBrowserSwarmContract must be tied to npm run test:kawaii-peer')
+  }
+  for (const required of [
+    'PearBrowser swarm.v1 channel queues hello until a peer connects',
+    'PearBrowser swarm PeerNet and PeerMatch integrate across two clients',
+    'PearBrowser swarm lobby challenge routes into a peer match',
+    'PearBrowser swarm watch sync shares presence and chat',
+    'PearBrowser invite links use hyper://<drive>/?join=<room>',
+    'PearBrowser game, lobby, and watch channels use backend=pearbrowser-swarm-v1'
+  ]) {
+    if (!pearBrowserSwarmRequirements.includes(required)) {
+      errors.push(`receipt pearBrowserSwarmContract must require ${required}`)
+    }
+  }
   if (bootProbeContract.command !== 'npm run smoke:kawaii-pear-run') {
     errors.push('receipt bootProbeContract must be tied to npm run smoke:kawaii-pear-run')
   }
@@ -792,7 +811,12 @@ function validateP2PSmokeCoverage () {
     'PearBrowser swarm PeerNet and PeerMatch integrate across two clients',
     'PearBrowser swarm lobby challenge routes into a peer match',
     'PearBrowser swarm watch sync shares presence and chat',
-    'createPearBrowserSwarmHub'
+    'createPearBrowserSwarmHub',
+    'hyper://${driveKey}/\\\\?join=room42',
+    "host.context.PearCupPeerMatch._state.channel.backend, 'pearbrowser-swarm-v1'",
+    "guest.context.PearCupPeerMatch._state.channel.backend, 'pearbrowser-swarm-v1'",
+    "host.context.PearCupLobby._state.channel.backend, 'pearbrowser-swarm-v1'",
+    "host.context.PearCupWatchSync.peerCount() === 2"
   ]) {
     if (!smoke.includes(required)) {
       errors.push(`P2P smoke coverage is missing: ${required}`)
