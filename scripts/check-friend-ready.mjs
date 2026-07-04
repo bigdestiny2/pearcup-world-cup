@@ -177,6 +177,9 @@ async function checkPreviewUrl (url) {
     if (!peerMatch.includes('pearcupPeerMatchModule')) {
       errors.push('preview peer-match.js does not mark module readiness')
     }
+    if (!peerMatch.includes('pearcupPeerMatchState') || !peerMatch.includes('pearcupPeerMatchStarted')) {
+      errors.push('preview peer-match.js does not expose DOM diagnostics for live match state')
+    }
     if (!peerMatch.includes('hyperLaunchBase') || !peerMatch.includes('hyper://')) {
       errors.push('preview peer-match.js does not build shareable hyper:// invite links')
     }

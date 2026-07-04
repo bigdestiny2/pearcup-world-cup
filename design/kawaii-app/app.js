@@ -4252,14 +4252,22 @@ function bootRuntimeDiagnostics () {
     .map(el => el.getAttribute('href') || '')
     .filter(Boolean)
   const activeScreens = Array.from(document.querySelectorAll('.screen.is-active')).map(el => el.id)
+  const ds = document.documentElement.dataset
 
   return {
-    uiHydrated: document.documentElement.dataset.pearcupUiHydrated || null,
+    uiHydrated: ds.pearcupUiHydrated || null,
     activeScreens,
     routeButtons: Array.from(document.querySelectorAll('[data-view]')).map(el => el.getAttribute('data-view')).filter(Boolean),
     teamCards: document.querySelectorAll('#teamGrid .team-card').length,
     avatarImages: avatarImages.slice(0, 4),
     profileChipReady: Boolean(document.querySelector('#profileChip svg.avatar-art')),
+    peerMatchDataset: {
+      state: ds.pearcupPeerMatchState || null,
+      active: ds.pearcupPeerMatchActive || null,
+      started: ds.pearcupPeerMatchStarted || null,
+      code: ds.pearcupPeerMatchCode || null,
+      role: ds.pearcupPeerMatchRole || null
+    },
     controllers: {
       peerNet: controllerReady(window.PearCupPeerNet, ['createChannel', 'newRoomCode', 'newPeerId']),
       peerMatch: controllerReady(window.PearCupPeerMatch, ['host', 'join', 'promptJoin', 'onZone']),

@@ -37,6 +37,23 @@
   const $ = sel => document.querySelector(sel)
   const sleep = ms => new Promise(r => setTimeout(r, ms))
 
+  function syncDiagnostics (stateName) {
+    const ds = root.document && root.document.documentElement && root.document.documentElement.dataset
+    if (!ds) return
+    ds.pearcupPeerMatchState = stateName || (PM.over ? 'over' : PM.started ? 'started' : PM.active ? 'joining' : 'idle')
+    ds.pearcupPeerMatchActive = String(Boolean(PM.active))
+    ds.pearcupPeerMatchStarted = String(Boolean(PM.started))
+    if (PM.code) ds.pearcupPeerMatchCode = PM.code
+    else delete ds.pearcupPeerMatchCode
+    if (PM.role) ds.pearcupPeerMatchRole = PM.role
+    else delete ds.pearcupPeerMatchRole
+    if (PM.opp && PM.opp.name) ds.pearcupPeerMatchOpponent = PM.opp.name
+    else delete ds.pearcupPeerMatchOpponent
+    if (ds.pearcupPendingJoin && PM.code && ds.pearcupPendingJoin === PM.code && PM.started) {
+      ds.pearcupJoinState = 'started'
+    }
+  }
+
   function reset () {
     stopAnnouncing()
     if (PM.channel) { try { PM.channel.close() } catch (e) {} }
@@ -45,6 +62,7 @@
       self: null, opp: null, role: null, kIndex: 0, busy: false,
       commit: null, remoteCommit: null, myDive: null, helloTimer: null, helloAttempts: 0
     })
+    syncDiagnostics('idle')
   }
 
   function shooterRoleForKick (k) { return k % 2 === 0 ? 'A' : 'B' } // A shoots first each round
@@ -58,6 +76,7 @@
     PM.code = code || Net.newRoomCode()
     PM.self = { peerId: Net.newPeerId(), name: state.username || 'captain', team: state.team || 'br' }
     openChannel()
+    syncDiagnostics('hosting')
     if (!silent) { showToast('Room created — invite your friend'); renderInvite() }
     else showToast('Challenge sent — waiting for them to accept…')
     startAnnouncing()
@@ -69,6 +88,7 @@
     PM.code = code
     PM.self = { peerId: Net.newPeerId(), name: state.username || 'captain', team: state.team || 'br' }
     openChannel()
+    syncDiagnostics('joining')
     renderConnecting(code)
     startAnnouncing()
   }
@@ -117,6 +137,7 @@
   function onHello (peer) {
     if (PM.started || !peer) return
     if (!PM.opp) { PM.opp = peer; announce() } // re-announce so a late joiner learns me
+    syncDiagnostics(PM.role ? undefined : 'connected')
     maybeStart()
   }
 
@@ -133,6 +154,7 @@
     closeModal()
     showToast(`Connected to ${PM.opp.name} — best of five!`)
     setView('games')
+    syncDiagnostics('started')
     render()
   }
 
@@ -311,6 +333,7 @@
     if (overlay) overlay.hidden = false
     const again = $('#playAgain'); if (again) again.textContent = 'New match'
     showToast(win ? `You beat ${PM.opp.name} ${so.you}–${so.opp}!` : draw ? `Level with ${PM.opp.name} ${so.you}–${so.opp}` : `${PM.opp.name} won ${so.opp}–${so.you}`)
+    syncDiagnostics('over')
   }
 
   // ---- invite / connect modals ----
@@ -415,5 +438,6 @@
   function isActive () { return PM.active && PM.started && !PM.over }
 
   root.PearCupPeerMatch = { host, join, promptJoin, onZone, isActive, leave, render, reset, _state: PM }
+  syncDiagnostics('idle')
   markModule('ready')
 })(typeof window !== 'undefined' ? window : globalThis)

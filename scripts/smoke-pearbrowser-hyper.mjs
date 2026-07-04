@@ -201,6 +201,8 @@ function checkBootContract () {
   assertText(peerNet, 'pearcupPeerNetModule', 'peer-net.js must mark module readiness')
   assertNotText(peerNet, /\bexport\s+default\b/, 'peer-net.js must not be an ESM wrapper')
   assertText(peerMatch, 'pearcupPeerMatchModule', 'peer-match.js must mark module readiness')
+  assertText(peerMatch, 'pearcupPeerMatchState', 'peer-match.js must expose DOM diagnostics for live match state')
+  assertText(peerMatch, 'pearcupPeerMatchStarted', 'peer-match.js must expose started state for live friend-proof diagnostics')
   assertText(peerMatch, 'hyperLaunchBase', 'peer-match.js builds friend invites from PearBrowser hyper:// launch URLs')
   assertText(peerMatch, 'hyper://', 'peer-match.js can share hyper:// invite links for remote friends')
   assertNotText(peerMatch, 'location.origin + location.pathname', 'peer-match.js must not share localhost proxy invite URLs')

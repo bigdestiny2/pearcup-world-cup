@@ -255,6 +255,9 @@ function checkPeerNet (peerNet) {
 function checkPeerMatch (peerMatch) {
   if (!peerMatch) return
   if (!peerMatch.includes('pearcupPeerMatchModule')) errors.push('published peer-match.js does not mark module readiness')
+  if (!peerMatch.includes('pearcupPeerMatchState') || !peerMatch.includes('pearcupPeerMatchStarted')) {
+    errors.push('published peer-match.js does not expose DOM diagnostics for live match state')
+  }
   if (!peerMatch.includes('hyperLaunchBase')) errors.push('published peer-match.js cannot reconstruct hyper invite base')
   if (!peerMatch.includes('hyper://')) errors.push('published peer-match.js cannot share hyper:// invite links')
   if (peerMatch.includes('location.origin + location.pathname')) errors.push('published peer-match.js still shares localhost proxy invite links')
