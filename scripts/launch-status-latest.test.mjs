@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
@@ -64,6 +64,15 @@ test('latest launch status refuses stale release receipts', () => {
   assert.notEqual(result.status, 0)
   assert.match(result.stdout, /release - not ready/)
   assert.match(result.stdout, /does not match receipt/)
+})
+
+test('latest launch status can point operators at a clean release checkout', () => {
+  const source = readScript()
+
+  assert.match(source, /alternateReadyRelease/)
+  assert.match(source, /worktree', 'list', '--porcelain/)
+  assert.match(source, /Use clean release checkout/)
+  assert.match(source, /npm run publish:approved:latest -- --publish/)
 })
 
 test('latest launch status rejects stale publish evidence for another bundle', () => {
@@ -232,4 +241,8 @@ function currentGitHead () {
   })
   assert.equal(result.status, 0, result.stderr)
   return result.stdout.trim()
+}
+
+function readScript () {
+  return readFileSync(script, 'utf8')
 }

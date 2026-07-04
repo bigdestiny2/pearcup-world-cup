@@ -13,6 +13,7 @@ const warnings = []
 const receipt = readJsonIfExists(receiptPath, 'latest release receipt')
 const current = readCurrentGitState()
 const release = inspectRelease(receipt, receiptPath, current)
+const alternateReadyRelease = release.ready ? null : findAlternateReadyRelease(current)
 const publishResultPath = release.publishResultPath || join(dirname(receiptPath), 'pearcup-publish-result.json')
 const friendResultPath = join(dirname(publishResultPath), 'pearcup-friend-test-result.json')
 const publish = inspectPublishResult(readJsonIfExists(publishResultPath, 'latest publish result', { optional: true }), publishResultPath, receipt, receiptPath)
@@ -27,10 +28,11 @@ const status = {
   currentDirty: current.status.length > 0,
   bundleSha256: receipt && receipt.bundleSha256 || '',
   release,
+  alternateReadyRelease,
   publish,
   friend,
   complete: release.ready && publish.ready && friend.ready,
-  next: nextStep(release, publish, friend, receipt)
+  next: nextStep(release, publish, friend, receipt, alternateReadyRelease)
 }
 
 if (args.json) {
@@ -138,8 +140,13 @@ function inspectFriendResult (result, filePath, publishResult, receipt) {
   return status
 }
 
-function nextStep (release, publish, friend, receipt) {
-  if (!release.ready) return 'Regenerate the latest release handoff from a clean commit.'
+function nextStep (release, publish, friend, receipt, alternateReadyRelease) {
+  if (!release.ready) {
+    if (alternateReadyRelease) {
+      return `Use clean release checkout ${alternateReadyRelease.worktree}; after explicit approval of SHA ${alternateReadyRelease.bundleSha256}, run: cd ${JSON.stringify(alternateReadyRelease.worktree)} && npm run publish:approved:latest -- --publish`
+    }
+    return 'Regenerate the latest release handoff from a clean commit.'
+  }
   if (!publish.ready) return `After explicit approval of SHA ${receipt.bundleSha256}, run: npm run publish:approved:latest -- --publish`
   if (!friend.ready) return 'Have the remote friend open the final PearBrowser link, join P2P, start Penalty Clash, then run: npm run record:friend-test:latest -- --friend "<friend-name>" --room-code "<observed-room-code>" --friend-opened --reached-games --joined-p2p --started-penalty-clash --notes "<what both sides observed>"'
   return 'Launch complete: latest bundle is published and remote-friend verified.'
@@ -152,6 +159,10 @@ function printHuman (status) {
   console.log(`friend - ${status.friend.ready ? 'remote verified' : 'not verified'}${status.friend.issue ? ` (${status.friend.issue})` : ''}`)
   console.log(`bundle sha256 - ${status.bundleSha256 || '(missing)'}`)
   console.log(`source git head - ${status.sourceGitHead || '(missing)'}`)
+  if (status.alternateReadyRelease) {
+    console.log(`clean release checkout - ${status.alternateReadyRelease.worktree}`)
+    console.log(`clean release receipt - ${status.alternateReadyRelease.receipt}`)
+  }
   if (status.publish.publishedUrl) console.log(`published url - ${status.publish.publishedUrl}`)
   if (status.friend.roomCode) console.log(`friend room code - ${status.friend.roomCode}`)
   if (warnings.length > 0) for (const warning of warnings) console.log(`warning - ${warning}`)
@@ -172,17 +183,21 @@ function readJsonIfExists (filePath, label, opts = {}) {
 }
 
 function readCurrentGitState () {
-  const head = runGit(['rev-parse', 'HEAD']).trim()
-  const status = runGit(['status', '--short'])
+  return readGitState(root)
+}
+
+function readGitState (cwd) {
+  const head = runGit(['rev-parse', 'HEAD'], cwd).trim()
+  const status = runGit(['status', '--short'], cwd)
     .split(/\r?\n/)
     .map(line => line.trim())
     .filter(Boolean)
   return { head, status }
 }
 
-function runGit (gitArgs) {
+function runGit (gitArgs, cwd = root) {
   const result = spawnSync('git', gitArgs, {
-    cwd: root,
+    cwd,
     encoding: 'utf8'
   })
   if (result.status !== 0) {
@@ -191,6 +206,66 @@ function runGit (gitArgs) {
     return ''
   }
   return result.stdout
+}
+
+function findAlternateReadyRelease (current) {
+  if (!current.head) return null
+  const worktrees = readGitWorktrees()
+  for (const worktree of worktrees) {
+    const worktreePath = resolve(worktree.path || '')
+    if (!worktreePath || worktreePath === root) continue
+    if (worktree.head && worktree.head.toLowerCase() !== current.head.toLowerCase()) continue
+    const alternateReceiptPath = join(worktreePath, '.pearcup-release', 'latest', 'pearcup-release-receipt.json')
+    const alternateReceipt = readJsonOptional(alternateReceiptPath)
+    if (!alternateReceipt) continue
+    const alternateGitState = readGitState(worktreePath)
+    const issue = releaseIssueFor(alternateReceipt, alternateGitState)
+    if (issue) continue
+    return {
+      worktree: worktreePath,
+      receipt: alternateReceiptPath,
+      bundleSha256: alternateReceipt.bundleSha256,
+      sourceGitHead: alternateReceipt.sourceGitHead
+    }
+  }
+  return null
+}
+
+function releaseIssueFor (receipt, gitState) {
+  if (receipt.app !== 'PearCup') return 'release receipt app is not PearCup'
+  if (!/^[0-9a-f]{40}$/i.test(String(receipt.sourceGitHead || ''))) return 'release receipt is missing sourceGitHead'
+  if (receipt.sourceDirty !== false) return 'release receipt was generated from a dirty worktree'
+  if (!/^[0-9a-f]{64}$/i.test(String(receipt.bundleSha256 || ''))) return 'release receipt is missing bundleSha256'
+  if (gitState.head && gitState.head.toLowerCase() !== String(receipt.sourceGitHead).toLowerCase()) return `current HEAD ${gitState.head} does not match receipt ${receipt.sourceGitHead}`
+  if (gitState.status.length > 0) return `current worktree has ${gitState.status.length} dirty path${gitState.status.length === 1 ? '' : 's'}`
+  if (!receipt.postPublishVerification || !receipt.postPublishVerification.resultPath) return 'release receipt is missing postPublishVerification.resultPath'
+  return ''
+}
+
+function readGitWorktrees () {
+  const raw = runGit(['worktree', 'list', '--porcelain'])
+  const worktrees = []
+  let currentEntry = null
+  for (const line of raw.split(/\r?\n/)) {
+    if (!line) continue
+    if (line.startsWith('worktree ')) {
+      if (currentEntry) worktrees.push(currentEntry)
+      currentEntry = { path: line.slice('worktree '.length), head: '' }
+    } else if (currentEntry && line.startsWith('HEAD ')) {
+      currentEntry.head = line.slice('HEAD '.length)
+    }
+  }
+  if (currentEntry) worktrees.push(currentEntry)
+  return worktrees
+}
+
+function readJsonOptional (filePath) {
+  if (!existsSync(filePath)) return null
+  try {
+    return JSON.parse(readFileSync(filePath, 'utf8'))
+  } catch (err) {
+    return null
+  }
 }
 
 function parseArgs (argv) {
