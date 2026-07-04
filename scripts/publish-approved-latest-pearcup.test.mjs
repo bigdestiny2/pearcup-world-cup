@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
@@ -47,6 +47,15 @@ test('latest approved publish refuses dirty source receipts', () => {
 
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /generated from a dirty worktree/)
+})
+
+test('latest approved publish refusal can point at a clean release checkout', () => {
+  const source = readFileSync(script, 'utf8')
+
+  assert.match(source, /findAlternateReadyRelease/)
+  assert.match(source, /clean release checkout/)
+  assert.match(source, /worktree', 'list', '--porcelain/)
+  assert.match(source, /npm run publish:approved:latest -- --publish/)
 })
 
 function writeFixture (overrides = {}) {
