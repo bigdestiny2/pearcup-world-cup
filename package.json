@@ -68,7 +68,7 @@
     "config:live:print": "node scripts/live-config.mjs --print",
     "doctor:live": "node scripts/live-readiness.mjs",
     "audit:launch": "node scripts/live-launch-audit.mjs",
-    "audit:pear-browser": "node scripts/pear-browser-compat.mjs",
+    "audit:pear-browser": "node scripts/pear-browser-compat.mjs --canonical",
     "audit:pear-release-scope": "node --check scripts/audit-pear-release-scope.mjs && node scripts/audit-pear-release-scope.mjs",
     "build:kawaii-boot": "node scripts/build-kawaii-boot.mjs",
     "build:pearbrowser": "node scripts/build-pearbrowser-hyper.mjs",

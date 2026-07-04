@@ -119,6 +119,7 @@ function checkDependencies (pkg) {
 function checkRootLaunchScripts (pkg) {
   const scripts = pkg.scripts || {}
   for (const [name, expected] of Object.entries({
+    'audit:pear-browser': 'node scripts/pear-browser-compat.mjs --canonical',
     dev: 'cd design/kawaii-app && pear run --dev .',
     'dev:devtools': 'cd design/kawaii-app && pear run --dev --devtools .',
     'link:new': 'cd design/kawaii-app && pear touch',
