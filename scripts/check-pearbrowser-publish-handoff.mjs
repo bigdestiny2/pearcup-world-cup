@@ -579,6 +579,9 @@ function validateSmokeContracts () {
   if (existsSync(runtimeSmokePath)) {
     const runtimeSmoke = readFileSync(runtimeSmokePath, 'utf8')
     for (const required of [
+      'PEARCUP_BOOT_PROBE_URL: bootProbe.url',
+      'PEARCUP_BOOT_PROBE_RUNTIME_SELF_TEST',
+      'PEARCUP_BOOT_PROBE_RUNTIME_SELF_TEST_DELAY_MS',
       'pearcup:runtime-self-test',
       'runtime self-test activeScreen',
       'runtime self-test activeScreenDataset',
@@ -591,6 +594,11 @@ function validateSmokeContracts () {
       'runtime self-test guest did not join the hosted peer match'
     ]) {
       if (!runtimeSmoke.includes(required)) errors.push(`actual Pear runtime smoke is missing contract text: ${required}`)
+    }
+    if (runtimeSmoke.includes("join(appRoot, 'boot-probe.json')") ||
+      runtimeSmoke.includes('writeFileSync(filePath') ||
+      runtimeSmoke.includes('unlinkSync(filePath')) {
+      errors.push('actual Pear runtime smoke must not write shared boot-probe.json')
     }
   }
   if (existsSync(exactBundleRuntimeSmokePath)) {

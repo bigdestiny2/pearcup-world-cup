@@ -22,6 +22,7 @@ if (rootPkg) {
 checkRootLegacyPearGuard()
 checkBootBundleFresh()
 checkRendererHtml()
+checkPearSmokeProbeIsolation()
 
 if (errors.length > 0) {
   console.error('Kawaii Pear runtime check failed:')
@@ -206,6 +207,21 @@ function checkBootBundleFresh () {
   if (result.status !== 0) {
     const detail = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
     errors.push(`PearCup boot bundle freshness check failed${detail ? `:\n${detail}` : ''}`)
+  }
+}
+
+function checkPearSmokeProbeIsolation () {
+  const source = readRootText('scripts/smoke-kawaii-pear-run.mjs')
+  if (!source) return
+  for (const required of [
+    'PEARCUP_BOOT_PROBE_URL: bootProbe.url',
+    "PEARCUP_BOOT_PROBE_RUNTIME_SELF_TEST: '1'",
+    "PEARCUP_BOOT_PROBE_RUNTIME_SELF_TEST_DELAY_MS: '350'"
+  ]) {
+    if (!source.includes(required)) errors.push(`Pear runtime smoke must configure boot probes through per-run env: ${required}`)
+  }
+  if (source.includes("join(appRoot, 'boot-probe.json')") || source.includes('writeFileSync(filePath') || source.includes('unlinkSync(filePath')) {
+    errors.push('Pear runtime smoke must not write shared design/kawaii-app/boot-probe.json; concurrent release checks race on shared config files')
   }
 }
 
