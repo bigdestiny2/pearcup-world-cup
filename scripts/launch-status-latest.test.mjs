@@ -66,6 +66,50 @@ test('latest launch status refuses stale release receipts', () => {
   assert.match(result.stdout, /does not match receipt/)
 })
 
+test('latest launch status rejects stale publish evidence for another bundle', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-launch-status-stale-publish-'))
+  const receipt = writeReceipt(dir)
+  writePublishResult(dir, receipt, {
+    bundleSha256: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+  })
+
+  const result = run(['--receipt', receipt, '--json', '--require-published'])
+  assert.notEqual(result.status, 0)
+
+  const status = JSON.parse(result.stdout)
+  assert.equal(status.release.ready, true)
+  assert.equal(status.publish.ready, false)
+  assert.match(status.publish.issue, /bundle SHA does not match/)
+  assert.match(status.next, /explicit approval/)
+})
+
+test('latest launch status rejects incomplete remote friend evidence', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-launch-status-incomplete-friend-'))
+  const receipt = writeReceipt(dir)
+  const publishResult = writePublishResult(dir, receipt)
+  writeFriendResult(dir, receipt, publishResult, {
+    evidence: {
+      expectedBundleSha256: sha,
+      friendOpenedFinalPearBrowserLink: true,
+      friendReachedGamesWithoutFallbackOrBootError: true,
+      hostAndFriendCompletedLiveP2PJoin: true,
+      hostAndFriendStartedPenaltyClash: false,
+      observedRoomCode: 'pzw7kb',
+      notes: 'remote friend joined but did not start Penalty Clash'
+    }
+  })
+
+  const result = run(['--receipt', receipt, '--json', '--require-complete'])
+  assert.notEqual(result.status, 0)
+
+  const status = JSON.parse(result.stdout)
+  assert.equal(status.release.ready, true)
+  assert.equal(status.publish.ready, true)
+  assert.equal(status.friend.ready, false)
+  assert.match(status.friend.issue, /starting Penalty Clash/)
+  assert.match(status.next, /remote friend open/)
+})
+
 function writeReceipt (dir, overrides = {}) {
   const receiptPath = join(dir, 'pearcup-release-receipt.json')
   writeFileSync(receiptPath, JSON.stringify({
@@ -83,7 +127,7 @@ function writeReceipt (dir, overrides = {}) {
   return receiptPath
 }
 
-function writePublishResult (dir, receipt) {
+function writePublishResult (dir, receipt, overrides = {}) {
   const publishResult = join(dir, 'pearcup-publish-result.json')
   writeFileSync(publishResult, JSON.stringify({
     app: 'PearCup',
@@ -113,12 +157,13 @@ function writePublishResult (dir, receipt) {
       exactBundlePublishedGatewayPreflight: true,
       exactBundlePearRuntimePreflight: true,
       postPublishSmokePassed: true
-    }
+    },
+    ...overrides
   }, null, 2) + '\n')
   return publishResult
 }
 
-function writeFriendResult (dir, receipt, publishResult) {
+function writeFriendResult (dir, receipt, publishResult, overrides = {}) {
   writeFileSync(join(dir, 'pearcup-friend-test-result.json'), JSON.stringify({
     app: 'PearCup',
     status: 'remote-friend-verified',
@@ -141,7 +186,8 @@ function writeFriendResult (dir, receipt, publishResult) {
       observedRoomCode: 'pzw7kb',
       notes: 'remote friend opened latest link, joined, and started Penalty Clash'
     },
-    remaining: []
+    remaining: [],
+    ...overrides
   }, null, 2) + '\n')
 }
 
