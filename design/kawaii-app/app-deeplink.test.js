@@ -198,6 +198,14 @@ test('startup hash changes switch routes without a full reload', () => {
   assert.deepEqual(harness.calls.views, ['games'])
 })
 
+test('route changes keep the URL hash aligned with the active view', () => {
+  const harness = createStartupViewHarness({ hash: '#watch', view: 'watch' })
+
+  harness.context.syncLocationHashForView('bracket')
+
+  assert.equal(harness.context.location.hash, '#bracket')
+})
+
 test('boot binds hashchange route handling for PearBrowser same-document navigation', () => {
   const harness = createStartupViewHarness({ hash: '#watch', view: 'home' })
 

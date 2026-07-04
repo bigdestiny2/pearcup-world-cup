@@ -746,6 +746,15 @@ function handleStartupHashChange () {
   setView(nextView)
 }
 
+function syncLocationHashForView (view) {
+  const nextView = normalizeStartupView(view)
+  if (!nextView || typeof location === 'undefined') return
+  try {
+    if (startupViewFromHash() === nextView) return
+    location.hash = `#${nextView}`
+  } catch (e) {}
+}
+
 function bindStartupRouteEvents () {
   if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return
   window.addEventListener('hashchange', handleStartupHashChange)
@@ -761,16 +770,19 @@ function syncRuntimeScreenDiagnostics (view) {
 }
 
 function setView (view) {
-  state.view = view
+  const nextView = normalizeStartupView(view)
+  if (!nextView) return
+  state.view = nextView
+  syncLocationHashForView(nextView)
   persist()
-  renderView(view)
-  $$('.screen').forEach(screen => screen.classList.toggle('is-active', screen.id === view))
+  renderView(nextView)
+  $$('.screen').forEach(screen => screen.classList.toggle('is-active', screen.id === nextView))
   $$('.topnav button').forEach(button => {
-    button.classList.toggle('is-active', button.dataset.view === view)
+    button.classList.toggle('is-active', button.dataset.view === nextView)
   })
-  syncRuntimeScreenDiagnostics(view)
-  if (view === 'bracket') scheduleBracketConnectors()
-  if (view === 'games') renderGames()
+  syncRuntimeScreenDiagnostics(nextView)
+  if (nextView === 'bracket') scheduleBracketConnectors()
+  if (nextView === 'games') renderGames()
   resetScrollPosition()
 }
 
