@@ -23,6 +23,11 @@ const deepLinkSource = [
 const startupViewSource = sliceFunctionBlock('normalizeStartupView', 'syncRuntimeScreenDiagnostics')
 const runtimeDiagnosticsSource = sliceFunctionBlock('syncRuntimeScreenDiagnostics', 'setView')
 const p2pGuardSource = sliceFunctionBlock('assertP2PModulesReady', 'boot')
+const bootProbeConfigSource = appSource.slice(
+  appSource.indexOf('let bootProbeConfigPromise'),
+  appSource.indexOf('function runtimeSelfTestSnapshot')
+)
+assert.match(bootProbeConfigSource, /function loadBootProbeConfig/)
 
 function bareControllerCallLines (source, globalName, methods) {
   const methodPattern = methods.map(method => method.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
@@ -97,6 +102,23 @@ function createStartupViewHarness ({ hash = '', view = 'onboarding' } = {}) {
   vm.createContext(context)
   vm.runInContext(startupViewSource, context, { filename: 'app-startup-view-functions.js' })
   return { calls, context }
+}
+
+function createBootProbeConfigHarness ({ search = '', fetchConfig = null, env = {} } = {}) {
+  const context = {
+    URL,
+    URLSearchParams,
+    Number,
+    location: { search },
+    process: { env },
+    fetch: fetchConfig
+      ? async () => ({ ok: true, json: async () => fetchConfig })
+      : async () => ({ ok: false })
+  }
+  context.globalThis = context
+  vm.createContext(context)
+  vm.runInContext(bootProbeConfigSource, context, { filename: 'app-boot-probe-config.js' })
+  return context
 }
 
 test('tryJoinFriendInvite sanitizes ?join= and opens the peer match on Games', () => {
@@ -263,6 +285,34 @@ test('runtime diagnostics mirror normal app boot and active screen', () => {
 
   context.syncRuntimeScreenDiagnostics('games')
   assert.equal(context.document.documentElement.dataset.pearcupActiveScreen, 'games')
+})
+
+test('boot probe config accepts localhost runtime self-test query params', async () => {
+  const context = createBootProbeConfigHarness({
+    search: '?pearcupBootProbeUrl=http%3A%2F%2F127.0.0.1%3A4123%2Fprobe&pearcupRuntimeSelfTest=1&pearcupRuntimeSelfTestDelayMs=25',
+    fetchConfig: {
+      url: 'http://127.0.0.1:3999/file-probe',
+      runtimeSelfTest: false,
+      runtimeSelfTestDelayMs: 99
+    }
+  })
+
+  const config = await context.loadBootProbeConfig()
+
+  assert.equal(config.url, 'http://127.0.0.1:4123/probe')
+  assert.equal(config.runtimeSelfTest, true)
+  assert.equal(config.runtimeSelfTestDelayMs, 25)
+})
+
+test('boot probe config rejects remote query callback URLs', async () => {
+  const context = createBootProbeConfigHarness({
+    search: '?pearcupBootProbeUrl=https%3A%2F%2Fexample.com%2Fprobe&pearcupRuntimeSelfTest=1'
+  })
+
+  const config = await context.loadBootProbeConfig()
+
+  assert.equal(config.url, '')
+  assert.equal(config.runtimeSelfTest, true)
 })
 
 test('bracket board markup is owned by one renderer', () => {

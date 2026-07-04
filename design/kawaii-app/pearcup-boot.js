@@ -14271,6 +14271,7 @@ function loadBootProbeConfig () {
         }
       } catch (e) {}
     }
+    Object.assign(config, bootProbeQueryConfig())
     config.url = normalizeBootProbeUrl(config.url) || ''
     return config
   })()
@@ -14293,6 +14294,19 @@ function normalizeBootProbeUrl (raw) {
   } catch (e) {
     return ''
   }
+}
+
+function bootProbeQueryConfig () {
+  const config = {}
+  try {
+    const params = new URLSearchParams(location.search || '')
+    const direct = normalizeBootProbeUrl(params.get('pearcupBootProbeUrl') || '')
+    if (direct) config.url = direct
+    if (truthyEnv(params.get('pearcupRuntimeSelfTest'))) config.runtimeSelfTest = true
+    const delay = Number(params.get('pearcupRuntimeSelfTestDelayMs'))
+    if (Number.isFinite(delay) && delay >= 0) config.runtimeSelfTestDelayMs = delay
+  } catch (e) {}
+  return config
 }
 
 function runtimeSelfTestSnapshot (status, errors = [], extra = {}) {
