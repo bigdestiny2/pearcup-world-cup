@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
-import { existsSync, unlinkSync, writeFileSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -11,12 +11,10 @@ const appRoot = args.appRoot ? resolve(args.appRoot) : join(root, 'design', 'kaw
 const smokeLabel = args.label || 'Kawaii Pear run smoke'
 const durationMs = Number(args.duration || 10_000)
 const pear = args.pear || 'pear'
-const bridgeProbeUrl = './boot-probe-hit.gif'
 
 if (!existsSync(appRoot)) throw new Error(`Pear app root does not exist: ${appRoot}`)
 
 const bootProbe = await createBootProbe()
-const bootProbeConfig = createBootProbeConfig(bootProbe.url)
 
 const fatalPatterns = [
   /PearCup fallback failed/i,
@@ -48,7 +46,9 @@ const child = spawn(pear, ['run', '--dev', '--tmp-store', '--no-ask', '--no-pre'
   env: {
     ...process.env,
     PEARCUP_TRACE_BRIDGE: '1',
-    PEARCUP_BOOT_PROBE_URL: bridgeProbeUrl
+    PEARCUP_BOOT_PROBE_URL: bootProbe.url,
+    PEARCUP_BOOT_PROBE_RUNTIME_SELF_TEST: '1',
+    PEARCUP_BOOT_PROBE_RUNTIME_SELF_TEST_DELAY_MS: '350'
   },
   stdio: ['ignore', 'pipe', 'pipe']
 })
@@ -77,7 +77,6 @@ if (!exited) {
   await waitForExit(child, 3_000)
 }
 await bootProbe.close()
-bootProbeConfig.close()
 
 const bridgeProbeEvents = extractBridgeProbeEvents(output)
 const bootProbeErrors = validateBootProbe(bootProbe.received, bridgeProbeEvents)
@@ -114,26 +113,6 @@ if (fatal || earlyExit || bootProbeErrors.length > 0 || unexpectedWarnings.lengt
       .filter(Boolean)
       .filter(line => allowedWarnings.some(pattern => pattern.test(line)))
     if (warnings.length > 0) console.log(`note - allowed Pear warnings observed: ${dedupe(warnings).join(' | ')}`)
-  }
-}
-
-function createBootProbeConfig (url) {
-  const filePath = join(appRoot, 'boot-probe.json')
-  const state = { error: null }
-  writeFileSync(filePath, JSON.stringify({
-    url,
-    runtimeSelfTest: true,
-    runtimeSelfTestDelayMs: 350
-  }, null, 2) + '\n')
-  return {
-    get error () { return state.error },
-    close () {
-      try {
-        if (existsSync(filePath)) unlinkSync(filePath)
-      } catch (err) {
-        state.error = state.error || err
-      }
-    }
   }
 }
 
@@ -213,7 +192,6 @@ function extractBridgeProbeEvents (text) {
 function validateBootProbe (payload, bridgeEvents = []) {
   const errors = []
   if (bootProbe.error) errors.push(`boot probe receiver failed: ${bootProbe.error.message}`)
-  if (bootProbeConfig.error) errors.push(`boot probe config cleanup failed: ${bootProbeConfig.error.message}`)
   const events = [...(bootProbe.events || []), ...bridgeEvents]
   const readyPayload = events.filter(event => event && event.event === 'pearcup:boot-ready' && event.status === 'ready').pop()
   if (!readyPayload) {

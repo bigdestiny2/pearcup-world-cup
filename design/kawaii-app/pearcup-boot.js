@@ -14181,6 +14181,9 @@ function loadBootProbeConfig () {
     const config = {}
     const direct = normalizeBootProbeUrl(env && env.PEARCUP_BOOT_PROBE_URL)
     if (direct) config.url = direct
+    if (truthyEnv(env && env.PEARCUP_BOOT_PROBE_RUNTIME_SELF_TEST)) config.runtimeSelfTest = true
+    const delay = Number(env && env.PEARCUP_BOOT_PROBE_RUNTIME_SELF_TEST_DELAY_MS)
+    if (Number.isFinite(delay) && delay >= 0) config.runtimeSelfTestDelayMs = delay
     if (typeof fetch === 'function') {
       try {
         const res = await fetch('./boot-probe.json', { cache: 'no-store' })
@@ -14194,6 +14197,10 @@ function loadBootProbeConfig () {
     return config
   })()
   return bootProbeConfigPromise
+}
+
+function truthyEnv (value) {
+  return ['1', 'true', 'yes', 'on'].includes(String(value || '').toLowerCase())
 }
 
 function normalizeBootProbeUrl (raw) {
