@@ -224,6 +224,9 @@ function validateApprovedPublishWrapper () {
   if (!wrapper.includes('runPostPublishSmokePreflight') || !wrapper.includes('--check') || !wrapper.includes('smoke-published-pearbrowser.mjs')) {
     errors.push('approved publish wrapper must syntax-check the post-publish smoke before publishing')
   }
+  if (!wrapper.includes('runGatewayReachabilityPreflight') || !wrapper.includes('PearBrowser gateway reachability preflight - passed')) {
+    errors.push('approved publish wrapper must probe the configured PearBrowser gateway before publishing')
+  }
   if (!wrapper.includes('runExactBundlePublishedSmoke') || !wrapper.includes('smoke-pearbrowser-published-local.mjs')) {
     errors.push('approved publish wrapper must run the exact bundle local published-gateway smoke before publishing')
   }
@@ -259,6 +262,9 @@ function validateApprovedPublishWrapper () {
   }
   if (!wrapper.includes('exactBundlePearRuntimePreflight')) {
     errors.push('approved publish wrapper result receipt must preserve the exact bundle Pear runtime proof field')
+  }
+  if (!wrapper.includes('postPublishGatewayReachabilityPreflight')) {
+    errors.push('approved publish wrapper result receipt must preserve the post-publish gateway reachability proof field')
   }
   if (!wrapper.includes('approvedPublishCommand')) {
     errors.push('approved publish wrapper result receipt must preserve the approved wrapper publish command')

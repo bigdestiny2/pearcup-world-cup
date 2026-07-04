@@ -45,6 +45,16 @@ test('approved publish wrapper prints the wrapper command as the publish path', 
   assert.doesNotMatch(source, /publish command, add --publish to run after explicit approval/)
 })
 
+test('approved publish wrapper probes configured gateway before publish', () => {
+  const source = readFileSync(script, 'utf8')
+
+  assert.match(source, /runGatewayReachabilityPreflight/)
+  assert.match(source, /PearBrowser gateway reachability preflight - passed/)
+  assert.match(source, /could not fetch/)
+  assert.match(source, /res\.status >= 500/)
+  assert.match(source, /postPublishGatewayReachabilityPreflight/)
+})
+
 test('approved publish wrapper protects publish result receipts from accidental overwrite', () => {
   const source = readFileSync(script, 'utf8')
 

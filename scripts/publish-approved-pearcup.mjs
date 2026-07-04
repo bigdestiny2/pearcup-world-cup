@@ -25,6 +25,7 @@ if (receipt) validateReceipt(receipt, receiptPath)
 if (errors.length === 0) runExactBundlePublishedSmoke(receipt)
 if (errors.length === 0) runExactBundlePearRuntimeSmoke(receipt)
 if (errors.length === 0) runPostPublishSmokePreflight()
+if (errors.length === 0 && args.gateway) await runGatewayReachabilityPreflight(args.gateway)
 
 if (errors.length > 0) {
   console.error('PearCup approved publish refused:')
@@ -75,6 +76,7 @@ if (!args.publish) {
   console.log('post-publish smoke command that will run after publish:')
   console.log(postPublishSmokeCommand)
   console.log('post-publish smoke preflight - passed')
+  if (args.gateway) console.log('PearBrowser gateway reachability preflight - passed')
   console.log(`publish result receipt will be written to: ${publishResultPath}`)
   console.log('remote friend-test record command after publish:')
   console.log(latestFriendTestRecordCommand)
@@ -96,6 +98,7 @@ if (localPublishedLinkProofCommand) {
   console.log(localPublishedLinkProofCommand)
 }
 console.log('post-publish smoke preflight - passed')
+if (args.gateway) console.log('PearBrowser gateway reachability preflight - passed')
 console.log(`publish result receipt will be written to: ${publishResultPath}`)
 console.log('remote friend-test record command after publish:')
 console.log(latestFriendTestRecordCommand)
@@ -202,6 +205,27 @@ function runPostPublishSmokePreflight () {
   if (result.status !== 0) {
     const detail = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
     errors.push(`post-publish smoke syntax preflight failed${detail ? `:\n${detail}` : ''}`)
+  }
+}
+
+async function runGatewayReachabilityPreflight (gateway) {
+  let url
+  try {
+    url = new URL(gateway)
+  } catch (err) {
+    errors.push(`PearBrowser gateway reachability preflight failed: invalid gateway ${gateway}`)
+    return
+  }
+  try {
+    const res = await fetch(url, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(3_000)
+    })
+    if (res.status >= 500) {
+      errors.push(`PearBrowser gateway reachability preflight failed: ${url.href} returned HTTP ${res.status}`)
+    }
+  } catch (err) {
+    errors.push(`PearBrowser gateway reachability preflight failed: could not fetch ${url.href}: ${err.message}`)
   }
 }
 
@@ -328,6 +352,7 @@ function writePublishResultReceipt ({
     evidence: {
       exactBundlePublishedGatewayPreflight: true,
       exactBundlePearRuntimePreflight: true,
+      postPublishGatewayReachabilityPreflight: Boolean(args.gateway),
       postPublishSmokePassed: true,
       exactBundlePearRuntimeSmokeOutputSnippet: trimForReceipt(exactBundleRuntimeSmokeOutput),
       publishOutputSnippet: trimForReceipt(publishOutput),
