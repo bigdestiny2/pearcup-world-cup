@@ -160,6 +160,8 @@ async function checkPreviewUrl (url) {
       ['runtimeBracketEvidence', 'preview app.js runtime self-test does not collect Bracket render evidence'],
       ['Bracket board rendered', 'preview app.js runtime self-test does not fail blank Bracket boards'],
       ['Bracket route did not render generated avatar images', 'preview app.js runtime self-test does not prove Bracket generated avatars'],
+      ['runRuntimeHashRouteSelfTest', 'preview app.js runtime self-test does not prove same-document hash route changes'],
+      ['Same-document hash route changes did not activate Bracket, Games, and Watch', 'preview app.js runtime self-test does not fail stuck hash route changes'],
       ['runRuntimePeerHandshakeSelfTest', 'preview app.js runtime self-test does not launch a hidden guest invite join'],
       ['pearcupRuntimeSelfTestGuest', 'preview app.js runtime self-test does not mark hidden guest instances'],
       ['pearcup:runtime-self-test', 'preview app.js does not emit the runtime self-test probe'],

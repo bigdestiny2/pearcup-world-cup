@@ -128,6 +128,7 @@ function startFixtureServer ({ indexHtml = validIndexHtml(), peerMatchJs = valid
       '// pearcupPendingJoin completeProfileOnboarding peerMatch.join(code) Round of 32 AVATAR_PORTRAITS',
       '// avatars/p-aria.png avatars/p-tariq.png assets/mascot.png runBootRuntimeSelfTest',
       '// runtimeBracketEvidence Bracket board rendered Bracket route did not render generated avatar images',
+      '// runRuntimeHashRouteSelfTest Same-document hash route changes did not activate Bracket, Games, and Watch',
       '// runRuntimePeerHandshakeSelfTest pearcupRuntimeSelfTestGuest pearcup:runtime-self-test',
       '// PearCupPeerMatch.host()'
     ].join('\n'), 'text/javascript; charset=utf-8')],

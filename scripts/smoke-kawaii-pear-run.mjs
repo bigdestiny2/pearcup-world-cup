@@ -259,6 +259,19 @@ function validateBootProbe (payload, bridgeEvents = []) {
   if (!Array.isArray(bracket.generatedAvatarImages) || !bracket.generatedAvatarImages.some(src => /avatars\//.test(String(src)))) {
     errors.push('runtime self-test did not render generated avatar images in Bracket')
   }
+  const hashRoutes = selfTestPayload.hashRoutes || {}
+  if (hashRoutes.passed !== true) errors.push('runtime self-test did not pass same-document hash route changes')
+  const hashRouteResults = Array.isArray(hashRoutes.results) ? hashRoutes.results : []
+  for (const view of ['bracket', 'games', 'watch']) {
+    const route = hashRouteResults.find(item => item && item.view === view)
+    if (!route) {
+      errors.push(`runtime self-test did not report hash route ${view}`)
+      continue
+    }
+    if (route.passed !== true) errors.push(`runtime self-test hash route ${view} did not pass`)
+    if (route.activeScreen !== view) errors.push(`runtime self-test hash route ${view} activeScreen was ${route.activeScreen || '(missing)'}`)
+    if (route.activeScreenDataset !== view) errors.push(`runtime self-test hash route ${view} activeScreenDataset was ${route.activeScreenDataset || '(missing)'}`)
+  }
   if (selfTestPayload.appBootedDataset !== 'true') errors.push(`runtime self-test appBootedDataset was ${selfTestPayload.appBootedDataset || '(missing)'}`)
   if (selfTestPayload.activeScreen !== 'games') errors.push(`runtime self-test activeScreen was ${selfTestPayload.activeScreen || '(missing)'}`)
   if (selfTestPayload.activeScreenDataset !== 'games') errors.push(`runtime self-test activeScreenDataset was ${selfTestPayload.activeScreenDataset || '(missing)'}`)

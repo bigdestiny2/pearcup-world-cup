@@ -202,6 +202,8 @@ function checkApp (app) {
     ['runtimeBracketEvidence', 'published app.js runtime self-test does not collect Bracket render evidence'],
     ['Bracket board rendered', 'published app.js runtime self-test does not fail blank Bracket boards'],
     ['Bracket route did not render generated avatar images', 'published app.js runtime self-test does not prove Bracket generated avatars'],
+    ['runRuntimeHashRouteSelfTest', 'published app.js runtime self-test does not prove same-document hash route changes'],
+    ['Same-document hash route changes did not activate Bracket, Games, and Watch', 'published app.js runtime self-test does not fail stuck hash route changes'],
     ['runRuntimePeerHandshakeSelfTest', 'published app.js runtime self-test does not launch a hidden guest invite join'],
     ['pearcupRuntimeSelfTestGuest', 'published app.js runtime self-test does not mark hidden guest instances'],
     ['pearcup:runtime-self-test', 'published app.js does not emit the runtime self-test probe'],

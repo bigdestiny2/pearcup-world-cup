@@ -14245,6 +14245,7 @@ function runtimeSelfTestSnapshot (status, errors = [], extra = {}) {
     inviteCode: (modalCode && modalCode.textContent.trim()) || extra.inviteCode || '',
     inviteLink: (link && link.textContent.trim()) || extra.inviteLink || '',
     bracket: extra.bracket || null,
+    hashRoutes: extra.hashRoutes || null,
     peerMatch: peerState
       ? {
           active: Boolean(peerState.active),
@@ -14390,6 +14391,56 @@ function runtimeBracketEvidence () {
   }
 }
 
+function runtimeHashRouteEvidence (view) {
+  const active = document.querySelector('.screen.is-active')
+  const board = document.querySelector('#bracketBoard')
+  const boardRect = board && typeof board.getBoundingClientRect === 'function' ? board.getBoundingClientRect() : null
+  return {
+    view,
+    hash: location.hash || '',
+    activeScreen: active ? active.id : null,
+    activeScreenDataset: document.documentElement.dataset.pearcupActiveScreen || null,
+    activeNav: Array.from(document.querySelectorAll('.topnav button.is-active')).map(el => el.textContent.trim()),
+    boardVisible: Boolean(board && boardRect && boardRect.width > 0 && boardRect.height > 0),
+    matchCards: document.querySelectorAll('#bracketBoard .bracket-match').length,
+    inviteButton: Boolean(document.querySelector('#inviteFriendBtn')),
+    watchActive: Boolean(document.querySelector('#watch.screen.is-active'))
+  }
+}
+
+async function runRuntimeHashRouteSelfTest () {
+  const routes = ['bracket', 'games', 'watch']
+  const results = []
+  for (const view of routes) {
+    try {
+      location.hash = view
+    } catch (err) {
+      results.push({
+        view,
+        passed: false,
+        error: err && err.message ? err.message : String(err)
+      })
+      continue
+    }
+    const passed = await waitForRuntimeCondition(() => {
+      const active = document.querySelector('.screen.is-active')
+      return active && active.id === view && document.documentElement.dataset.pearcupActiveScreen === view
+    }, 2500)
+    results.push({
+      ...runtimeHashRouteEvidence(view),
+      passed
+    })
+  }
+  return {
+    passed: results.length === routes.length && results.every(item =>
+      item.passed === true &&
+      item.activeScreen === item.view &&
+      item.activeScreenDataset === item.view
+    ),
+    results
+  }
+}
+
 async function runBootRuntimeSelfTest () {
   const errors = []
   const evidence = {}
@@ -14414,6 +14465,22 @@ async function runBootRuntimeSelfTest () {
       if (!evidence.bracket.roundTitles.includes(title)) errors.push(`Bracket board missing ${title}`)
     }
     if (!evidence.bracket.generatedAvatarImages.some(src => /avatars\//.test(src))) errors.push('Bracket route did not render generated avatar images')
+    evidence.hashRoutes = await runRuntimeHashRouteSelfTest()
+    if (!evidence.hashRoutes || evidence.hashRoutes.passed !== true) {
+      errors.push('Same-document hash route changes did not activate Bracket, Games, and Watch')
+    }
+    for (const view of ['bracket', 'games', 'watch']) {
+      const route = evidence.hashRoutes && Array.isArray(evidence.hashRoutes.results)
+        ? evidence.hashRoutes.results.find(item => item.view === view)
+        : null
+      if (!route) {
+        errors.push(`Hash route ${view} did not report evidence`)
+      } else {
+        if (route.activeScreen !== view) errors.push(`Hash route ${view} activeScreen was ${route.activeScreen || '(missing)'}`)
+        if (route.activeScreenDataset !== view) errors.push(`Hash route ${view} activeScreenDataset was ${route.activeScreenDataset || '(missing)'}`)
+        if (route.passed !== true) errors.push(`Hash route ${view} did not pass`)
+      }
+    }
     setView('games')
     await waitForRuntimeCondition(() =>
       document.documentElement.dataset.pearcupActiveScreen === 'games' &&
