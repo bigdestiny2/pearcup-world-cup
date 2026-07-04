@@ -1,0 +1,213 @@
+#!/usr/bin/env node
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const args = parseArgs(process.argv.slice(2))
+const receiptPath = resolve(args.receipt || join(root, '.pearcup-release', 'latest', 'pearcup-release-receipt.json'))
+const errors = []
+const warnings = []
+
+const receipt = readJsonIfExists(receiptPath, 'latest release receipt')
+const current = readCurrentGitState()
+const release = inspectRelease(receipt, receiptPath, current)
+const publishResultPath = release.publishResultPath || join(dirname(receiptPath), 'pearcup-publish-result.json')
+const friendResultPath = join(dirname(publishResultPath), 'pearcup-friend-test-result.json')
+const publish = inspectPublishResult(readJsonIfExists(publishResultPath, 'latest publish result', { optional: true }), publishResultPath, receipt, receiptPath)
+const friend = inspectFriendResult(readJsonIfExists(friendResultPath, 'latest friend-test result', { optional: true }), friendResultPath, publish, receipt)
+
+const status = {
+  app: 'PearCup',
+  receipt: receiptPath,
+  sourceGitHead: receipt && receipt.sourceGitHead || '',
+  currentGitHead: current.head || '',
+  sourceDirty: receipt ? receipt.sourceDirty : null,
+  currentDirty: current.status.length > 0,
+  bundleSha256: receipt && receipt.bundleSha256 || '',
+  release,
+  publish,
+  friend,
+  complete: release.ready && publish.ready && friend.ready,
+  next: nextStep(release, publish, friend, receipt)
+}
+
+if (args.json) {
+  console.log(JSON.stringify(status, null, 2))
+} else {
+  printHuman(status)
+}
+
+if (args.requireComplete && !status.complete) process.exitCode = 1
+else if (args.requirePublished && !publish.ready) process.exitCode = 1
+else if (errors.length > 0) process.exitCode = 1
+
+function inspectRelease (receipt, filePath, gitState) {
+  const result = {
+    ready: false,
+    exists: Boolean(receipt),
+    path: filePath,
+    issue: '',
+    publishResultPath: ''
+  }
+  if (!receipt) {
+    result.issue = `missing release receipt: ${filePath}`
+    errors.push(result.issue)
+    return result
+  }
+  result.publishResultPath = receipt.postPublishVerification && receipt.postPublishVerification.resultPath
+    ? resolve(receipt.postPublishVerification.resultPath)
+    : ''
+  if (receipt.app !== 'PearCup') result.issue = 'release receipt app is not PearCup'
+  else if (!/^[0-9a-f]{40}$/i.test(String(receipt.sourceGitHead || ''))) result.issue = 'release receipt is missing sourceGitHead'
+  else if (receipt.sourceDirty !== false) result.issue = 'release receipt was generated from a dirty worktree'
+  else if (!/^[0-9a-f]{64}$/i.test(String(receipt.bundleSha256 || ''))) result.issue = 'release receipt is missing bundleSha256'
+  else if (gitState.head && gitState.head.toLowerCase() !== String(receipt.sourceGitHead).toLowerCase()) result.issue = `current HEAD ${gitState.head} does not match receipt ${receipt.sourceGitHead}`
+  else if (gitState.status.length > 0) result.issue = `current worktree has ${gitState.status.length} dirty path${gitState.status.length === 1 ? '' : 's'}`
+  else if (!result.publishResultPath) result.issue = 'release receipt is missing postPublishVerification.resultPath'
+
+  result.ready = !result.issue
+  if (result.issue) errors.push(result.issue)
+  return result
+}
+
+function inspectPublishResult (result, filePath, receipt, receiptPath) {
+  const status = {
+    ready: false,
+    exists: Boolean(result),
+    path: filePath,
+    publishedUrl: result && result.publishedUrl || '',
+    driveKey: result && result.driveKey || '',
+    issue: '',
+    result
+  }
+  if (!result) {
+    status.issue = `publish result missing: ${filePath}`
+    return status
+  }
+  const publishedDrive = (String(result.publishedUrl || '').match(/^hyper:\/\/([0-9a-f]{64})\//i) || [])[1] || ''
+  const expectedReceipt = receiptPath ? resolve(receiptPath) : ''
+  const actualReceipt = result.receipt ? resolve(result.receipt) : ''
+  if (result.app !== 'PearCup') status.issue = 'publish result app is not PearCup'
+  else if (result.status !== 'published-and-smoked') status.issue = 'publish result status is not published-and-smoked'
+  else if (receipt && String(result.bundleSha256 || '').toLowerCase() !== String(receipt.bundleSha256 || '').toLowerCase()) status.issue = 'publish result bundle SHA does not match latest receipt'
+  else if (receipt && String(result.sourceGitHead || '').toLowerCase() !== String(receipt.sourceGitHead || '').toLowerCase()) status.issue = 'publish result source commit does not match latest receipt'
+  else if (result.sourceDirty !== false) status.issue = 'publish result was not generated from a clean release receipt'
+  else if (expectedReceipt && actualReceipt !== expectedReceipt) status.issue = 'publish result receipt path does not match latest receipt'
+  else if (!publishedDrive) status.issue = 'publish result is missing a hyper:// publishedUrl'
+  else if (String(result.driveKey || '').toLowerCase() !== publishedDrive.toLowerCase()) status.issue = 'publish result driveKey does not match publishedUrl'
+  else if (!String(result.approvedPublishCommand || '').includes('publish-approved-pearcup.mjs')) status.issue = 'publish result was not created through the approved wrapper'
+  else if (!result.evidence || result.evidence.exactBundlePublishedGatewayPreflight !== true) status.issue = 'publish result is missing exact-bundle gateway proof'
+  else if (result.evidence.exactBundlePearRuntimePreflight !== true) status.issue = 'publish result is missing exact-bundle Pear runtime proof'
+  else if (result.evidence.postPublishSmokePassed !== true) status.issue = 'publish result is missing post-publish smoke proof'
+
+  status.ready = !status.issue
+  if (status.issue) warnings.push(status.issue)
+  return status
+}
+
+function inspectFriendResult (result, filePath, publishResult, receipt) {
+  const status = {
+    ready: false,
+    exists: Boolean(result),
+    path: filePath,
+    friend: result && result.friend || '',
+    roomCode: result && result.evidence && result.evidence.observedRoomCode || '',
+    issue: ''
+  }
+  if (!result) {
+    status.issue = `friend-test result missing: ${filePath}`
+    return status
+  }
+  const evidence = result.evidence || {}
+  const expectedPublishPath = publishResult ? resolve(publishResult.path || '') : ''
+  const actualPublishPath = result.publishResult ? resolve(result.publishResult) : ''
+  if (result.app !== 'PearCup') status.issue = 'friend-test result app is not PearCup'
+  else if (result.status !== 'remote-friend-verified') status.issue = 'friend-test result is not remote-friend-verified'
+  else if (receipt && String(result.bundleSha256 || '').toLowerCase() !== String(receipt.bundleSha256 || '').toLowerCase()) status.issue = 'friend-test result bundle SHA does not match latest receipt'
+  else if (expectedPublishPath && actualPublishPath !== expectedPublishPath) status.issue = 'friend-test result publish-result path does not match latest publish result'
+  else if (evidence.friendOpenedFinalPearBrowserLink !== true) status.issue = 'friend did not record opening the final PearBrowser link'
+  else if (evidence.friendReachedGamesWithoutFallbackOrBootError !== true) status.issue = 'friend did not record reaching Games without boot/fallback error'
+  else if (evidence.hostAndFriendCompletedLiveP2PJoin !== true) status.issue = 'friend did not record a completed live P2P join'
+  else if (evidence.hostAndFriendStartedPenaltyClash !== true) status.issue = 'friend did not record starting Penalty Clash'
+  else if (!String(evidence.observedRoomCode || '')) status.issue = 'friend-test result is missing observed room code'
+
+  status.ready = !status.issue
+  if (status.issue) warnings.push(status.issue)
+  return status
+}
+
+function nextStep (release, publish, friend, receipt) {
+  if (!release.ready) return 'Regenerate the latest release handoff from a clean commit.'
+  if (!publish.ready) return `After explicit approval of SHA ${receipt.bundleSha256}, run: npm run publish:approved:latest -- --publish`
+  if (!friend.ready) return 'Have the remote friend open the final PearBrowser link, join P2P, start Penalty Clash, then run: npm run record:friend-test:latest -- --friend "<friend-name>" --room-code "<observed-room-code>" --friend-opened --reached-games --joined-p2p --started-penalty-clash --notes "<what both sides observed>"'
+  return 'Launch complete: latest bundle is published and remote-friend verified.'
+}
+
+function printHuman (status) {
+  console.log('PearCup launch status')
+  console.log(`release - ${status.release.ready ? 'ready' : 'not ready'}${status.release.issue ? ` (${status.release.issue})` : ''}`)
+  console.log(`publish - ${status.publish.ready ? 'published and smoked' : 'not published'}${status.publish.issue ? ` (${status.publish.issue})` : ''}`)
+  console.log(`friend - ${status.friend.ready ? 'remote verified' : 'not verified'}${status.friend.issue ? ` (${status.friend.issue})` : ''}`)
+  console.log(`bundle sha256 - ${status.bundleSha256 || '(missing)'}`)
+  console.log(`source git head - ${status.sourceGitHead || '(missing)'}`)
+  if (status.publish.publishedUrl) console.log(`published url - ${status.publish.publishedUrl}`)
+  if (status.friend.roomCode) console.log(`friend room code - ${status.friend.roomCode}`)
+  if (warnings.length > 0) for (const warning of warnings) console.log(`warning - ${warning}`)
+  console.log(`next - ${status.next}`)
+}
+
+function readJsonIfExists (filePath, label, opts = {}) {
+  if (!existsSync(filePath)) {
+    if (!opts.optional) errors.push(`${label} does not exist: ${filePath}`)
+    return null
+  }
+  try {
+    return JSON.parse(readFileSync(filePath, 'utf8'))
+  } catch (err) {
+    errors.push(`could not read ${label}: ${err.message}`)
+    return null
+  }
+}
+
+function readCurrentGitState () {
+  const head = runGit(['rev-parse', 'HEAD']).trim()
+  const status = runGit(['status', '--short'])
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean)
+  return { head, status }
+}
+
+function runGit (gitArgs) {
+  const result = spawnSync('git', gitArgs, {
+    cwd: root,
+    encoding: 'utf8'
+  })
+  if (result.status !== 0) {
+    const detail = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
+    errors.push(`git ${gitArgs.join(' ')} failed${detail ? `: ${detail}` : ''}`)
+    return ''
+  }
+  return result.stdout
+}
+
+function parseArgs (argv) {
+  const parsed = {
+    json: false,
+    receipt: '',
+    requireComplete: false,
+    requirePublished: false
+  }
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if (arg === '--json') parsed.json = true
+    else if (arg === '--receipt') parsed.receipt = argv[++i]
+    else if (arg.startsWith('--receipt=')) parsed.receipt = arg.slice('--receipt='.length)
+    else if (arg === '--require-complete') parsed.requireComplete = true
+    else if (arg === '--require-published') parsed.requirePublished = true
+    else throw new Error(`Unknown argument: ${arg}`)
+  }
+  return parsed
+}
