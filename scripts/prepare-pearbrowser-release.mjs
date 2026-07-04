@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const browserPublishScript = resolve(root, '..', '..', '01-browser', 'pearbrowser-desktop', 'scripts', 'publish-and-pin.js')
+const browserPublishScript = locateBrowserPublishScript()
 const args = parseArgs(process.argv.slice(2))
 const out = args.out
   ? resolve(args.out)
@@ -270,6 +270,22 @@ function runNode (script, scriptArgs = []) {
     const detail = [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
     throw new Error(`${script} failed${detail ? `:\n${detail}` : ''}`)
   }
+}
+
+function locateBrowserPublishScript () {
+  const envPath = process.env.PEARCUP_BROWSER_PUBLISH_SCRIPT || process.env.PEARBROWSER_PUBLISH_SCRIPT
+  if (envPath) return resolve(envPath)
+  const candidates = [
+    resolve(root, '..', '..', '01-browser', 'pearbrowser-desktop', 'scripts', 'publish-and-pin.js')
+  ]
+  let cursor = root
+  for (let i = 0; i < 8; i++) {
+    candidates.push(resolve(cursor, '01-browser', 'pearbrowser-desktop', 'scripts', 'publish-and-pin.js'))
+    const next = dirname(cursor)
+    if (next === cursor) break
+    cursor = next
+  }
+  return candidates.find(candidate => existsSync(candidate)) || candidates[0]
 }
 
 function runNpm (scriptName) {
