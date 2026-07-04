@@ -30,6 +30,7 @@ const modules = {
   game: require('./game-engine'),
   identity: require('./identity-engine'),
   miniGame: require('./mini-game-engine'),
+  miniGameSpec: require('./mini-game-spec-engine'),
   notification: require('./notification-engine'),
   ops: require('./ops-engine'),
   surface: require('./surface-engine'),
@@ -371,6 +372,18 @@ function createUltimateSportsPlatform ({
     })
   }
 
+  function createMiniGameSpec (input = {}) {
+    return modules.miniGameSpec.createMiniGameSpec(input)
+  }
+
+  function createMiniGameSuite (input = {}) {
+    return modules.miniGameSpec.createMiniGameSuite(input)
+  }
+
+  function createMiniGameBuildMatrix (input = {}) {
+    return modules.miniGameSpec.createMiniGameBuildMatrix(input)
+  }
+
   function createAssetGenerationPlan (input = {}) {
     return modules.tournamentExperience.createAssetGenerationPlan(input)
   }
@@ -486,6 +499,9 @@ function createUltimateSportsPlatform ({
     createTournamentLobby,
     createTournamentExperience,
     createTournamentShell,
+    createMiniGameSpec,
+    createMiniGameSuite,
+    createMiniGameBuildMatrix,
     createAssetGenerationPlan,
     createSurface,
     joinTopic,

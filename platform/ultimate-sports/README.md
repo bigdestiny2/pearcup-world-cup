@@ -47,6 +47,8 @@ PearCup build exactly as-is while these v2 engines evolve beside it.
   UI/UX mapping for the mapped tournament and sport types.
 - `docs/tournament-lobby-asset-plan.md`: asset generation pipeline and
   tournament-as-server lobby model for custom GUI management.
+- `docs/mini-game-specs.md`: full mini-game build specs for every mapped
+  tournament and sport type.
 - `scripts/verify-platform.js`: manifest verifier for the isolated platform
   contract.
 - `src/platform-runtime.js`: isolated command dispatcher and replay-derived
@@ -75,6 +77,8 @@ PearCup build exactly as-is while these v2 engines evolve beside it.
   and room-scoped trust actions.
 - `src/mini-game-engine.js`: deterministic resolvers for penalty clash,
   free-kick duel, trivia duel, reaction challenge, and generic score games.
+- `src/mini-game-spec-engine.js`: per-tournament mini-game suites with runtime
+  mapping, UI controls, scoring, evidence, sport prompts, and command drafts.
 - `src/notification-engine.js`: replayable in-app notification batches for
   locks, challenges, results, receipts, reward grants, payouts, and disputes.
 - `src/surface-engine.js`: product-facing Home, Discover, Pools, Picks, Watch,

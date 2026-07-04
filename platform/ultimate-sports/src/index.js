@@ -33,6 +33,7 @@ module.exports = {
   game: require('./game-engine'),
   identity: require('./identity-engine'),
   miniGame: require('./mini-game-engine'),
+  miniGameSpec: require('./mini-game-spec-engine'),
   notification: require('./notification-engine'),
   ops: require('./ops-engine'),
   surface: require('./surface-engine'),

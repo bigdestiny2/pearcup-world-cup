@@ -13,7 +13,7 @@ test('platform manifest verifier passes current scaffold contract', () => {
   assert.equal(report.ok, true)
   assert.equal(report.errors.length, 0)
   assert.ok(report.checked.sourceFiles >= 20)
-  assert.equal(report.checked.docs, 2)
+  assert.equal(report.checked.docs, 3)
   assert.ok(report.checked.tests >= 10)
   assert.ok(report.manifest.requiredExports.includes('platform'))
 })

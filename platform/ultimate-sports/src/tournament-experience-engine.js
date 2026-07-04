@@ -1,6 +1,7 @@
 'use strict'
 
 const catalog = require('./catalog-engine')
+const miniGameSpec = require('./mini-game-spec-engine')
 const { cloneJson } = require('./util')
 
 const LOBBY_VERSION = 'ultimate-sports-tournament-lobby-v1'
@@ -515,14 +516,7 @@ function shellForExperience ({ lobby, experience, userId }) {
       selected: index === 0,
       action: 'open-pool-workbench'
     })),
-    miniGameDock: experience.miniGameDock.gameTypes.map((gameType, index) => ({
-      dockItemId: `mini-game:${gameType}`,
-      gameType,
-      promptExamples: experience.miniGameDock.promptLexicon.slice(0, 4),
-      placement: experience.miniGameDock.defaultPlacement,
-      priority: index + 1,
-      action: 'launch-or-challenge'
-    })),
+    miniGameDock: miniGameDockForExperience(experience),
     assetQueue: assetQueueForExperience(experience),
     personalization: experience.management.personalizationScopes.map(scope => ({
       scope,
@@ -635,6 +629,26 @@ function screenSlotsForExperience (experience) {
     slot('results-review', 'results', experience.server.resultPolicy === 'host-entered' ? 'manual-result-review' : 'feed-result-review', ['resultSource', 'settlementReceipts', 'disputes']),
     slot('wallet-status', 'wallet', 'wallet-holds-receipts', ['holds', 'rewards', 'readiness'])
   ]
+}
+
+function miniGameDockForExperience (experience) {
+  const suite = miniGameSpec.createMiniGameSuite({ fitId: experience.fitId })
+  return suite.specs.map((spec, index) => ({
+    dockItemId: `mini-game:${spec.gameType}`,
+    gameType: spec.gameType,
+    title: spec.title,
+    mode: spec.mode,
+    commandType: spec.commandType,
+    runtime: cloneJson(spec.runtime),
+    controls: spec.ui.controls.slice(),
+    eventOptions: spec.ui.eventOptions.slice(0, 6),
+    scoringSummary: spec.scoring.summary,
+    commandDraft: cloneJson(spec.commandDraft),
+    promptExamples: experience.miniGameDock.promptLexicon.slice(0, 4),
+    placement: spec.ui.placement,
+    priority: index + 1,
+    action: 'launch-or-challenge'
+  }))
 }
 
 function slot (slotId, surfaceId, component, bindings) {
