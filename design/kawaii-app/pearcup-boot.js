@@ -12069,43 +12069,6 @@ async function renderBracket () {
 
   renderBracketEntrants(settlement)
   bindPayoutControls()
-  const placements = {
-    round32: index => ({ column: 1, row: index + 2, span: 1 }),
-    round16: index => ({ column: 2, row: 2 + (index * 2), span: 2 }),
-    quarter: index => ({ column: 3, row: 3 + (index * 4), span: 4 }),
-    semi: index => ({ column: 4, row: 5 + (index * 8), span: 8 }),
-    final: () => ({ column: 5, row: 9, span: 8 })
-  }
-  const rounds = buildRounds()
-
-  $('#bracketBoard').innerHTML = `
-    <svg class="bracket-lines" id="bracketLines" aria-hidden="true"></svg>
-    ${rounds.map((round, roundIndex) => `
-    <p class="round-title" style="grid-column:${roundIndex + 1};grid-row:1">${round.label}</p>
-    ${round.matches.map((match, index) => {
-      const place = placements[round.key](index)
-      return `
-        <article class="match-card bracket-match" data-round="${round.key}" data-match-card="${match.id}" style="grid-column:${place.column};grid-row:${place.row} / span ${place.span}">
-          <div class="match-meta">
-            <span>${match.time}</span>
-            <span class="match-status">${match.status}</span>
-          </div>
-          ${renderTeamRow(match, match.slots[0], 0)}
-          ${renderTeamRow(match, match.slots[1], 1)}
-        </article>
-      `
-    }).join('')}
-    `).join('')}
-  `
-
-  $$('#bracketBoard [data-pick]').forEach(button => {
-    button.addEventListener('click', () => {
-      state.picks[button.dataset.match] = button.dataset.pick
-      clearDownstream(button.dataset.match)
-      persist()
-      renderBracket()
-    })
-  })
   scheduleBracketConnectors()
 }
 

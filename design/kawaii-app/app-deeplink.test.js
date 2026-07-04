@@ -198,6 +198,11 @@ test('runtime diagnostics mirror normal app boot and active screen', () => {
   assert.equal(context.document.documentElement.dataset.pearcupActiveScreen, 'games')
 })
 
+test('bracket board markup is owned by one renderer', () => {
+  const assignments = appSource.match(/\$\('#bracketBoard'\)\.innerHTML\s*=/g) || []
+  assert.equal(assignments.length, 1)
+})
+
 test('hydrated app does not make executable bare P2P controller calls', () => {
   const leaks = [
     ...bareControllerCallLines(appSource, 'PearCupPeerMatch', ['host', 'join', 'promptJoin', 'onZone', 'isActive', 'leave', 'render', 'reset']),
