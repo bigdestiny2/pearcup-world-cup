@@ -12,6 +12,22 @@
     "series-playoff",
     "round-robin"
   ],
+  "recommendedVariants": [
+    "confidence",
+    "survivor",
+    "watch-party-bingo",
+    "fantasy-lite-draft",
+    "side-quest"
+  ],
+  "recommendedMiniGames": [
+    "next-event",
+    "momentum-duel",
+    "player-prop-duel",
+    "trivia-duel",
+    "reaction-challenge",
+    "watch-party-streak",
+    "peer-mini-fantasy"
+  ],
   "defaultTeam": "aus",
   "theme": {
     "--ink": "#082f49",

@@ -11,6 +11,17 @@
   "templateKinds": [
     "awards-card"
   ],
+  "recommendedVariants": [
+    "group-stage-card",
+    "confidence",
+    "watch-party-bingo",
+    "head-to-head-duel"
+  ],
+  "recommendedMiniGames": [
+    "trivia-duel",
+    "watch-party-streak",
+    "reaction-challenge"
+  ],
   "defaultTeam": "oppen",
   "theme": {
     "--ink": "#2a1a08",

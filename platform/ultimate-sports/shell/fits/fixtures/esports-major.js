@@ -13,6 +13,20 @@
     "single-elimination",
     "series-playoff"
   ],
+  "recommendedVariants": [
+    "classic-bracket",
+    "confidence",
+    "survivor",
+    "fantasy-lite-draft",
+    "side-quest"
+  ],
+  "recommendedMiniGames": [
+    "next-event",
+    "momentum-duel",
+    "trivia-duel",
+    "reaction-challenge",
+    "watch-party-streak"
+  ],
   "defaultTeam": "t1",
   "theme": {
     "--ink": "#1e1b4b",

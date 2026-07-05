@@ -12,6 +12,20 @@
     "group-plus-knockout",
     "single-elimination"
   ],
+  "recommendedVariants": [
+    "classic-bracket",
+    "confidence",
+    "group-stage-card",
+    "upset-bounty"
+  ],
+  "recommendedMiniGames": [
+    "penalty-clash",
+    "next-event",
+    "scoreline-lock",
+    "player-prop-duel",
+    "watch-party-streak",
+    "reaction-challenge"
+  ],
   "defaultTeam": "fr",
   "theme": {
     "--ink": "#1e293b",

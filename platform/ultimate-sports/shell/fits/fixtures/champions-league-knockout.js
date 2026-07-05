@@ -11,6 +11,20 @@
   "templateKinds": [
     "single-elimination"
   ],
+  "recommendedVariants": [
+    "classic-bracket",
+    "confidence",
+    "upset-bounty",
+    "head-to-head-duel"
+  ],
+  "recommendedMiniGames": [
+    "penalty-clash",
+    "free-kick-duel",
+    "next-event",
+    "momentum-duel",
+    "watch-party-streak",
+    "reaction-challenge"
+  ],
   "defaultTeam": "rm",
   "theme": {
     "--ink": "#0f172a",

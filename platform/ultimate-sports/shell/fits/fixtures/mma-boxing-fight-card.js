@@ -154,6 +154,8 @@
     category: 'combat-sports',
     entrantShape: 'player',
     templateKinds: ['fight-card'],
+    recommendedVariants: ['confidence', 'player-prop', 'watch-party-bingo', 'head-to-head-duel'],
+    recommendedMiniGames: ['player-prop-duel', 'next-event', 'trivia-duel', 'reaction-challenge', 'watch-party-streak', 'momentum-duel'],
     defaultTeam: 'silva',
     background: '#121214',
     theme: {

@@ -386,6 +386,57 @@ function onboardingHeading () {
   if (cfg.onboardingTitle) return cfg.onboardingTitle
   return cfg.title || 'World Cup'
 }
+
+// Pool variant and mini-game titles sourced from catalog-engine.js. The shell
+// runs in the browser, so we keep a lightweight mirror of the catalog titles
+// here and use the fit config's recommended id arrays to filter surfaces.
+const POOL_VARIANT_TITLES = {
+  'classic-bracket': 'Classic Bracket Pick Em',
+  'confidence': 'Confidence Scoring',
+  'survivor': 'Survivor Pool',
+  'upset-bounty': 'Upset Bounty',
+  'head-to-head-duel': 'Head-to-head Bracket Duel',
+  'group-stage-card': 'Prediction Pick Card',
+  'fantasy-lite-draft': 'Fantasy-lite Draft',
+  'watch-party-bingo': 'Watch-party Bingo',
+  'next-event': 'Next Event Prediction',
+  'scoreline-lock': 'Scoreline Lock',
+  'player-prop': 'Player Prop Duel',
+  'side-quest': 'Bracket Side Quest'
+}
+
+const MINI_GAME_TITLES = {
+  'penalty-clash': 'Penalty Clash',
+  'free-kick-duel': 'Free-kick Duel',
+  'trivia-duel': 'Trivia Duel',
+  'next-event': 'Next Event Prediction',
+  'scoreline-lock': 'Scoreline Lock',
+  'momentum-duel': 'Momentum Duel',
+  'player-prop-duel': 'Player Prop Duel',
+  'reaction-challenge': 'Reaction Challenge',
+  'watch-party-streak': 'Watch-party Streak',
+  'peer-mini-fantasy': 'Peer Mini Fantasy'
+}
+
+function fitRecommendedVariants () {
+  const cfg = fitConfig()
+  return Array.isArray(cfg.recommendedVariants) ? cfg.recommendedVariants : []
+}
+function fitRecommendedMiniGames () {
+  const cfg = fitConfig()
+  return Array.isArray(cfg.recommendedMiniGames) ? cfg.recommendedMiniGames : []
+}
+function fitPrimaryMiniGame () {
+  const games = fitRecommendedMiniGames()
+  return games[0] || 'penalty-clash'
+}
+function fitMiniGameTitle (gameType) {
+  return MINI_GAME_TITLES[gameType] || gameType
+}
+function fitPoolVariantTitle (variantId) {
+  return POOL_VARIANT_TITLES[variantId] || variantId
+}
+
 function applyFitAssets () {
   const cfg = fitConfig()
   const kind = fitTemplateKind()
@@ -1613,33 +1664,69 @@ function renderPools () {
   const sampleTeams = teams.slice(0, 3).map(t => t.id)
   const railMode = serviceModeLabel(integrationRuntime.readiness.tetherWdk)
   const railState = integrationRuntime.canUseRealMoney ? 'Live USDT' : `${railMode} locked`
-  $('#poolGrid').innerHTML = pools.map(pool => `
-    <article class="pool-card">
-      <div class="pool-top">
-        <div>
-          <p class="stake">$${pool.tier} <span>entry</span></p>
-          <span class="rail-chip ${integrationRuntime.canUseRealMoney ? 'is-live' : 'is-locked'}">Tether WDK ${railState}</span>
-        </div>
-        <span class="pool-badge">${pool.heat}</span>
-      </div>
-      <div class="pool-meta">
-        <div><span>Prize pool</span><strong>${pool.prize}</strong></div>
-        <div><span>Entrants</span><strong>${pool.entrants}/${pool.max}</strong></div>
-        <div><span>Closes</span><strong>${pool.closes}</strong></div>
-      </div>
-      <div class="pool-footer">
-        <div class="avatar-stack" aria-hidden="true">
-          ${sampleTeams.map((id, index) => avatarSvg(['lina', 'vera', 'milo'][index], teamById(id), true)).join('')}
-        </div>
-        <button class="primary-button" type="button" data-pool="${pool.tier}">
-          <span class="button-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </span>
-          Enter
-        </button>
-      </div>
-    </article>
-  `).join('')
+  const variants = fitRecommendedVariants()
+
+  // Build pool cards from the fit's recommended variants (catalog-engine.js).
+  // Each variant borrows a tier pool for realistic prize/entrant metadata.
+  const cards = variants.length > 0
+    ? variants.map((variantId, index) => {
+        const pool = pools[index % pools.length]
+        return `
+          <article class="pool-card" data-variant="${escapeHtml(variantId)}">
+            <div class="pool-top">
+              <div>
+                <p class="stake variant-title">${escapeHtml(fitPoolVariantTitle(variantId))}</p>
+                <span class="rail-chip ${integrationRuntime.canUseRealMoney ? 'is-live' : 'is-locked'}">Tether WDK ${railState}</span>
+              </div>
+              <span class="pool-badge">${pool.heat}</span>
+            </div>
+            <div class="pool-meta">
+              <div><span>Prize pool</span><strong>${pool.prize}</strong></div>
+              <div><span>Entrants</span><strong>${pool.entrants}/${pool.max}</strong></div>
+              <div><span>Closes</span><strong>${pool.closes}</strong></div>
+            </div>
+            <div class="pool-footer">
+              <div class="avatar-stack" aria-hidden="true">
+                ${sampleTeams.map((id, i) => avatarSvg(['lina', 'vera', 'milo'][i], teamById(id), true)).join('')}
+              </div>
+              <button class="primary-button" type="button" data-pool="${pool.tier}" data-variant="${escapeHtml(variantId)}">
+                <span class="button-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+                </span>
+                Enter
+              </button>
+            </div>
+          </article>`
+      })
+    : pools.map(pool => `
+        <article class="pool-card">
+          <div class="pool-top">
+            <div>
+              <p class="stake">$${pool.tier} <span>entry</span></p>
+              <span class="rail-chip ${integrationRuntime.canUseRealMoney ? 'is-live' : 'is-locked'}">Tether WDK ${railState}</span>
+            </div>
+            <span class="pool-badge">${pool.heat}</span>
+          </div>
+          <div class="pool-meta">
+            <div><span>Prize pool</span><strong>${pool.prize}</strong></div>
+            <div><span>Entrants</span><strong>${pool.entrants}/${pool.max}</strong></div>
+            <div><span>Closes</span><strong>${pool.closes}</strong></div>
+          </div>
+          <div class="pool-footer">
+            <div class="avatar-stack" aria-hidden="true">
+              ${sampleTeams.map((id, index) => avatarSvg(['lina', 'vera', 'milo'][index], teamById(id), true)).join('')}
+            </div>
+            <button class="primary-button" type="button" data-pool="${pool.tier}">
+              <span class="button-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </span>
+              Enter
+            </button>
+          </div>
+        </article>
+      `)
+
+  $('#poolGrid').innerHTML = cards.join('')
 
   $$('#poolGrid [data-pool]').forEach(button => {
     button.addEventListener('click', () => {
@@ -4309,19 +4396,54 @@ function completeProfileOnboarding () {
   showToast(`${state.username} joined as ${teamById(state.team).name}`)
 }
 
+function miniGameIcon (gameType) {
+  const map = {
+    'penalty-clash': '⚽',
+    'free-kick-duel': '🎯',
+    'trivia-duel': '❓',
+    'next-event': '🔮',
+    'scoreline-lock': '🔒',
+    'momentum-duel': '⚡',
+    'player-prop-duel': '📊',
+    'reaction-challenge': '👏',
+    'watch-party-streak': '🔥',
+    'peer-mini-fantasy': '⭐'
+  }
+  return map[gameType] || '🎮'
+}
+
+function miniGameTag (gameType) {
+  return (gameType === 'penalty-clash' || gameType === 'free-kick-duel') ? 'Play now' : 'Coming soon'
+}
+
 function renderGameLobby () {
   const el = $('#gameLobby')
   if (!el) return
+  const primaryGame = fitPrimaryMiniGame()
+  const primaryTitle = fitMiniGameTitle(primaryGame)
+  const recommendedGames = fitRecommendedMiniGames()
+  const dockHtml = recommendedGames.length > 0
+    ? `<div class="mini-game-dock" aria-label="Recommended mini-games">
+        ${recommendedGames.map(gameType => `
+          <button class="mini-game-card ${gameType === primaryGame ? 'is-primary' : ''}" type="button" data-game-type="${escapeHtml(gameType)}">
+            <span class="mini-game-icon" aria-hidden="true">${miniGameIcon(gameType)}</span>
+            <strong>${escapeHtml(fitMiniGameTitle(gameType))}</strong>
+            <span>${miniGameTag(gameType)}</span>
+          </button>
+        `).join('')}
+       </div>`
+    : ''
   el.innerHTML = `
     <div class="lobby-hero">
       <img class="lobby-mascot" src="assets/mascot.png" alt="">
       <div class="lobby-hero-copy">
-        <p class="eyebrow">Penalty Clash · Lobby</p>
+        <p class="eyebrow">${escapeHtml(primaryTitle)} · Lobby</p>
         <h2 class="lobby-title">Find a match</h2>
-        <p class="lobby-sub">Best-of-five Penalty Clash — you take 5 penalties and keep their 5. Outscore them for the win.</p>
+        <p class="lobby-sub">Best-of-five ${escapeHtml(primaryTitle)} — you take 5 penalties and keep their 5. Outscore them for the win.</p>
       </div>
       <button class="lobby-quick" id="quickMatchBtn" type="button">⚡ Practice vs AI</button>
     </div>
+    ${dockHtml}
 
     <div class="lobby-friend">
       <div class="lobby-friend-copy">
@@ -4355,6 +4477,14 @@ function renderGameLobby () {
   const quick = $('#quickMatchBtn')
   if (quick) quick.addEventListener('click', () => startMatch(practice(LOBBY_PLAYERS[Math.floor(Math.random() * LOBBY_PLAYERS.length)])))
   $$('#gameLobby .lobby-challenge').forEach(btn => btn.addEventListener('click', () => showStakeConfirm(LOBBY_PLAYERS[Number(btn.dataset.lobby)])))
+  $$('#gameLobby .mini-game-card').forEach(btn => btn.addEventListener('click', () => {
+    const gameType = btn.dataset.gameType
+    if (gameType === 'penalty-clash' || gameType === 'free-kick-duel') {
+      startMatch(practice(LOBBY_PLAYERS[Math.floor(Math.random() * LOBBY_PLAYERS.length)]))
+    } else {
+      showToast(`${fitMiniGameTitle(gameType)} coming soon`)
+    }
+  }))
   const invite = $('#inviteFriendBtn')
   if (invite) invite.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.host())
   const joinFriend = $('#joinFriendBtn')
@@ -4443,6 +4573,8 @@ function restartShootout ({ blockActiveStake = false, message = 'New penalty sho
 }
 
 async function renderGames () {
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = fitMiniGameTitle(fitPrimaryMiniGame())
   const so = ensureShootout()
   ensureShootoutDom()
   // A live peer match owns its own turn loop.

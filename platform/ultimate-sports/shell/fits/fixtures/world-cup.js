@@ -9,6 +9,8 @@
   "category": "soccer",
   "entrantShape": "team",
   "templateKinds": ["group-plus-knockout","single-elimination"],
+  "recommendedVariants": ["classic-bracket","confidence","group-stage-card","upset-bounty","side-quest"],
+  "recommendedMiniGames": ["penalty-clash","free-kick-duel","next-event","scoreline-lock","watch-party-streak","reaction-challenge"],
   "defaultTeam": "br",
   "theme": {
     "--ink": "#4a3b57",

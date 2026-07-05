@@ -193,6 +193,8 @@
       category: 'soccer',
       entrantShape: 'team',
       templateKinds: ["group-plus-knockout","single-elimination"],
+      recommendedVariants: ["classic-bracket","confidence","group-stage-card","upset-bounty"],
+      recommendedMiniGames: ["penalty-clash","next-event","scoreline-lock","player-prop-duel","watch-party-streak","reaction-challenge"],
       defaultTeam: 'fr',
       theme: makeTheme('#3b82f6', '#ef4444', '#1d4ed8', '#1e293b', '#eff6ff', '#ffffff'),
       data: euros_copa_america_data
@@ -203,6 +205,8 @@
       category: 'soccer',
       entrantShape: 'team',
       templateKinds: ["single-elimination"],
+      recommendedVariants: ["classic-bracket","confidence","upset-bounty","head-to-head-duel"],
+      recommendedMiniGames: ["penalty-clash","free-kick-duel","next-event","momentum-duel","watch-party-streak","reaction-challenge"],
       defaultTeam: 'rm',
       theme: makeTheme('#0ea5e9', '#f59e0b', '#0369a1', '#0f172a', '#f0f9ff', '#ffffff'),
       data: champions_league_knockout_data
@@ -213,6 +217,8 @@
       category: 'basketball',
       entrantShape: 'team',
       templateKinds: ["single-elimination"],
+      recommendedVariants: ["classic-bracket","confidence","upset-bounty","head-to-head-duel"],
+      recommendedMiniGames: ["next-event","scoreline-lock","trivia-duel","peer-mini-fantasy","player-prop-duel","watch-party-streak","reaction-challenge"],
       defaultTeam: 'uconn',
       theme: makeTheme('#f97316', '#3b82f6', '#c2410c', '#2a1510', '#fff7ed', '#ffffff'),
       data: march_madness_data
@@ -223,6 +229,8 @@
       category: 'pro-sports',
       entrantShape: 'team',
       templateKinds: ["series-playoff"],
+      recommendedVariants: ["classic-bracket","confidence","survivor","fantasy-lite-draft"],
+      recommendedMiniGames: ["next-event","scoreline-lock","player-prop-duel","peer-mini-fantasy","watch-party-streak","reaction-challenge","momentum-duel"],
       defaultTeam: 'lal',
       theme: makeTheme('#8b5cf6', '#f43f5e', '#6d28d9', '#1a1025', '#f5f3ff', '#ffffff'),
       data: pro_playoffs_data
@@ -233,6 +241,8 @@
       category: 'tennis',
       entrantShape: 'player',
       templateKinds: ["single-elimination"],
+      recommendedVariants: ["classic-bracket","confidence","head-to-head-duel","fantasy-lite-draft"],
+      recommendedMiniGames: ["next-event","scoreline-lock","player-prop-duel","reaction-challenge","watch-party-streak"],
       defaultTeam: 'alcaraz',
       theme: makeTheme('#10b981', '#f59e0b', '#047857', '#0f2c22', '#ecfdf5', '#ffffff'),
       data: tennis_grand_slams_data
@@ -243,6 +253,8 @@
       category: 'esports',
       entrantShape: 'team',
       templateKinds: ["group-plus-knockout","single-elimination","series-playoff"],
+      recommendedVariants: ["classic-bracket","confidence","survivor","fantasy-lite-draft","side-quest"],
+      recommendedMiniGames: ["next-event","momentum-duel","trivia-duel","reaction-challenge","watch-party-streak"],
       defaultTeam: 't1',
       theme: makeTheme('#ec4899', '#6366f1', '#be185d', '#1e1b4b', '#fdf2f8', '#ffffff'),
       data: esports_major_data
@@ -253,6 +265,8 @@
       category: 'sailing',
       entrantShape: 'team',
       templateKinds: ["series-playoff","round-robin"],
+      recommendedVariants: ["confidence","survivor","watch-party-bingo","fantasy-lite-draft","side-quest"],
+      recommendedMiniGames: ["next-event","momentum-duel","player-prop-duel","trivia-duel","reaction-challenge","watch-party-streak","peer-mini-fantasy"],
       defaultTeam: 'aus',
       theme: makeTheme('#06b6d4', '#f43f5e', '#0e7490', '#082f49', '#ecfeff', '#ffffff'),
       data: sailgp_companion_data
@@ -263,6 +277,8 @@
       category: 'creator',
       entrantShape: 'creator',
       templateKinds: ["single-elimination","creator-custom"],
+      recommendedVariants: ["classic-bracket","confidence","watch-party-bingo","side-quest"],
+      recommendedMiniGames: ["trivia-duel","reaction-challenge","watch-party-streak"],
       defaultTeam: 'alpha',
       theme: makeTheme('#d946ef', '#22c55e', '#a21caf', '#2a0a2e', '#fdf4ff', '#ffffff'),
       data: creator_reality_brackets_data
@@ -273,6 +289,8 @@
       category: 'awards',
       entrantShape: 'nominee',
       templateKinds: ["awards-card"],
+      recommendedVariants: ["group-stage-card","confidence","watch-party-bingo","head-to-head-duel"],
+      recommendedMiniGames: ["trivia-duel","watch-party-streak","reaction-challenge"],
       defaultTeam: 'oppen',
       theme: makeTheme('#f59e0b', '#ec4899', '#b45309', '#2a1a08', '#fffbeb', '#ffffff'),
       data: awards_prediction_pools_data
@@ -283,6 +301,8 @@
       category: 'local',
       entrantShape: 'team',
       templateKinds: ["round-robin","single-elimination","creator-custom"],
+      recommendedVariants: ["classic-bracket","confidence","survivor","watch-party-bingo","side-quest"],
+      recommendedMiniGames: ["penalty-clash","free-kick-duel","trivia-duel","next-event","peer-mini-fantasy","watch-party-streak","reaction-challenge","momentum-duel","player-prop-duel"],
       defaultTeam: 'phoenix',
       theme: makeTheme('#22c55e', '#3b82f6', '#15803d', '#0f291e', '#f0fdf4', '#ffffff'),
       data: local_leagues_data
@@ -298,6 +318,8 @@
       category: fit.category,
       entrantShape: fit.entrantShape,
       templateKinds: fit.templateKinds,
+      recommendedVariants: fit.recommendedVariants,
+      recommendedMiniGames: fit.recommendedMiniGames,
       defaultTeam: fit.defaultTeam,
       theme: fit.theme,
       entrants: fit.data.teams,

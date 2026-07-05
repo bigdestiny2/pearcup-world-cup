@@ -3964,6 +3964,61 @@ h2 {
 .pool-pick-badge { position: absolute; top: 12px; right: 12px; width: 48px; height: 48px; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(0,0,0,.12)); }
 .pool-pick.is-entered .pool-pick-badge { animation: mascotBob 2.4s ease-in-out infinite; }
 
+/* Pool variant titles can be longer than a tier number; scale them down so
+   they fit the card without breaking the grid layout. */
+.pool-card .variant-title {
+  font-size: clamp(18px, 5.5vw, 28px);
+  line-height: 1.1;
+  max-width: 16ch;
+}
+
+/* Mini-game dock on the Games surface: only recommended mini-games appear. */
+.mini-game-dock {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+.mini-game-card {
+  display: grid;
+  gap: 6px;
+  place-items: center;
+  text-align: center;
+  padding: 16px 12px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(160deg, var(--card), var(--surface-2));
+  box-shadow: 0 6px 0 var(--surface-3), var(--shadow);
+  cursor: pointer;
+  transition: transform .12s var(--bounce), box-shadow .12s;
+}
+.mini-game-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 0 var(--surface-3), var(--shadow-strong);
+}
+.mini-game-card.is-primary {
+  background: linear-gradient(160deg, var(--pink-soft, #fff0f6), var(--surface-2));
+  box-shadow: 0 6px 0 var(--pink-deep), var(--shadow);
+}
+.mini-game-card.is-primary:hover {
+  box-shadow: 0 10px 0 var(--pink-deep), var(--shadow-strong);
+}
+.mini-game-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+.mini-game-card strong {
+  font-family: var(--display);
+  font-size: 15px;
+  color: var(--ink);
+}
+.mini-game-card span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 /* ============ Theme picker + switcher ============ */
 .theme-picker {
   position: fixed; inset: 0; z-index: 200;

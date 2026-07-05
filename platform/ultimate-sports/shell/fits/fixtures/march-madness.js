@@ -11,6 +11,21 @@
   "templateKinds": [
     "single-elimination"
   ],
+  "recommendedVariants": [
+    "classic-bracket",
+    "confidence",
+    "upset-bounty",
+    "head-to-head-duel"
+  ],
+  "recommendedMiniGames": [
+    "next-event",
+    "scoreline-lock",
+    "trivia-duel",
+    "peer-mini-fantasy",
+    "player-prop-duel",
+    "watch-party-streak",
+    "reaction-challenge"
+  ],
   "defaultTeam": "uconn",
   "theme": {
     "--ink": "#2a1510",

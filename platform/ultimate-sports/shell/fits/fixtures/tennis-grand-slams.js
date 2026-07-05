@@ -11,6 +11,19 @@
   "templateKinds": [
     "single-elimination"
   ],
+  "recommendedVariants": [
+    "classic-bracket",
+    "confidence",
+    "head-to-head-duel",
+    "fantasy-lite-draft"
+  ],
+  "recommendedMiniGames": [
+    "next-event",
+    "scoreline-lock",
+    "player-prop-duel",
+    "reaction-challenge",
+    "watch-party-streak"
+  ],
   "defaultTeam": "alcaraz",
   "theme": {
     "--ink": "#0f2c22",

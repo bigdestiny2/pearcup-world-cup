@@ -12,6 +12,17 @@
     "single-elimination",
     "creator-custom"
   ],
+  "recommendedVariants": [
+    "classic-bracket",
+    "confidence",
+    "watch-party-bingo",
+    "side-quest"
+  ],
+  "recommendedMiniGames": [
+    "trivia-duel",
+    "reaction-challenge",
+    "watch-party-streak"
+  ],
   "defaultTeam": "alpha",
   "theme": {
     "--ink": "#2a0a2e",

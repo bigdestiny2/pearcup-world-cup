@@ -11,6 +11,21 @@
   "templateKinds": [
     "series-playoff"
   ],
+  "recommendedVariants": [
+    "classic-bracket",
+    "confidence",
+    "survivor",
+    "fantasy-lite-draft"
+  ],
+  "recommendedMiniGames": [
+    "next-event",
+    "scoreline-lock",
+    "player-prop-duel",
+    "peer-mini-fantasy",
+    "watch-party-streak",
+    "reaction-challenge",
+    "momentum-duel"
+  ],
   "defaultTeam": "lal",
   "theme": {
     "--ink": "#1a1025",

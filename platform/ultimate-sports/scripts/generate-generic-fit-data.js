@@ -4,23 +4,28 @@
 const fs = require('node:fs')
 const path = require('node:path')
 
+const { EVENT_FITS } = require('../src/catalog-engine.js')
+
 const OUT_FILE = path.resolve(__dirname, '..', 'shell', 'fits', 'generic-fits.js')
 const FIXTURES_DIR = path.resolve(__dirname, '..', 'shell', 'fits', 'fixtures')
 
-// Template-kind mapping sourced from src/catalog-engine.js. The first kind is
-// the primary kind exposed as data-template-kind; additional kinds can influence
-// layout regions (e.g. a series grid for an esports fit that also supports groups).
-const TEMPLATE_KINDS = {
-  'euros-copa-america': ['group-plus-knockout', 'single-elimination'],
-  'champions-league-knockout': ['single-elimination'],
-  'march-madness': ['single-elimination'],
-  'pro-playoffs': ['series-playoff'],
-  'tennis-grand-slams': ['single-elimination'],
-  'esports-major': ['group-plus-knockout', 'single-elimination', 'series-playoff'],
-  'sailgp-companion': ['series-playoff', 'round-robin'],
-  'creator-reality-brackets': ['single-elimination', 'creator-custom'],
-  'awards-prediction-pools': ['awards-card'],
-  'local-leagues': ['round-robin', 'single-elimination', 'creator-custom']
+// Catalog-derived mappings so generated fixtures stay in sync with src/catalog-engine.js.
+const CATALOG_FIT_MAP = new Map(EVENT_FITS.map(fit => [fit.fitId, fit]))
+
+function catalogTemplateKinds (fitId) {
+  return (CATALOG_FIT_MAP.get(fitId) && CATALOG_FIT_MAP.get(fitId).templateKinds) || ['single-elimination']
+}
+
+function catalogEntrantShape (fitId) {
+  return (CATALOG_FIT_MAP.get(fitId) && CATALOG_FIT_MAP.get(fitId).entrantShape) || 'team'
+}
+
+function catalogRecommendedVariants (fitId) {
+  return (CATALOG_FIT_MAP.get(fitId) && CATALOG_FIT_MAP.get(fitId).recommendedVariants) || []
+}
+
+function catalogRecommendedMiniGames (fitId) {
+  return (CATALOG_FIT_MAP.get(fitId) && CATALOG_FIT_MAP.get(fitId).recommendedMiniGames) || []
 }
 
 function makeTheme (primary, secondary, accent, ink, soft, surface) {
@@ -536,7 +541,7 @@ function buildCreatorStage (teams) {
 }
 
 function buildTemplateData (fitId, teams) {
-  const kinds = TEMPLATE_KINDS[fitId] || []
+  const kinds = catalogTemplateKinds(fitId)
   const data = {}
   if (kinds.includes('group-plus-knockout')) data.groups = buildGroups(teams)
   if (kinds.includes('series-playoff')) data.series = buildSeries(teams, fitId)
@@ -544,19 +549,6 @@ function buildTemplateData (fitId, teams) {
   if (kinds.includes('round-robin')) data.standings = buildStandings(teams, fitId)
   if (kinds.includes('creator-custom')) data.customStage = buildCreatorStage(teams)
   return data
-}
-
-const ENTRANT_SHAPES = {
-  'euros-copa-america': 'team',
-  'champions-league-knockout': 'team',
-  'march-madness': 'team',
-  'pro-playoffs': 'team',
-  'tennis-grand-slams': 'player',
-  'esports-major': 'team',
-  'sailgp-companion': 'team',
-  'creator-reality-brackets': 'creator',
-  'awards-prediction-pools': 'nominee',
-  'local-leagues': 'team'
 }
 
 function buildFixtureConfig (fit) {
@@ -567,8 +559,10 @@ function buildFixtureConfig (fit) {
     title: fit.title,
     subtitle: 'Ultimate Sports',
     category: fit.category,
-    entrantShape: ENTRANT_SHAPES[fit.id] || 'team',
-    templateKinds: TEMPLATE_KINDS[fit.id] || ['single-elimination'],
+    entrantShape: catalogEntrantShape(fit.id),
+    templateKinds: catalogTemplateKinds(fit.id),
+    recommendedVariants: catalogRecommendedVariants(fit.id),
+    recommendedMiniGames: catalogRecommendedMiniGames(fit.id),
     defaultTeam: fit.defaultTeam,
     theme: fit.theme,
     entrants: data.teams,
@@ -657,6 +651,8 @@ fixtureConfigs.forEach(cfg => {
   genericLines.push(`      category: '${cfg.category}',`)
   genericLines.push(`      entrantShape: '${cfg.entrantShape}',`)
   genericLines.push(`      templateKinds: ${JSON.stringify(cfg.templateKinds)},`)
+  genericLines.push(`      recommendedVariants: ${JSON.stringify(cfg.recommendedVariants)},`)
+  genericLines.push(`      recommendedMiniGames: ${JSON.stringify(cfg.recommendedMiniGames)},`)
   genericLines.push(`      defaultTeam: '${cfg.defaultTeam}',`)
   genericLines.push(`      theme: makeTheme('${cfg.theme['--green']}', '${cfg.theme['--red']}', '${cfg.theme['--green-deep']}', '${cfg.theme['--ink']}', '${cfg.theme['--soft']}', '${cfg.theme['--surface']}'),`)
   genericLines.push(`      data: ${dataVar}`)
@@ -673,6 +669,8 @@ genericLines.push(`      subtitle: 'Ultimate Sports',`)
 genericLines.push(`      category: fit.category,`)
 genericLines.push(`      entrantShape: fit.entrantShape,`)
 genericLines.push(`      templateKinds: fit.templateKinds,`)
+genericLines.push(`      recommendedVariants: fit.recommendedVariants,`)
+genericLines.push(`      recommendedMiniGames: fit.recommendedMiniGames,`)
 genericLines.push(`      defaultTeam: fit.defaultTeam,`)
 genericLines.push(`      theme: fit.theme,`)
 genericLines.push(`      entrants: fit.data.teams,`)

@@ -13,6 +13,24 @@
     "single-elimination",
     "creator-custom"
   ],
+  "recommendedVariants": [
+    "classic-bracket",
+    "confidence",
+    "survivor",
+    "watch-party-bingo",
+    "side-quest"
+  ],
+  "recommendedMiniGames": [
+    "penalty-clash",
+    "free-kick-duel",
+    "trivia-duel",
+    "next-event",
+    "peer-mini-fantasy",
+    "watch-party-streak",
+    "reaction-challenge",
+    "momentum-duel",
+    "player-prop-duel"
+  ],
   "defaultTeam": "phoenix",
   "theme": {
     "--ink": "#0f291e",
