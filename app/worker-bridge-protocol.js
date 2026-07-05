@@ -149,6 +149,16 @@
     })
   }
 
+  function createUltimateSportsBridgeHandler (options = {}) {
+    const platformBridge = typeof require !== 'undefined'
+      ? require('../platform/ultimate-sports/src/bridge-protocol.js')
+      : null
+    if (!platformBridge || typeof platformBridge.createBridgeHandler !== 'function') {
+      throw new Error('Ultimate sports bridge protocol is not available in this runtime')
+    }
+    return platformBridge.createBridgeHandler(options)
+  }
+
   function createPearWorkerBridgeProtocol ({
     settings,
     rootObject = root,
@@ -201,6 +211,10 @@
           const requestOpts = payload.opts || {}
           responseService = settlementServiceForRequest({ activeService, harness, opts: requestOpts })
           result = await responseService.settleBracketPoolWithReceipt(payload.payload || {}, requestOpts)
+        } else if (envelope.action === 'ultimateSports') {
+          const nestedRequest = payload.request || payload
+          const ultimateHandler = createUltimateSportsBridgeHandler(payload.handlerOptions || {})
+          result = ultimateHandler.handle(nestedRequest)
         } else {
           throw new Error(`Unsupported Pear worker bridge action: ${envelope.action}`)
         }
@@ -241,6 +255,7 @@
   const api = {
     protocolVersion,
     createPearWorkerBridgeProtocol,
+    createUltimateSportsBridgeHandler,
     redactWorkerValue,
     assertNoSecretLeak,
     envelopeWantsEvents
