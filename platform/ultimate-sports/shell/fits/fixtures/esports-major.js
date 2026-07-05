@@ -8,7 +8,11 @@
   "subtitle": "Ultimate Sports",
   "category": "esports",
   "entrantShape": "team",
-  "templateKinds": ["group-plus-knockout","single-elimination","series-playoff"],
+  "templateKinds": [
+    "group-plus-knockout",
+    "single-elimination",
+    "series-playoff"
+  ],
   "defaultTeam": "t1",
   "theme": {
     "--ink": "#1e1b4b",
@@ -658,6 +662,437 @@
       "trust": "97.9%"
     }
   ],
+  "templateData": {
+    "groups": [
+      {
+        "name": "Group A",
+        "entrants": [
+          {
+            "teamId": "t1",
+            "name": "T1",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 2,
+            "draws": 1,
+            "losses": 0,
+            "points": 7,
+            "gd": 4
+          },
+          {
+            "teamId": "g2",
+            "name": "G2",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 1,
+            "draws": 1,
+            "losses": 1,
+            "points": 4,
+            "gd": 0
+          },
+          {
+            "teamId": "fnc",
+            "name": "Fnatic",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 1,
+            "draws": 0,
+            "losses": 2,
+            "points": 3,
+            "gd": -2
+          },
+          {
+            "teamId": "tl",
+            "name": "Team Liquid",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 0,
+            "draws": 0,
+            "losses": 3,
+            "points": 0,
+            "gd": -2
+          }
+        ]
+      },
+      {
+        "name": "Group B",
+        "entrants": [
+          {
+            "teamId": "navi",
+            "name": "NAVI",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 2,
+            "draws": 0,
+            "losses": 1,
+            "points": 6,
+            "gd": 2
+          },
+          {
+            "teamId": "vit",
+            "name": "Vitality",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 1,
+            "draws": 2,
+            "losses": 0,
+            "points": 5,
+            "gd": 1
+          },
+          {
+            "teamId": "c9",
+            "name": "Cloud9",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 1,
+            "draws": 1,
+            "losses": 1,
+            "points": 4,
+            "gd": -1
+          },
+          {
+            "teamId": "sen",
+            "name": "Sentinels",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 0,
+            "draws": 1,
+            "losses": 2,
+            "points": 1,
+            "gd": -2
+          }
+        ]
+      },
+      {
+        "name": "Group C",
+        "entrants": [
+          {
+            "teamId": "gen",
+            "name": "Gen.G",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 2,
+            "draws": 1,
+            "losses": 0,
+            "points": 7,
+            "gd": 3
+          },
+          {
+            "teamId": "blg",
+            "name": "Bilibili",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 2,
+            "draws": 0,
+            "losses": 1,
+            "points": 6,
+            "gd": 2
+          },
+          {
+            "teamId": "faze",
+            "name": "FaZe",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 0,
+            "draws": 1,
+            "losses": 2,
+            "points": 1,
+            "gd": -3
+          },
+          {
+            "teamId": "og",
+            "name": "OG",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 0,
+            "draws": 0,
+            "losses": 3,
+            "points": 0,
+            "gd": -2
+          }
+        ]
+      },
+      {
+        "name": "Group D",
+        "entrants": [
+          {
+            "teamId": "eg",
+            "name": "Evil Geniuses",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 3,
+            "draws": 0,
+            "losses": 0,
+            "points": 9,
+            "gd": 5
+          },
+          {
+            "teamId": "100t",
+            "name": "100 Thieves",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 1,
+            "draws": 1,
+            "losses": 1,
+            "points": 4,
+            "gd": 0
+          },
+          {
+            "teamId": "tsm",
+            "name": "TSM",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 1,
+            "draws": 0,
+            "losses": 2,
+            "points": 3,
+            "gd": -2
+          },
+          {
+            "teamId": "koi",
+            "name": "KOI",
+            "flag": "🎮",
+            "played": 3,
+            "wins": 0,
+            "draws": 1,
+            "losses": 2,
+            "points": 1,
+            "gd": -3
+          }
+        ]
+      }
+    ],
+    "series": [
+      {
+        "id": "series-1",
+        "home": "t1",
+        "away": "g2",
+        "homeName": "T1",
+        "awayName": "G2",
+        "homeWins": 2,
+        "awayWins": 1,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 101,
+            "awayScore": 100
+          },
+          {
+            "number": 2,
+            "homeScore": 95,
+            "awayScore": 107
+          },
+          {
+            "number": 3,
+            "homeScore": 98,
+            "awayScore": 99
+          }
+        ]
+      },
+      {
+        "id": "series-2",
+        "home": "fnc",
+        "away": "tl",
+        "homeName": "Fnatic",
+        "awayName": "Team Liquid",
+        "homeWins": 1,
+        "awayWins": 2,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 95,
+            "awayScore": 107
+          },
+          {
+            "number": 2,
+            "homeScore": 98,
+            "awayScore": 99
+          },
+          {
+            "number": 3,
+            "homeScore": 104,
+            "awayScore": 102
+          }
+        ]
+      },
+      {
+        "id": "series-3",
+        "home": "navi",
+        "away": "vit",
+        "homeName": "NAVI",
+        "awayName": "Vitality",
+        "homeWins": 3,
+        "awayWins": 1,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 104,
+            "awayScore": 99
+          },
+          {
+            "number": 2,
+            "homeScore": 98,
+            "awayScore": 107
+          },
+          {
+            "number": 3,
+            "homeScore": 95,
+            "awayScore": 100
+          },
+          {
+            "number": 4,
+            "homeScore": 101,
+            "awayScore": 96
+          }
+        ]
+      },
+      {
+        "id": "series-4",
+        "home": "c9",
+        "away": "sen",
+        "homeName": "Cloud9",
+        "awayName": "Sentinels",
+        "homeWins": 2,
+        "awayWins": 0,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 98,
+            "awayScore": 99
+          },
+          {
+            "number": 2,
+            "homeScore": 104,
+            "awayScore": 102
+          }
+        ]
+      },
+      {
+        "id": "series-5",
+        "home": "gen",
+        "away": "blg",
+        "homeName": "Gen.G",
+        "awayName": "Bilibili",
+        "homeWins": 1,
+        "awayWins": 3,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 101,
+            "awayScore": 96
+          },
+          {
+            "number": 2,
+            "homeScore": 110,
+            "awayScore": 102
+          },
+          {
+            "number": 3,
+            "homeScore": 104,
+            "awayScore": 99
+          },
+          {
+            "number": 4,
+            "homeScore": 98,
+            "awayScore": 107
+          }
+        ]
+      },
+      {
+        "id": "series-6",
+        "home": "faze",
+        "away": "og",
+        "homeName": "FaZe",
+        "awayName": "OG",
+        "homeWins": 2,
+        "awayWins": 2,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 104,
+            "awayScore": 102
+          },
+          {
+            "number": 2,
+            "homeScore": 110,
+            "awayScore": 96
+          },
+          {
+            "number": 3,
+            "homeScore": 101,
+            "awayScore": 100
+          },
+          {
+            "number": 4,
+            "homeScore": 95,
+            "awayScore": 107
+          }
+        ]
+      },
+      {
+        "id": "series-7",
+        "home": "eg",
+        "away": "100t",
+        "homeName": "Evil Geniuses",
+        "awayName": "100 Thieves",
+        "homeWins": 3,
+        "awayWins": 0,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 95,
+            "awayScore": 107
+          },
+          {
+            "number": 2,
+            "homeScore": 98,
+            "awayScore": 99
+          },
+          {
+            "number": 3,
+            "homeScore": 104,
+            "awayScore": 102
+          }
+        ]
+      },
+      {
+        "id": "series-8",
+        "home": "tsm",
+        "away": "koi",
+        "homeName": "TSM",
+        "awayName": "KOI",
+        "homeWins": 0,
+        "awayWins": 2,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 104,
+            "awayScore": 99
+          },
+          {
+            "number": 2,
+            "homeScore": 98,
+            "awayScore": 107
+          }
+        ]
+      }
+    ]
+  },
   "assets": {
     "heroBackdrop": "../generated/fit-heroes/esports-major.svg"
   }

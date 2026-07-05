@@ -8,7 +8,10 @@
   "subtitle": "Ultimate Sports",
   "category": "sailing",
   "entrantShape": "team",
-  "templateKinds": ["series-playoff","round-robin"],
+  "templateKinds": [
+    "series-playoff",
+    "round-robin"
+  ],
   "defaultTeam": "aus",
   "theme": {
     "--ink": "#082f49",
@@ -658,6 +661,385 @@
       "trust": "97.9%"
     }
   ],
+  "templateData": {
+    "series": [
+      {
+        "id": "series-1",
+        "home": "aus",
+        "away": "gbr",
+        "homeName": "Australia",
+        "awayName": "Great Britain",
+        "homeWins": 2,
+        "awayWins": 1,
+        "needed": 3,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 95,
+            "awayScore": 107
+          },
+          {
+            "number": 2,
+            "homeScore": 98,
+            "awayScore": 99
+          },
+          {
+            "number": 3,
+            "homeScore": 104,
+            "awayScore": 102
+          }
+        ]
+      },
+      {
+        "id": "series-2",
+        "home": "nz",
+        "away": "usa",
+        "homeName": "New Zealand",
+        "awayName": "United States",
+        "homeWins": 1,
+        "awayWins": 2,
+        "needed": 3,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 95,
+            "awayScore": 107
+          },
+          {
+            "number": 2,
+            "homeScore": 98,
+            "awayScore": 99
+          },
+          {
+            "number": 3,
+            "homeScore": 104,
+            "awayScore": 102
+          }
+        ]
+      },
+      {
+        "id": "series-3",
+        "home": "fra",
+        "away": "den",
+        "homeName": "France",
+        "awayName": "Denmark",
+        "homeWins": 3,
+        "awayWins": 1,
+        "needed": 3,
+        "status": "France wins series",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 101,
+            "awayScore": 100
+          },
+          {
+            "number": 2,
+            "homeScore": 95,
+            "awayScore": 107
+          },
+          {
+            "number": 3,
+            "homeScore": 98,
+            "awayScore": 99
+          },
+          {
+            "number": 4,
+            "homeScore": 104,
+            "awayScore": 102
+          }
+        ]
+      },
+      {
+        "id": "series-4",
+        "home": "jpn",
+        "away": "esp",
+        "homeName": "Japan",
+        "awayName": "Spain",
+        "homeWins": 2,
+        "awayWins": 0,
+        "needed": 3,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 104,
+            "awayScore": 99
+          },
+          {
+            "number": 2,
+            "homeScore": 98,
+            "awayScore": 107
+          }
+        ]
+      },
+      {
+        "id": "series-5",
+        "home": "ger",
+        "away": "can",
+        "homeName": "Germany",
+        "awayName": "Canada",
+        "homeWins": 1,
+        "awayWins": 3,
+        "needed": 3,
+        "status": "Canada wins series",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 95,
+            "awayScore": 100
+          },
+          {
+            "number": 2,
+            "homeScore": 101,
+            "awayScore": 96
+          },
+          {
+            "number": 3,
+            "homeScore": 110,
+            "awayScore": 102
+          },
+          {
+            "number": 4,
+            "homeScore": 104,
+            "awayScore": 99
+          }
+        ]
+      },
+      {
+        "id": "series-6",
+        "home": "sui",
+        "away": "bra",
+        "homeName": "Switzerland",
+        "awayName": "Brazil",
+        "homeWins": 2,
+        "awayWins": 2,
+        "needed": 3,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 101,
+            "awayScore": 96
+          },
+          {
+            "number": 2,
+            "homeScore": 110,
+            "awayScore": 102
+          },
+          {
+            "number": 3,
+            "homeScore": 104,
+            "awayScore": 99
+          },
+          {
+            "number": 4,
+            "homeScore": 98,
+            "awayScore": 107
+          }
+        ]
+      },
+      {
+        "id": "series-7",
+        "home": "ita",
+        "away": "ned",
+        "homeName": "Italy",
+        "awayName": "Netherlands",
+        "homeWins": 3,
+        "awayWins": 0,
+        "needed": 3,
+        "status": "Italy wins series",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 95,
+            "awayScore": 107
+          },
+          {
+            "number": 2,
+            "homeScore": 98,
+            "awayScore": 99
+          },
+          {
+            "number": 3,
+            "homeScore": 104,
+            "awayScore": 102
+          }
+        ]
+      },
+      {
+        "id": "series-8",
+        "home": "arg",
+        "away": "swe",
+        "homeName": "Argentina",
+        "awayName": "Sweden",
+        "homeWins": 0,
+        "awayWins": 2,
+        "needed": 3,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 101,
+            "awayScore": 100
+          },
+          {
+            "number": 2,
+            "homeScore": 95,
+            "awayScore": 107
+          }
+        ]
+      }
+    ],
+    "standings": [
+      {
+        "teamId": "aus",
+        "name": "Australia",
+        "flag": "🇦🇺",
+        "played": 4,
+        "wins": 4,
+        "losses": 0,
+        "points": 12
+      },
+      {
+        "teamId": "gbr",
+        "name": "Great Britain",
+        "flag": "🇬🇧",
+        "played": 5,
+        "wins": 3,
+        "losses": 2,
+        "points": 9
+      },
+      {
+        "teamId": "nz",
+        "name": "New Zealand",
+        "flag": "🇳🇿",
+        "played": 5,
+        "wins": 2,
+        "losses": 3,
+        "points": 6
+      },
+      {
+        "teamId": "usa",
+        "name": "United States",
+        "flag": "🇺🇸",
+        "played": 6,
+        "wins": 1,
+        "losses": 4,
+        "points": 3
+      },
+      {
+        "teamId": "fra",
+        "name": "France",
+        "flag": "🇫🇷",
+        "played": 4,
+        "wins": 4,
+        "losses": 0,
+        "points": 12
+      },
+      {
+        "teamId": "den",
+        "name": "Denmark",
+        "flag": "🇩🇰",
+        "played": 5,
+        "wins": 3,
+        "losses": 2,
+        "points": 9
+      },
+      {
+        "teamId": "jpn",
+        "name": "Japan",
+        "flag": "🇯🇵",
+        "played": 5,
+        "wins": 2,
+        "losses": 3,
+        "points": 6
+      },
+      {
+        "teamId": "esp",
+        "name": "Spain",
+        "flag": "🇪🇸",
+        "played": 6,
+        "wins": 1,
+        "losses": 4,
+        "points": 3
+      },
+      {
+        "teamId": "ger",
+        "name": "Germany",
+        "flag": "🇩🇪",
+        "played": 4,
+        "wins": 4,
+        "losses": 0,
+        "points": 12
+      },
+      {
+        "teamId": "can",
+        "name": "Canada",
+        "flag": "🇨🇦",
+        "played": 5,
+        "wins": 3,
+        "losses": 2,
+        "points": 9
+      },
+      {
+        "teamId": "sui",
+        "name": "Switzerland",
+        "flag": "🇨🇭",
+        "played": 5,
+        "wins": 2,
+        "losses": 3,
+        "points": 6
+      },
+      {
+        "teamId": "bra",
+        "name": "Brazil",
+        "flag": "🇧🇷",
+        "played": 6,
+        "wins": 1,
+        "losses": 4,
+        "points": 3
+      },
+      {
+        "teamId": "ita",
+        "name": "Italy",
+        "flag": "🇮🇹",
+        "played": 4,
+        "wins": 4,
+        "losses": 0,
+        "points": 12
+      },
+      {
+        "teamId": "ned",
+        "name": "Netherlands",
+        "flag": "🇳🇱",
+        "played": 5,
+        "wins": 3,
+        "losses": 2,
+        "points": 9
+      },
+      {
+        "teamId": "arg",
+        "name": "Argentina",
+        "flag": "🇦🇷",
+        "played": 5,
+        "wins": 2,
+        "losses": 3,
+        "points": 6
+      },
+      {
+        "teamId": "swe",
+        "name": "Sweden",
+        "flag": "🇸🇪",
+        "played": 6,
+        "wins": 1,
+        "losses": 4,
+        "points": 3
+      }
+    ]
+  },
   "assets": {
     "heroBackdrop": "../generated/fit-heroes/sailgp-companion.svg"
   }

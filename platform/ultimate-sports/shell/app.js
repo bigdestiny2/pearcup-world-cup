@@ -294,6 +294,28 @@ function fitTemplateKind () {
   const cfg = fitConfig()
   return cfg.templateKind || (cfg.templateKinds && cfg.templateKinds[0]) || 'single-elimination'
 }
+function fitLayoutKind () {
+  const cfg = fitConfig()
+  const kinds = cfg.templateKinds || [fitTemplateKind()]
+  // Use the most specific template kind for the actual layout region. This lets
+  // fits that support multiple templates (e.g. esports-major, sailgp-companion)
+  // render their distinctive non-bracket surface even when the primary catalog
+  // kind is bracket-oriented. Series-playoff is treated as more specific than
+  // round-robin so racing/sailing series render a scoreboard/leaderboard first,
+  // while round-robin is more specific than creator-custom so local leagues
+  // render standings instead of a custom stage.
+  if (kinds.includes('fight-card')) return 'fight-card'
+  if (kinds.includes('awards-card')) return 'awards-card'
+  if (kinds.includes('series-playoff')) return 'series-playoff'
+  if (kinds.includes('round-robin')) return 'round-robin'
+  if (kinds.includes('creator-custom')) return 'creator-custom'
+  if (kinds.includes('group-plus-knockout')) return 'group-plus-knockout'
+  return kinds[0] || 'single-elimination'
+}
+function fitTemplateData () {
+  const cfg = fitConfig()
+  return cfg.templateData || {}
+}
 function fitAssets () {
   const cfg = fitConfig()
   const fitId = cfg.fitId || 'world-cup'
@@ -343,6 +365,17 @@ function fitStageLabel () {
   if (kind === 'round-robin') return 'Standings'
   return 'Round of 32'
 }
+function bracketTitleForKind () {
+  const layout = fitLayoutKind()
+  const title = fitTitle()
+  if (layout === 'fight-card') return `${title} fight card`
+  if (layout === 'awards-card') return `${title} categories`
+  if (layout === 'round-robin') return `${title} standings`
+  if (layout === 'creator-custom') return `${title} bracket stage`
+  if (layout === 'series-playoff') return `${title} series grid`
+  if (layout === 'group-plus-knockout') return `Enter a ${title} bracket`
+  return `Enter a ${title} bracket`
+}
 function fitEntrantLabel () {
   const shape = fitConfig().entrantShape || 'team'
   const map = { team: 'team', player: 'player', fighter: 'fighter', creator: 'creator', nominee: 'nominee' }
@@ -356,7 +389,9 @@ function onboardingHeading () {
 function applyFitAssets () {
   const cfg = fitConfig()
   const kind = fitTemplateKind()
+  const layout = fitLayoutKind()
   document.body.setAttribute('data-template-kind', kind)
+  document.body.setAttribute('data-layout-kind', layout)
   document.body.setAttribute('data-fit-id', cfg.fitId || 'world-cup')
   const assets = fitAssets()
   if (assets.heroBackdrop) {
@@ -2269,7 +2304,7 @@ function renderBracketDemoStats (selectedPool) {
   })
 }
 
-function renderBracketBoard () {
+function renderKnockoutBracketBoard () {
   const placements = {
     round32: index => ({ column: 1, row: index + 2, span: 1 }),
     round16: index => ({ column: 2, row: 2 + (index * 2), span: 2 }),
@@ -2279,7 +2314,7 @@ function renderBracketBoard () {
   }
   const rounds = buildRounds()
 
-  $('#bracketBoard').innerHTML = `
+  return `
     <svg class="bracket-lines" id="bracketLines" aria-hidden="true"></svg>
     ${rounds.map((round, roundIndex) => `
     <p class="round-title" style="grid-column:${roundIndex + 1};grid-row:1">${round.label}</p>
@@ -2298,16 +2333,245 @@ function renderBracketBoard () {
     }).join('')}
     `).join('')}
   `
+}
 
-  $$('#bracketBoard [data-pick]').forEach(button => {
-    button.addEventListener('click', () => {
-      state.picks[button.dataset.match] = button.dataset.pick
-      clearDownstream(button.dataset.match)
-      persist()
-      renderBracket()
+function renderGroupStageRegion () {
+  const data = fitTemplateData()
+  const groups = (data && data.groups) || []
+  if (!groups.length) return ''
+  return `
+    <div class="group-stage-region" aria-label="Group stage tables">
+      <p class="eyebrow">Group stage</p>
+      <div class="group-grid">
+        ${groups.map(group => `
+          <article class="group-card">
+            <header class="group-header">${escapeHtml(group.name)}</header>
+            <table class="group-table">
+              <thead>
+                <tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>Pts</th></tr>
+              </thead>
+              <tbody>
+                ${group.entrants.map(entrant => `
+                  <tr>
+                    <td><span class="group-flag">${entrant.flag || ''}</span> ${escapeHtml(entrant.name)}</td>
+                    <td>${entrant.played}</td>
+                    <td>${entrant.wins}</td>
+                    <td>${entrant.draws}</td>
+                    <td>${entrant.losses}</td>
+                    <td><strong>${entrant.points}</strong></td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </article>
+        `).join('')}
+      </div>
+    </div>
+  `
+}
+
+function renderSeriesGridRegion () {
+  const data = fitTemplateData()
+  const series = (data && data.series) || []
+  if (!series.length) return ''
+  return `
+    <div class="series-grid-region" aria-label="Series scoreboard">
+      <p class="eyebrow">Series scoreboard</p>
+      <div class="series-grid">
+        ${series.map(s => {
+          const home = teamById(s.home)
+          const away = teamById(s.away)
+          return `
+            <article class="series-card" data-series-id="${s.id}">
+              <div class="series-meta">
+                <span>Best of ${s.needed * 2 - 1}</span>
+                <span class="series-status">${escapeHtml(s.status)}</span>
+              </div>
+              <div class="series-teams">
+                <div class="series-team">
+                  <span class="series-flag">${home.flag}</span>
+                  <strong>${escapeHtml(home.name)}</strong>
+                  <span class="series-wins">${s.homeWins}</span>
+                </div>
+                <div class="series-divider">-</div>
+                <div class="series-team is-away">
+                  <span class="series-flag">${away.flag}</span>
+                  <strong>${escapeHtml(away.name)}</strong>
+                  <span class="series-wins">${s.awayWins}</span>
+                </div>
+              </div>
+              <div class="series-games">
+                ${s.games.map(g => `
+                  <span class="series-game" title="Game ${g.number}">${g.homeScore}-${g.awayScore}</span>
+                `).join('')}
+              </div>
+            </article>
+          `
+        }).join('')}
+      </div>
+    </div>
+  `
+}
+
+function renderBoutListRegion () {
+  const data = fitTemplateData()
+  const bouts = (data && data.bouts) || []
+  if (!bouts.length) return ''
+  return `
+    <div class="bout-list-region" aria-label="Fight card bouts">
+      <p class="eyebrow">Main card</p>
+      <div class="bout-list">
+        ${bouts.map(bout => {
+          const red = teamById(bout.red)
+          const blue = teamById(bout.blue)
+          return `
+            <article class="bout-card" data-bout-id="${bout.id}">
+              <div class="bout-meta">
+                <span class="bout-label">${escapeHtml(bout.label)}</span>
+                <span class="bout-weight">${escapeHtml(bout.weightClass)}</span>
+                <span class="bout-method">${escapeHtml(bout.method)} · Round ${bout.round}</span>
+              </div>
+              <div class="bout-corners">
+                <div class="bout-corner is-red">
+                  <span class="corner-tag">Red</span>
+                  <strong>${escapeHtml(red.name)}</strong>
+                  <span class="bout-record">${escapeHtml(bout.redRecord)}</span>
+                </div>
+                <div class="bout-vs">VS</div>
+                <div class="bout-corner is-blue">
+                  <span class="corner-tag">Blue</span>
+                  <strong>${escapeHtml(blue.name)}</strong>
+                  <span class="bout-record">${escapeHtml(bout.blueRecord)}</span>
+                </div>
+              </div>
+            </article>
+          `
+        }).join('')}
+      </div>
+    </div>
+  `
+}
+
+function renderCategoryCardsRegion () {
+  const data = fitTemplateData()
+  const categories = (data && data.categories) || []
+  if (!categories.length) return ''
+  return `
+    <div class="category-cards-region" aria-label="Awards categories">
+      <p class="eyebrow">Award categories</p>
+      <div class="category-grid">
+        ${categories.map(cat => `
+          <article class="category-card" data-category-id="${cat.id}">
+            <header class="category-header">${escapeHtml(cat.name)}</header>
+            <div class="nominee-list">
+              ${cat.nominees.map(nomineeId => {
+                const nominee = teamById(nomineeId)
+                return `
+                  <div class="nominee-row">
+                    <span class="nominee-flag">${nominee.flag}</span>
+                    <span>${escapeHtml(nominee.name)}</span>
+                  </div>
+                `
+              }).join('')}
+            </div>
+          </article>
+        `).join('')}
+      </div>
+    </div>
+  `
+}
+
+function renderStandingsRegion () {
+  const data = fitTemplateData()
+  const standings = (data && data.standings) || []
+  if (!standings.length) return ''
+  return `
+    <div class="standings-region" aria-label="League standings">
+      <p class="eyebrow">Standings</p>
+      <table class="standings-table">
+        <thead>
+          <tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>L</th><th>Pts</th></tr>
+        </thead>
+        <tbody>
+          ${standings.map((row, index) => `
+            <tr>
+              <td>${index + 1}</td>
+              <td><span class="standings-flag">${row.flag || ''}</span> ${escapeHtml(row.name)}</td>
+              <td>${row.played}</td>
+              <td>${row.wins}</td>
+              <td>${row.losses}</td>
+              <td><strong>${row.points}</strong></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `
+}
+
+function renderCreatorStageRegion () {
+  const data = fitTemplateData()
+  const stage = (data && data.customStage) || { name: 'Creator bracket', rounds: [] }
+  return `
+    <div class="creator-stage-region" aria-label="Creator tournament stage">
+      <p class="eyebrow">${escapeHtml(stage.name || 'Creator stage')}</p>
+      ${stage.rounds.map(round => `
+        <div class="creator-round">
+          <p class="creator-round-name">${escapeHtml(round.name)}</p>
+          <div class="creator-matchups">
+            ${round.matchups.map(matchup => {
+              const a = teamById(matchup.slots[0])
+              const b = teamById(matchup.slots[1])
+              return `
+                <article class="creator-matchup" data-matchup-id="${matchup.id}">
+                  <span class="creator-slot">${escapeHtml(a.name)}</span>
+                  <span class="creator-vs">vs</span>
+                  <span class="creator-slot">${escapeHtml(b.name)}</span>
+                </article>
+              `
+            }).join('')}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `
+}
+
+function renderBracketBoard () {
+  const layout = fitLayoutKind()
+  const board = $('#bracketBoard')
+  if (!board) return
+
+  if (layout === 'fight-card') {
+    board.innerHTML = renderBoutListRegion()
+  } else if (layout === 'awards-card') {
+    board.innerHTML = renderCategoryCardsRegion()
+  } else if (layout === 'round-robin') {
+    board.innerHTML = renderStandingsRegion()
+  } else if (layout === 'creator-custom') {
+    board.innerHTML = renderCreatorStageRegion()
+  } else if (layout === 'series-playoff') {
+    board.innerHTML = renderSeriesGridRegion()
+  } else if (layout === 'group-plus-knockout') {
+    board.innerHTML = `
+      ${renderGroupStageRegion()}
+      <div class="bracket-region" data-region="knockout-bracket" style="display:contents">${renderKnockoutBracketBoard()}</div>
+    `
+  } else {
+    board.innerHTML = renderKnockoutBracketBoard()
+  }
+
+  if (layout === 'single-elimination' || layout === 'group-plus-knockout') {
+    $$('#bracketBoard [data-pick]').forEach(button => {
+      button.addEventListener('click', () => {
+        state.picks[button.dataset.match] = button.dataset.pick
+        clearDownstream(button.dataset.match)
+        persist()
+        renderBracket()
+      })
     })
-  })
-  scheduleBracketConnectors()
+    scheduleBracketConnectors()
+  }
   applyFitAssets()
 }
 
@@ -2317,6 +2581,8 @@ async function renderBracket () {
   const wdk = integrationRuntime.readiness.tetherWdk
   const entered = !!state.enteredPools[selectedPool.tier]
   $('#bracketTierLabel').textContent = `$${selectedPool.tier} pool${entered ? ' · entered' : ''}`
+  const bracketTitleEl = $('#bracketTitle')
+  if (bracketTitleEl) bracketTitleEl.textContent = bracketTitleForKind()
   renderPoolSelect()
   const remaining = remainingPicks()
   const pr = $('#picksRemaining')

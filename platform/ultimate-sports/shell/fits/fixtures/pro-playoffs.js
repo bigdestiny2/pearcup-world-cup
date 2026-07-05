@@ -8,7 +8,9 @@
   "subtitle": "Ultimate Sports",
   "category": "pro-sports",
   "entrantShape": "team",
-  "templateKinds": ["series-playoff"],
+  "templateKinds": [
+    "series-playoff"
+  ],
   "defaultTeam": "lal",
   "theme": {
     "--ink": "#1a1025",
@@ -658,6 +660,239 @@
       "trust": "97.9%"
     }
   ],
+  "templateData": {
+    "series": [
+      {
+        "id": "series-1",
+        "home": "lal",
+        "away": "bos",
+        "homeName": "Lakers",
+        "awayName": "Celtics",
+        "homeWins": 2,
+        "awayWins": 1,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 98,
+            "awayScore": 107
+          },
+          {
+            "number": 2,
+            "homeScore": 95,
+            "awayScore": 100
+          },
+          {
+            "number": 3,
+            "homeScore": 101,
+            "awayScore": 96
+          }
+        ]
+      },
+      {
+        "id": "series-2",
+        "home": "gs",
+        "away": "den",
+        "homeName": "Warriors",
+        "awayName": "Nuggets",
+        "homeWins": 1,
+        "awayWins": 2,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 101,
+            "awayScore": 100
+          },
+          {
+            "number": 2,
+            "homeScore": 95,
+            "awayScore": 107
+          },
+          {
+            "number": 3,
+            "homeScore": 98,
+            "awayScore": 99
+          }
+        ]
+      },
+      {
+        "id": "series-3",
+        "home": "mia",
+        "away": "phi",
+        "homeName": "Heat",
+        "awayName": "76ers",
+        "homeWins": 3,
+        "awayWins": 1,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 95,
+            "awayScore": 107
+          },
+          {
+            "number": 2,
+            "homeScore": 98,
+            "awayScore": 99
+          },
+          {
+            "number": 3,
+            "homeScore": 104,
+            "awayScore": 102
+          },
+          {
+            "number": 4,
+            "homeScore": 110,
+            "awayScore": 96
+          }
+        ]
+      },
+      {
+        "id": "series-4",
+        "home": "mil",
+        "away": "dal",
+        "homeName": "Bucks",
+        "awayName": "Mavericks",
+        "homeWins": 2,
+        "awayWins": 0,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 110,
+            "awayScore": 96
+          },
+          {
+            "number": 2,
+            "homeScore": 101,
+            "awayScore": 100
+          }
+        ]
+      },
+      {
+        "id": "series-5",
+        "home": "col",
+        "away": "edm",
+        "homeName": "Avalanche",
+        "awayName": "Oilers",
+        "homeWins": 1,
+        "awayWins": 3,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 110,
+            "awayScore": 102
+          },
+          {
+            "number": 2,
+            "homeScore": 104,
+            "awayScore": 99
+          },
+          {
+            "number": 3,
+            "homeScore": 98,
+            "awayScore": 107
+          },
+          {
+            "number": 4,
+            "homeScore": 95,
+            "awayScore": 100
+          }
+        ]
+      },
+      {
+        "id": "series-6",
+        "home": "nyr",
+        "away": "tb",
+        "homeName": "Rangers",
+        "awayName": "Lightning",
+        "homeWins": 2,
+        "awayWins": 2,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 98,
+            "awayScore": 107
+          },
+          {
+            "number": 2,
+            "homeScore": 95,
+            "awayScore": 100
+          },
+          {
+            "number": 3,
+            "homeScore": 101,
+            "awayScore": 96
+          },
+          {
+            "number": 4,
+            "homeScore": 110,
+            "awayScore": 102
+          }
+        ]
+      },
+      {
+        "id": "series-7",
+        "home": "nyy",
+        "away": "lad",
+        "homeName": "Yankees",
+        "awayName": "Dodgers",
+        "homeWins": 3,
+        "awayWins": 0,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 101,
+            "awayScore": 100
+          },
+          {
+            "number": 2,
+            "homeScore": 95,
+            "awayScore": 107
+          },
+          {
+            "number": 3,
+            "homeScore": 98,
+            "awayScore": 99
+          }
+        ]
+      },
+      {
+        "id": "series-8",
+        "home": "houa",
+        "away": "atl",
+        "homeName": "Astros",
+        "awayName": "Braves",
+        "homeWins": 0,
+        "awayWins": 2,
+        "needed": 4,
+        "status": "In progress",
+        "games": [
+          {
+            "number": 1,
+            "homeScore": 95,
+            "awayScore": 107
+          },
+          {
+            "number": 2,
+            "homeScore": 98,
+            "awayScore": 99
+          }
+        ]
+      }
+    ]
+  },
   "assets": {
     "heroBackdrop": "../generated/fit-heroes/pro-playoffs.svg"
   }

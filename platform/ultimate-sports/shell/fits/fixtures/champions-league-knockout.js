@@ -8,7 +8,9 @@
   "subtitle": "Ultimate Sports",
   "category": "soccer",
   "entrantShape": "team",
-  "templateKinds": ["single-elimination"],
+  "templateKinds": [
+    "single-elimination"
+  ],
   "defaultTeam": "rm",
   "theme": {
     "--ink": "#0f172a",
@@ -658,6 +660,7 @@
       "trust": "97.9%"
     }
   ],
+  "templateData": {},
   "assets": {
     "heroBackdrop": "../generated/fit-heroes/champions-league-knockout.svg"
   }

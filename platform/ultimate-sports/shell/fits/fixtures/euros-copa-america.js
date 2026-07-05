@@ -8,7 +8,10 @@
   "subtitle": "Ultimate Sports",
   "category": "soccer",
   "entrantShape": "team",
-  "templateKinds": ["group-plus-knockout","single-elimination"],
+  "templateKinds": [
+    "group-plus-knockout",
+    "single-elimination"
+  ],
   "defaultTeam": "fr",
   "theme": {
     "--ink": "#1e293b",
@@ -658,6 +661,206 @@
       "trust": "97.9%"
     }
   ],
+  "templateData": {
+    "groups": [
+      {
+        "name": "Group A",
+        "entrants": [
+          {
+            "teamId": "fr",
+            "name": "France",
+            "flag": "🇫🇷",
+            "played": 3,
+            "wins": 2,
+            "draws": 1,
+            "losses": 0,
+            "points": 7,
+            "gd": 4
+          },
+          {
+            "teamId": "de",
+            "name": "Germany",
+            "flag": "🇩🇪",
+            "played": 3,
+            "wins": 1,
+            "draws": 1,
+            "losses": 1,
+            "points": 4,
+            "gd": 0
+          },
+          {
+            "teamId": "es",
+            "name": "Spain",
+            "flag": "🇪🇸",
+            "played": 3,
+            "wins": 1,
+            "draws": 0,
+            "losses": 2,
+            "points": 3,
+            "gd": -2
+          },
+          {
+            "teamId": "eng",
+            "name": "England",
+            "flag": "🏴",
+            "played": 3,
+            "wins": 0,
+            "draws": 0,
+            "losses": 3,
+            "points": 0,
+            "gd": -2
+          }
+        ]
+      },
+      {
+        "name": "Group B",
+        "entrants": [
+          {
+            "teamId": "pt",
+            "name": "Portugal",
+            "flag": "🇵🇹",
+            "played": 3,
+            "wins": 2,
+            "draws": 0,
+            "losses": 1,
+            "points": 6,
+            "gd": 2
+          },
+          {
+            "teamId": "it",
+            "name": "Italy",
+            "flag": "🇮🇹",
+            "played": 3,
+            "wins": 1,
+            "draws": 2,
+            "losses": 0,
+            "points": 5,
+            "gd": 1
+          },
+          {
+            "teamId": "nl",
+            "name": "Netherlands",
+            "flag": "🇳🇱",
+            "played": 3,
+            "wins": 1,
+            "draws": 1,
+            "losses": 1,
+            "points": 4,
+            "gd": -1
+          },
+          {
+            "teamId": "ar",
+            "name": "Argentina",
+            "flag": "🇦🇷",
+            "played": 3,
+            "wins": 0,
+            "draws": 1,
+            "losses": 2,
+            "points": 1,
+            "gd": -2
+          }
+        ]
+      },
+      {
+        "name": "Group C",
+        "entrants": [
+          {
+            "teamId": "br",
+            "name": "Brazil",
+            "flag": "🇧🇷",
+            "played": 3,
+            "wins": 2,
+            "draws": 1,
+            "losses": 0,
+            "points": 7,
+            "gd": 3
+          },
+          {
+            "teamId": "mx",
+            "name": "Mexico",
+            "flag": "🇲🇽",
+            "played": 3,
+            "wins": 2,
+            "draws": 0,
+            "losses": 1,
+            "points": 6,
+            "gd": 2
+          },
+          {
+            "teamId": "co",
+            "name": "Colombia",
+            "flag": "🇨🇴",
+            "played": 3,
+            "wins": 0,
+            "draws": 1,
+            "losses": 2,
+            "points": 1,
+            "gd": -3
+          },
+          {
+            "teamId": "us",
+            "name": "United States",
+            "flag": "🇺🇸",
+            "played": 3,
+            "wins": 0,
+            "draws": 0,
+            "losses": 3,
+            "points": 0,
+            "gd": -2
+          }
+        ]
+      },
+      {
+        "name": "Group D",
+        "entrants": [
+          {
+            "teamId": "ca",
+            "name": "Canada",
+            "flag": "🇨🇦",
+            "played": 3,
+            "wins": 3,
+            "draws": 0,
+            "losses": 0,
+            "points": 9,
+            "gd": 5
+          },
+          {
+            "teamId": "uy",
+            "name": "Uruguay",
+            "flag": "🇺🇾",
+            "played": 3,
+            "wins": 1,
+            "draws": 1,
+            "losses": 1,
+            "points": 4,
+            "gd": 0
+          },
+          {
+            "teamId": "ec",
+            "name": "Ecuador",
+            "flag": "🇪🇨",
+            "played": 3,
+            "wins": 1,
+            "draws": 0,
+            "losses": 2,
+            "points": 3,
+            "gd": -2
+          },
+          {
+            "teamId": "cl",
+            "name": "Chile",
+            "flag": "🇨🇱",
+            "played": 3,
+            "wins": 0,
+            "draws": 1,
+            "losses": 2,
+            "points": 1,
+            "gd": -3
+          }
+        ]
+      }
+    ]
+  },
   "assets": {
     "heroBackdrop": "../generated/fit-heroes/euros-copa-america.svg"
   }

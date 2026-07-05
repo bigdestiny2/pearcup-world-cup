@@ -8,7 +8,11 @@
   "subtitle": "Ultimate Sports",
   "category": "local",
   "entrantShape": "team",
-  "templateKinds": ["round-robin","single-elimination","creator-custom"],
+  "templateKinds": [
+    "round-robin",
+    "single-elimination",
+    "creator-custom"
+  ],
   "defaultTeam": "phoenix",
   "theme": {
     "--ink": "#0f291e",
@@ -658,6 +662,337 @@
       "trust": "97.9%"
     }
   ],
+  "templateData": {
+    "standings": [
+      {
+        "teamId": "phoenix",
+        "name": "Phoenix FC",
+        "flag": "⚽",
+        "played": 4,
+        "wins": 4,
+        "losses": 0,
+        "points": 12
+      },
+      {
+        "teamId": "titan",
+        "name": "Titan United",
+        "flag": "⚽",
+        "played": 5,
+        "wins": 3,
+        "losses": 2,
+        "points": 9
+      },
+      {
+        "teamId": "rover",
+        "name": "Rovers",
+        "flag": "⚽",
+        "played": 5,
+        "wins": 2,
+        "losses": 3,
+        "points": 6
+      },
+      {
+        "teamId": "sting",
+        "name": "Stingers",
+        "flag": "⚽",
+        "played": 6,
+        "wins": 1,
+        "losses": 4,
+        "points": 3
+      },
+      {
+        "teamId": "thund",
+        "name": "Thunder",
+        "flag": "⚽",
+        "played": 4,
+        "wins": 4,
+        "losses": 0,
+        "points": 12
+      },
+      {
+        "teamId": "shark",
+        "name": "Sharks",
+        "flag": "⚽",
+        "played": 5,
+        "wins": 3,
+        "losses": 2,
+        "points": 9
+      },
+      {
+        "teamId": "vultu",
+        "name": "Vultures",
+        "flag": "⚽",
+        "played": 5,
+        "wins": 2,
+        "losses": 3,
+        "points": 6
+      },
+      {
+        "teamId": "panda",
+        "name": "Pandas",
+        "flag": "⚽",
+        "played": 6,
+        "wins": 1,
+        "losses": 4,
+        "points": 3
+      },
+      {
+        "teamId": "eagle",
+        "name": "Eagles",
+        "flag": "🏈",
+        "played": 4,
+        "wins": 4,
+        "losses": 0,
+        "points": 12
+      },
+      {
+        "teamId": "lion",
+        "name": "Lions",
+        "flag": "🏈",
+        "played": 5,
+        "wins": 3,
+        "losses": 2,
+        "points": 9
+      },
+      {
+        "teamId": "hawk",
+        "name": "Hawks",
+        "flag": "🏀",
+        "played": 5,
+        "wins": 2,
+        "losses": 3,
+        "points": 6
+      },
+      {
+        "teamId": "blaze",
+        "name": "Blazers",
+        "flag": "🏀",
+        "played": 6,
+        "wins": 1,
+        "losses": 4,
+        "points": 3
+      },
+      {
+        "teamId": "orca",
+        "name": "Orcas",
+        "flag": "🏐",
+        "played": 4,
+        "wins": 4,
+        "losses": 0,
+        "points": 12
+      },
+      {
+        "teamId": "cobra",
+        "name": "Cobras",
+        "flag": "🏐",
+        "played": 5,
+        "wins": 3,
+        "losses": 2,
+        "points": 9
+      },
+      {
+        "teamId": "falcon",
+        "name": "Falcons",
+        "flag": "🥎",
+        "played": 5,
+        "wins": 2,
+        "losses": 3,
+        "points": 6
+      },
+      {
+        "teamId": "wolf",
+        "name": "Wolves",
+        "flag": "🥎",
+        "played": 6,
+        "wins": 1,
+        "losses": 4,
+        "points": 3
+      }
+    ],
+    "customStage": {
+      "name": "Creator Bracket Stage",
+      "rounds": [
+        {
+          "name": "Round of 16",
+          "matchups": [
+            {
+              "id": "creator-r16-1",
+              "slots": [
+                "phoenix",
+                "titan"
+              ]
+            },
+            {
+              "id": "creator-r16-2",
+              "slots": [
+                "titan",
+                "rover"
+              ]
+            },
+            {
+              "id": "creator-r16-3",
+              "slots": [
+                "rover",
+                "sting"
+              ]
+            },
+            {
+              "id": "creator-r16-4",
+              "slots": [
+                "sting",
+                "thund"
+              ]
+            },
+            {
+              "id": "creator-r16-5",
+              "slots": [
+                "thund",
+                "shark"
+              ]
+            },
+            {
+              "id": "creator-r16-6",
+              "slots": [
+                "shark",
+                "vultu"
+              ]
+            },
+            {
+              "id": "creator-r16-7",
+              "slots": [
+                "vultu",
+                "panda"
+              ]
+            },
+            {
+              "id": "creator-r16-8",
+              "slots": [
+                "panda",
+                "eagle"
+              ]
+            },
+            {
+              "id": "creator-r16-9",
+              "slots": [
+                "eagle",
+                "lion"
+              ]
+            },
+            {
+              "id": "creator-r16-10",
+              "slots": [
+                "lion",
+                "hawk"
+              ]
+            },
+            {
+              "id": "creator-r16-11",
+              "slots": [
+                "hawk",
+                "blaze"
+              ]
+            },
+            {
+              "id": "creator-r16-12",
+              "slots": [
+                "blaze",
+                "orca"
+              ]
+            },
+            {
+              "id": "creator-r16-13",
+              "slots": [
+                "orca",
+                "cobra"
+              ]
+            },
+            {
+              "id": "creator-r16-14",
+              "slots": [
+                "cobra",
+                "falcon"
+              ]
+            },
+            {
+              "id": "creator-r16-15",
+              "slots": [
+                "falcon",
+                "wolf"
+              ]
+            },
+            {
+              "id": "creator-r16-16",
+              "slots": [
+                "wolf",
+                "phoenix"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Quarterfinals",
+          "matchups": [
+            {
+              "id": "creator-qf-1",
+              "slots": [
+                "phoenix",
+                "rover"
+              ]
+            },
+            {
+              "id": "creator-qf-2",
+              "slots": [
+                "titan",
+                "sting"
+              ]
+            },
+            {
+              "id": "creator-qf-3",
+              "slots": [
+                "rover",
+                "thund"
+              ]
+            },
+            {
+              "id": "creator-qf-4",
+              "slots": [
+                "sting",
+                "shark"
+              ]
+            },
+            {
+              "id": "creator-qf-5",
+              "slots": [
+                "thund",
+                "vultu"
+              ]
+            },
+            {
+              "id": "creator-qf-6",
+              "slots": [
+                "shark",
+                "panda"
+              ]
+            },
+            {
+              "id": "creator-qf-7",
+              "slots": [
+                "vultu",
+                "eagle"
+              ]
+            },
+            {
+              "id": "creator-qf-8",
+              "slots": [
+                "panda",
+                "lion"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
   "assets": {
     "heroBackdrop": "../generated/fit-heroes/local-leagues.svg"
   }

@@ -8,7 +8,10 @@
   "subtitle": "Ultimate Sports",
   "category": "creator",
   "entrantShape": "creator",
-  "templateKinds": ["single-elimination","creator-custom"],
+  "templateKinds": [
+    "single-elimination",
+    "creator-custom"
+  ],
   "defaultTeam": "alpha",
   "theme": {
     "--ink": "#2a0a2e",
@@ -658,6 +661,191 @@
       "trust": "97.9%"
     }
   ],
+  "templateData": {
+    "customStage": {
+      "name": "Creator Bracket Stage",
+      "rounds": [
+        {
+          "name": "Round of 16",
+          "matchups": [
+            {
+              "id": "creator-r16-1",
+              "slots": [
+                "alpha",
+                "beta"
+              ]
+            },
+            {
+              "id": "creator-r16-2",
+              "slots": [
+                "beta",
+                "gamma"
+              ]
+            },
+            {
+              "id": "creator-r16-3",
+              "slots": [
+                "gamma",
+                "delta"
+              ]
+            },
+            {
+              "id": "creator-r16-4",
+              "slots": [
+                "delta",
+                "echo"
+              ]
+            },
+            {
+              "id": "creator-r16-5",
+              "slots": [
+                "echo",
+                "foxy"
+              ]
+            },
+            {
+              "id": "creator-r16-6",
+              "slots": [
+                "foxy",
+                "ghost"
+              ]
+            },
+            {
+              "id": "creator-r16-7",
+              "slots": [
+                "ghost",
+                "hype"
+              ]
+            },
+            {
+              "id": "creator-r16-8",
+              "slots": [
+                "hype",
+                "ivy"
+              ]
+            },
+            {
+              "id": "creator-r16-9",
+              "slots": [
+                "ivy",
+                "jolt"
+              ]
+            },
+            {
+              "id": "creator-r16-10",
+              "slots": [
+                "jolt",
+                "krew"
+              ]
+            },
+            {
+              "id": "creator-r16-11",
+              "slots": [
+                "krew",
+                "luxe"
+              ]
+            },
+            {
+              "id": "creator-r16-12",
+              "slots": [
+                "luxe",
+                "muse"
+              ]
+            },
+            {
+              "id": "creator-r16-13",
+              "slots": [
+                "muse",
+                "nova"
+              ]
+            },
+            {
+              "id": "creator-r16-14",
+              "slots": [
+                "nova",
+                "orbit"
+              ]
+            },
+            {
+              "id": "creator-r16-15",
+              "slots": [
+                "orbit",
+                "pulse"
+              ]
+            },
+            {
+              "id": "creator-r16-16",
+              "slots": [
+                "pulse",
+                "alpha"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Quarterfinals",
+          "matchups": [
+            {
+              "id": "creator-qf-1",
+              "slots": [
+                "alpha",
+                "gamma"
+              ]
+            },
+            {
+              "id": "creator-qf-2",
+              "slots": [
+                "beta",
+                "delta"
+              ]
+            },
+            {
+              "id": "creator-qf-3",
+              "slots": [
+                "gamma",
+                "echo"
+              ]
+            },
+            {
+              "id": "creator-qf-4",
+              "slots": [
+                "delta",
+                "foxy"
+              ]
+            },
+            {
+              "id": "creator-qf-5",
+              "slots": [
+                "echo",
+                "ghost"
+              ]
+            },
+            {
+              "id": "creator-qf-6",
+              "slots": [
+                "foxy",
+                "hype"
+              ]
+            },
+            {
+              "id": "creator-qf-7",
+              "slots": [
+                "ghost",
+                "ivy"
+              ]
+            },
+            {
+              "id": "creator-qf-8",
+              "slots": [
+                "hype",
+                "jolt"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
   "assets": {
     "heroBackdrop": "../generated/fit-heroes/creator-reality-brackets.svg"
   }

@@ -8,7 +8,9 @@
   "subtitle": "Ultimate Sports",
   "category": "basketball",
   "entrantShape": "team",
-  "templateKinds": ["single-elimination"],
+  "templateKinds": [
+    "single-elimination"
+  ],
   "defaultTeam": "uconn",
   "theme": {
     "--ink": "#2a1510",
@@ -658,6 +660,7 @@
       "trust": "97.9%"
     }
   ],
+  "templateData": {},
   "assets": {
     "heroBackdrop": "../generated/fit-heroes/march-madness.svg"
   }

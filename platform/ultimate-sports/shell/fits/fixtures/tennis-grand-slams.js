@@ -8,7 +8,9 @@
   "subtitle": "Ultimate Sports",
   "category": "tennis",
   "entrantShape": "player",
-  "templateKinds": ["single-elimination"],
+  "templateKinds": [
+    "single-elimination"
+  ],
   "defaultTeam": "alcaraz",
   "theme": {
     "--ink": "#0f2c22",
@@ -658,6 +660,7 @@
       "trust": "97.9%"
     }
   ],
+  "templateData": {},
   "assets": {
     "heroBackdrop": "../generated/fit-heroes/tennis-grand-slams.svg"
   }

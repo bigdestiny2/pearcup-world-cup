@@ -8,7 +8,9 @@
   "subtitle": "Ultimate Sports",
   "category": "awards",
   "entrantShape": "nominee",
-  "templateKinds": ["awards-card"],
+  "templateKinds": [
+    "awards-card"
+  ],
   "defaultTeam": "oppen",
   "theme": {
     "--ink": "#2a1a08",
@@ -658,6 +660,50 @@
       "trust": "97.9%"
     }
   ],
+  "templateData": {
+    "categories": [
+      {
+        "id": "cat-1",
+        "name": "Record of the Year",
+        "nominees": [
+          "oppen",
+          "barb",
+          "poor",
+          "kill"
+        ]
+      },
+      {
+        "id": "cat-2",
+        "name": "Album of the Year",
+        "nominees": [
+          "hold",
+          "past",
+          "anat",
+          "zone"
+        ]
+      },
+      {
+        "id": "cat-3",
+        "name": "Best Pop",
+        "nominees": [
+          "tayl",
+          "sza",
+          "bilal",
+          "lore"
+        ]
+      },
+      {
+        "id": "cat-4",
+        "name": "Best Rock",
+        "nominees": [
+          "kaar",
+          "mahn",
+          "corn",
+          "samr"
+        ]
+      }
+    ]
+  },
   "assets": {
     "heroBackdrop": "../generated/fit-heroes/awards-prediction-pools.svg"
   }

@@ -1461,6 +1461,34 @@
   ],
   "assets": {
     "heroBackdrop": "../generated/fit-heroes/world-cup.svg"
+  },
+  "templateData": {
+    "groups": [
+      { "name": "Group A", "entrants": [
+        { "teamId": "br", "name": "Brazil", "flag": "🇧🇷", "played": 3, "wins": 2, "draws": 1, "losses": 0, "points": 7, "gd": 4 },
+        { "teamId": "jp", "name": "Japan", "flag": "🇯🇵", "played": 3, "wins": 1, "draws": 1, "losses": 1, "points": 4, "gd": 0 },
+        { "teamId": "ci", "name": "Ivory Coast", "flag": "🇨🇮", "played": 3, "wins": 1, "draws": 0, "losses": 2, "points": 3, "gd": -2 },
+        { "teamId": "no", "name": "Norway", "flag": "🇳🇴", "played": 3, "wins": 0, "draws": 0, "losses": 3, "points": 0, "gd": -2 }
+      ]},
+      { "name": "Group B", "entrants": [
+        { "teamId": "mx", "name": "Mexico", "flag": "🇲🇽", "played": 3, "wins": 2, "draws": 0, "losses": 1, "points": 6, "gd": 2 },
+        { "teamId": "ec", "name": "Ecuador", "flag": "🇪🇨", "played": 3, "wins": 1, "draws": 2, "losses": 0, "points": 5, "gd": 1 },
+        { "teamId": "eng", "name": "England", "flag": "🏴", "played": 3, "wins": 1, "draws": 1, "losses": 1, "points": 4, "gd": -1 },
+        { "teamId": "cd", "name": "DR Congo", "flag": "🇨🇩", "played": 3, "wins": 0, "draws": 1, "losses": 2, "points": 1, "gd": -2 }
+      ]},
+      { "name": "Group C", "entrants": [
+        { "teamId": "ch", "name": "Switzerland", "flag": "🇨🇭", "played": 3, "wins": 2, "draws": 1, "losses": 0, "points": 7, "gd": 3 },
+        { "teamId": "dz", "name": "Algeria", "flag": "🇩🇿", "played": 3, "wins": 2, "draws": 0, "losses": 1, "points": 6, "gd": 2 },
+        { "teamId": "pt", "name": "Portugal", "flag": "🇵🇹", "played": 3, "wins": 0, "draws": 1, "losses": 2, "points": 1, "gd": -3 },
+        { "teamId": "hr", "name": "Croatia", "flag": "🇭🇷", "played": 3, "wins": 0, "draws": 0, "losses": 3, "points": 0, "gd": -2 }
+      ]},
+      { "name": "Group D", "entrants": [
+        { "teamId": "es", "name": "Spain", "flag": "🇪🇸", "played": 3, "wins": 3, "draws": 0, "losses": 0, "points": 9, "gd": 5 },
+        { "teamId": "at", "name": "Austria", "flag": "🇦🇹", "played": 3, "wins": 1, "draws": 1, "losses": 1, "points": 4, "gd": 0 },
+        { "teamId": "fr", "name": "France", "flag": "🇫🇷", "played": 3, "wins": 1, "draws": 0, "losses": 2, "points": 3, "gd": -2 },
+        { "teamId": "ar", "name": "Argentina", "flag": "🇦🇷", "played": 3, "wins": 0, "draws": 1, "losses": 2, "points": 1, "gd": -3 }
+      ]}
+    ]
   }
 }
 

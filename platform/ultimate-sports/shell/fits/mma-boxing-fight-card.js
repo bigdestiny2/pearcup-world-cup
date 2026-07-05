@@ -4,16 +4,19 @@
 
   const red = '#ef4444'
   const blue = '#3b82f6'
+  const gold = '#f59e0b'
+  const dark = '#121214'
+  const surface = '#1a1a1d'
 
   const teams = [
     { id: 'silva', name: 'R. Silva', flag: '🇧🇷', colors: [red, '#7f1d1d', '#fee2e2'] },
     { id: 'jones', name: 'D. Jones', flag: '🇺🇸', colors: [blue, '#1e3a8a', '#dbeafe'] },
     { id: 'nunes', name: 'A. Nunes', flag: '🇧🇷', colors: [red, '#7f1d1d', '#fee2e2'] },
-    { id: 'shevchenko', name: 'V. Shevchenko', flag: '🇰🇬', colors: [blue, '#1e3a8a', '#dbeafe'] },
+    { id: 'shevchenko', name: 'V. Shevchenko', name: 'V. Shevchenko', flag: '🇰🇬', colors: [blue, '#1e3a8a', '#dbeafe'] },
     { id: 'oliveira', name: 'C. Oliveira', flag: '🇧🇷', colors: [red, '#7f1d1d', '#fee2e2'] },
     { id: 'dariush', name: 'B. Dariush', flag: '🇮🇷', colors: [blue, '#1e3a8a', '#dbeafe'] },
     { id: 'sterling', name: 'C. Sterling', flag: '🇯🇲', colors: [red, '#7f1d1d', '#fee2e2'] },
-    { id: 'omalley', name: "S. O'Malley", flag: '🇺🇸', colors: [blue, '#1e3a8a', '#dbeafe'] },
+    { id: 'omalley', name: 'S. O\'Malley', flag: '🇺🇸', colors: [blue, '#1e3a8a', '#dbeafe'] },
     { id: 'volkanovski', name: 'A. Volkanovski', flag: '🇦🇺', colors: [red, '#7f1d1d', '#fee2e2'] },
     { id: 'makhachev', name: 'I. Makhachev', flag: '🇷🇺', colors: [blue, '#1e3a8a', '#dbeafe'] },
     { id: 'pereira', name: 'A. Pereira', flag: '🇧🇷', colors: [red, '#7f1d1d', '#fee2e2'] },
@@ -67,8 +70,6 @@
     { status: 'Featured', title: 'Oliveira vs Dariush', detail: 'Lightweight bracket room', live: false }
   ]
 
-  const liveMatch = homeFixtures.find(f => f.live)
-
   const matchStats = [
     ['Strikes landed', '112', '89', 56],
     ['Takedowns', '3', '1', 75],
@@ -91,22 +92,22 @@
     EN: [
       ['Main', 'Silva vs Jones is the main event room. Picks are open until the walkouts.'],
       ['Co-main', 'Nunes vs Shevchenko follows on the main card.'],
-      ['Prelims', "The early prelims start with Sterling vs O'Malley."]
+      ['Prelims', 'The early prelims start with Sterling vs O\'Malley.']
     ],
     PT: [
       ['Main', 'Silva vs Jones é a sala do evento principal. Palpites abertos até a entrada.'],
       ['Co-main', 'Nunes vs Shevchenko vem depois no card principal.'],
-      ['Prelims', "As preliminares começam com Sterling vs O'Malley."]
+      ['Prelims', 'As preliminares começam com Sterling vs O\'Malley.']
     ],
     ES: [
       ['Main', 'Silva vs Jones es la sala del evento estelar. Picks abiertos hasta la salida.'],
       ['Co-main', 'Nunes vs Shevchenko sigue en la cartelera principal.'],
-      ['Prelims', "Las preliminares comienzan con Sterling vs O'Malley."]
+      ['Prelims', 'Las preliminares comienzan con Sterling vs O\'Malley.']
     ],
     FR: [
-      ['Main', "Silva vs Jones est la salle de l'événement principal. Picks ouverts jusqu'à l'entrée."],
+      ['Main', 'Silva vs Jones est la salle de l\'événement principal. Picks ouverts jusqu\'à l\'entrée.'],
       ['Co-main', 'Nunes vs Shevchenko suit sur la carte principale.'],
-      ['Prelims', "Les préliminaires commencent avec Sterling vs O'Malley."]
+      ['Prelims', 'Les préliminaires commencent avec Sterling vs O\'Malley.']
     ]
   }
 
@@ -131,6 +132,8 @@
   ]
 
   const bouts = round32Matches.map((m, i) => {
+    const redCorner = teams.find(t => t.id === m.slots[0])
+    const blueCorner = teams.find(t => t.id === m.slots[1])
     const labels = ['Main event', 'Co-main', 'Featured', 'Featured', 'Prelim', 'Prelim', 'Prelim', 'Prelim']
     const weights = ['Light Heavyweight', 'Women\'s Bantamweight', 'Lightweight', 'Bantamweight', 'Featherweight', 'Middleweight', 'Welterweight', 'Light Heavyweight']
     return {
@@ -147,7 +150,7 @@
     }
   })
 
-  const cfg = {
+  root.registerFit('mma-boxing-fight-card', {
     fitId: 'mma-boxing-fight-card',
     title: 'Combat Sport Fight Cards',
     subtitle: 'Ultimate Sports',
@@ -176,15 +179,12 @@
       '--gold': '#f59e0b',
       '--lemon': '#fbbf24'
     },
-    entrants: teams,
     teams,
-    fixtures: homeFixtures,
-    homeFixtures,
+    pools,
     round32Matches,
     bracketLinks,
     bracketMatchIds,
-    liveMatch,
-    pools,
+    homeFixtures,
     matchStats,
     leaders,
     commentary,
@@ -195,13 +195,5 @@
     assets: {
       heroBackdrop: '../generated/mma-card/hero-backdrop/wide.png'
     }
-  }
-
-  if (typeof root !== 'undefined' && typeof root.registerFit === 'function') {
-    root.registerFit(cfg.fitId, cfg)
-  }
-
-  if (typeof module !== 'undefined' && module.exports) {
-    module.exports = cfg
-  }
-})(typeof window !== 'undefined' ? window : globalThis)
+  })
+})(window)
