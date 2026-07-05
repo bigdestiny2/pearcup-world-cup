@@ -1,0 +1,2038 @@
+{
+  "planVersion": "ultimate-sports-fit-asset-generation-plan-v1",
+  "generatedAt": "2026-07-05T10:36:54.573Z",
+  "model": "cogView-4-250304",
+  "imageSize": "1024x1024",
+  "negativeConstraints": [
+    "no official marks",
+    "no logos",
+    "no real people",
+    "no copyrighted venues"
+  ],
+  "fits": [
+    {
+      "planVersion": "ultimate-sports-fit-asset-generation-plan-v1",
+      "fitId": "world-cup",
+      "title": "World Cup",
+      "category": "soccer",
+      "themeId": "stadium-flags",
+      "visualTone": "global festival, bright stadium lights, national color accents",
+      "palette": [
+        "pitch-green",
+        "trophy-gold",
+        "signal-red",
+        "night-navy"
+      ],
+      "theme": {
+        "icon": "🏆",
+        "primary": "#139b49",
+        "secondary": "#ffd447",
+        "accent": "#1b55a5"
+      },
+      "generatedAt": "2026-07-05T10:36:54.573Z",
+      "assets": [
+        {
+          "assetType": "lobby-icon",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "stadium-flags",
+          "palette": [
+            "pitch-green",
+            "trophy-gold",
+            "signal-red",
+            "night-navy"
+          ],
+          "fileName": "icon"
+        },
+        {
+          "assetType": "server-card-cover",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "World Cup server card cover for a P2P sports tournament app, global festival, bright stadium lights, national color accents, palette: pitch-green, trophy-gold, signal-red, night-navy, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "stadium-flags",
+          "palette": [
+            "pitch-green",
+            "trophy-gold",
+            "signal-red",
+            "night-navy"
+          ],
+          "fileName": "cover"
+        },
+        {
+          "assetType": "hero-backdrop",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "World Cup hero backdrop for a P2P sports tournament app, global festival, bright stadium lights, national color accents, palette: pitch-green, trophy-gold, signal-red, night-navy, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "stadium-flags",
+          "palette": [
+            "pitch-green",
+            "trophy-gold",
+            "signal-red",
+            "night-navy"
+          ],
+          "fileName": "hero"
+        },
+        {
+          "assetType": "bracket-board-skin",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "World Cup bracket board skin for a P2P sports tournament app, global festival, bright stadium lights, national color accents, palette: pitch-green, trophy-gold, signal-red, night-navy, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "stadium-flags",
+          "palette": [
+            "pitch-green",
+            "trophy-gold",
+            "signal-red",
+            "night-navy"
+          ],
+          "fileName": "board"
+        },
+        {
+          "assetType": "pool-card-accent",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "stadium-flags",
+          "palette": [
+            "pitch-green",
+            "trophy-gold",
+            "signal-red",
+            "night-navy"
+          ],
+          "fileName": "accent"
+        },
+        {
+          "assetType": "mini-game-icon-set",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "stadium-flags",
+          "palette": [
+            "pitch-green",
+            "trophy-gold",
+            "signal-red",
+            "night-navy"
+          ],
+          "fileName": "icons"
+        },
+        {
+          "assetType": "watch-room-stage",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "World Cup watch room stage for a P2P sports tournament app, global festival, bright stadium lights, national color accents, palette: pitch-green, trophy-gold, signal-red, night-navy, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "stadium-flags",
+          "palette": [
+            "pitch-green",
+            "trophy-gold",
+            "signal-red",
+            "night-navy"
+          ],
+          "fileName": "stage"
+        },
+        {
+          "assetType": "result-share-card",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "World Cup result share card for a P2P sports tournament app, global festival, bright stadium lights, national color accents, palette: pitch-green, trophy-gold, signal-red, night-navy, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "stadium-flags",
+          "palette": [
+            "pitch-green",
+            "trophy-gold",
+            "signal-red",
+            "night-navy"
+          ],
+          "fileName": "share"
+        },
+        {
+          "assetType": "empty-state-illustration",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "World Cup empty state illustration for a P2P sports tournament app, global festival, bright stadium lights, national color accents, palette: pitch-green, trophy-gold, signal-red, night-navy, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "stadium-flags",
+          "palette": [
+            "pitch-green",
+            "trophy-gold",
+            "signal-red",
+            "night-navy"
+          ],
+          "fileName": "empty"
+        }
+      ]
+    },
+    {
+      "planVersion": "ultimate-sports-fit-asset-generation-plan-v1",
+      "fitId": "euros-copa-america",
+      "title": "Euros / Copa America",
+      "category": "soccer",
+      "themeId": "continental-flags",
+      "visualTone": "summer tournament, flags, clean broadcast match cards",
+      "palette": [
+        "grass-green",
+        "sunlit-blue",
+        "cup-silver",
+        "alert-red"
+      ],
+      "theme": {
+        "icon": "🌍",
+        "primary": "#3b82f6",
+        "secondary": "#ef4444",
+        "accent": "#1d4ed8"
+      },
+      "generatedAt": "2026-07-05T10:36:54.573Z",
+      "assets": [
+        {
+          "assetType": "lobby-icon",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "continental-flags",
+          "palette": [
+            "grass-green",
+            "sunlit-blue",
+            "cup-silver",
+            "alert-red"
+          ],
+          "fileName": "icon"
+        },
+        {
+          "assetType": "server-card-cover",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Euros / Copa America server card cover for a P2P sports tournament app, summer tournament, flags, clean broadcast match cards, palette: grass-green, sunlit-blue, cup-silver, alert-red, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "continental-flags",
+          "palette": [
+            "grass-green",
+            "sunlit-blue",
+            "cup-silver",
+            "alert-red"
+          ],
+          "fileName": "cover"
+        },
+        {
+          "assetType": "hero-backdrop",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Euros / Copa America hero backdrop for a P2P sports tournament app, summer tournament, flags, clean broadcast match cards, palette: grass-green, sunlit-blue, cup-silver, alert-red, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "continental-flags",
+          "palette": [
+            "grass-green",
+            "sunlit-blue",
+            "cup-silver",
+            "alert-red"
+          ],
+          "fileName": "hero"
+        },
+        {
+          "assetType": "bracket-board-skin",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Euros / Copa America bracket board skin for a P2P sports tournament app, summer tournament, flags, clean broadcast match cards, palette: grass-green, sunlit-blue, cup-silver, alert-red, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "continental-flags",
+          "palette": [
+            "grass-green",
+            "sunlit-blue",
+            "cup-silver",
+            "alert-red"
+          ],
+          "fileName": "board"
+        },
+        {
+          "assetType": "pool-card-accent",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "continental-flags",
+          "palette": [
+            "grass-green",
+            "sunlit-blue",
+            "cup-silver",
+            "alert-red"
+          ],
+          "fileName": "accent"
+        },
+        {
+          "assetType": "mini-game-icon-set",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "continental-flags",
+          "palette": [
+            "grass-green",
+            "sunlit-blue",
+            "cup-silver",
+            "alert-red"
+          ],
+          "fileName": "icons"
+        },
+        {
+          "assetType": "watch-room-stage",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Euros / Copa America watch room stage for a P2P sports tournament app, summer tournament, flags, clean broadcast match cards, palette: grass-green, sunlit-blue, cup-silver, alert-red, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "continental-flags",
+          "palette": [
+            "grass-green",
+            "sunlit-blue",
+            "cup-silver",
+            "alert-red"
+          ],
+          "fileName": "stage"
+        },
+        {
+          "assetType": "result-share-card",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Euros / Copa America result share card for a P2P sports tournament app, summer tournament, flags, clean broadcast match cards, palette: grass-green, sunlit-blue, cup-silver, alert-red, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "continental-flags",
+          "palette": [
+            "grass-green",
+            "sunlit-blue",
+            "cup-silver",
+            "alert-red"
+          ],
+          "fileName": "share"
+        },
+        {
+          "assetType": "empty-state-illustration",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Euros / Copa America empty state illustration for a P2P sports tournament app, summer tournament, flags, clean broadcast match cards, palette: grass-green, sunlit-blue, cup-silver, alert-red, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "continental-flags",
+          "palette": [
+            "grass-green",
+            "sunlit-blue",
+            "cup-silver",
+            "alert-red"
+          ],
+          "fileName": "empty"
+        }
+      ]
+    },
+    {
+      "planVersion": "ultimate-sports-fit-asset-generation-plan-v1",
+      "fitId": "champions-league-knockout",
+      "title": "Champions League Knockout",
+      "category": "soccer",
+      "themeId": "floodlit-club-night",
+      "visualTone": "premium night match, floodlights, sharp club-neutral geometry",
+      "palette": [
+        "midnight",
+        "electric-cyan",
+        "silver",
+        "pitch-green"
+      ],
+      "theme": {
+        "icon": "⭐",
+        "primary": "#0ea5e9",
+        "secondary": "#f59e0b",
+        "accent": "#0369a1"
+      },
+      "generatedAt": "2026-07-05T10:36:54.573Z",
+      "assets": [
+        {
+          "assetType": "lobby-icon",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "floodlit-club-night",
+          "palette": [
+            "midnight",
+            "electric-cyan",
+            "silver",
+            "pitch-green"
+          ],
+          "fileName": "icon"
+        },
+        {
+          "assetType": "server-card-cover",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Champions League Knockout server card cover for a P2P sports tournament app, premium night match, floodlights, sharp club-neutral geometry, palette: midnight, electric-cyan, silver, pitch-green, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "floodlit-club-night",
+          "palette": [
+            "midnight",
+            "electric-cyan",
+            "silver",
+            "pitch-green"
+          ],
+          "fileName": "cover"
+        },
+        {
+          "assetType": "hero-backdrop",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Champions League Knockout hero backdrop for a P2P sports tournament app, premium night match, floodlights, sharp club-neutral geometry, palette: midnight, electric-cyan, silver, pitch-green, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "floodlit-club-night",
+          "palette": [
+            "midnight",
+            "electric-cyan",
+            "silver",
+            "pitch-green"
+          ],
+          "fileName": "hero"
+        },
+        {
+          "assetType": "bracket-board-skin",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Champions League Knockout bracket board skin for a P2P sports tournament app, premium night match, floodlights, sharp club-neutral geometry, palette: midnight, electric-cyan, silver, pitch-green, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "floodlit-club-night",
+          "palette": [
+            "midnight",
+            "electric-cyan",
+            "silver",
+            "pitch-green"
+          ],
+          "fileName": "board"
+        },
+        {
+          "assetType": "pool-card-accent",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "floodlit-club-night",
+          "palette": [
+            "midnight",
+            "electric-cyan",
+            "silver",
+            "pitch-green"
+          ],
+          "fileName": "accent"
+        },
+        {
+          "assetType": "mini-game-icon-set",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "floodlit-club-night",
+          "palette": [
+            "midnight",
+            "electric-cyan",
+            "silver",
+            "pitch-green"
+          ],
+          "fileName": "icons"
+        },
+        {
+          "assetType": "watch-room-stage",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Champions League Knockout watch room stage for a P2P sports tournament app, premium night match, floodlights, sharp club-neutral geometry, palette: midnight, electric-cyan, silver, pitch-green, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "floodlit-club-night",
+          "palette": [
+            "midnight",
+            "electric-cyan",
+            "silver",
+            "pitch-green"
+          ],
+          "fileName": "stage"
+        },
+        {
+          "assetType": "result-share-card",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Champions League Knockout result share card for a P2P sports tournament app, premium night match, floodlights, sharp club-neutral geometry, palette: midnight, electric-cyan, silver, pitch-green, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "floodlit-club-night",
+          "palette": [
+            "midnight",
+            "electric-cyan",
+            "silver",
+            "pitch-green"
+          ],
+          "fileName": "share"
+        },
+        {
+          "assetType": "empty-state-illustration",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Champions League Knockout empty state illustration for a P2P sports tournament app, premium night match, floodlights, sharp club-neutral geometry, palette: midnight, electric-cyan, silver, pitch-green, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "floodlit-club-night",
+          "palette": [
+            "midnight",
+            "electric-cyan",
+            "silver",
+            "pitch-green"
+          ],
+          "fileName": "empty"
+        }
+      ]
+    },
+    {
+      "planVersion": "ultimate-sports-fit-asset-generation-plan-v1",
+      "fitId": "march-madness",
+      "title": "March Madness",
+      "category": "basketball",
+      "themeId": "arena-regions",
+      "visualTone": "college arena energy, hardwood, region colors, upset callouts",
+      "palette": [
+        "hardwood",
+        "court-blue",
+        "rim-orange",
+        "chalk-white"
+      ],
+      "theme": {
+        "icon": "🏀",
+        "primary": "#f97316",
+        "secondary": "#3b82f6",
+        "accent": "#c2410c"
+      },
+      "generatedAt": "2026-07-05T10:36:54.573Z",
+      "assets": [
+        {
+          "assetType": "lobby-icon",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "arena-regions",
+          "palette": [
+            "hardwood",
+            "court-blue",
+            "rim-orange",
+            "chalk-white"
+          ],
+          "fileName": "icon"
+        },
+        {
+          "assetType": "server-card-cover",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "March Madness server card cover for a P2P sports tournament app, college arena energy, hardwood, region colors, upset callouts, palette: hardwood, court-blue, rim-orange, chalk-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "arena-regions",
+          "palette": [
+            "hardwood",
+            "court-blue",
+            "rim-orange",
+            "chalk-white"
+          ],
+          "fileName": "cover"
+        },
+        {
+          "assetType": "hero-backdrop",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "March Madness hero backdrop for a P2P sports tournament app, college arena energy, hardwood, region colors, upset callouts, palette: hardwood, court-blue, rim-orange, chalk-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "arena-regions",
+          "palette": [
+            "hardwood",
+            "court-blue",
+            "rim-orange",
+            "chalk-white"
+          ],
+          "fileName": "hero"
+        },
+        {
+          "assetType": "bracket-board-skin",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "March Madness bracket board skin for a P2P sports tournament app, college arena energy, hardwood, region colors, upset callouts, palette: hardwood, court-blue, rim-orange, chalk-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "arena-regions",
+          "palette": [
+            "hardwood",
+            "court-blue",
+            "rim-orange",
+            "chalk-white"
+          ],
+          "fileName": "board"
+        },
+        {
+          "assetType": "pool-card-accent",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "arena-regions",
+          "palette": [
+            "hardwood",
+            "court-blue",
+            "rim-orange",
+            "chalk-white"
+          ],
+          "fileName": "accent"
+        },
+        {
+          "assetType": "mini-game-icon-set",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "arena-regions",
+          "palette": [
+            "hardwood",
+            "court-blue",
+            "rim-orange",
+            "chalk-white"
+          ],
+          "fileName": "icons"
+        },
+        {
+          "assetType": "watch-room-stage",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "March Madness watch room stage for a P2P sports tournament app, college arena energy, hardwood, region colors, upset callouts, palette: hardwood, court-blue, rim-orange, chalk-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "arena-regions",
+          "palette": [
+            "hardwood",
+            "court-blue",
+            "rim-orange",
+            "chalk-white"
+          ],
+          "fileName": "stage"
+        },
+        {
+          "assetType": "result-share-card",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "March Madness result share card for a P2P sports tournament app, college arena energy, hardwood, region colors, upset callouts, palette: hardwood, court-blue, rim-orange, chalk-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "arena-regions",
+          "palette": [
+            "hardwood",
+            "court-blue",
+            "rim-orange",
+            "chalk-white"
+          ],
+          "fileName": "share"
+        },
+        {
+          "assetType": "empty-state-illustration",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "March Madness empty state illustration for a P2P sports tournament app, college arena energy, hardwood, region colors, upset callouts, palette: hardwood, court-blue, rim-orange, chalk-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "arena-regions",
+          "palette": [
+            "hardwood",
+            "court-blue",
+            "rim-orange",
+            "chalk-white"
+          ],
+          "fileName": "empty"
+        }
+      ]
+    },
+    {
+      "planVersion": "ultimate-sports-fit-asset-generation-plan-v1",
+      "fitId": "pro-playoffs",
+      "title": "NBA / NHL / MLB Playoffs",
+      "category": "pro-sports",
+      "themeId": "series-scoreboard",
+      "visualTone": "pro broadcast desk, clean series grids, daily slate cards",
+      "palette": [
+        "scoreboard-black",
+        "ice-white",
+        "court-blue",
+        "basepath-clay"
+      ],
+      "theme": {
+        "icon": "🏆",
+        "primary": "#8b5cf6",
+        "secondary": "#f43f5e",
+        "accent": "#6d28d9"
+      },
+      "generatedAt": "2026-07-05T10:36:54.573Z",
+      "assets": [
+        {
+          "assetType": "lobby-icon",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "series-scoreboard",
+          "palette": [
+            "scoreboard-black",
+            "ice-white",
+            "court-blue",
+            "basepath-clay"
+          ],
+          "fileName": "icon"
+        },
+        {
+          "assetType": "server-card-cover",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "NBA / NHL / MLB Playoffs server card cover for a P2P sports tournament app, pro broadcast desk, clean series grids, daily slate cards, palette: scoreboard-black, ice-white, court-blue, basepath-clay, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "series-scoreboard",
+          "palette": [
+            "scoreboard-black",
+            "ice-white",
+            "court-blue",
+            "basepath-clay"
+          ],
+          "fileName": "cover"
+        },
+        {
+          "assetType": "hero-backdrop",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "NBA / NHL / MLB Playoffs hero backdrop for a P2P sports tournament app, pro broadcast desk, clean series grids, daily slate cards, palette: scoreboard-black, ice-white, court-blue, basepath-clay, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "series-scoreboard",
+          "palette": [
+            "scoreboard-black",
+            "ice-white",
+            "court-blue",
+            "basepath-clay"
+          ],
+          "fileName": "hero"
+        },
+        {
+          "assetType": "bracket-board-skin",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "NBA / NHL / MLB Playoffs bracket board skin for a P2P sports tournament app, pro broadcast desk, clean series grids, daily slate cards, palette: scoreboard-black, ice-white, court-blue, basepath-clay, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "series-scoreboard",
+          "palette": [
+            "scoreboard-black",
+            "ice-white",
+            "court-blue",
+            "basepath-clay"
+          ],
+          "fileName": "board"
+        },
+        {
+          "assetType": "pool-card-accent",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "series-scoreboard",
+          "palette": [
+            "scoreboard-black",
+            "ice-white",
+            "court-blue",
+            "basepath-clay"
+          ],
+          "fileName": "accent"
+        },
+        {
+          "assetType": "mini-game-icon-set",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "series-scoreboard",
+          "palette": [
+            "scoreboard-black",
+            "ice-white",
+            "court-blue",
+            "basepath-clay"
+          ],
+          "fileName": "icons"
+        },
+        {
+          "assetType": "watch-room-stage",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "NBA / NHL / MLB Playoffs watch room stage for a P2P sports tournament app, pro broadcast desk, clean series grids, daily slate cards, palette: scoreboard-black, ice-white, court-blue, basepath-clay, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "series-scoreboard",
+          "palette": [
+            "scoreboard-black",
+            "ice-white",
+            "court-blue",
+            "basepath-clay"
+          ],
+          "fileName": "stage"
+        },
+        {
+          "assetType": "result-share-card",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "NBA / NHL / MLB Playoffs result share card for a P2P sports tournament app, pro broadcast desk, clean series grids, daily slate cards, palette: scoreboard-black, ice-white, court-blue, basepath-clay, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "series-scoreboard",
+          "palette": [
+            "scoreboard-black",
+            "ice-white",
+            "court-blue",
+            "basepath-clay"
+          ],
+          "fileName": "share"
+        },
+        {
+          "assetType": "empty-state-illustration",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "NBA / NHL / MLB Playoffs empty state illustration for a P2P sports tournament app, pro broadcast desk, clean series grids, daily slate cards, palette: scoreboard-black, ice-white, court-blue, basepath-clay, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "series-scoreboard",
+          "palette": [
+            "scoreboard-black",
+            "ice-white",
+            "court-blue",
+            "basepath-clay"
+          ],
+          "fileName": "empty"
+        }
+      ]
+    },
+    {
+      "planVersion": "ultimate-sports-fit-asset-generation-plan-v1",
+      "fitId": "tennis-grand-slams",
+      "title": "Tennis Grand Slams",
+      "category": "tennis",
+      "themeId": "court-draw",
+      "visualTone": "sunlit court, crisp draw board, seed and country accents",
+      "palette": [
+        "court-green",
+        "clay-red",
+        "line-white",
+        "champion-gold"
+      ],
+      "theme": {
+        "icon": "🎾",
+        "primary": "#10b981",
+        "secondary": "#f59e0b",
+        "accent": "#047857"
+      },
+      "generatedAt": "2026-07-05T10:36:54.573Z",
+      "assets": [
+        {
+          "assetType": "lobby-icon",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "court-draw",
+          "palette": [
+            "court-green",
+            "clay-red",
+            "line-white",
+            "champion-gold"
+          ],
+          "fileName": "icon"
+        },
+        {
+          "assetType": "server-card-cover",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Tennis Grand Slams server card cover for a P2P sports tournament app, sunlit court, crisp draw board, seed and country accents, palette: court-green, clay-red, line-white, champion-gold, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "court-draw",
+          "palette": [
+            "court-green",
+            "clay-red",
+            "line-white",
+            "champion-gold"
+          ],
+          "fileName": "cover"
+        },
+        {
+          "assetType": "hero-backdrop",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Tennis Grand Slams hero backdrop for a P2P sports tournament app, sunlit court, crisp draw board, seed and country accents, palette: court-green, clay-red, line-white, champion-gold, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "court-draw",
+          "palette": [
+            "court-green",
+            "clay-red",
+            "line-white",
+            "champion-gold"
+          ],
+          "fileName": "hero"
+        },
+        {
+          "assetType": "bracket-board-skin",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Tennis Grand Slams bracket board skin for a P2P sports tournament app, sunlit court, crisp draw board, seed and country accents, palette: court-green, clay-red, line-white, champion-gold, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "court-draw",
+          "palette": [
+            "court-green",
+            "clay-red",
+            "line-white",
+            "champion-gold"
+          ],
+          "fileName": "board"
+        },
+        {
+          "assetType": "pool-card-accent",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "court-draw",
+          "palette": [
+            "court-green",
+            "clay-red",
+            "line-white",
+            "champion-gold"
+          ],
+          "fileName": "accent"
+        },
+        {
+          "assetType": "mini-game-icon-set",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "court-draw",
+          "palette": [
+            "court-green",
+            "clay-red",
+            "line-white",
+            "champion-gold"
+          ],
+          "fileName": "icons"
+        },
+        {
+          "assetType": "watch-room-stage",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Tennis Grand Slams watch room stage for a P2P sports tournament app, sunlit court, crisp draw board, seed and country accents, palette: court-green, clay-red, line-white, champion-gold, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "court-draw",
+          "palette": [
+            "court-green",
+            "clay-red",
+            "line-white",
+            "champion-gold"
+          ],
+          "fileName": "stage"
+        },
+        {
+          "assetType": "result-share-card",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Tennis Grand Slams result share card for a P2P sports tournament app, sunlit court, crisp draw board, seed and country accents, palette: court-green, clay-red, line-white, champion-gold, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "court-draw",
+          "palette": [
+            "court-green",
+            "clay-red",
+            "line-white",
+            "champion-gold"
+          ],
+          "fileName": "share"
+        },
+        {
+          "assetType": "empty-state-illustration",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Tennis Grand Slams empty state illustration for a P2P sports tournament app, sunlit court, crisp draw board, seed and country accents, palette: court-green, clay-red, line-white, champion-gold, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "court-draw",
+          "palette": [
+            "court-green",
+            "clay-red",
+            "line-white",
+            "champion-gold"
+          ],
+          "fileName": "empty"
+        }
+      ]
+    },
+    {
+      "planVersion": "ultimate-sports-fit-asset-generation-plan-v1",
+      "fitId": "esports-major",
+      "title": "Valorant / LoL Worlds / CS / Dota / Rocket League",
+      "category": "esports",
+      "themeId": "neon-arena",
+      "visualTone": "neon stage, tactical maps, objective timers, team-neutral esports UI",
+      "palette": [
+        "obsidian",
+        "neon-teal",
+        "hot-pink",
+        "hud-green"
+      ],
+      "theme": {
+        "icon": "🎮",
+        "primary": "#ec4899",
+        "secondary": "#6366f1",
+        "accent": "#be185d"
+      },
+      "generatedAt": "2026-07-05T10:36:54.573Z",
+      "assets": [
+        {
+          "assetType": "lobby-icon",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "neon-arena",
+          "palette": [
+            "obsidian",
+            "neon-teal",
+            "hot-pink",
+            "hud-green"
+          ],
+          "fileName": "icon"
+        },
+        {
+          "assetType": "server-card-cover",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Valorant / LoL Worlds / CS / Dota / Rocket League server card cover for a P2P sports tournament app, neon stage, tactical maps, objective timers, team-neutral esports UI, palette: obsidian, neon-teal, hot-pink, hud-green, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "neon-arena",
+          "palette": [
+            "obsidian",
+            "neon-teal",
+            "hot-pink",
+            "hud-green"
+          ],
+          "fileName": "cover"
+        },
+        {
+          "assetType": "hero-backdrop",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Valorant / LoL Worlds / CS / Dota / Rocket League hero backdrop for a P2P sports tournament app, neon stage, tactical maps, objective timers, team-neutral esports UI, palette: obsidian, neon-teal, hot-pink, hud-green, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "neon-arena",
+          "palette": [
+            "obsidian",
+            "neon-teal",
+            "hot-pink",
+            "hud-green"
+          ],
+          "fileName": "hero"
+        },
+        {
+          "assetType": "bracket-board-skin",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Valorant / LoL Worlds / CS / Dota / Rocket League bracket board skin for a P2P sports tournament app, neon stage, tactical maps, objective timers, team-neutral esports UI, palette: obsidian, neon-teal, hot-pink, hud-green, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "neon-arena",
+          "palette": [
+            "obsidian",
+            "neon-teal",
+            "hot-pink",
+            "hud-green"
+          ],
+          "fileName": "board"
+        },
+        {
+          "assetType": "pool-card-accent",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "neon-arena",
+          "palette": [
+            "obsidian",
+            "neon-teal",
+            "hot-pink",
+            "hud-green"
+          ],
+          "fileName": "accent"
+        },
+        {
+          "assetType": "mini-game-icon-set",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "neon-arena",
+          "palette": [
+            "obsidian",
+            "neon-teal",
+            "hot-pink",
+            "hud-green"
+          ],
+          "fileName": "icons"
+        },
+        {
+          "assetType": "watch-room-stage",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Valorant / LoL Worlds / CS / Dota / Rocket League watch room stage for a P2P sports tournament app, neon stage, tactical maps, objective timers, team-neutral esports UI, palette: obsidian, neon-teal, hot-pink, hud-green, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "neon-arena",
+          "palette": [
+            "obsidian",
+            "neon-teal",
+            "hot-pink",
+            "hud-green"
+          ],
+          "fileName": "stage"
+        },
+        {
+          "assetType": "result-share-card",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Valorant / LoL Worlds / CS / Dota / Rocket League result share card for a P2P sports tournament app, neon stage, tactical maps, objective timers, team-neutral esports UI, palette: obsidian, neon-teal, hot-pink, hud-green, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "neon-arena",
+          "palette": [
+            "obsidian",
+            "neon-teal",
+            "hot-pink",
+            "hud-green"
+          ],
+          "fileName": "share"
+        },
+        {
+          "assetType": "empty-state-illustration",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Valorant / LoL Worlds / CS / Dota / Rocket League empty state illustration for a P2P sports tournament app, neon stage, tactical maps, objective timers, team-neutral esports UI, palette: obsidian, neon-teal, hot-pink, hud-green, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "neon-arena",
+          "palette": [
+            "obsidian",
+            "neon-teal",
+            "hot-pink",
+            "hud-green"
+          ],
+          "fileName": "empty"
+        }
+      ]
+    },
+    {
+      "planVersion": "ultimate-sports-fit-asset-generation-plan-v1",
+      "fitId": "mma-boxing-fight-card",
+      "title": "Combat Sport Fight Cards",
+      "category": "combat-sports",
+      "themeId": "arena-card",
+      "visualTone": "premium MMA fight-night broadcast, octagon-inspired cage walkout, neutral gloves, round cards, red and blue corners, strong contrast, no official marks",
+      "palette": [
+        "matte-black",
+        "canvas-white",
+        "corner-red",
+        "corner-blue",
+        "championship-gold"
+      ],
+      "theme": {
+        "icon": "🥊",
+        "primary": "#ef4444",
+        "secondary": "#3b82f6",
+        "accent": "#b91c1c"
+      },
+      "generatedAt": "2026-07-05T10:36:54.573Z",
+      "assets": [
+        {
+          "assetType": "lobby-icon",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "arena-card",
+          "palette": [
+            "matte-black",
+            "canvas-white",
+            "corner-red",
+            "corner-blue",
+            "championship-gold"
+          ],
+          "fileName": "icon"
+        },
+        {
+          "assetType": "server-card-cover",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Combat Sport Fight Cards server card cover for a P2P sports tournament app, premium MMA fight-night broadcast, octagon-inspired cage walkout, neutral gloves, round cards, red and blue corners, strong contrast, no official marks, palette: matte-black, canvas-white, corner-red, corner-blue, championship-gold, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "arena-card",
+          "palette": [
+            "matte-black",
+            "canvas-white",
+            "corner-red",
+            "corner-blue",
+            "championship-gold"
+          ],
+          "fileName": "cover"
+        },
+        {
+          "assetType": "hero-backdrop",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Combat Sport Fight Cards hero backdrop for a P2P sports tournament app, premium MMA fight-night broadcast, octagon-inspired cage walkout, neutral gloves, round cards, red and blue corners, strong contrast, no official marks, palette: matte-black, canvas-white, corner-red, corner-blue, championship-gold, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "arena-card",
+          "palette": [
+            "matte-black",
+            "canvas-white",
+            "corner-red",
+            "corner-blue",
+            "championship-gold"
+          ],
+          "fileName": "hero"
+        },
+        {
+          "assetType": "bracket-board-skin",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Combat Sport Fight Cards bracket board skin for a P2P sports tournament app, premium MMA fight-night broadcast, octagon-inspired cage walkout, neutral gloves, round cards, red and blue corners, strong contrast, no official marks, palette: matte-black, canvas-white, corner-red, corner-blue, championship-gold, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "arena-card",
+          "palette": [
+            "matte-black",
+            "canvas-white",
+            "corner-red",
+            "corner-blue",
+            "championship-gold"
+          ],
+          "fileName": "board"
+        },
+        {
+          "assetType": "pool-card-accent",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "arena-card",
+          "palette": [
+            "matte-black",
+            "canvas-white",
+            "corner-red",
+            "corner-blue",
+            "championship-gold"
+          ],
+          "fileName": "accent"
+        },
+        {
+          "assetType": "mini-game-icon-set",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "arena-card",
+          "palette": [
+            "matte-black",
+            "canvas-white",
+            "corner-red",
+            "corner-blue",
+            "championship-gold"
+          ],
+          "fileName": "icons"
+        },
+        {
+          "assetType": "watch-room-stage",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Combat Sport Fight Cards watch room stage for a P2P sports tournament app, premium MMA fight-night broadcast, octagon-inspired cage walkout, neutral gloves, round cards, red and blue corners, strong contrast, no official marks, palette: matte-black, canvas-white, corner-red, corner-blue, championship-gold, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "arena-card",
+          "palette": [
+            "matte-black",
+            "canvas-white",
+            "corner-red",
+            "corner-blue",
+            "championship-gold"
+          ],
+          "fileName": "stage"
+        },
+        {
+          "assetType": "result-share-card",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Combat Sport Fight Cards result share card for a P2P sports tournament app, premium MMA fight-night broadcast, octagon-inspired cage walkout, neutral gloves, round cards, red and blue corners, strong contrast, no official marks, palette: matte-black, canvas-white, corner-red, corner-blue, championship-gold, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "arena-card",
+          "palette": [
+            "matte-black",
+            "canvas-white",
+            "corner-red",
+            "corner-blue",
+            "championship-gold"
+          ],
+          "fileName": "share"
+        },
+        {
+          "assetType": "empty-state-illustration",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Combat Sport Fight Cards empty state illustration for a P2P sports tournament app, premium MMA fight-night broadcast, octagon-inspired cage walkout, neutral gloves, round cards, red and blue corners, strong contrast, no official marks, palette: matte-black, canvas-white, corner-red, corner-blue, championship-gold, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "arena-card",
+          "palette": [
+            "matte-black",
+            "canvas-white",
+            "corner-red",
+            "corner-blue",
+            "championship-gold"
+          ],
+          "fileName": "empty"
+        }
+      ]
+    },
+    {
+      "planVersion": "ultimate-sports-fit-asset-generation-plan-v1",
+      "fitId": "sailgp-companion",
+      "title": "SailGP Companion",
+      "category": "sailing",
+      "themeId": "foiling-race-waterline",
+      "visualTone": "high-speed foiling catamarans, water spray, wind map overlays, national team color accents, clean telemetry dashboard",
+      "palette": [
+        "deep-water-blue",
+        "wake-white",
+        "wind-cyan",
+        "buoy-orange",
+        "carbon-black"
+      ],
+      "theme": {
+        "icon": "⛵",
+        "primary": "#06b6d4",
+        "secondary": "#f43f5e",
+        "accent": "#0e7490"
+      },
+      "generatedAt": "2026-07-05T10:36:54.573Z",
+      "assets": [
+        {
+          "assetType": "lobby-icon",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "foiling-race-waterline",
+          "palette": [
+            "deep-water-blue",
+            "wake-white",
+            "wind-cyan",
+            "buoy-orange",
+            "carbon-black"
+          ],
+          "fileName": "icon"
+        },
+        {
+          "assetType": "server-card-cover",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "SailGP Companion server card cover for a P2P sports tournament app, high-speed foiling catamarans, water spray, wind map overlays, national team color accents, clean telemetry dashboard, palette: deep-water-blue, wake-white, wind-cyan, buoy-orange, carbon-black, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "foiling-race-waterline",
+          "palette": [
+            "deep-water-blue",
+            "wake-white",
+            "wind-cyan",
+            "buoy-orange",
+            "carbon-black"
+          ],
+          "fileName": "cover"
+        },
+        {
+          "assetType": "hero-backdrop",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "SailGP Companion hero backdrop for a P2P sports tournament app, high-speed foiling catamarans, water spray, wind map overlays, national team color accents, clean telemetry dashboard, palette: deep-water-blue, wake-white, wind-cyan, buoy-orange, carbon-black, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "foiling-race-waterline",
+          "palette": [
+            "deep-water-blue",
+            "wake-white",
+            "wind-cyan",
+            "buoy-orange",
+            "carbon-black"
+          ],
+          "fileName": "hero"
+        },
+        {
+          "assetType": "bracket-board-skin",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "SailGP Companion bracket board skin for a P2P sports tournament app, high-speed foiling catamarans, water spray, wind map overlays, national team color accents, clean telemetry dashboard, palette: deep-water-blue, wake-white, wind-cyan, buoy-orange, carbon-black, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "foiling-race-waterline",
+          "palette": [
+            "deep-water-blue",
+            "wake-white",
+            "wind-cyan",
+            "buoy-orange",
+            "carbon-black"
+          ],
+          "fileName": "board"
+        },
+        {
+          "assetType": "pool-card-accent",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "foiling-race-waterline",
+          "palette": [
+            "deep-water-blue",
+            "wake-white",
+            "wind-cyan",
+            "buoy-orange",
+            "carbon-black"
+          ],
+          "fileName": "accent"
+        },
+        {
+          "assetType": "mini-game-icon-set",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "foiling-race-waterline",
+          "palette": [
+            "deep-water-blue",
+            "wake-white",
+            "wind-cyan",
+            "buoy-orange",
+            "carbon-black"
+          ],
+          "fileName": "icons"
+        },
+        {
+          "assetType": "watch-room-stage",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "SailGP Companion watch room stage for a P2P sports tournament app, high-speed foiling catamarans, water spray, wind map overlays, national team color accents, clean telemetry dashboard, palette: deep-water-blue, wake-white, wind-cyan, buoy-orange, carbon-black, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "foiling-race-waterline",
+          "palette": [
+            "deep-water-blue",
+            "wake-white",
+            "wind-cyan",
+            "buoy-orange",
+            "carbon-black"
+          ],
+          "fileName": "stage"
+        },
+        {
+          "assetType": "result-share-card",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "SailGP Companion result share card for a P2P sports tournament app, high-speed foiling catamarans, water spray, wind map overlays, national team color accents, clean telemetry dashboard, palette: deep-water-blue, wake-white, wind-cyan, buoy-orange, carbon-black, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "foiling-race-waterline",
+          "palette": [
+            "deep-water-blue",
+            "wake-white",
+            "wind-cyan",
+            "buoy-orange",
+            "carbon-black"
+          ],
+          "fileName": "share"
+        },
+        {
+          "assetType": "empty-state-illustration",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "SailGP Companion empty state illustration for a P2P sports tournament app, high-speed foiling catamarans, water spray, wind map overlays, national team color accents, clean telemetry dashboard, palette: deep-water-blue, wake-white, wind-cyan, buoy-orange, carbon-black, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "foiling-race-waterline",
+          "palette": [
+            "deep-water-blue",
+            "wake-white",
+            "wind-cyan",
+            "buoy-orange",
+            "carbon-black"
+          ],
+          "fileName": "empty"
+        }
+      ]
+    },
+    {
+      "planVersion": "ultimate-sports-fit-asset-generation-plan-v1",
+      "fitId": "creator-reality-brackets",
+      "title": "Reality / Creator Tournaments",
+      "category": "creator",
+      "themeId": "creator-stage",
+      "visualTone": "creator stage, customizable slots, episode reveal energy",
+      "palette": [
+        "studio-black",
+        "spotlight-gold",
+        "creator-pink",
+        "paper-white"
+      ],
+      "theme": {
+        "icon": "⭐",
+        "primary": "#d946ef",
+        "secondary": "#22c55e",
+        "accent": "#a21caf"
+      },
+      "generatedAt": "2026-07-05T10:36:54.573Z",
+      "assets": [
+        {
+          "assetType": "lobby-icon",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "creator-stage",
+          "palette": [
+            "studio-black",
+            "spotlight-gold",
+            "creator-pink",
+            "paper-white"
+          ],
+          "fileName": "icon"
+        },
+        {
+          "assetType": "server-card-cover",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Reality / Creator Tournaments server card cover for a P2P sports tournament app, creator stage, customizable slots, episode reveal energy, palette: studio-black, spotlight-gold, creator-pink, paper-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "creator-stage",
+          "palette": [
+            "studio-black",
+            "spotlight-gold",
+            "creator-pink",
+            "paper-white"
+          ],
+          "fileName": "cover"
+        },
+        {
+          "assetType": "hero-backdrop",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Reality / Creator Tournaments hero backdrop for a P2P sports tournament app, creator stage, customizable slots, episode reveal energy, palette: studio-black, spotlight-gold, creator-pink, paper-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "creator-stage",
+          "palette": [
+            "studio-black",
+            "spotlight-gold",
+            "creator-pink",
+            "paper-white"
+          ],
+          "fileName": "hero"
+        },
+        {
+          "assetType": "bracket-board-skin",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Reality / Creator Tournaments bracket board skin for a P2P sports tournament app, creator stage, customizable slots, episode reveal energy, palette: studio-black, spotlight-gold, creator-pink, paper-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "creator-stage",
+          "palette": [
+            "studio-black",
+            "spotlight-gold",
+            "creator-pink",
+            "paper-white"
+          ],
+          "fileName": "board"
+        },
+        {
+          "assetType": "pool-card-accent",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "creator-stage",
+          "palette": [
+            "studio-black",
+            "spotlight-gold",
+            "creator-pink",
+            "paper-white"
+          ],
+          "fileName": "accent"
+        },
+        {
+          "assetType": "mini-game-icon-set",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "creator-stage",
+          "palette": [
+            "studio-black",
+            "spotlight-gold",
+            "creator-pink",
+            "paper-white"
+          ],
+          "fileName": "icons"
+        },
+        {
+          "assetType": "watch-room-stage",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Reality / Creator Tournaments watch room stage for a P2P sports tournament app, creator stage, customizable slots, episode reveal energy, palette: studio-black, spotlight-gold, creator-pink, paper-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "creator-stage",
+          "palette": [
+            "studio-black",
+            "spotlight-gold",
+            "creator-pink",
+            "paper-white"
+          ],
+          "fileName": "stage"
+        },
+        {
+          "assetType": "result-share-card",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Reality / Creator Tournaments result share card for a P2P sports tournament app, creator stage, customizable slots, episode reveal energy, palette: studio-black, spotlight-gold, creator-pink, paper-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "creator-stage",
+          "palette": [
+            "studio-black",
+            "spotlight-gold",
+            "creator-pink",
+            "paper-white"
+          ],
+          "fileName": "share"
+        },
+        {
+          "assetType": "empty-state-illustration",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Reality / Creator Tournaments empty state illustration for a P2P sports tournament app, creator stage, customizable slots, episode reveal energy, palette: studio-black, spotlight-gold, creator-pink, paper-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "creator-stage",
+          "palette": [
+            "studio-black",
+            "spotlight-gold",
+            "creator-pink",
+            "paper-white"
+          ],
+          "fileName": "empty"
+        }
+      ]
+    },
+    {
+      "planVersion": "ultimate-sports-fit-asset-generation-plan-v1",
+      "fitId": "awards-prediction-pools",
+      "title": "Oscars / Grammys / Eurovision",
+      "category": "awards",
+      "themeId": "ceremony-card",
+      "visualTone": "ceremony stage, category cards, elegant broadcast moments",
+      "palette": [
+        "velvet-black",
+        "award-gold",
+        "stage-red",
+        "spotlight-white"
+      ],
+      "theme": {
+        "icon": "🎬",
+        "primary": "#f59e0b",
+        "secondary": "#ec4899",
+        "accent": "#b45309"
+      },
+      "generatedAt": "2026-07-05T10:36:54.573Z",
+      "assets": [
+        {
+          "assetType": "lobby-icon",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "ceremony-card",
+          "palette": [
+            "velvet-black",
+            "award-gold",
+            "stage-red",
+            "spotlight-white"
+          ],
+          "fileName": "icon"
+        },
+        {
+          "assetType": "server-card-cover",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Oscars / Grammys / Eurovision server card cover for a P2P sports tournament app, ceremony stage, category cards, elegant broadcast moments, palette: velvet-black, award-gold, stage-red, spotlight-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "ceremony-card",
+          "palette": [
+            "velvet-black",
+            "award-gold",
+            "stage-red",
+            "spotlight-white"
+          ],
+          "fileName": "cover"
+        },
+        {
+          "assetType": "hero-backdrop",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Oscars / Grammys / Eurovision hero backdrop for a P2P sports tournament app, ceremony stage, category cards, elegant broadcast moments, palette: velvet-black, award-gold, stage-red, spotlight-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "ceremony-card",
+          "palette": [
+            "velvet-black",
+            "award-gold",
+            "stage-red",
+            "spotlight-white"
+          ],
+          "fileName": "hero"
+        },
+        {
+          "assetType": "bracket-board-skin",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Oscars / Grammys / Eurovision bracket board skin for a P2P sports tournament app, ceremony stage, category cards, elegant broadcast moments, palette: velvet-black, award-gold, stage-red, spotlight-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "ceremony-card",
+          "palette": [
+            "velvet-black",
+            "award-gold",
+            "stage-red",
+            "spotlight-white"
+          ],
+          "fileName": "board"
+        },
+        {
+          "assetType": "pool-card-accent",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "ceremony-card",
+          "palette": [
+            "velvet-black",
+            "award-gold",
+            "stage-red",
+            "spotlight-white"
+          ],
+          "fileName": "accent"
+        },
+        {
+          "assetType": "mini-game-icon-set",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "ceremony-card",
+          "palette": [
+            "velvet-black",
+            "award-gold",
+            "stage-red",
+            "spotlight-white"
+          ],
+          "fileName": "icons"
+        },
+        {
+          "assetType": "watch-room-stage",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Oscars / Grammys / Eurovision watch room stage for a P2P sports tournament app, ceremony stage, category cards, elegant broadcast moments, palette: velvet-black, award-gold, stage-red, spotlight-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "ceremony-card",
+          "palette": [
+            "velvet-black",
+            "award-gold",
+            "stage-red",
+            "spotlight-white"
+          ],
+          "fileName": "stage"
+        },
+        {
+          "assetType": "result-share-card",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Oscars / Grammys / Eurovision result share card for a P2P sports tournament app, ceremony stage, category cards, elegant broadcast moments, palette: velvet-black, award-gold, stage-red, spotlight-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "ceremony-card",
+          "palette": [
+            "velvet-black",
+            "award-gold",
+            "stage-red",
+            "spotlight-white"
+          ],
+          "fileName": "share"
+        },
+        {
+          "assetType": "empty-state-illustration",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "Oscars / Grammys / Eurovision empty state illustration for a P2P sports tournament app, ceremony stage, category cards, elegant broadcast moments, palette: velvet-black, award-gold, stage-red, spotlight-white, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "ceremony-card",
+          "palette": [
+            "velvet-black",
+            "award-gold",
+            "stage-red",
+            "spotlight-white"
+          ],
+          "fileName": "empty"
+        }
+      ]
+    },
+    {
+      "planVersion": "ultimate-sports-fit-asset-generation-plan-v1",
+      "fitId": "local-leagues",
+      "title": "School / Office / Pub / Rec Sports",
+      "category": "local",
+      "themeId": "community-scoreboard",
+      "visualTone": "community scoreboard, editable labels, friendly match cards",
+      "palette": [
+        "chalkboard",
+        "rec-green",
+        "paper-white",
+        "signal-orange"
+      ],
+      "theme": {
+        "icon": "⚽",
+        "primary": "#22c55e",
+        "secondary": "#3b82f6",
+        "accent": "#15803d"
+      },
+      "generatedAt": "2026-07-05T10:36:54.573Z",
+      "assets": [
+        {
+          "assetType": "lobby-icon",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "community-scoreboard",
+          "palette": [
+            "chalkboard",
+            "rec-green",
+            "paper-white",
+            "signal-orange"
+          ],
+          "fileName": "icon"
+        },
+        {
+          "assetType": "server-card-cover",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "School / Office / Pub / Rec Sports server card cover for a P2P sports tournament app, community scoreboard, editable labels, friendly match cards, palette: chalkboard, rec-green, paper-white, signal-orange, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "community-scoreboard",
+          "palette": [
+            "chalkboard",
+            "rec-green",
+            "paper-white",
+            "signal-orange"
+          ],
+          "fileName": "cover"
+        },
+        {
+          "assetType": "hero-backdrop",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "School / Office / Pub / Rec Sports hero backdrop for a P2P sports tournament app, community scoreboard, editable labels, friendly match cards, palette: chalkboard, rec-green, paper-white, signal-orange, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "community-scoreboard",
+          "palette": [
+            "chalkboard",
+            "rec-green",
+            "paper-white",
+            "signal-orange"
+          ],
+          "fileName": "hero"
+        },
+        {
+          "assetType": "bracket-board-skin",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "School / Office / Pub / Rec Sports bracket board skin for a P2P sports tournament app, community scoreboard, editable labels, friendly match cards, palette: chalkboard, rec-green, paper-white, signal-orange, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "community-scoreboard",
+          "palette": [
+            "chalkboard",
+            "rec-green",
+            "paper-white",
+            "signal-orange"
+          ],
+          "fileName": "board"
+        },
+        {
+          "assetType": "pool-card-accent",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "community-scoreboard",
+          "palette": [
+            "chalkboard",
+            "rec-green",
+            "paper-white",
+            "signal-orange"
+          ],
+          "fileName": "accent"
+        },
+        {
+          "assetType": "mini-game-icon-set",
+          "source": "local",
+          "model": null,
+          "size": null,
+          "prompt": null,
+          "negativePrompt": null,
+          "themeId": "community-scoreboard",
+          "palette": [
+            "chalkboard",
+            "rec-green",
+            "paper-white",
+            "signal-orange"
+          ],
+          "fileName": "icons"
+        },
+        {
+          "assetType": "watch-room-stage",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "School / Office / Pub / Rec Sports watch room stage for a P2P sports tournament app, community scoreboard, editable labels, friendly match cards, palette: chalkboard, rec-green, paper-white, signal-orange, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "community-scoreboard",
+          "palette": [
+            "chalkboard",
+            "rec-green",
+            "paper-white",
+            "signal-orange"
+          ],
+          "fileName": "stage"
+        },
+        {
+          "assetType": "result-share-card",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "School / Office / Pub / Rec Sports result share card for a P2P sports tournament app, community scoreboard, editable labels, friendly match cards, palette: chalkboard, rec-green, paper-white, signal-orange, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "community-scoreboard",
+          "palette": [
+            "chalkboard",
+            "rec-green",
+            "paper-white",
+            "signal-orange"
+          ],
+          "fileName": "share"
+        },
+        {
+          "assetType": "empty-state-illustration",
+          "source": "bigmodel",
+          "model": "cogView-4-250304",
+          "size": "1024x1024",
+          "prompt": "School / Office / Pub / Rec Sports empty state illustration for a P2P sports tournament app, community scoreboard, editable labels, friendly match cards, palette: chalkboard, rec-green, paper-white, signal-orange, mobile-safe UI, high contrast, polished broadcast finish. Rights-safe constraints: no official marks, no logos, no real people, no copyrighted venues. usable across light, dark, and event-themed shells, readable mobile UI safe areas.",
+          "negativePrompt": "no official marks, no logos, no real people, no copyrighted venues",
+          "themeId": "community-scoreboard",
+          "palette": [
+            "chalkboard",
+            "rec-green",
+            "paper-white",
+            "signal-orange"
+          ],
+          "fileName": "empty"
+        }
+      ]
+    }
+  ]
+}
