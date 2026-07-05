@@ -8,6 +8,7 @@
   "subtitle": "Ultimate Sports",
   "category": "pro-sports",
   "entrantShape": "team",
+  "templateKinds": ["series-playoff"],
   "defaultTeam": "lal",
   "theme": {
     "--ink": "#1a1025",

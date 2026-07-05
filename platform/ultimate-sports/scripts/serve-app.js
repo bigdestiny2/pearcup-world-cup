@@ -35,6 +35,7 @@ function createUltimateSportsAppServer (input = {}) {
   const rootDir = input.rootDir || path.resolve(__dirname, '..')
   const appRoot = input.appRoot || path.join(rootDir, 'app')
   const assetsRoot = input.assetsRoot || path.join(rootDir, 'generated-assets')
+  const shellRoot = input.shellRoot || path.join(rootDir, 'shell')
   const refreshSnapshot = input.refreshSnapshot !== false
   const demoSession = input.demoSession || createDemoSession({ userId: input.userId || DEMO_USER_ID })
   if (refreshSnapshot) writeUltimateSportsAppSnapshot({ rootDir })
@@ -49,6 +50,11 @@ function createUltimateSportsAppServer (input = {}) {
 
       if (pathname.startsWith('/generated-assets/')) {
         await serveStaticFile({ res, assetsRoot, urlPath: pathname.slice('/generated-assets/'.length) })
+        return
+      }
+
+      if (pathname.startsWith('/shell/')) {
+        await serveStaticFile({ res, assetsRoot: shellRoot, urlPath: pathname.slice('/shell/'.length) })
         return
       }
 

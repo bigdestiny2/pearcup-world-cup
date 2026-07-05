@@ -8,6 +8,7 @@
   "subtitle": "Ultimate Sports",
   "category": "sailing",
   "entrantShape": "team",
+  "templateKinds": ["series-playoff","round-robin"],
   "defaultTeam": "aus",
   "theme": {
     "--ink": "#082f49",

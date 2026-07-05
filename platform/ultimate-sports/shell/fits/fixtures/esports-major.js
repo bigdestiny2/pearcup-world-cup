@@ -8,6 +8,7 @@
   "subtitle": "Ultimate Sports",
   "category": "esports",
   "entrantShape": "team",
+  "templateKinds": ["group-plus-knockout","single-elimination","series-playoff"],
   "defaultTeam": "t1",
   "theme": {
     "--ink": "#1e1b4b",

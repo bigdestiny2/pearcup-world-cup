@@ -8,6 +8,7 @@
   "subtitle": "Ultimate Sports",
   "category": "creator",
   "entrantShape": "creator",
+  "templateKinds": ["single-elimination","creator-custom"],
   "defaultTeam": "alpha",
   "theme": {
     "--ink": "#2a0a2e",

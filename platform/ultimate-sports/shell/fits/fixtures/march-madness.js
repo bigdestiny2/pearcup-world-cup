@@ -8,6 +8,7 @@
   "subtitle": "Ultimate Sports",
   "category": "basketball",
   "entrantShape": "team",
+  "templateKinds": ["single-elimination"],
   "defaultTeam": "uconn",
   "theme": {
     "--ink": "#2a1510",

@@ -136,6 +136,7 @@
     subtitle: 'Ultimate Sports',
     category: 'combat-sports',
     entrantShape: 'player',
+    templateKinds: ['fight-card'],
     defaultTeam: 'silva',
     background: '#121214',
     theme: {

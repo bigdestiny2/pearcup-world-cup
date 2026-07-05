@@ -8,6 +8,7 @@
   "subtitle": "PearCup",
   "category": "soccer",
   "entrantShape": "team",
+  "templateKinds": ["group-plus-knockout","single-elimination"],
   "defaultTeam": "br",
   "theme": {
     "--ink": "#4a3b57",

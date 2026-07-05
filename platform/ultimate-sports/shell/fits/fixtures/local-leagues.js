@@ -8,6 +8,7 @@
   "subtitle": "Ultimate Sports",
   "category": "local",
   "entrantShape": "team",
+  "templateKinds": ["round-robin","single-elimination","creator-custom"],
   "defaultTeam": "phoenix",
   "theme": {
     "--ink": "#0f291e",

@@ -8,6 +8,7 @@
   "subtitle": "Ultimate Sports",
   "category": "soccer",
   "entrantShape": "team",
+  "templateKinds": ["single-elimination"],
   "defaultTeam": "rm",
   "theme": {
     "--ink": "#0f172a",

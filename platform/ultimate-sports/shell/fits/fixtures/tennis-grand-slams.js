@@ -8,6 +8,7 @@
   "subtitle": "Ultimate Sports",
   "category": "tennis",
   "entrantShape": "player",
+  "templateKinds": ["single-elimination"],
   "defaultTeam": "alcaraz",
   "theme": {
     "--ink": "#0f2c22",

@@ -8,6 +8,7 @@
   "subtitle": "Ultimate Sports",
   "category": "awards",
   "entrantShape": "nominee",
+  "templateKinds": ["awards-card"],
   "defaultTeam": "oppen",
   "theme": {
     "--ink": "#2a1a08",

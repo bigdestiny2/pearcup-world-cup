@@ -8,6 +8,7 @@
   "subtitle": "Ultimate Sports",
   "category": "soccer",
   "entrantShape": "team",
+  "templateKinds": ["group-plus-knockout","single-elimination"],
   "defaultTeam": "fr",
   "theme": {
     "--ink": "#1e293b",

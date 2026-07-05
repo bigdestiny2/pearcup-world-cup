@@ -1,6 +1,6 @@
 {
   "snapshotVersion": "ultimate-sports-app-snapshot-v1",
-  "generatedAt": "2026-07-04T00:00:00.000Z",
+  "generatedAt": "2026-07-05T12:15:42.873Z",
   "userId": "host",
   "runtime": {
     "eventCount": 20,
@@ -50,10 +50,10 @@
   },
   "audit": {
     "auditVersion": "ultimate-sports-standup-audit-v1",
-    "generatedAt": "2026-07-04T00:00:00.000Z",
+    "generatedAt": "2026-07-05T12:15:42.873Z",
     "status": "product-standup-ready",
     "summary": {
-      "coveragePercent": 94,
+      "coveragePercent": 100,
       "fitCount": 12,
       "launchableFits": 12,
       "miniGameRunPlans": 70,
@@ -65,10 +65,10 @@
       "launchReadinessLevel": "demo-product-ready",
       "fitReadinessBlockedFits": 9,
       "qvacLocalReadyFits": 3,
-      "topGapCount": 3
+      "topGapCount": 2
     },
     "coverage": {
-      "coveragePercent": 94,
+      "coveragePercent": 100,
       "overallStatus": "product-standup-ready",
       "areas": [
         {
@@ -181,7 +181,7 @@
           "covered": 1,
           "total": 1,
           "percent": 100,
-          "evidence": "Served preview journey smoke script and regression test are in the manifest. Latest report: passed, 21/21 checks, 94% coverage."
+          "evidence": "Served preview journey smoke script and regression test are in the manifest. Latest report: passed, 21/21 checks, 100% coverage."
         },
         {
           "title": "Generated visual assets",
@@ -192,10 +192,10 @@
         },
         {
           "title": "Pear worker bridge wiring",
-          "covered": 0,
+          "covered": 1,
           "total": 1,
-          "percent": 0,
-          "evidence": "Pear worker bridge does not expose the optional ultimateSports action; Pear worker bridge does not include an ultimate sports bridge handler factory; Pear worker bridge does not load the isolated v2 bridge protocol"
+          "percent": 100,
+          "evidence": "Existing Pear worker bridge delegates optional nested ultimateSports requests into the isolated v2 bridge while preserving v1 actions."
         }
       ]
     },
@@ -943,10 +943,10 @@
         "fileChecks": 5,
         "shellChecks": 5,
         "journeyChecks": 10,
-        "coveragePercent": 94,
-        "openGapCount": 3
+        "coveragePercent": 100,
+        "openGapCount": 2
       },
-      "evidence": "Served preview journey smoke script and regression test are in the manifest. Latest report: passed, 21/21 checks, 94% coverage."
+      "evidence": "Served preview journey smoke script and regression test are in the manifest. Latest report: passed, 21/21 checks, 100% coverage."
     },
     "appSurfaceSnapshot": [
       {
@@ -1024,8 +1024,8 @@
       "summary": {
         "gateCount": 6,
         "passedGateCount": 2,
-        "readyGateCount": 1,
-        "blockedGateCount": 3,
+        "readyGateCount": 2,
+        "blockedGateCount": 2,
         "currentLevelId": "demo-product-ready",
         "nextBlockedGateId": "provider-live-data-ready"
       },
@@ -1034,7 +1034,7 @@
           "gateId": "local-preview-ready",
           "title": "Local Preview Standup",
           "status": "passed",
-          "evidence": "Preview smoke passes and coverage is 94%.",
+          "evidence": "Preview smoke passes and coverage is 100%.",
           "blockers": [],
           "command": "node platform/ultimate-sports/scripts/preview-journey-smoke.js",
           "acceptanceCriteria": [
@@ -1091,10 +1091,11 @@
         {
           "gateId": "pear-production-integration-ready",
           "title": "Pear Production Integration",
-          "status": "blocked",
-          "evidence": "Pear worker bridge does not expose the optional ultimateSports action; Pear worker bridge does not include an ultimate sports bridge handler factory; Pear worker bridge does not load the isolated v2 bridge protocol",
+          "status": "ready",
+          "evidence": "Optional ultimateSports bridge action exists and preview smoke passes; production topic mapping remains a graduation task.",
           "blockers": [
-            "Pear worker bridge does not expose the optional ultimateSports action; Pear worker bridge does not include an ultimate sports bridge handler factory; Pear worker bridge does not load the isolated v2 bridge protocol"
+            "Final Pear UI routing is still isolated from the current PearCup start flow.",
+            "Production Pear topic/storage mapping for v2 rooms is not yet deployed."
           ],
           "command": "node platform/ultimate-sports/scripts/verify-platform.js",
           "acceptanceCriteria": [
@@ -1175,16 +1176,16 @@
         "area": "Worker bridge",
         "title": "Wire v2 commands through the existing Pear worker boundary",
         "priority": "P1",
-        "status": "open",
-        "evidence": "Pear worker bridge does not expose the optional ultimateSports action; Pear worker bridge does not include an ultimate sports bridge handler factory; Pear worker bridge does not load the isolated v2 bridge protocol",
-        "nextStep": "Add an ultimate-sports bridge action set and replay storage topic mapping."
+        "status": "covered",
+        "evidence": "Existing Pear worker bridge delegates optional nested ultimateSports requests into the isolated v2 bridge while preserving v1 actions.",
+        "nextStep": "Keep the optional ultimateSports action isolated from v1 startup, then add production Pear topic mapping when the v2 UI graduates from preview."
       },
       {
         "area": "Quality",
         "title": "Add automated preview journey tests for the UI shell",
         "priority": "P2",
         "status": "covered",
-        "evidence": "Served preview journey smoke script and regression test are in the manifest. Latest report: passed, 21/21 checks, 94% coverage.",
+        "evidence": "Served preview journey smoke script and regression test are in the manifest. Latest report: passed, 21/21 checks, 100% coverage.",
         "nextStep": "Keep running npm run smoke:ultimate-preview for the isolated shell, then add screenshot/click automation when the preview graduates into a production Pear UI."
       }
     ],
@@ -1655,7 +1656,7 @@
         "readyTicketCount": 9,
         "p0TicketCount": 8,
         "p1TicketCount": 11,
-        "openGapCount": 3,
+        "openGapCount": 2,
         "externalDependencyTicketCount": 10
       },
       "workstreams": [
@@ -3318,7 +3319,7 @@
       "workbench": {
         "workbenchId": "pick-workbench-host-51587444",
         "userId": "host",
-        "generatedAt": "2026-07-05T10:52:59.063Z",
+        "generatedAt": "2026-07-05T12:15:42.892Z",
         "counts": {
           "openPools": 3,
           "lockReadyPools": 0,
@@ -3613,7 +3614,7 @@
       "workbench": {
         "workbenchId": "watch-workbench-host-c41498e9",
         "userId": "host",
-        "generatedAt": "2026-07-05T10:52:59.063Z",
+        "generatedAt": "2026-07-05T12:15:42.892Z",
         "selectedRoomId": "scenario-soccer-knockout:room:final",
         "counts": {
           "rooms": 2,
@@ -4172,7 +4173,7 @@
       "workbench": {
         "workbenchId": "creator-workbench-host-19899ad2",
         "userId": "host",
-        "generatedAt": "2026-07-05T10:52:59.063Z",
+        "generatedAt": "2026-07-05T12:15:42.892Z",
         "counts": {
           "drafts": 0,
           "readyDrafts": 0,
@@ -4246,7 +4247,7 @@
       "workbench": {
         "workbenchId": "wallet-ops-host-1795aaeb",
         "userId": "host",
-        "generatedAt": "2026-07-05T10:52:59.064Z",
+        "generatedAt": "2026-07-05T12:15:42.892Z",
         "counts": {
           "accounts": 0,
           "activeAccounts": 0,
@@ -4430,7 +4431,7 @@
       "workbench": {
         "opsWorkbenchId": "ops-workbench-host-209531f3",
         "userId": "host",
-        "generatedAt": "2026-07-04T00:00:00.000Z",
+        "generatedAt": "2026-07-05T12:15:42.873Z",
         "eventRoot": "39add625",
         "health": {
           "level": "ok",
@@ -4521,7 +4522,7 @@
                 "organizer"
               ],
               "horizonMinutes": 60,
-              "now": "2026-07-04T00:00:00.000Z",
+              "now": "2026-07-05T12:15:42.873Z",
               "sourceEventCount": 20
             }
           }
@@ -4594,7 +4595,7 @@
                 "organizer"
               ],
               "horizonMinutes": 60,
-              "now": "2026-07-04T00:00:00.000Z",
+              "now": "2026-07-05T12:15:42.873Z",
               "sourceEventCount": 20
             }
           },
