@@ -43,6 +43,7 @@
         "/transport-sim.js",
         "/storage-sim.js",
         "/sdk-runtime.js",
+        "/host-bridge.js",
         "/app.js",
         "/peer-net.js",
         "/peer-match.js",

@@ -66,6 +66,15 @@ function saveWallet () {
   } catch {}
 }
 
+function saveProfile () {
+  try {
+    const stored = loadStored()
+    stored.username = state.profile.username
+    stored.team = state.profile.team
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
+  } catch {}
+}
+
 function fmtMoney (n) {
   return `${Number(n).toLocaleString('en-US')} ${state.wallet.currency}`
 }
@@ -80,9 +89,36 @@ function bindSplash () {
     $('#splash').classList.remove('is-hidden')
   })
   $('#closeLoader').addEventListener('click', closeLoader)
-  window.addEventListener('message', event => {
-    if (event.data && event.data.type === 'close-app') closeLoader()
-  })
+  window.addEventListener('message', onFrameMessage)
+}
+
+// The lobby is the authority for identity + wallet. It injects them into a fit
+// on load and adopts whatever the fit reports back, so the wallet/profile stay
+// live across the lobby and every open fit.
+function onFrameMessage (event) {
+  const data = event.data
+  if (!data) return
+  if (data.type === 'close-app') { closeLoader(); return }
+  if (data.type === 'ultimate:ready') {
+    injectHostState($('#appFrame'))
+    return
+  }
+  if (data.type === 'ultimate:state') {
+    if (data.wallet) { state.wallet = { ...state.wallet, ...data.wallet }; saveWallet(); renderWallet() }
+    if (data.profile) { state.profile = { ...state.profile, ...data.profile }; saveProfile(); renderProfile() }
+    renderActiveCompetitions()
+  }
+}
+
+function injectHostState (frame) {
+  if (!frame || !frame.contentWindow) return
+  try {
+    frame.contentWindow.postMessage({
+      type: 'ultimate:init',
+      profile: state.profile,
+      wallet: state.wallet
+    }, '*')
+  } catch {}
 }
 
 function bindWalletActions () {
@@ -183,11 +219,15 @@ function renderServerGrid () {
 
 function renderStatus () {
   const liveCount = state.servers.filter(server => server.isLive).length
-  $('#lobbyStatus').innerHTML = `
-    <span class="pill is-live">${liveCount} live</span>
-    <span class="pill">${state.servers.length} servers</span>
-  `
-  $('#liveCount').textContent = `${liveCount} live`
+  const status = $('#lobbyStatus')
+  if (status) {
+    status.innerHTML = `
+      <span class="pill is-live">${liveCount} live</span>
+      <span class="pill">${state.servers.length} servers</span>
+    `
+  }
+  const liveCountEl = $('#liveCount')
+  if (liveCountEl) liveCountEl.textContent = `${liveCount} live`
 }
 
 function renderWallet () {
@@ -248,6 +288,7 @@ function loadApp (server) {
   const frame = $('#appFrame')
   const title = $('#loaderTitle')
   title.textContent = server.title
+  frame.onload = () => injectHostState(frame)
   frame.src = server.appUrl
   loader.classList.remove('is-hidden')
 }

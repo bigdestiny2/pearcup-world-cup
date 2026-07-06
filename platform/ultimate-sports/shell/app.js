@@ -282,6 +282,45 @@ if (typeof window !== 'undefined' && window.ULTIMATE_FIT_CONFIG) {
 
 const state = loadState()
 
+// ==================== Ultimate Sports host spine ====================
+// When this fit runs inside the Ultimate Sports lobby, the lobby is the
+// authority for identity + wallet. Adopt what it injects and report our own
+// wallet/profile changes back so the lobby stays live and persists them.
+// Standalone (not hosted) => HOST is null/inert and the shell keeps its own
+// local wallet, exactly as before.
+const HOST = (typeof window !== 'undefined' && window.ULTIMATE_HOST) || null
+let adoptingHostState = false
+
+function reportHostState () {
+  if (adoptingHostState || !HOST || !HOST.isHosted()) return
+  HOST.reportState({
+    profile: { username: state.username, team: state.team },
+    wallet: state.wallet
+  })
+}
+
+function adoptHostState (data) {
+  if (!data) return
+  adoptingHostState = true
+  try {
+    if (data.wallet) state.wallet = { ...state.wallet, ...data.wallet }
+    if (data.profile) {
+      if (data.profile.username) state.username = data.profile.username
+      if (data.profile.team) state.team = data.profile.team
+    }
+    persist()
+  } finally {
+    adoptingHostState = false
+  }
+  // Re-render only once the app has booted; pre-boot injection is picked up by
+  // boot()'s first render.
+  if (typeof window !== 'undefined' && window.__pearcupAppBooted) {
+    try { refreshWallet(); renderProfile(); renderView(state.view) } catch (e) {}
+  }
+}
+
+if (HOST && HOST.isHosted()) HOST.onInit(adoptHostState)
+
 if (typeof history !== 'undefined' && 'scrollRestoration' in history) history.scrollRestoration = 'manual'
 
 const $ = (selector, root = document) => root.querySelector(selector)
@@ -367,6 +406,7 @@ function persist () {
   try {
     localStorage.setItem('pearcup-prototype', JSON.stringify(state))
   } catch {}
+  reportHostState()
 }
 
 function teamById (id) {
