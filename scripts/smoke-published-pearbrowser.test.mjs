@@ -4,7 +4,7 @@ import { createServer } from 'node:http'
 import { resolve } from 'node:path'
 import { test } from 'node:test'
 
-const root = resolve(new URL('..', import.meta.url).pathname)
+const root = resolve(decodeURIComponent(new URL('..', import.meta.url).pathname))
 const script = resolve(root, 'scripts', 'smoke-published-pearbrowser.mjs')
 const drive = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 

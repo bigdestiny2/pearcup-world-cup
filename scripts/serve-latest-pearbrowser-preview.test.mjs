@@ -6,7 +6,7 @@ import { join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { test } from 'node:test'
 
-const root = resolve(new URL('..', import.meta.url).pathname)
+const root = resolve(decodeURIComponent(new URL('..', import.meta.url).pathname))
 const script = join(root, 'scripts', 'serve-latest-pearbrowser-preview.mjs')
 
 test('exact preview dry-run verifies receipt bundle and prints strict serve command', () => {

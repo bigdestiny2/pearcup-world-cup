@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import { test } from 'node:test'
 
-const root = resolve(new URL('..', import.meta.url).pathname)
+const root = resolve(decodeURIComponent(new URL('..', import.meta.url).pathname))
 const script = join(root, 'scripts', 'publish-approved-pearcup.mjs')
 const sha = '184244c9078de2892f9413fc33c1abd92ebd0edcb909cac3161c09ed0e4ddc1e'
 

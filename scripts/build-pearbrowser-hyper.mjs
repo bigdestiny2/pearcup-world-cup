@@ -46,7 +46,7 @@ if (!existsSync(manifestPath)) {
     version: pkg.version,
     description: 'World Cup bracket pools, watch parties, and Penalty Clash mini matches for PearBrowser.',
     author: 'PearCup',
-    icon: '/assets/mascot.png',
+    icon: '/assets/icon.png',
     entry: '/index.html',
     categories: ['games', 'sports'],
     permissions: []

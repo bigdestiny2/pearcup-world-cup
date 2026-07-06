@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { test } from 'node:test'
 
-const root = resolve(new URL('..', import.meta.url).pathname)
+const root = resolve(decodeURIComponent(new URL('..', import.meta.url).pathname))
 const script = join(root, 'scripts', 'launch-status-latest.mjs')
 const sha = '63209b225cc27814520b07a686cb5d7f08176ad4b43cbd2891752757b4de1fd5'
 const drive = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
