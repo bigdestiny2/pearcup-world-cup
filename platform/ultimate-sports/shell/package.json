@@ -45,6 +45,8 @@
         "/storage-sim.js",
         "/sdk-runtime.js",
         "/host-bridge.js",
+        "/crypto-identity.js",
+        "/room-access.js",
         "/app.js",
         "/peer-net.js",
         "/peer-match.js",

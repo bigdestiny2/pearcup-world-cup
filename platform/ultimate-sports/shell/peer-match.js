@@ -98,7 +98,11 @@
     PM.channel.onMessage(onMessage)
   }
 
-  function announce () { send({ t: 'hello', peer: PM.self }) }
+  function roomCredential () {
+    const RA = root.PearCupRoomAccess
+    return RA && typeof RA.myCredential === 'function' ? RA.myCredential() : null
+  }
+  function announce () { send({ t: 'hello', peer: PM.self, cred: roomCredential() }) }
   function send (msg) { if (PM.channel) PM.channel.send({ ...msg, room: PM.code, sender: PM.self.peerId }) }
 
   function startAnnouncing () {
@@ -126,7 +130,7 @@
   function onMessage (msg) {
     if (!msg || msg.room !== PM.code || msg.sender === PM.self.peerId) return
     switch (msg.t) {
-      case 'hello': return onHello(msg.peer)
+      case 'hello': return onHello(msg.peer, msg.cred)
       case 'commit': return onCommit(msg)
       case 'dive': return onDive(msg)
       case 'reveal': return onReveal(msg)
@@ -134,9 +138,28 @@
     }
   }
 
-  function onHello (peer) {
-    if (PM.started || !peer) return
-    if (!PM.opp) { PM.opp = peer; announce() } // re-announce so a late joiner learns me
+  function onHello (peer, cred) {
+    if (PM.started || !peer || PM.opp) return
+    const RA = root.PearCupRoomAccess
+    // Private rooms are access-controlled: verify the joiner's capability
+    // (owner key, or a host-signed invite for their key) before admitting them.
+    if (RA && RA.enforced) {
+      Promise.resolve(RA.verify(cred)).then(ok => {
+        if (!ok) {
+          if (!PM.rejectedNote) { PM.rejectedNote = true; try { showToast('Blocked a peer without a valid room invite') } catch (e) {} }
+          return
+        }
+        admitOpponent(peer)
+      }).catch(() => {})
+      return
+    }
+    admitOpponent(peer)
+  }
+
+  function admitOpponent (peer) {
+    if (PM.started || !peer || PM.opp) return
+    PM.opp = peer
+    announce() // re-announce so a late joiner learns me
     syncDiagnostics(PM.role ? undefined : 'connected')
     maybeStart()
   }

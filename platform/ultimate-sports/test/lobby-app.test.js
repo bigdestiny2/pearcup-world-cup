@@ -41,9 +41,10 @@ test('lobby app server serves lobby, mma, and kawaii index pages', async () => {
     const health = await fetchJson(`${baseUrl}/health`)
 
     assert.ok(lobby.includes('Ultimate Sports'))
-    assert.ok(lobby.includes('Choose a sport'))
+    assert.ok(lobby.includes('Server browser'))
     assert.ok(lobby.includes('Wallet'))
-    assert.ok(lobby.includes('Active competitions'))
+    assert.ok(lobby.includes('Friends'))
+    assert.ok(lobby.includes('Private rooms'))
     assert.ok(mma.includes('Fight Card'))
     assert.ok(shell.includes('PearCup'))
     assert.ok(kawaii.includes('PearCup'))
