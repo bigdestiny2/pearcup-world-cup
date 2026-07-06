@@ -268,10 +268,12 @@ let bracketMatchIds = [
 // use the knockout board; 'fight-card' renders independent bouts; 'awards-card'
 // renders category pick cards. Defaults to the World Cup knockout tree.
 let templateKind = 'single-elimination'
+let awardsCategories = []
 
 if (typeof window !== 'undefined' && window.ULTIMATE_FIT_CONFIG) {
   const cfg = window.ULTIMATE_FIT_CONFIG
   if (cfg.templateKind) templateKind = cfg.templateKind
+  if (cfg.categories) awardsCategories = cfg.categories
   if (cfg.teams) teams = cfg.teams
   if (cfg.pools) pools = cfg.pools
   if (cfg.round32Matches) round32Matches = cfg.round32Matches
@@ -383,6 +385,24 @@ function loadState () {
 
 function normalizeBracketPicks (picks = {}) {
   const source = picks && typeof picks === 'object' && !Array.isArray(picks) ? picks : {}
+  // Non-bracket template kinds key picks by category/bout id, not tree match id —
+  // validate against their own structure so reload doesn't drop them.
+  if (templateKind === 'awards-card') {
+    const kept = {}
+    for (const category of awardsCategories) {
+      const value = source[category.id]
+      if (value && (category.nominees || []).some(nominee => nominee.id === value)) kept[category.id] = value
+    }
+    return kept
+  }
+  if (templateKind === 'fight-card') {
+    const kept = {}
+    for (const bout of round32Matches) {
+      const value = source[bout.id]
+      if (value && bout.slots.includes(value)) kept[bout.id] = value
+    }
+    return kept
+  }
   const next = { ...source }
   const hasRound32 = Object.keys(next).some(id => id.startsWith('r32-'))
   if (!hasRound32) {
@@ -2253,10 +2273,47 @@ function renderFightCardBoard () {
   })
 }
 
+// An awards card is a set of INDEPENDENT categories; each is a "pick one
+// nominee" choice. No teams, no bracket — the fit supplies `categories`.
+function renderAwardsBoard () {
+  const board = $('#bracketBoard')
+  if (!board) return
+  board.classList.remove('is-fight-card')
+  board.classList.add('is-awards-card')
+  board.innerHTML = awardsCategories.map(category => `
+    <article class="awards-category match-card" data-match-card="${escapeHtml(category.id)}">
+      <div class="match-meta">
+        <span class="fight-bout-slot">${escapeHtml(category.title)}</span>
+        <span class="match-status">${getPick(category.id) ? 'Picked' : 'Open'}</span>
+      </div>
+      <div class="awards-nominees">
+        ${(category.nominees || []).map(nominee => {
+          const picked = getPick(category.id) === nominee.id
+          return `
+            <button class="nominee-row team-row${picked ? ' is-picked' : ''}" type="button" data-match="${escapeHtml(category.id)}" data-pick="${escapeHtml(nominee.id)}" aria-pressed="${picked}">
+              <span class="nominee-name">${escapeHtml(nominee.name)}</span>
+              ${nominee.detail ? `<span class="nominee-detail">${escapeHtml(nominee.detail)}</span>` : ''}
+            </button>`
+        }).join('')}
+      </div>
+    </article>
+  `).join('')
+
+  $$('#bracketBoard [data-pick]').forEach(button => {
+    button.addEventListener('click', () => {
+      // Each category is independent — pick one nominee.
+      state.picks[button.dataset.match] = button.dataset.pick
+      persist()
+      renderBracket()
+    })
+  })
+}
+
 function renderBracketBoard () {
   if (templateKind === 'fight-card') return renderFightCardBoard()
+  if (templateKind === 'awards-card') return renderAwardsBoard()
   const board = $('#bracketBoard')
-  if (board) board.classList.remove('is-fight-card')
+  if (board) board.classList.remove('is-fight-card', 'is-awards-card')
   const placements = {
     round32: index => ({ column: 1, row: index + 2, span: 1 }),
     round16: index => ({ column: 2, row: 2 + (index * 2), span: 2 }),
@@ -2305,6 +2362,7 @@ async function renderBracket () {
   $('#bracketTierLabel').textContent = `$${selectedPool.tier} pool${entered ? ' · entered' : ''}`
   const bracketTitleEl = $('#bracketTitle')
   if (bracketTitleEl && templateKind === 'fight-card') bracketTitleEl.textContent = 'Pick the fight card'
+  if (bracketTitleEl && templateKind === 'awards-card') bracketTitleEl.textContent = 'Make your award picks'
   renderPoolSelect()
   const remaining = remainingPicks()
   const pr = $('#picksRemaining')
@@ -4336,6 +4394,7 @@ function applyKickResult (result) {
 
 function remainingPicks () {
   if (templateKind === 'fight-card') return round32Matches.filter(bout => !state.picks[bout.id]).length
+  if (templateKind === 'awards-card') return awardsCategories.filter(category => !state.picks[category.id]).length
   return bracketMatchIds.filter(id => !state.picks[id]).length
 }
 
