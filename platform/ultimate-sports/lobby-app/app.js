@@ -2,46 +2,105 @@
 
 const STORAGE_KEY = 'pearcup-prototype'
 
+// fitId → tournament format shown in the server browser (mirrors shell templateKinds)
+const FIT_FORMATS = {
+  'world-cup': 'Group + KO',
+  'euros-copa-america': 'Group + KO',
+  'champions-league-knockout': 'Single elim',
+  'march-madness': 'Single elim',
+  'pro-playoffs': 'Series',
+  'tennis-grand-slams': 'Single elim',
+  'esports-major': 'Single elim',
+  'mma-boxing-fight-card': 'Fight card',
+  'sailgp-companion': 'Round robin',
+  'creator-reality-brackets': 'Creator',
+  'awards-prediction-pools': 'Awards card',
+  'local-leagues': 'Round robin'
+}
+
+const CATEGORY_ICONS = {
+  all: '◈',
+  soccer: '⚽',
+  basketball: '🏀',
+  'pro-sports': '🏆',
+  tennis: '🎾',
+  esports: '🎮',
+  'combat-sports': '🥊',
+  sailing: '⛵',
+  creator: '◆',
+  awards: '🏅',
+  local: '◇'
+}
+
 const state = {
   servers: [],
   filter: 'all',
-  featured: null,
+  selectedServerId: null,
   profile: loadProfile(),
   wallet: loadWallet(),
-  prefs: loadPrefs()
+  prefs: loadPrefs(),
+  identity: loadIdentity(),
+  friends: loadFriends(),
+  privateRooms: loadPrivateRooms()
 }
 
 const $ = (selector, root = document) => root.querySelector(selector)
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)]
 
-boot()
-
+// boot() is invoked at the END of this file: it synchronously renders panels
+// that read consts (kawaiiTeams) declared below, which are TDZ until the whole
+// script has executed.
 async function boot () {
-  applyLobbyTheme()
-  bindSplash()
+  bindChrome()
   bindWalletActions()
   bindSettings()
+  bindFriends()
+  bindRoomModal()
+  renderIdentity()
+  renderFriends()
+  renderWallet()
+  renderSettings()
+  renderActiveCompetitions()
+  renderPrivateRooms()
   try {
     const response = await fetch('./data/servers.json', { cache: 'no-store' })
     if (!response.ok) throw new Error(`servers fetch failed: ${response.status}`)
     state.servers = await response.json()
-    state.featured = state.servers.find(server => server.isFeatured) || state.servers[0] || null
-    renderLobby()
-    renderWallet()
-    renderActiveCompetitions()
-    renderProfile()
-    renderSettings()
+    state.selectedServerId = (state.servers.find(s => s.isFeatured) || state.servers[0] || {}).serverId || null
+    renderFilters()
+    renderServerTable()
+    renderStatus()
+    renderTicker()
   } catch (error) {
     renderError(error)
   }
 }
 
+/* ==================== storage ==================== */
+
+function loadStored () {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || {}
+  } catch {
+    return {}
+  }
+}
+
+function saveStored (patch) {
+  try {
+    const stored = loadStored()
+    Object.assign(stored, patch)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
+  } catch {}
+}
+
 function loadProfile () {
   const saved = loadStored()
-  return {
-    username: saved.username || 'captain',
-    team: saved.team || 'br'
-  }
+  return { username: saved.username || 'captain', team: saved.team || 'br' }
+}
+
+function saveProfile () {
+  saveStored({ username: state.profile.username, team: state.profile.team })
 }
 
 function loadWallet () {
@@ -54,75 +113,78 @@ function loadWallet () {
   }
 }
 
+function saveWallet () {
+  saveStored({ wallet: state.wallet })
+}
+
 function loadPrefs () {
   const saved = loadStored()
   const langs = ['EN', 'PT', 'ES', 'FR']
   return {
     language: langs.includes(saved.language) ? saved.language : 'EN',
-    settlementMode: saved.settlementMode === 'real' ? 'real' : 'demo',
-    lobbyTheme: saved.lobbyTheme === 'dark' ? 'dark' : 'light'
+    settlementMode: saved.settlementMode === 'real' ? 'real' : 'demo'
   }
 }
 
 function savePrefs () {
-  try {
-    const stored = loadStored()
-    stored.language = state.prefs.language
-    stored.settlementMode = state.prefs.settlementMode
-    stored.lobbyTheme = state.prefs.lobbyTheme
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
-  } catch {}
+  saveStored({ language: state.prefs.language, settlementMode: state.prefs.settlementMode })
 }
 
-function applyLobbyTheme () {
-  document.documentElement.dataset.lobbyTheme = state.prefs.lobbyTheme
-}
-
-function loadStored () {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || {}
-  } catch {
-    return {}
+// Local peer identity: a 32-byte key generated once and kept in the shared
+// store. This is the add-friend handle; swarm-backed presence (hyperswarm)
+// attaches to it when the client runs inside the Pear runtime.
+function loadIdentity () {
+  const saved = loadStored()
+  if (saved.identity && typeof saved.identity.key === 'string' && /^[0-9a-f]{64}$/.test(saved.identity.key)) {
+    return saved.identity
   }
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  const identity = { key: [...bytes].map(b => b.toString(16).padStart(2, '0')).join(''), created: Date.now() }
+  saveStored({ identity })
+  return identity
 }
 
-function saveWallet () {
-  try {
-    const stored = loadStored()
-    stored.wallet = state.wallet
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
-  } catch {}
+function loadFriends () {
+  const saved = loadStored()
+  return Array.isArray(saved.friends) ? saved.friends : []
 }
 
-function saveProfile () {
-  try {
-    const stored = loadStored()
-    stored.username = state.profile.username
-    stored.team = state.profile.team
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
-  } catch {}
+function saveFriends () {
+  saveStored({ friends: state.friends })
+}
+
+function loadPrivateRooms () {
+  const saved = loadStored()
+  return Array.isArray(saved.privateRooms) ? saved.privateRooms : []
+}
+
+function savePrivateRooms () {
+  saveStored({ privateRooms: state.privateRooms })
 }
 
 function fmtMoney (n) {
   return `${Number(n).toLocaleString('en-US')} ${state.wallet.currency}`
 }
 
-function bindSplash () {
-  $('#enterLobby').addEventListener('click', () => {
-    $('#splash').classList.add('is-hidden')
-    $('#lobbyShell').classList.remove('is-hidden')
-  })
-  $('#backToSplash').addEventListener('click', () => {
-    $('#lobbyShell').classList.add('is-hidden')
-    $('#splash').classList.remove('is-hidden')
-  })
+/* ==================== window chrome ==================== */
+
+function bindChrome () {
   $('#closeLoader').addEventListener('click', closeLoader)
   window.addEventListener('message', onFrameMessage)
+  $('#joinSelectedBtn').addEventListener('click', () => {
+    const server = state.servers.find(s => s.serverId === state.selectedServerId)
+    if (server) loadApp(server)
+  })
+  $('#newRoomBtn').addEventListener('click', openRoomModal)
+  $('#walletChip').addEventListener('click', () => {
+    const panel = $('#walletBalance')
+    if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  })
 }
 
-// The lobby is the authority for identity + wallet. It injects them into a fit
-// on load and adopts whatever the fit reports back, so the wallet/profile stay
-// live across the lobby and every open fit.
+/* ==================== host bridge (lobby = identity/wallet authority) ==================== */
+
 function onFrameMessage (event) {
   const data = event.data
   if (!data) return
@@ -133,7 +195,7 @@ function onFrameMessage (event) {
   }
   if (data.type === 'ultimate:state') {
     if (data.wallet) { state.wallet = { ...state.wallet, ...data.wallet }; saveWallet(); renderWallet() }
-    if (data.profile) { state.profile = { ...state.profile, ...data.profile }; saveProfile(); renderProfile() }
+    if (data.profile) { state.profile = { ...state.profile, ...data.profile }; saveProfile(); renderSettings(); renderIdentity() }
     renderActiveCompetitions()
   }
 }
@@ -149,109 +211,276 @@ function injectHostState (frame) {
   } catch {}
 }
 
+function syncOpenFit () {
+  const loader = $('#appLoader')
+  if (loader && !loader.classList.contains('is-hidden')) injectHostState($('#appFrame'))
+}
+
+/* ==================== wallet ==================== */
+
 function bindWalletActions () {
-  $('#walletChip').addEventListener('click', () => {
-    $('#lobbyShell').classList.remove('is-hidden')
-    $('#splash').classList.add('is-hidden')
-    document.getElementById('walletPanel').scrollIntoView({ behavior: 'smooth' })
-  })
   $('#fundWalletBtn').addEventListener('click', () => {
     state.wallet.balance += 100
-    state.wallet.ledger.unshift({ label: 'Deposit via Tether WDK', amount: 100, kind: 'credit' })
-    state.wallet.ledger = state.wallet.ledger.slice(0, 8)
-    saveWallet()
-    renderWallet()
-    renderActiveCompetitions()
-    syncOpenFit()
+    walletLog('Deposit via Tether WDK', 100, 'credit')
+    saveWallet(); renderWallet(); renderActiveCompetitions(); syncOpenFit()
   })
   $('#collectPayoutBtn').addEventListener('click', () => {
     const amount = state.wallet.pendingPayout || 0
     if (amount <= 0) return
     state.wallet.balance += amount
-    state.wallet.ledger.unshift({ label: 'Collected payouts', amount, kind: 'credit' })
-    state.wallet.ledger = state.wallet.ledger.slice(0, 8)
     state.wallet.pendingPayout = 0
-    saveWallet()
-    renderWallet()
-    syncOpenFit()
+    walletLog('Collected payouts', amount, 'credit')
+    saveWallet(); renderWallet(); syncOpenFit()
   })
   $('#withdrawWalletBtn').addEventListener('click', () => {
     const amount = state.wallet.balance
     if (amount <= 0) return
     state.wallet.balance = 0
-    state.wallet.ledger.unshift({ label: 'Withdraw to payout address', amount, kind: 'debit' })
-    state.wallet.ledger = state.wallet.ledger.slice(0, 8)
-    saveWallet()
-    renderWallet()
-    syncOpenFit()
+    walletLog('Withdraw to payout address', amount, 'debit')
+    saveWallet(); renderWallet(); syncOpenFit()
   })
 }
 
-function renderLobby () {
-  renderFilters()
-  renderHero()
-  renderServerGrid()
-  renderStatus()
+function walletLog (label, amount, kind) {
+  state.wallet.ledger = state.wallet.ledger || []
+  state.wallet.ledger.unshift({ label, amount, kind })
+  state.wallet.ledger = state.wallet.ledger.slice(0, 8)
 }
+
+function renderWallet () {
+  const w = state.wallet
+  $('#walletChip .wallet-amt').textContent = fmtMoney(w.balance)
+  $('#walletBalance').textContent = fmtMoney(w.balance)
+  $('#walletPayout').textContent = w.pendingPayout > 0 ? `${fmtMoney(w.pendingPayout)} to collect` : 'no payouts'
+  $('#collectPayoutBtn').disabled = w.pendingPayout <= 0
+  $('#withdrawWalletBtn').disabled = w.balance <= 0
+  const ledger = $('#walletLedger')
+  const rows = (w.ledger || []).slice(0, 5)
+  ledger.innerHTML = rows.length
+    ? rows.map(entry => `
+        <div class="lrow">
+          <span class="l">${escapeHtml(entry.label)}</span>
+          <span class="a ${entry.kind === 'debit' ? 'neg' : 'pos'}">${entry.kind === 'debit' ? '−' : '+'}${escapeHtml(String(entry.amount))}</span>
+        </div>`).join('')
+    : '<p class="ledger-empty">No transactions yet.</p>'
+}
+
+/* ==================== identity + friends ==================== */
+
+function shortKey (key) {
+  return `${key.slice(0, 8)}…${key.slice(-6)}`
+}
+
+function renderIdentity () {
+  $('#myPeerId').textContent = state.identity.key
+  $('#myPeerId').title = state.identity.key
+  $('#statusIdentity').textContent = `${state.profile.username} · ${shortKey(state.identity.key)}`
+}
+
+function bindFriends () {
+  $('#copyPeerId').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(state.identity.key)
+      $('#copyPeerId').textContent = 'Copied'
+      setTimeout(() => { $('#copyPeerId').textContent = 'Copy' }, 1400)
+    } catch {
+      // Clipboard can be unavailable (permissions/iframe) — select the key instead.
+      const range = document.createRange()
+      range.selectNodeContents($('#myPeerId'))
+      const sel = window.getSelection()
+      sel.removeAllRanges(); sel.addRange(range)
+    }
+  })
+
+  $('#friendAddForm').addEventListener('submit', event => {
+    event.preventDefault()
+    const keyInput = $('#friendKeyInput')
+    const nameInput = $('#friendNameInput')
+    const key = (keyInput.value || '').trim().toLowerCase()
+    const name = (nameInput.value || '').trim() || `peer-${key.slice(0, 4)}`
+    if (!/^[0-9a-f]{64}$/.test(key)) {
+      keyInput.setCustomValidity('Peer ID is 64 hex characters')
+      keyInput.reportValidity()
+      setTimeout(() => keyInput.setCustomValidity(''), 1800)
+      return
+    }
+    if (key === state.identity.key) {
+      keyInput.setCustomValidity("That's your own peer ID")
+      keyInput.reportValidity()
+      setTimeout(() => keyInput.setCustomValidity(''), 1800)
+      return
+    }
+    if (!state.friends.some(f => f.key === key)) {
+      state.friends.push({ key, name, added: Date.now() })
+      saveFriends()
+    }
+    keyInput.value = ''; nameInput.value = ''
+    renderFriends()
+    renderStatus()
+  })
+
+  $('#friendList').addEventListener('click', event => {
+    const del = event.target.closest('[data-del-friend]')
+    if (!del) return
+    state.friends = state.friends.filter(f => f.key !== del.dataset.delFriend)
+    saveFriends()
+    renderFriends()
+    renderStatus()
+  })
+}
+
+function renderFriends () {
+  const list = $('#friendList')
+  list.innerHTML = state.friends.length
+    ? state.friends.map(friend => `
+        <div class="friend-row">
+          <span class="f-dot" title="Presence needs the Pear runtime swarm"></span>
+          <span class="f-name">${escapeHtml(friend.name)}</span>
+          <span class="f-key">${escapeHtml(shortKey(friend.key))}</span>
+          <button class="f-del" type="button" data-del-friend="${escapeAttr(friend.key)}" aria-label="Remove ${escapeAttr(friend.name)}">×</button>
+        </div>`).join('')
+    : '<p class="friend-empty">No friends yet — swap peer IDs to connect.</p>'
+}
+
+/* ==================== private rooms ==================== */
+
+function roomCode () {
+  const bytes = new Uint8Array(6)
+  crypto.getRandomValues(bytes)
+  return [...bytes].map(b => (b % 36).toString(36)).join('').toUpperCase()
+}
+
+function openRoomModal () {
+  const select = $('#roomFitSelect')
+  select.innerHTML = state.servers.map(server =>
+    `<option value="${escapeAttr(server.fitId)}">${escapeHtml(server.title)}</option>`).join('')
+  const pick = $('#roomFriendPick')
+  pick.innerHTML = state.friends.length
+    ? state.friends.map(friend => `
+        <label class="room-friend">
+          <input type="checkbox" value="${escapeAttr(friend.key)}">
+          <span class="f-name">${escapeHtml(friend.name)}</span>
+          <span class="f-key">${escapeHtml(shortKey(friend.key))}</span>
+        </label>`).join('')
+    : '<p class="room-none">No friends added yet — the room still gets a shareable code.</p>'
+  $('#roomNameInput').value = ''
+  $('#roomModal').classList.remove('is-hidden')
+  $('#roomNameInput').focus()
+}
+
+function bindRoomModal () {
+  $('#roomCancelBtn').addEventListener('click', () => $('#roomModal').classList.add('is-hidden'))
+  $('#roomModal').addEventListener('click', event => {
+    if (event.target === $('#roomModal')) $('#roomModal').classList.add('is-hidden')
+  })
+  $('#roomCreateBtn').addEventListener('click', () => {
+    const fitId = $('#roomFitSelect').value
+    if (!fitId) return
+    const server = state.servers.find(s => s.fitId === fitId)
+    const name = ($('#roomNameInput').value || '').trim() || `${(server && server.title) || fitId} room`
+    const members = $$('#roomFriendPick input:checked').map(input => input.value)
+    state.privateRooms.unshift({
+      id: `room-${Date.now().toString(36)}`,
+      name,
+      fitId,
+      code: roomCode(),
+      members,
+      created: Date.now()
+    })
+    savePrivateRooms()
+    renderPrivateRooms()
+    $('#roomModal').classList.add('is-hidden')
+  })
+
+  $('#privateRows').addEventListener('click', event => {
+    const del = event.target.closest('[data-del-room]')
+    if (del) {
+      state.privateRooms = state.privateRooms.filter(room => room.id !== del.dataset.delRoom)
+      savePrivateRooms()
+      renderPrivateRooms()
+      return
+    }
+    const row = event.target.closest('[data-room-id]')
+    if (!row) return
+    const room = state.privateRooms.find(r => r.id === row.dataset.roomId)
+    if (room) loadPrivateRoom(room)
+  })
+}
+
+function loadPrivateRoom (room) {
+  const server = state.servers.find(s => s.fitId === room.fitId)
+  loadApp({
+    title: `${room.name} · ${(server && server.title) || room.fitId}`,
+    // ?join=<code> drops everyone with this code into the same P2P room via the
+    // shell's friend-invite deep link; ?fit themes it as the chosen server.
+    appUrl: `/shell/index.html?fit=${encodeURIComponent(room.fitId)}&join=${encodeURIComponent(room.code)}`
+  })
+}
+
+function renderPrivateRooms () {
+  const rows = $('#privateRows')
+  const empty = $('#privateEmpty')
+  $('#privateCount').textContent = `${state.privateRooms.length} room${state.privateRooms.length === 1 ? '' : 's'}`
+  empty.classList.toggle('is-hidden', state.privateRooms.length > 0)
+  rows.innerHTML = state.privateRooms.map(room => {
+    const server = state.servers.find(s => s.fitId === room.fitId)
+    return `
+      <tr data-room-id="${escapeAttr(room.id)}">
+        <td><span class="st priv"><span class="d"></span>Private</span></td>
+        <td class="srv">${escapeHtml(room.name)}</td>
+        <td class="hide"><span class="kind">${escapeHtml((server && server.title) || room.fitId)}</span></td>
+        <td class="dim">${room.members.length + 1} peer${room.members.length === 0 ? '' : 's'}</td>
+        <td class="num"><span class="kind">${escapeHtml(room.code)}</span></td>
+        <td class="num"><button class="f-del" type="button" data-del-room="${escapeAttr(room.id)}" aria-label="Delete room">×</button></td>
+      </tr>`
+  }).join('')
+}
+
+/* ==================== server browser ==================== */
 
 function renderFilters () {
   const categories = ['all', ...new Set(state.servers.map(server => server.category))]
-  $('#lobbyFilters').innerHTML = categories.map(category => `
-    <button type="button" data-category="${escapeAttr(category)}" ${category === state.filter ? 'class="is-active"' : ''}>
-      ${escapeHtml(categoryName(category))}
-    </button>
-  `).join('')
+  $('#lobbyFilters').innerHTML = categories.map(category => {
+    const count = category === 'all' ? state.servers.length : state.servers.filter(s => s.category === category).length
+    return `
+      <button class="tnode${category === state.filter ? ' on' : ''}" type="button" data-category="${escapeAttr(category)}">
+        <span aria-hidden="true">${CATEGORY_ICONS[category] || '◈'}</span>
+        ${escapeHtml(categoryName(category))}
+        <span class="c">${count}</span>
+      </button>`
+  }).join('')
   $$('#lobbyFilters [data-category]').forEach(button => {
     button.addEventListener('click', () => {
       state.filter = button.dataset.category
       renderFilters()
-      renderServerGrid()
+      renderServerTable()
     })
   })
 }
 
-function renderHero () {
-  const server = state.featured
-  if (!server) {
-    $('#heroPanel').classList.add('is-hidden')
-    return
-  }
-  $('#heroPanel').classList.remove('is-hidden')
-  $('#heroEyebrow').textContent = server.isLive ? 'Live now' : 'Featured'
-  $('#heroTitle').textContent = server.title
-  $('#heroBody').textContent = server.tagline
-  $('#heroBackdrop').innerHTML = server.coverUrl
-    ? `<img src="${escapeAttr(server.coverUrl)}" alt="">`
-    : ''
-  $('#heroJoin').onclick = () => loadApp(server)
-}
-
-function renderServerGrid () {
+function renderServerTable () {
   const filtered = state.filter === 'all'
     ? state.servers
     : state.servers.filter(server => server.category === state.filter)
-  $('#serverGrid').innerHTML = filtered.map(server => `
-    <button class="server-card" type="button" data-server-id="${escapeAttr(server.serverId)}">
-      <div class="server-cover">
-        ${server.coverUrl ? `<img src="${escapeAttr(server.coverUrl)}" alt="${escapeAttr(server.title)}">` : ''}
-      </div>
-      <div class="meta">
-        ${server.isLive ? '<span class="pill is-live">LIVE</span>' : ''}
-        <span>${escapeHtml(server.category)}</span>
-        <span>•</span>
-        <span>${escapeHtml(server.entrantShape)} entrants</span>
-      </div>
-      <h3>${escapeHtml(server.title)}</h3>
-      <div class="chips">
-        <span>${escapeHtml(server.recommendedVariantCount)} variants</span>
-        <span>${escapeHtml(server.recommendedMiniGameCount)} games</span>
-        ${server.isLive ? '<span class="live-dot">live room</span>' : ''}
-      </div>
-    </button>
-  `).join('')
-  $$('#serverGrid [data-server-id]').forEach(button => {
-    button.addEventListener('click', () => {
-      const server = state.servers.find(s => s.serverId === button.dataset.serverId)
+  $('#serverGrid').innerHTML = filtered.map(server => {
+    const status = server.isLive ? 'live' : 'open'
+    return `
+      <tr data-server-id="${escapeAttr(server.serverId)}" class="${server.serverId === state.selectedServerId ? 'sel' : ''}">
+        <td><span class="st ${status}"><span class="d"></span>${server.isLive ? 'Live' : 'Open'}</span></td>
+        <td class="srv"><span class="fl" aria-hidden="true">${CATEGORY_ICONS[server.category] || '◈'}</span>${escapeHtml(server.title)}</td>
+        <td class="hide dim">${escapeHtml(categoryName(server.category))}</td>
+        <td><span class="kind">${escapeHtml(FIT_FORMATS[server.fitId] || '—')}</span></td>
+        <td class="num dim">${escapeHtml(String(server.recommendedVariantCount))}</td>
+        <td class="num dim hide">${escapeHtml(String(server.recommendedMiniGameCount))}</td>
+      </tr>`
+  }).join('')
+  $$('#serverGrid [data-server-id]').forEach(row => {
+    row.addEventListener('click', () => {
+      state.selectedServerId = row.dataset.serverId
+      renderServerTable()
+    })
+    row.addEventListener('dblclick', () => {
+      const server = state.servers.find(s => s.serverId === row.dataset.serverId)
       if (server) loadApp(server)
     })
   })
@@ -259,69 +488,20 @@ function renderServerGrid () {
 
 function renderStatus () {
   const liveCount = state.servers.filter(server => server.isLive).length
-  const status = $('#lobbyStatus')
-  if (status) {
-    status.innerHTML = `
-      <span class="pill is-live">${liveCount} live</span>
-      <span class="pill">${state.servers.length} servers</span>
-    `
-  }
-  const liveCountEl = $('#liveCount')
-  if (liveCountEl) liveCountEl.textContent = `${liveCount} live`
+  $('#lobbyStatus').textContent = `${state.servers.length} servers · ${liveCount} live`
+  $('#statusServers').textContent = `${state.servers.length} servers · ${liveCount} live`
+  $('#peersLabel').textContent = `${state.friends.length + 1} peers known`
 }
 
-function renderWallet () {
-  const w = state.wallet
-  $('#walletChip .wallet-amt').textContent = fmtMoney(w.balance)
-  $('#walletBalance').textContent = fmtMoney(w.balance)
-  $('#walletPayout').textContent = w.pendingPayout > 0
-    ? `${fmtMoney(w.pendingPayout)} to collect`
-    : 'No payouts'
-  $('#collectPayoutBtn').disabled = w.pendingPayout <= 0
-  const withdraw = $('#withdrawWalletBtn')
-  if (withdraw) withdraw.disabled = w.balance <= 0
-  const ledger = $('#walletLedger')
-  if (ledger) {
-    const rows = (w.ledger || []).slice(0, 6)
-    ledger.innerHTML = rows.length
-      ? rows.map(entry => `
-          <div class="ledger-row">
-            <span class="ledger-label">${escapeHtml(entry.label)}</span>
-            <span class="ledger-amount ${entry.kind === 'debit' ? 'is-debit' : 'is-credit'}">${entry.kind === 'debit' ? '−' : '+'}${escapeHtml(String(entry.amount))}</span>
-          </div>`).join('')
-      : '<p class="ledger-empty">No transactions yet.</p>'
-  }
+function renderTicker () {
+  const live = state.servers.filter(server => server.isLive)
+  const text = live.length
+    ? live.map(server => `${server.title.toUpperCase()} — ${server.tagline}`).join('  ···  ')
+    : 'no live servers right now — open a server to start a pool'
+  $('#tickerText').textContent = text
 }
 
-function renderActiveCompetitions () {
-  const stored = loadStored()
-  const entered = stored.enteredPools || {}
-  const tiers = Object.keys(entered)
-  const container = $('#activeList')
-  if (tiers.length === 0) {
-    container.innerHTML = `<p class="active-empty">You haven't entered any pools yet. Pick a live server to join a bracket.</p>`
-    return
-  }
-  container.innerHTML = tiers.map(tier => {
-    const server = state.servers.find(s => s.serverId === `server:${tier}`) ||
-                   state.servers.find(s => s.fitId === tier) ||
-                   { title: 'Tournament server', isLive: false }
-    return `
-      <div class="active-item">
-        <strong>${escapeHtml(server.title || 'Tournament server')}</strong>
-        <span>$${escapeHtml(String(tier))} pool · ${server.isLive ? '<em>Live</em>' : 'Entered'}</span>
-      </div>
-    `
-  }).join('')
-}
-
-function renderProfile () {
-  const p = state.profile
-  const team = kawaiiTeams[p.team] || kawaiiTeams.br
-  $('#profileChip').innerHTML = avatarSvg(team, p.username) + `
-    <span>${escapeHtml(p.username)}</span>
-  `
-}
+/* ==================== settings ==================== */
 
 function renderSettings () {
   const nameInput = $('#settingsName')
@@ -330,7 +510,7 @@ function renderSettings () {
   if (countries) {
     countries.innerHTML = Object.entries(kawaiiTeams).map(([id, team]) => `
       <button type="button" class="country-chip${id === state.profile.team ? ' is-active' : ''}" data-country="${escapeAttr(id)}" aria-pressed="${id === state.profile.team}" title="${escapeAttr(team.name)}">
-        <span class="country-flag">${team.flag}</span>
+        <span>${team.flag}</span>
       </button>`).join('')
   }
   const lang = $('#settingsLanguage')
@@ -338,86 +518,58 @@ function renderSettings () {
   $$('#settingsMoney [data-money]').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.money === state.prefs.settlementMode)
   })
-  $$('#settingsTheme [data-theme]').forEach(btn => {
-    btn.classList.toggle('is-active', btn.dataset.theme === state.prefs.lobbyTheme)
-  })
 }
 
 function bindSettings () {
   const nameInput = $('#settingsName')
-  if (nameInput) {
-    nameInput.addEventListener('input', () => {
-      state.profile.username = nameInput.value.trim() || 'captain'
-      saveProfile(); renderProfile(); syncOpenFit()
-    })
-  }
-  const countries = $('#settingsCountries')
-  if (countries) {
-    countries.addEventListener('click', event => {
-      const btn = event.target.closest('[data-country]')
-      if (!btn) return
-      state.profile.team = btn.dataset.country
-      saveProfile(); renderProfile(); renderSettings(); syncOpenFit()
-    })
-  }
-  const lang = $('#settingsLanguage')
-  if (lang) {
-    lang.addEventListener('change', () => { state.prefs.language = lang.value; savePrefs() })
-  }
-  const money = $('#settingsMoney')
-  if (money) {
-    money.addEventListener('click', event => {
-      const btn = event.target.closest('[data-money]')
-      if (!btn) return
-      // Real-money is gated on KYC/region verification + operator WDK/QVAC config.
-      // Selecting it reveals the requirements and stays on demo.
-      const gate = $('#realMoneyGate')
-      if (btn.dataset.money === 'real') {
-        if (gate) gate.hidden = false
-        state.prefs.settlementMode = 'demo'
-      } else {
-        if (gate) gate.hidden = true
-        state.prefs.settlementMode = 'demo'
-      }
-      savePrefs(); renderSettings()
-    })
-  }
-  const theme = $('#settingsTheme')
-  if (theme) {
-    theme.addEventListener('click', event => {
-      const btn = event.target.closest('[data-theme]')
-      if (!btn) return
-      state.prefs.lobbyTheme = btn.dataset.theme
-      savePrefs(); applyLobbyTheme(); renderSettings()
-    })
-  }
+  nameInput.addEventListener('input', () => {
+    state.profile.username = nameInput.value.trim() || 'captain'
+    saveProfile(); renderIdentity(); syncOpenFit()
+  })
+  $('#settingsCountries').addEventListener('click', event => {
+    const btn = event.target.closest('[data-country]')
+    if (!btn) return
+    state.profile.team = btn.dataset.country
+    saveProfile(); renderSettings(); syncOpenFit()
+  })
+  $('#settingsLanguage').addEventListener('change', () => {
+    state.prefs.language = $('#settingsLanguage').value
+    savePrefs()
+  })
+  $('#settingsMoney').addEventListener('click', event => {
+    const btn = event.target.closest('[data-money]')
+    if (!btn) return
+    // Real-money is gated on KYC/region verification + operator WDK/QVAC config.
+    // Selecting it reveals the requirements and stays on demo.
+    const gate = $('#realMoneyGate')
+    if (gate) gate.hidden = btn.dataset.money !== 'real'
+    state.prefs.settlementMode = 'demo'
+    savePrefs(); renderSettings()
+  })
 }
 
-// Push identity changes into a fit that is currently open, so the open fit
-// reflects the new profile live (via the Phase 1A host bridge).
-function syncOpenFit () {
-  const loader = $('#appLoader')
-  if (loader && !loader.classList.contains('is-hidden')) injectHostState($('#appFrame'))
+/* ==================== active pools ==================== */
+
+function renderActiveCompetitions () {
+  const stored = loadStored()
+  const entered = stored.enteredPools || {}
+  const tiers = Object.keys(entered)
+  const container = $('#activeList')
+  container.innerHTML = tiers.length
+    ? tiers.map(tier => `
+        <div class="lrow">
+          <span class="l">$${escapeHtml(String(tier))} bracket pool</span>
+          <span class="a pos">entered</span>
+        </div>`).join('')
+    : '<p class="ledger-empty">No pools entered yet — join a live server.</p>'
 }
 
-function avatarSvg (team, name) {
-  const primary = team.colors[0] === '#ffffff' ? team.colors[1] : team.colors[0]
-  const secondary = team.colors[1] === '#ffffff' ? team.colors[2] : team.colors[1]
-  const initials = String(name || 'you').trim().split(/\s+/).filter(Boolean).map(s => s[0]).slice(0, 2).join('').toUpperCase() || 'YO'
-  return `<svg viewBox="0 0 100 100" role="img" aria-label="${escapeAttr(name)} avatar">
-    <defs><clipPath id="lobbyAvatarClip"><rect x="4" y="4" width="92" height="92" rx="28"/></clipPath></defs>
-    <rect x="2" y="2" width="96" height="96" rx="30" fill="${escapeAttr(secondary)}" opacity=".35"/>
-    <rect x="4" y="4" width="92" height="92" rx="28" fill="${escapeAttr(primary)}" opacity=".92"/>
-    <text x="50" y="58" text-anchor="middle" font-size="34" font-weight="900" fill="#fff" font-family="Arial, sans-serif">${escapeHtml(initials)}</text>
-    <rect x="4" y="4" width="92" height="92" rx="28" fill="none" stroke="#fff" stroke-width="3" opacity=".6"/>
-  </svg>`
-}
+/* ==================== fit loader ==================== */
 
 function loadApp (server) {
   const loader = $('#appLoader')
   const frame = $('#appFrame')
-  const title = $('#loaderTitle')
-  title.textContent = server.title
+  $('#loaderTitle').textContent = server.title
   frame.onload = () => injectHostState(frame)
   frame.src = server.appUrl
   loader.classList.remove('is-hidden')
@@ -426,22 +578,27 @@ function loadApp (server) {
 function closeLoader () {
   $('#appLoader').classList.add('is-hidden')
   $('#appFrame').src = 'about:blank'
-  // Refresh wallet/active data in case the shell changed state.
+  // Refresh wallet/active data in case the fit changed state.
   state.wallet = loadWallet()
   renderWallet()
   renderActiveCompetitions()
 }
 
+/* ==================== misc ==================== */
+
 function categoryName (category) {
-  return category === 'all' ? 'All sports' : category.charAt(0).toUpperCase() + category.slice(1)
+  if (category === 'all') return 'All servers'
+  if (category === 'pro-sports') return 'Pro sports'
+  if (category === 'combat-sports') return 'Combat'
+  return category.charAt(0).toUpperCase() + category.slice(1)
 }
 
 function renderError (error) {
   document.body.innerHTML = `
-    <main style="padding:24px">
-      <p class="eyebrow">Lobby error</p>
-      <h1>Ultimate Sports lobby could not load</h1>
-      <p style="color:var(--muted)">${escapeHtml(error.message || error)}</p>
+    <main style="padding:24px;font-family:Tahoma,system-ui,sans-serif;color:#eef1f6">
+      <p style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8b93a1">Client error</p>
+      <h1 style="font-size:20px">Ultimate Sports could not connect</h1>
+      <p style="color:#97a0b0">${escapeHtml(error.message || error)}</p>
     </main>
   `
 }
@@ -472,3 +629,5 @@ const kawaiiTeams = {
   ru: { name: 'Russia', flag: '🇷🇺', colors: ['#ffffff', '#0039a6', '#d52b1e'] },
   cz: { name: 'Czech Republic', flag: '🇨🇿', colors: ['#ffffff', '#d7141a', '#11457e'] }
 }
+
+boot().catch(renderError)
