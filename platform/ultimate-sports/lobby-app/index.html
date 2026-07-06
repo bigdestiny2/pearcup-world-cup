@@ -68,6 +68,15 @@
                 <button type="button" data-money="demo">Demo credits</button>
                 <button type="button" data-money="real" title="Requires identity verification">Real money 🔒</button>
               </div>
+              <div class="realmoney-gate" id="realMoneyGate" hidden>
+                <p class="gate-title">Real money is not enabled — it needs:</p>
+                <ul class="gate-list">
+                  <li>Connect a Tether WDK wallet (deposit + payout address)</li>
+                  <li>Complete identity verification (KYC)</li>
+                  <li>Confirm your region is eligible</li>
+                  <li>Operator: QVAC referee + WDK payout rails configured</li>
+                </ul>
+              </div>
               <p class="settings-note">Real-money pools need KYC + region checks via Tether WDK. Demo credits until then.</p>
               <p class="field-label">Appearance</p>
               <div class="settings-theme" id="settingsTheme">

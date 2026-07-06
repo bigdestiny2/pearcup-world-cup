@@ -369,8 +369,16 @@ function bindSettings () {
     money.addEventListener('click', event => {
       const btn = event.target.closest('[data-money]')
       if (!btn) return
-      // Real-money is gated on KYC/region verification (Tether WDK) — stay demo.
-      state.prefs.settlementMode = btn.dataset.money === 'real' ? 'demo' : btn.dataset.money
+      // Real-money is gated on KYC/region verification + operator WDK/QVAC config.
+      // Selecting it reveals the requirements and stays on demo.
+      const gate = $('#realMoneyGate')
+      if (btn.dataset.money === 'real') {
+        if (gate) gate.hidden = false
+        state.prefs.settlementMode = 'demo'
+      } else {
+        if (gate) gate.hidden = true
+        state.prefs.settlementMode = 'demo'
+      }
       savePrefs(); renderSettings()
     })
   }
