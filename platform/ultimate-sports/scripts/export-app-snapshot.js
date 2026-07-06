@@ -28,8 +28,6 @@ function createUltimateSportsAppSnapshot (input = {}) {
   const latestSportsDataSmokeReport = readLatestSportsDataSmokeReport(rootDir)
   const providerPlan = app.createSportsDataProviderPlan()
   const assetPlan = app.createAssetGenerationPlan()
-  const fitAssetManifest = loadFitAssetManifest(rootDir)
-  const fitAssets = buildFitAssets(fitAssetManifest)
   const audit = app.createStandupAudit({ rootDir, generatedAt, userId })
   const mmaAssetPlan = app.createMmaCardAssetPlan({
     tournamentId: 'mma-card-preview',
@@ -40,12 +38,7 @@ function createUltimateSportsAppSnapshot (input = {}) {
   const tournamentShells = catalog.eventFits.map(fit => ({
     fitId: fit.fitId,
     title: fit.title,
-    shell: app.createTournamentShell({ fitId: fit.fitId }),
-    assets: {
-      requiredAssets: assetPlan.packs.find(pack => pack.fitId === fit.fitId).requiredAssets.length,
-      themeId: assetPlan.packs.find(pack => pack.fitId === fit.fitId).themeId,
-      assetPaths: fitAssets[fit.fitId] || {}
-    }
+    shell: app.createTournamentShell({ fitId: fit.fitId })
   }))
   const experienceProfiles = app.modules.tournamentExperience.listExperienceProfiles()
   const miniGameSuites = catalog.eventFits.map(fit => app.createMiniGameSuite({ fitId: fit.fitId, settlementMode: 'demo' }))
@@ -188,12 +181,6 @@ function createUltimateSportsAppSnapshot (input = {}) {
         requiredAssetCount: pack.requiredAssets.length,
         promptCount: pack.requiredAssets.filter(asset => asset.prompt).length
       })),
-      fitAssets,
-      fitAssetManifest: {
-        manifestVersion: fitAssetManifest.manifestVersion,
-        generatedAt: fitAssetManifest.generatedAt,
-        entryCount: fitAssetManifest.entryCount
-      },
       mma: {
         planVersion: mmaAssetPlan.planVersion,
         fitId: mmaAssetPlan.fitId,
@@ -280,45 +267,6 @@ function readLatestSportsDataSmokeReport (rootDir) {
   } catch (_) {
     return null
   }
-}
-
-function loadFitAssetManifest (rootDir) {
-  const manifestPath = path.join(rootDir, 'generated-assets', '_asset-manifest.json')
-  if (!fs.existsSync(manifestPath)) {
-    return {
-      manifestVersion: 'ultimate-sports-fit-asset-manifest-v1',
-      generatedAt: null,
-      entryCount: 0,
-      entries: []
-    }
-  }
-  try {
-    return JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-  } catch (_) {
-    return {
-      manifestVersion: 'ultimate-sports-fit-asset-manifest-v1',
-      generatedAt: null,
-      entryCount: 0,
-      entries: []
-    }
-  }
-}
-
-function buildFitAssets (manifest) {
-  const fitAssets = {}
-  for (const entry of manifest.entries || []) {
-    if (!fitAssets[entry.fitId]) {
-      fitAssets[entry.fitId] = {}
-    }
-    const relativePath = `generated-assets/${entry.relativePath}`
-    fitAssets[entry.fitId][entry.assetType] = {
-      relativePath,
-      source: entry.source,
-      themeId: entry.themeId,
-      fileName: entry.fileName
-    }
-  }
-  return fitAssets
 }
 
 function summarizeSportsDataSmokeReport (report) {

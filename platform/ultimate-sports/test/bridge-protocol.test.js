@@ -154,3 +154,64 @@ test('bridge validation rejects unsupported protocol or actions', () => {
   assert.match(badAction.error.message, /unsupported action/)
 })
 
+test('bridge handler exposes standup audit and sports data aggregator actions', () => {
+  const handler = bridge.createBridgeHandler({
+    platformOptions: { peerId: 'bridge-aggregator' }
+  })
+  const clientPlan = handler.handle(bridge.createBridgeRequest({
+    action: 'createSportsDataClientPlan',
+    requestId: 'req-client-plan',
+    payload: {
+      input: {
+        env: {}
+      }
+    }
+  }))
+  const requestPlan = handler.handle(bridge.createBridgeRequest({
+    action: 'createSportsDataRequestPlan',
+    requestId: 'req-mma-data',
+    payload: {
+      input: {
+        sourceId: 'sportsdataio-mma',
+        entityType: 'event',
+        params: {
+          season: 'current'
+        },
+        env: {}
+      }
+    }
+  }))
+  const audit = handler.handle(bridge.createBridgeRequest({
+    action: 'createStandupAudit',
+    requestId: 'req-standup-audit',
+    payload: {
+      input: {
+        generatedAt: '2026-07-04T00:00:00.000Z'
+      }
+    }
+  }))
+  const smokePlan = handler.handle(bridge.createBridgeRequest({
+    action: 'createSportsDataSmokePlan',
+    requestId: 'req-smoke-plan',
+    payload: {
+      input: {
+        sourceIds: ['sportsdataio-mma'],
+        env: {}
+      }
+    }
+  }))
+
+  assert.equal(clientPlan.ok, true)
+  assert.equal(clientPlan.result.coverage.apiClientsWithRequestBuilders, clientPlan.result.coverage.apiSourceCount)
+  assert.equal(clientPlan.result.serverOnly, true)
+  assert.equal(requestPlan.ok, true)
+  assert.equal(requestPlan.result.sourceId, 'sportsdataio-mma')
+  assert.equal(requestPlan.result.serverOnly, true)
+  assert.equal(requestPlan.result.headers['Ocp-Apim-Subscription-Key'], '<redacted:SPORTSDATAIO_MMA_API_KEY>')
+  assert.deepEqual(requestPlan.result.missingEnv, ['SPORTSDATAIO_MMA_API_KEY'])
+  assert.equal(audit.ok, true)
+  assert.equal(audit.result.pearWorkerBridge.ok, true)
+  assert.equal(audit.result.coverage.areas.some(area => area.title === 'Pear worker bridge wiring' && area.covered === 1), true)
+  assert.equal(smokePlan.ok, true)
+  assert.equal(smokePlan.result.checks[0].status, 'missing-env')
+})

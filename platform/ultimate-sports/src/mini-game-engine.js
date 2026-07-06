@@ -6,7 +6,11 @@ const MINI_GAME_RESOLVERS = Object.freeze([
   'penalty-clash',
   'free-kick-duel',
   'trivia-duel',
-  'reaction-challenge'
+  'reaction-challenge',
+  'buzzer-beater-duel',
+  'ace-serve-duel',
+  'home-run-derby',
+  'prediction-duel'
 ])
 
 function resolveMiniGame ({ session, reveals = [], result = {}, resolvedAt = new Date().toISOString() } = {}) {
@@ -52,6 +56,10 @@ function rowsForGameType ({ session, reveals, result }) {
   if (session.gameType === 'free-kick-duel') return resolveFreeKickDuel({ session, reveals, result })
   if (session.gameType === 'trivia-duel') return resolveTriviaDuel({ session, reveals, result })
   if (session.gameType === 'reaction-challenge') return resolveReactionChallenge({ session, reveals, result })
+  if (session.gameType === 'buzzer-beater-duel') return resolveBuzzerBeaterDuel({ session, reveals, result })
+  if (session.gameType === 'ace-serve-duel') return resolveAceServeDuel({ session, reveals, result })
+  if (session.gameType === 'home-run-derby') return resolveHomeRunDerby({ session, reveals, result })
+  if (session.gameType === 'prediction-duel') return resolvePredictionDuel({ session, reveals, result })
   return resolveScoreOnlyGame({ session, reveals })
 }
 
@@ -207,6 +215,127 @@ function resolveScoreOnlyGame ({ session, reveals }) {
   })
 }
 
+
+function resolveBuzzerBeaterDuel ({ session, reveals, result }) {
+  const inputs = inputByPlayer(reveals)
+  const players = playersFor(session, inputs)
+  const attemptCount = Number(result.attemptCount || maxInputLength(inputs, ['attempts', 'shots', 'rounds']) || 3)
+
+  return players.map((playerId, index) => {
+    const opponentId = players[(index + 1) % players.length]
+    const attempts = roundInputs(inputs[playerId], ['attempts', 'shots', 'rounds'], attemptCount)
+    const defenderReads = roundInputs(inputs[opponentId], ['attempts', 'shots', 'rounds'], attemptCount)
+    const detail = attempts.map((attempt, attemptIndex) => {
+      const defender = defenderReads[attemptIndex] || {}
+      const aim = attempt.aim || attempt.target || 'center'
+      const defenderRead = defender.defenderRead || defender.read || 'center'
+      const power = Number(attempt.power == null ? 75 : attempt.power)
+      const onTarget = aim !== 'miss' && power >= 35 && power <= 95
+      const blocked = defenderRead === aim
+      const basket = onTarget && !blocked
+      return {
+        roundId: attempt.roundId || `buzzer-${attemptIndex + 1}`,
+        aim,
+        defenderRead,
+        power,
+        onTarget,
+        basket,
+        points: basket ? 2 : (onTarget ? 1 : 0)
+      }
+    })
+    return scoreRow({ userId: playerId, detail })
+  })
+}
+
+function resolveAceServeDuel ({ session, reveals, result }) {
+  const inputs = inputByPlayer(reveals)
+  const players = playersFor(session, inputs)
+  const serveCount = Number(result.serveCount || maxInputLength(inputs, ['serves', 'rounds']) || 3)
+
+  return players.map((playerId, index) => {
+    const opponentId = players[(index + 1) % players.length]
+    const serves = roundInputs(inputs[playerId], ['serves', 'rounds'], serveCount)
+    const returnerReads = roundInputs(inputs[opponentId], ['serves', 'rounds'], serveCount)
+    const detail = serves.map((serve, serveIndex) => {
+      const returner = returnerReads[serveIndex] || {}
+      const placement = serve.placement || serve.aim || 'center'
+      const returnerRead = returner.returnerRead || returner.read || 'center'
+      const power = Number(serve.power == null ? 75 : serve.power)
+      const spin = Number(serve.spin || 0)
+      const inBounds = placement !== 'fault' && power >= 40 && power <= 100
+      const ace = inBounds && placement !== returnerRead && Math.abs(spin) >= 1 && power >= 60
+      return {
+        roundId: serve.roundId || `serve-${serveIndex + 1}`,
+        placement,
+        returnerRead,
+        power,
+        spin,
+        inBounds,
+        ace,
+        points: ace ? 2 : (inBounds ? 1 : 0)
+      }
+    })
+    return scoreRow({ userId: playerId, detail })
+  })
+}
+
+function resolveHomeRunDerby ({ session, reveals, result }) {
+  const inputs = inputByPlayer(reveals)
+  const players = playersFor(session, inputs)
+  const pitchCount = Number(result.pitchCount || maxInputLength(inputs, ['swings', 'rounds']) || 3)
+  const pitches = Array.isArray(result.pitches) ? result.pitches : []
+
+  return players.map(playerId => {
+    const swings = roundInputs(inputs[playerId], ['swings', 'rounds'], pitchCount)
+    const detail = swings.map((swing, swingIndex) => {
+      const pitch = pitches[swingIndex] || { type: 'fastball' }
+      const pitchRead = swing.pitchRead || swing.pitch || 'fastball'
+      const power = Number(swing.power == null ? 75 : swing.power)
+      const timing = swing.timing || 'good'
+      const readCorrect = pitchRead === pitch.type
+      const homeRun = readCorrect && power >= 70 && timing === 'good'
+      const hit = readCorrect && power >= 50
+      return {
+        roundId: swing.roundId || `pitch-${swingIndex + 1}`,
+        pitchType: pitch.type,
+        pitchRead,
+        power,
+        timing,
+        homeRun,
+        hit,
+        points: homeRun ? 4 : (hit ? 1 : 0)
+      }
+    })
+    return scoreRow({ userId: playerId, detail })
+  })
+}
+
+function resolvePredictionDuel ({ session, reveals, result }) {
+  const inputs = inputByPlayer(reveals)
+  const players = playersFor(session, inputs)
+  const officialOutcome = result.outcome || result.answer || {}
+  const fields = Array.isArray(result.fields) ? result.fields : Object.keys(officialOutcome)
+  const maxPointsPerField = Number(result.maxPointsPerField || 1)
+
+  return players.map(playerId => {
+    const prediction = inputs[playerId] && (inputs[playerId].prediction || inputs[playerId]) || {}
+    const detail = fields.map(field => {
+      const predicted = normalizeAnswer(prediction[field])
+      const actual = normalizeAnswer(officialOutcome[field])
+      const correct = predicted === actual
+      return {
+        field,
+        predicted: prediction[field],
+        actual: officialOutcome[field],
+        correct,
+        points: correct ? maxPointsPerField : 0
+      }
+    })
+    const responseMs = Number(inputs[playerId] && inputs[playerId].responseMs || 0)
+    return scoreRow({ userId: playerId, detail, tieBreak: responseMs })
+  })
+}
+
 function scoreRow ({ userId, detail, tieBreak = null }) {
   return {
     userId,
@@ -280,6 +409,10 @@ module.exports = {
   resolveFreeKickDuel,
   resolveTriviaDuel,
   resolveReactionChallenge,
+  resolveBuzzerBeaterDuel,
+  resolveAceServeDuel,
+  resolveHomeRunDerby,
+  resolvePredictionDuel,
   resolveScoreOnlyGame,
   rankRows
 }

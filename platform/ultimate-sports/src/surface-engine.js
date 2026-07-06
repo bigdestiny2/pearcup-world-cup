@@ -275,6 +275,19 @@ function watchSurface ({ view, userId }) {
         sourceFeedEventIds: cloneJson(record.body && record.body.sourceFeedEventIds || []),
         createdAt: record.createdAt || null
       })),
+    qvacResultEvidence: values(view.qvacResultEvidenceReviews)
+      .sort(compareNewest)
+      .map(record => ({
+        qvacRecordId: record.qvacRecordId,
+        status: record.status,
+        targetType: record.targetType,
+        targetId: record.targetId,
+        consensusWinner: record.body && record.body.consensusWinner || null,
+        blockers: cloneJson(record.body && record.body.blockers || []),
+        sourceSummary: cloneJson(record.body && record.body.sourceSummary || {}),
+        webSearchQuery: record.body && record.body.webSearchQuery || null,
+        createdAt: record.createdAt || null
+      })),
     recentMessages: values(view.roomMessages)
       .filter(message => message.moderationState !== 'hidden')
       .sort(compareNewest)

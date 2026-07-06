@@ -34,8 +34,6 @@ const MIME_TYPES = new Map([
 function createUltimateSportsAppServer (input = {}) {
   const rootDir = input.rootDir || path.resolve(__dirname, '..')
   const appRoot = input.appRoot || path.join(rootDir, 'app')
-  const assetsRoot = input.assetsRoot || path.join(rootDir, 'generated-assets')
-  const shellRoot = input.shellRoot || path.join(rootDir, 'shell')
   const refreshSnapshot = input.refreshSnapshot !== false
   const demoSession = input.demoSession || createDemoSession({ userId: input.userId || DEMO_USER_ID })
   if (refreshSnapshot) writeUltimateSportsAppSnapshot({ rootDir })
@@ -48,18 +46,26 @@ function createUltimateSportsAppServer (input = {}) {
         return
       }
 
-      if (pathname.startsWith('/generated-assets/')) {
-        await serveStaticFile({ res, assetsRoot, urlPath: pathname.slice('/generated-assets/'.length) })
-        return
-      }
-
-      if (pathname.startsWith('/shell/')) {
-        await serveStaticFile({ res, assetsRoot: shellRoot, urlPath: pathname.slice('/shell/'.length) })
-        return
-      }
-
       const relativePath = pathname === '/' ? 'index.html' : decodeURIComponent(pathname.slice(1))
-      await serveStaticFile({ res, assetsRoot: appRoot, urlPath: relativePath })
+      const normalizedPath = path.normalize(relativePath).replace(/^(\.\.[/\\])+/, '')
+      const filePath = path.resolve(path.join(appRoot, normalizedPath))
+
+      if (!filePath.startsWith(appRoot)) {
+        writeText(res, 403, 'Forbidden')
+        return
+      }
+
+      const fileStat = await stat(filePath)
+      if (!fileStat.isFile()) {
+        writeText(res, 404, 'Not found')
+        return
+      }
+
+      res.writeHead(200, {
+        'content-type': MIME_TYPES.get(path.extname(filePath)) || 'application/octet-stream',
+        'cache-control': 'no-store'
+      })
+      createReadStream(filePath).pipe(res)
     } catch (error) {
       if (error && error.code === 'ENOENT') {
         writeText(res, 404, 'Not found')
@@ -68,28 +74,6 @@ function createUltimateSportsAppServer (input = {}) {
       writeText(res, 500, 'Internal server error')
     }
   })
-}
-
-async function serveStaticFile ({ res, assetsRoot, urlPath }) {
-  const normalizedPath = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, '')
-  const filePath = path.resolve(path.join(assetsRoot, normalizedPath))
-
-  if (!filePath.startsWith(assetsRoot)) {
-    writeText(res, 403, 'Forbidden')
-    return
-  }
-
-  const fileStat = await stat(filePath)
-  if (!fileStat.isFile()) {
-    writeText(res, 404, 'Not found')
-    return
-  }
-
-  res.writeHead(200, {
-    'content-type': MIME_TYPES.get(path.extname(filePath)) || 'application/octet-stream',
-    'cache-control': 'no-store'
-  })
-  createReadStream(filePath).pipe(res)
 }
 
 function createDemoSession (input = {}) {

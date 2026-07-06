@@ -1,0 +1,82 @@
+{
+  "name": "pearcup-kawaii",
+  "version": "0.1.0",
+  "description": "PearCup World Cup — Kawaii build: bracket pools, live watch parties, real P2P penalty matches, multilingual QVAC commentary.",
+  "type": "commonjs",
+  "main": "index.cjs",
+  "license": "MIT",
+  "pear": {
+    "name": "pearcup-kawaii",
+    "pre": "pear-electron/pre",
+    "gui": {
+      "main": "index.html",
+      "width": 1360,
+      "height": 900,
+      "minWidth": 1024,
+      "minHeight": 760,
+      "backgroundColor": "#ffeef6"
+    },
+    "routes": {
+      "": ".",
+      "/": "."
+    },
+    "stage": {
+      "include": [
+        "/index.cjs",
+        "/package.json",
+        "/index.html",
+        "/styles.css",
+        "/pearcup-boot.js",
+        "/core.js",
+        "/adapters.js",
+        "/qvac-referee.js",
+        "/tether-wdk-bridge.js",
+        "/runtime-settings.js",
+        "/runtime-config.js",
+        "/worker-sim.js",
+        "/worker-client.js",
+        "/worker-bridge-protocol.js",
+        "/pear-worker.cjs",
+        "/worker-runtime.js",
+        "/settlement-receipts.js",
+        "/settlement-service.js",
+        "/transport-sim.js",
+        "/storage-sim.js",
+        "/sdk-runtime.js",
+        "/app.js",
+        "/peer-net.js",
+        "/peer-match.js",
+        "/peer-lobby.js",
+        "/watch-sync.js",
+        "/swarm-worker.cjs",
+        "/assets",
+        "/avatars",
+        "/crests",
+        "/live-match.json"
+      ],
+      "ignore": [
+        "/.git",
+        "/*.mjs",
+        "/*.test.js"
+      ]
+    }
+  },
+  "scripts": {
+    "dev": "pear run --dev .",
+    "stage": "pear stage kawaii-dev .",
+    "release": "pear release kawaii-dev"
+  },
+  "dependencies": {
+    "pear-bridge": "^1.2.5",
+    "pear-electron": "^1.7.28",
+    "hyperswarm": "^4.0.0",
+    "hypercore-crypto": "^3.0.0",
+    "b4a": "^1.6.0"
+  },
+  "optionalDependencies": {
+    "@qvac/sdk": "^0.14.0",
+    "@tetherto/wdk": "^1.0.0-beta.12",
+    "@tetherto/wdk-wallet-btc": "^1.0.0-beta.10",
+    "@tetherto/wdk-wallet-evm": "^1.0.0-beta.14"
+  }
+}

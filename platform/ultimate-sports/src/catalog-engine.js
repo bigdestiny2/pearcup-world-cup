@@ -49,7 +49,7 @@ const EVENT_FITS = Object.freeze([
     entrantShape: 'team',
     resultPolicy: 'official-feed',
     recommendedVariants: ['classic-bracket', 'confidence', 'upset-bounty', 'head-to-head-duel'],
-    recommendedMiniGames: ['next-event', 'scoreline-lock', 'trivia-duel', 'peer-mini-fantasy', 'player-prop-duel', 'watch-party-streak', 'reaction-challenge'],
+    recommendedMiniGames: ['next-event', 'scoreline-lock', 'trivia-duel', 'peer-mini-fantasy', 'player-prop-duel', 'watch-party-streak', 'reaction-challenge', 'buzzer-beater-duel'],
     defaultSettlementModes: ['demo', 'sponsor-prize']
   },
   {
@@ -60,7 +60,7 @@ const EVENT_FITS = Object.freeze([
     entrantShape: 'team',
     resultPolicy: 'official-feed',
     recommendedVariants: ['classic-bracket', 'confidence', 'survivor', 'fantasy-lite-draft'],
-    recommendedMiniGames: ['next-event', 'scoreline-lock', 'player-prop-duel', 'peer-mini-fantasy', 'watch-party-streak', 'reaction-challenge', 'momentum-duel'],
+    recommendedMiniGames: ['next-event', 'scoreline-lock', 'player-prop-duel', 'peer-mini-fantasy', 'watch-party-streak', 'reaction-challenge', 'momentum-duel', 'buzzer-beater-duel', 'home-run-derby'],
     defaultSettlementModes: ['demo', 'sponsor-prize']
   },
   {
@@ -71,7 +71,7 @@ const EVENT_FITS = Object.freeze([
     entrantShape: 'player',
     resultPolicy: 'official-feed',
     recommendedVariants: ['classic-bracket', 'confidence', 'head-to-head-duel', 'fantasy-lite-draft'],
-    recommendedMiniGames: ['next-event', 'scoreline-lock', 'player-prop-duel', 'reaction-challenge', 'watch-party-streak'],
+    recommendedMiniGames: ['next-event', 'scoreline-lock', 'player-prop-duel', 'reaction-challenge', 'watch-party-streak', 'ace-serve-duel'],
     defaultSettlementModes: ['demo', 'sponsor-prize']
   },
   {
@@ -82,18 +82,30 @@ const EVENT_FITS = Object.freeze([
     entrantShape: 'team',
     resultPolicy: 'official-feed',
     recommendedVariants: ['classic-bracket', 'confidence', 'survivor', 'fantasy-lite-draft', 'side-quest'],
-    recommendedMiniGames: ['next-event', 'momentum-duel', 'trivia-duel', 'reaction-challenge', 'watch-party-streak'],
+    recommendedMiniGames: ['next-event', 'momentum-duel', 'trivia-duel', 'reaction-challenge', 'watch-party-streak', 'prediction-duel'],
     defaultSettlementModes: ['demo', 'sponsor-prize']
   },
   {
     fitId: 'mma-boxing-fight-card',
-    title: 'MMA / Boxing Fight Cards',
+    title: 'Combat Sport Fight Cards',
     category: 'combat-sports',
     templateKinds: ['fight-card'],
     entrantShape: 'player',
     resultPolicy: 'official-feed',
+    combatCardSports: ['mma', 'boxing', 'kickboxing', 'muay-thai', 'one-championship', 'bareknuckle', 'submission-grappling'],
     recommendedVariants: ['confidence', 'player-prop', 'watch-party-bingo', 'head-to-head-duel'],
-    recommendedMiniGames: ['player-prop-duel', 'next-event', 'trivia-duel', 'reaction-challenge', 'watch-party-streak', 'momentum-duel'],
+    recommendedMiniGames: ['player-prop-duel', 'next-event', 'trivia-duel', 'reaction-challenge', 'watch-party-streak', 'momentum-duel', 'prediction-duel'],
+    defaultSettlementModes: ['demo', 'sponsor-prize']
+  },
+  {
+    fitId: 'sailgp-companion',
+    title: 'SailGP Companion',
+    category: 'sailing',
+    templateKinds: ['series-playoff', 'round-robin'],
+    entrantShape: 'team',
+    resultPolicy: 'hybrid',
+    recommendedVariants: ['confidence', 'survivor', 'watch-party-bingo', 'fantasy-lite-draft', 'side-quest'],
+    recommendedMiniGames: ['next-event', 'momentum-duel', 'player-prop-duel', 'trivia-duel', 'reaction-challenge', 'watch-party-streak', 'peer-mini-fantasy', 'prediction-duel'],
     defaultSettlementModes: ['demo', 'sponsor-prize']
   },
   {
@@ -104,7 +116,7 @@ const EVENT_FITS = Object.freeze([
     entrantShape: 'creator',
     resultPolicy: 'host-entered',
     recommendedVariants: ['classic-bracket', 'confidence', 'watch-party-bingo', 'side-quest'],
-    recommendedMiniGames: ['trivia-duel', 'reaction-challenge', 'watch-party-streak'],
+    recommendedMiniGames: ['trivia-duel', 'reaction-challenge', 'watch-party-streak', 'prediction-duel'],
     defaultSettlementModes: ['demo', 'sponsor-prize']
   },
   {
@@ -115,7 +127,7 @@ const EVENT_FITS = Object.freeze([
     entrantShape: 'nominee',
     resultPolicy: 'host-entered',
     recommendedVariants: ['group-stage-card', 'confidence', 'watch-party-bingo', 'head-to-head-duel'],
-    recommendedMiniGames: ['trivia-duel', 'watch-party-streak', 'reaction-challenge'],
+    recommendedMiniGames: ['trivia-duel', 'watch-party-streak', 'reaction-challenge', 'prediction-duel'],
     defaultSettlementModes: ['demo', 'sponsor-prize']
   },
   {
@@ -126,7 +138,7 @@ const EVENT_FITS = Object.freeze([
     entrantShape: 'team',
     resultPolicy: 'host-entered',
     recommendedVariants: ['classic-bracket', 'confidence', 'survivor', 'watch-party-bingo', 'side-quest'],
-    recommendedMiniGames: ['penalty-clash', 'free-kick-duel', 'trivia-duel', 'next-event', 'peer-mini-fantasy', 'watch-party-streak', 'reaction-challenge', 'momentum-duel', 'player-prop-duel'],
+    recommendedMiniGames: ['penalty-clash', 'free-kick-duel', 'trivia-duel', 'next-event', 'peer-mini-fantasy', 'watch-party-streak', 'reaction-challenge', 'momentum-duel', 'player-prop-duel', 'prediction-duel'],
     defaultSettlementModes: ['demo', 'sponsor-prize']
   }
 ])
@@ -149,14 +161,14 @@ const POOL_VARIANT_CATALOG = Object.freeze([
 const MINI_GAME_CATALOG = Object.freeze([
   miniGame('penalty-clash', 'Penalty Clash', ['soccer', 'local'], ['none', 'demo', 'sponsor-prize'], 'game:create'),
   miniGame('free-kick-duel', 'Free-kick Duel', ['soccer', 'local'], ['none', 'demo', 'sponsor-prize'], 'game:create'),
-  miniGame('trivia-duel', 'Trivia Duel', ['soccer', 'basketball', 'pro-sports', 'esports', 'combat-sports', 'creator', 'awards', 'local'], ['none', 'demo', 'sponsor-prize'], 'game:create'),
-  miniGame('next-event', 'Next Event Prediction', ['soccer', 'basketball', 'pro-sports', 'tennis', 'esports', 'combat-sports', 'local'], ['demo', 'sponsor-prize'], 'market:create'),
+  miniGame('trivia-duel', 'Trivia Duel', ['soccer', 'basketball', 'pro-sports', 'tennis', 'esports', 'combat-sports', 'sailing', 'creator', 'awards', 'local'], ['none', 'demo', 'sponsor-prize'], 'game:create'),
+  miniGame('next-event', 'Next Event Prediction', ['soccer', 'basketball', 'pro-sports', 'tennis', 'esports', 'combat-sports', 'sailing', 'local'], ['demo', 'sponsor-prize'], 'market:create'),
   miniGame('scoreline-lock', 'Scoreline Lock', ['soccer', 'basketball', 'pro-sports', 'tennis'], ['demo', 'sponsor-prize'], 'market:create'),
-  miniGame('momentum-duel', 'Momentum Duel', ['soccer', 'basketball', 'pro-sports', 'esports', 'combat-sports', 'local'], ['demo', 'sponsor-prize'], 'market:create'),
-  miniGame('player-prop-duel', 'Player Prop Duel', ['soccer', 'basketball', 'pro-sports', 'tennis', 'combat-sports', 'local'], ['demo', 'sponsor-prize'], 'market:create'),
-  miniGame('reaction-challenge', 'Reaction Challenge', ['soccer', 'basketball', 'pro-sports', 'tennis', 'esports', 'combat-sports', 'creator', 'awards', 'local'], ['none', 'demo'], 'game:create'),
-  miniGame('watch-party-streak', 'Watch-party Streak', ['soccer', 'basketball', 'pro-sports', 'tennis', 'esports', 'combat-sports', 'creator', 'awards', 'local'], ['demo', 'sponsor-prize'], 'market:create'),
-  miniGame('peer-mini-fantasy', 'Peer Mini Fantasy', ['basketball', 'pro-sports', 'local'], ['demo', 'sponsor-prize'], 'draft:create')
+  miniGame('momentum-duel', 'Momentum Duel', ['soccer', 'basketball', 'pro-sports', 'esports', 'combat-sports', 'sailing', 'local'], ['demo', 'sponsor-prize'], 'market:create'),
+  miniGame('player-prop-duel', 'Player Prop Duel', ['soccer', 'basketball', 'pro-sports', 'tennis', 'combat-sports', 'sailing', 'local'], ['demo', 'sponsor-prize'], 'market:create'),
+  miniGame('reaction-challenge', 'Reaction Challenge', ['soccer', 'basketball', 'pro-sports', 'tennis', 'esports', 'combat-sports', 'sailing', 'creator', 'awards', 'local'], ['none', 'demo'], 'game:create'),
+  miniGame('watch-party-streak', 'Watch-party Streak', ['soccer', 'basketball', 'pro-sports', 'tennis', 'esports', 'combat-sports', 'sailing', 'creator', 'awards', 'local'], ['demo', 'sponsor-prize'], 'market:create'),
+  miniGame('peer-mini-fantasy', 'Peer Mini Fantasy', ['basketball', 'pro-sports', 'sailing', 'local'], ['demo', 'sponsor-prize'], 'draft:create')
 ])
 
 function buildCatalog (query = {}) {
@@ -268,6 +280,7 @@ function launchChecklistFor ({ fit, settlementMode, poolVariants, miniGames }) {
   ]
   if (fit.resultPolicy === 'official-feed') checklist.push('connect-official-results')
   if (fit.resultPolicy === 'host-entered') checklist.push('assign-host-result-review')
+  if (fit.resultPolicy === 'hybrid') checklist.push('confirm-hybrid-result-source')
   if (poolVariants.some(item => item.variantId === 'fantasy-lite-draft') || miniGames.some(item => item.gameType === 'peer-mini-fantasy')) {
     checklist.push('publish-draft-slate')
   }

@@ -49,7 +49,12 @@ function createCompetitionTemplate (input = {}) {
 
 function createCompetition (input = {}) {
   assertNonEmptyString(input.title, 'competition title')
-  const template = input.template || createCompetitionTemplate(input.templateConfig || {})
+  const template = input.template || createCompetitionTemplate({
+    ...(input.templateConfig || {}),
+    kind: input.templateKind || input.templateConfig && input.templateConfig.kind,
+    entrantShape: input.entrantShape || input.templateConfig && input.templateConfig.entrantShape,
+    resultPolicy: input.resultPolicy || input.templateConfig && input.templateConfig.resultPolicy
+  })
   const entrants = normalizeEntrants(input.entrants || [], template.entrantShape)
   const competitionId = input.competitionId || stableId(`competition-${slugify(input.title)}`, {
     title: input.title,

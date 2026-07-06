@@ -23,6 +23,8 @@ function verifyPlatform (options = {}) {
     checked: {
       sourceFiles: manifest.requiredSourceFiles.length,
       docs: (manifest.requiredDocs || []).length,
+      appFiles: (manifest.requiredAppFiles || []).length,
+      scripts: (manifest.requiredScripts || []).length,
       exports: manifest.requiredExports.length,
       scenarios: manifest.scenarioIds.length,
       tests: manifest.testFiles.length
@@ -36,6 +38,8 @@ function checkRequiredFiles ({ rootDir, manifest, errors }) {
     manifest.facade && manifest.facade.module,
     ...manifest.requiredSourceFiles,
     ...(manifest.requiredDocs || []),
+    ...(manifest.requiredAppFiles || []),
+    ...(manifest.requiredScripts || []),
     ...manifest.testFiles
   ].filter(Boolean)
   files.forEach(relativePath => {
@@ -131,7 +135,9 @@ if (require.main === module) {
     process.exit(1)
   }
   const docSummary = report.checked.docs ? `, ${report.checked.docs} docs` : ''
-  console.log(`Ultimate sports platform verification passed: ${report.checked.sourceFiles} source files${docSummary}, ${report.checked.scenarios} scenarios, ${report.checked.tests} tests.`)
+  const appSummary = report.checked.appFiles ? `, ${report.checked.appFiles} app files` : ''
+  const scriptSummary = report.checked.scripts ? `, ${report.checked.scripts} scripts` : ''
+  console.log(`Ultimate sports platform verification passed: ${report.checked.sourceFiles} source files${docSummary}${appSummary}${scriptSummary}, ${report.checked.scenarios} scenarios, ${report.checked.tests} tests.`)
 }
 
 module.exports = {

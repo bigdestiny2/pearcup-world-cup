@@ -129,3 +129,30 @@ test('Pear worker bridge detects known Pear and Bare worker port globals', () =>
   assert.equal(pearWorker.detectPearCupWorkerPort({ Bare: { worker: barePort } }), barePort)
   assert.equal(pearWorker.detectPearCupWorkerPort({}), null)
 })
+
+test('Pear worker bridge server can serve optional ultimate sports data-client requests', async () => {
+  const server = pearWorker.createPearCupWorkerBridgeServer({ requireLive: false })
+  const response = await server.request({
+    protocol: pearWorker.protocolVersion,
+    requestId: 'worker-ultimate-1',
+    action: 'ultimateSports',
+    payload: {
+      request: {
+        protocol: 'ultimate-sports-platform-v1',
+        requestId: 'ultimate-client-plan',
+        action: 'createSportsDataClientPlan',
+        payload: {
+          input: {
+            env: {}
+          }
+        }
+      }
+    }
+  })
+
+  assert.equal(response.ok, true)
+  assert.equal(response.result.ok, true)
+  assert.equal(response.result.result.coverage.apiClientsWithRequestBuilders, response.result.result.coverage.apiSourceCount)
+  assert.equal(response.result.result.noClientSecrets, true)
+  await server.close()
+})

@@ -103,8 +103,8 @@ if (fatal || earlyExit || bootProbeErrors.length > 0 || unexpectedWarnings.lengt
   console.log(`${smokeLabel} passed (${durationMs}ms)`)
   console.log(`ok - launched ${appRoot} with temp store`)
   console.log('ok - renderer reported P2P boot-ready through Pear bridge probe')
-  console.log('ok - renderer rendered the Bracket route in the actual Pear app')
-  console.log('ok - renderer routed to Games and opened a friend invite in the actual Pear app')
+  console.log('ok - renderer hydrated Profile, Home, Bracket, Games, and Watch routes in the actual Pear app')
+  console.log('ok - renderer opened a friend invite from Games in the actual Pear app')
   console.log('ok - hidden guest app joined the invite and completed the peer handshake')
   console.log('ok - no fallback/script-wrapper/P2P-module/fatal renderer errors observed')
   if (output.trim()) {
@@ -229,8 +229,9 @@ function validateBootProbe (payload, bridgeEvents = []) {
   for (const name of ['peerNet', 'peerMatch', 'peerLobby', 'watchSync']) {
     if (controllers[name] !== true) errors.push(`boot probe controller ${name} was not ready`)
   }
-  if (!Array.isArray(runtime.routeButtons) || !runtime.routeButtons.includes('games')) {
-    errors.push('boot probe did not report the Games route button')
+  const routeButtons = Array.isArray(runtime.routeButtons) ? runtime.routeButtons : []
+  for (const view of ['onboarding', 'home', 'bracket', 'watch', 'games']) {
+    if (!routeButtons.includes(view)) errors.push(`boot probe did not report the ${view} route button`)
   }
 
   const selfTestPayload = events.filter(event => event && event.event === 'pearcup:runtime-self-test').pop()
@@ -262,7 +263,7 @@ function validateBootProbe (payload, bridgeEvents = []) {
   const hashRoutes = selfTestPayload.hashRoutes || {}
   if (hashRoutes.passed !== true) errors.push('runtime self-test did not pass same-document hash route changes')
   const hashRouteResults = Array.isArray(hashRoutes.results) ? hashRoutes.results : []
-  for (const view of ['bracket', 'games', 'watch']) {
+  for (const view of ['onboarding', 'home', 'bracket', 'games', 'watch']) {
     const route = hashRouteResults.find(item => item && item.view === view)
     if (!route) {
       errors.push(`runtime self-test did not report hash route ${view}`)
@@ -271,6 +272,17 @@ function validateBootProbe (payload, bridgeEvents = []) {
     if (route.passed !== true) errors.push(`runtime self-test hash route ${view} did not pass`)
     if (route.activeScreen !== view) errors.push(`runtime self-test hash route ${view} activeScreen was ${route.activeScreen || '(missing)'}`)
     if (route.activeScreenDataset !== view) errors.push(`runtime self-test hash route ${view} activeScreenDataset was ${route.activeScreenDataset || '(missing)'}`)
+    if (view === 'onboarding') {
+      if (Number(route.teamCards || 0) < 32) errors.push(`runtime self-test Profile route team cards was ${route.teamCards || '(missing)'}`)
+      if (route.profileChipReady !== true) errors.push('runtime self-test Profile route did not hydrate the profile chip avatar')
+      if (route.avatarPreviewReady !== true) errors.push('runtime self-test Profile route did not hydrate the avatar preview')
+    }
+    if (view === 'home') {
+      if (Number(route.liveMenuButtons || 0) < 5) errors.push(`runtime self-test Home route live menu buttons was ${route.liveMenuButtons || '(missing)'}`)
+      if (route.liveDetailReady !== true) errors.push('runtime self-test Home route did not hydrate live detail')
+      if (Number(route.poolCards || 0) < 3) errors.push(`runtime self-test Home route pool cards was ${route.poolCards || '(missing)'}`)
+      if (Number(route.fixtureCards || 0) < 2) errors.push(`runtime self-test Home route fixture cards was ${route.fixtureCards || '(missing)'}`)
+    }
     if (view === 'watch') {
       if (route.watchChallengePanel !== true) errors.push('runtime self-test Watch route did not render the challenge panel')
       if (route.watchChallengeList !== true) errors.push('runtime self-test Watch route did not render the challenge list')

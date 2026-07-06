@@ -13,6 +13,7 @@ const PLAN_FIT_IDS = Object.freeze([
   'tennis-grand-slams',
   'esports-major',
   'mma-boxing-fight-card',
+  'sailgp-companion',
   'creator-reality-brackets',
   'awards-prediction-pools',
   'local-leagues'
@@ -49,7 +50,10 @@ test('catalog covers the target event-fit families from the product plan', () =>
 
   assert.deepEqual(new Set(fitIds), new Set(PLAN_FIT_IDS))
   assert.equal(catalog.listEventFits({ category: 'soccer' }).length, 3)
+  assert.equal(catalog.listEventFits({ category: 'sailing' }).length, 1)
   assert.equal(catalog.getEventFit('world-cup').templateKinds.includes('group-plus-knockout'), true)
+  assert.equal(catalog.getEventFit('mma-boxing-fight-card').combatCardSports.includes('bareknuckle'), true)
+  assert.equal(catalog.getEventFit('mma-boxing-fight-card').combatCardSports.includes('one-championship'), true)
 })
 
 test('catalog keeps every product-plan pool variant and mini-game mapped to runtime behavior', () => {
@@ -90,6 +94,7 @@ test('plan mini-games have recommended fit coverage and launch matrix behavior',
   assert.equal(catalog.listMiniGames({ fitId: 'local-leagues' }).some(item => item.gameType === 'free-kick-duel'), true)
   assert.equal(catalog.listMiniGames({ fitId: 'march-madness' }).some(item => item.gameType === 'player-prop-duel'), true)
   assert.equal(catalog.listMiniGames({ fitId: 'esports-major' }).some(item => item.gameType === 'watch-party-streak'), true)
+  assert.equal(catalog.listMiniGames({ fitId: 'sailgp-companion' }).some(item => item.gameType === 'momentum-duel'), true)
 })
 
 test('world cup recommendations combine bracket pools with live soccer games', () => {
@@ -129,6 +134,25 @@ test('awards pools recommend prediction cards and reject soccer-only mini games'
   assert.equal(compatible.compatible, true)
   assert.equal(mismatch.compatible, false)
   assert.match(mismatch.reasons.join(' '), /not recommended/)
+})
+
+test('sailgp companion recommends fleet-race pools and live companion games', () => {
+  const stack = catalog.recommendProductStack({
+    fitId: 'sailgp-companion',
+    settlementMode: 'demo',
+    maxMiniGames: 99
+  })
+  const variantIds = stack.poolVariants.map(item => item.variantId)
+  const gameTypes = stack.miniGames.map(item => item.gameType)
+
+  assert.equal(stack.templateKind, 'series-playoff')
+  assert.equal(stack.fit.resultPolicy, 'hybrid')
+  assert.equal(variantIds.includes('confidence'), true)
+  assert.equal(variantIds.includes('fantasy-lite-draft'), true)
+  assert.equal(gameTypes.includes('next-event'), true)
+  assert.equal(gameTypes.includes('momentum-duel'), true)
+  assert.equal(gameTypes.includes('watch-party-streak'), true)
+  assert.equal(stack.launchChecklist.includes('confirm-hybrid-result-source'), true)
 })
 
 test('facade and bridge expose catalog recommendations', () => {

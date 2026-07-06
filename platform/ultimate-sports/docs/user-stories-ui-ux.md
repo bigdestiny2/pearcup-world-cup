@@ -376,10 +376,13 @@ Primary P2P hooks:
 - Reaction Challenge for clutch or objective moments.
 - Side Quest for bracket/team scoring comparisons.
 
-### `mma-boxing-fight-card`: MMA / Boxing Fight Cards
+### `mma-boxing-fight-card`: Combat Sport Fight Cards
 
-Sport type: combat-sports. Entrants are fighters. Results prefer official feeds
-with host corrections for local cards.
+Sport type: combat-sports. Entrants are fighters. The same fight-card format
+supports MMA, boxing, kickboxing, ONE-style cards, bareknuckle, Muay Thai, and
+similar combat sports. Results prefer a covered official API, but uncovered or
+disputed cards use QVAC-reviewed official web, verified social, and web-search
+evidence before prize settlement.
 
 User stories:
 
@@ -398,8 +401,9 @@ UI/UX:
   and optional prop fields.
 - Watch room uses combat prompts: next round winner, knockdown, takedown, finish
   method, decision, significant strike surge, and card score.
-- Results screen must make corrections very clear because host-entered method or
-  round values can alter payouts.
+- Results screen must show API status, social/web evidence, QVAC referee status,
+  and corrections clearly because winner, method, or round values can alter
+  payouts.
 
 Primary P2P hooks:
 
@@ -407,6 +411,41 @@ Primary P2P hooks:
 - Trivia Duel between fights.
 - Reaction Challenge for knockdowns, submissions, and stoppages.
 - Watch-party Bingo for cards, finishes, decisions, and upsets.
+
+### `sailgp-companion`: SailGP Companion
+
+Sport type: sailing. Entrants are national or club teams. Results use a hybrid
+path: official or partner feed when licensed, with QVAC-reviewed evidence for
+manual race results, telemetry snapshots, or host corrections.
+
+User stories:
+
+- As a host, I want a fleet-race companion that tracks event standings, race
+  winners, podiums, and season table movement.
+- As a player, I want fast picks around starts, marks, lead changes, penalties,
+  and race winners without needing to understand every sailing rule.
+- As a watch participant, I want live companion games that make the broadcast
+  feel tactical: wind shifts, foil time, split gates, and pressure windows.
+
+UI/UX:
+
+- Discover card emphasizes event city, teams, race count, wind conditions, and
+  whether the result source is partner feed or host evidence.
+- Create flow defaults to `series-playoff`, confidence, survivor,
+  fantasy-lite draft, watch-party bingo, and side quest.
+- Picks screen is a compact race card with race winner, podium, top speed, foil
+  time, mark position, and penalty-count props.
+- Watch room uses sailing prompts: start winner, first mark, lead change,
+  penalty turn, foil drop, gate split, race winner, and next pressure window.
+- Results screen should show source confidence, event final order, race points,
+  corrections, and QVAC evidence links when a manual entry settles a prize.
+
+Primary P2P hooks:
+
+- Next Event for start, mark, penalty, and finish predictions.
+- Momentum Duel for the next pressure window.
+- Player Prop Duel for race winner, podium, speed, foil time, and penalty props.
+- Peer Mini Fantasy where each player drafts three teams for the event day.
 
 ### `creator-reality-brackets`: Reality / Creator Tournaments
 
@@ -555,6 +594,14 @@ Combat sports:
   stoppage, decision, scorecard.
 - Best controls: bout list, method/round props, confidence, watch-party bingo,
   head-to-head card duel.
+
+Sailing:
+
+- Event fit: `sailgp-companion`.
+- UI language: fleet race, start line, mark rounding, gate split, lead change,
+  penalty turn, foil time, top speed, podium, event final, season points.
+- Best controls: event leaderboard, race card, wind/pressure panel, confidence,
+  survivor, live prompts, peer mini fantasy, QVAC evidence review.
 
 Creator and reality:
 

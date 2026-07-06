@@ -118,6 +118,50 @@ const GAME_BLUEPRINTS = Object.freeze({
     evidence: ['draft-entry', 'athlete-stats', 'result-snapshot'],
     scoring: 'sum selected athlete stat points for a match or slate',
     defaultRounds: 1
+  }),
+  'buzzer-beater-duel': blueprint({
+    title: 'Buzzer Beater Duel',
+    mode: 'peer-game',
+    commandType: 'game:create',
+    resolver: 'buzzer-beater-duel',
+    playerCount: 'two-peer',
+    controls: ['aim-lane', 'shot-power', 'defender-read', 'round-reveal'],
+    evidence: ['commit', 'reveal', 'result-hash'],
+    scoring: 'two points for a basket, one point for an on-target shot',
+    defaultRounds: 3
+  }),
+  'ace-serve-duel': blueprint({
+    title: 'Ace Serve Duel',
+    mode: 'peer-game',
+    commandType: 'game:create',
+    resolver: 'ace-serve-duel',
+    playerCount: 'two-peer',
+    controls: ['serve-placement', 'power-meter', 'spin-slider', 'returner-read'],
+    evidence: ['commit', 'reveal', 'result-hash'],
+    scoring: 'two points for an ace, one point for an in-bounds serve',
+    defaultRounds: 3
+  }),
+  'home-run-derby': blueprint({
+    title: 'Home Run Derby',
+    mode: 'peer-game',
+    commandType: 'game:create',
+    resolver: 'home-run-derby',
+    playerCount: 'two-peer-or-room',
+    controls: ['pitch-read', 'power-meter', 'timing-window'],
+    evidence: ['commit', 'reveal', 'result-hash'],
+    scoring: 'four points for a home run, one point for a hit',
+    defaultRounds: 3
+  }),
+  'prediction-duel': blueprint({
+    title: 'Prediction Duel',
+    mode: 'peer-game',
+    commandType: 'game:create',
+    resolver: 'prediction-duel',
+    playerCount: 'two-peer-or-room',
+    controls: ['prediction-form', 'lock-window', 'response-timer'],
+    evidence: ['commit', 'reveal', 'answer-key'],
+    scoring: 'points for each correct field in the prediction outcome',
+    defaultRounds: 1
   })
 })
 
@@ -201,6 +245,16 @@ const FIT_CONTEXTS = Object.freeze({
     fantasyStats: ['strikes', 'takedowns', 'knockdowns', 'roundsWon'],
     scorelineLabel: 'method and round result',
     resultSource: 'official-feed'
+  }),
+  'sailgp-companion': context({
+    headline: 'Foiling race companion games',
+    eventOptions: ['start-winner', 'first-mark', 'lead-change', 'penalty-turn', 'foil-drop', 'gate-split', 'race-winner'],
+    propOptions: ['race-winner', 'podium', 'top-speed', 'foil-time', 'mark-position', 'penalty-count'],
+    triviaTopics: ['teams', 'drivers', 'F50 roles', 'race venues', 'wind strategy'],
+    reactionMoments: ['start-line', 'mark-rounding', 'lead-change', 'near-collision', 'finish'],
+    fantasyStats: ['racePoints', 'topSpeed', 'foilTime', 'markGains', 'penaltiesAvoided'],
+    scorelineLabel: 'fleet race finish order or event final result',
+    resultSource: 'hybrid'
   }),
   'creator-reality-brackets': context({
     headline: 'Creator reveal and episode games',
@@ -350,6 +404,8 @@ function optionsForGame ({ gameType, context, marketType }) {
   if (gameType === 'player-prop-duel') return context.propOptions.slice()
   if (gameType === 'peer-mini-fantasy') return context.fantasyStats.slice()
   if (gameType === 'scoreline-lock') return [context.scorelineLabel]
+  if (gameType === 'prediction-duel') return context.propOptions.slice()
+  if (gameType === 'home-run-derby') return context.eventOptions.slice()
   if (marketType) return context.eventOptions.slice()
   return context.eventOptions.slice(0, 6)
 }
@@ -359,6 +415,10 @@ function promptCopyFor ({ gameType, fit, context }) {
   if (gameType === 'player-prop-duel') return `Pick the player prop that decides ${fit.title}.`
   if (gameType === 'peer-mini-fantasy') return `Draft a tiny roster for this ${fit.category} slate.`
   if (gameType === 'watch-party-streak') return 'Keep the streak alive across consecutive live prompts.'
+  if (gameType === 'buzzer-beater-duel') return `Beat the buzzer in ${fit.title}.`
+  if (gameType === 'ace-serve-duel') return `Serve for aces in ${fit.title}.`
+  if (gameType === 'home-run-derby') return `Swing for the fences in ${fit.title}.`
+  if (gameType === 'prediction-duel') return `Predict the outcome in ${fit.title}.`
   return `Play ${GAME_BLUEPRINTS[gameType].title} during ${fit.title}.`
 }
 

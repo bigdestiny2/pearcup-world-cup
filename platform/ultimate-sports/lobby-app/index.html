@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'">
+    <title>Ultimate Sports</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-root">
+      <section class="splash-screen" id="splash" aria-label="Splash">
+        <div class="splash-mark">US</div>
+        <h1>Ultimate Sports</h1>
+        <p>Pick a live tournament server. Play pools, picks, and P2P games with friends.</p>
+        <button class="primary-button" id="enterLobby" type="button">Enter lobby</button>
+      </section>
+
+      <div class="lobby-shell is-hidden" id="lobbyShell">
+        <header class="lobby-header">
+          <button class="brand" type="button" id="backToSplash" aria-label="Back to splash">
+            <span class="brand-mark">US</span>
+            <span>Ultimate Sports</span>
+          </button>
+          <nav class="lobby-filters" id="lobbyFilters" aria-label="Filter sports"></nav>
+          <div class="lobby-user" id="lobbyUser" aria-label="Your profile and wallet">
+            <button class="wallet-chip" id="walletChip" type="button" aria-label="Open wallet">
+              <span class="wallet-ico">💰</span>
+              <span class="wallet-amt">—</span>
+            </button>
+            <div class="profile-chip" id="profileChip" aria-live="polite"></div>
+          </div>
+        </header>
+
+        <main class="lobby-main">
+          <aside class="lobby-rail" aria-label="Wallet and active competitions">
+            <section class="wallet-panel" id="walletPanel" aria-labelledby="walletTitle">
+              <p class="eyebrow" id="walletTitle">Wallet</p>
+              <div class="wallet-balance" id="walletBalance">—</div>
+              <div class="wallet-payout" id="walletPayout">No payouts</div>
+              <div class="wallet-actions">
+                <button class="primary-button" type="button" id="fundWalletBtn">Fund +100</button>
+                <button class="secondary-button" type="button" id="collectPayoutBtn">Collect</button>
+              </div>
+            </section>
+            <section class="active-panel" id="activePanel" aria-labelledby="activeTitle">
+              <p class="eyebrow" id="activeTitle">Active competitions</p>
+              <div class="active-list" id="activeList"></div>
+            </section>
+          </aside>
+
+          <section class="hero-panel" id="heroPanel" aria-label="Featured live server">
+            <div class="hero-backdrop" id="heroBackdrop"></div>
+            <div class="hero-content">
+              <p class="eyebrow" id="heroEyebrow">Live now</p>
+              <h2 id="heroTitle">Featured tournament</h2>
+              <p id="heroBody">Join the biggest live server right now.</p>
+              <button class="primary-button" id="heroJoin" type="button">Join server</button>
+            </div>
+          </section>
+
+          <section class="server-grid-section" aria-labelledby="serverGridTitle">
+            <div class="section-title">
+              <div>
+                <p class="eyebrow">Tournament servers</p>
+                <h2 id="serverGridTitle">Choose a sport</h2>
+              </div>
+              <span class="pill" id="liveCount">0 live</span>
+            </div>
+            <div class="server-grid" id="serverGrid"></div>
+          </section>
+        </main>
+      </div>
+
+      <div class="app-loader is-hidden" id="appLoader" aria-label="Loaded app">
+        <header class="loader-bar">
+          <button class="ghost-button" id="closeLoader" type="button">Back to lobby</button>
+          <span id="loaderTitle">Tournament app</span>
+        </header>
+        <iframe class="app-frame" id="appFrame" title="Loaded tournament app" sandbox="allow-scripts allow-same-origin"></iframe>
+      </div>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

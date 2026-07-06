@@ -44,6 +44,64 @@ test('records a passed remote friend test only with exact SHA and observed notes
   assert.ok(receipt.remoteFriendChecklist.includes('host and friend can start Penalty Clash from the joined room'))
 })
 
+test('records a passed Pear runtime remote friend test against the Pear release receipt', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-pear-pass-'))
+  const publishResult = writePublishResult(dir)
+  const pearReleaseResult = writePearReleaseResult(dir)
+  const out = join(dir, 'pear-friend-result.json')
+  const pearUrl = 'pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo'
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--pear-release-result', pearReleaseResult,
+    '--surface', 'pear',
+    '--public-link', pearUrl,
+    '--out', out,
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'friend ran the final pear:// link and joined room wdk8yv'
+  ])
+
+  assert.equal(result.status, 0, result.stderr || result.stdout)
+  const receipt = JSON.parse(readFileSync(out, 'utf8'))
+  assert.equal(receipt.status, 'remote-friend-verified')
+  assert.equal(receipt.testedSurface, 'pear')
+  assert.equal(receipt.publicLink, pearUrl)
+  assert.equal(receipt.pearUrl, pearUrl)
+  assert.equal(receipt.evidence.friendOpenedFinalPublicLink, true)
+  assert.equal(receipt.evidence.testedSurface, 'pear')
+  assert.equal(receipt.pearReleaseEvidence.release, 1928)
+  assert.equal(receipt.pearReleaseEvidence.publicPearRunSmokePassed, true)
+  assert.ok(receipt.remoteFriendChecklist.includes('remote friend runs the final pear:// link'))
+})
+
+test('refuses Pear runtime friend tests without the Pear release receipt', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-pear-no-receipt-'))
+  const publishResult = writePublishResult(dir)
+
+  const result = run([
+    '--publish-result', publishResult,
+    '--surface', 'pear',
+    '--public-link', 'pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo',
+    '--sha', bundleSha256,
+    '--friend', 'tariq',
+    '--room-code', 'wdk8yv',
+    '--friend-opened',
+    '--reached-games',
+    '--joined-p2p',
+    '--started-penalty-clash',
+    '--notes', 'joined'
+  ])
+
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /--surface pear requires --pear-release-result/)
+})
+
 test('refuses a passed friend test when the operator omits the exact bundle SHA', () => {
   const dir = mkdtempSync(join(tmpdir(), 'pearcup-friend-no-sha-'))
   const publishResult = writePublishResult(dir)
@@ -561,6 +619,39 @@ function writePublishResult (dir, overrides = {}, releaseReceiptOverrides = {}, 
       ...releaseReceiptOverrides
     }, null, 2) + '\n')
   }
+  return file
+}
+
+function writePearReleaseResult (dir, overrides = {}) {
+  const file = join(dir, 'pearcup-pear-release-result.json')
+  writeFileSync(file, JSON.stringify({
+    app: 'PearCup',
+    status: 'pear-runtime-released-and-smoked',
+    sourceGitHead: '2573450565f8bf61eb64d38159fe5c553cf21b65',
+    sourceDirty: false,
+    pearUrl: 'pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo',
+    release: 1928,
+    length: 1929,
+    evidence: {
+      stageDryRunPassed: true,
+      stagePassed: true,
+      releasePassed: true,
+      seedAnnounced: true,
+      publicPearInfoRelease: 1928,
+      publicPearRunSmokePassed: true
+    },
+    friendTest: {
+      status: 'pending-remote-friend',
+      requires: [
+        'remote friend runs the final pear:// link',
+        'remote friend reaches Games without fallback or boot error',
+        'host and friend complete a live P2P invite join',
+        'host and friend can start Penalty Clash from the joined room',
+        'record the observed room code'
+      ]
+    },
+    ...overrides
+  }, null, 2) + '\n')
   return file
 }
 

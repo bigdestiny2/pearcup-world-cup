@@ -122,6 +122,65 @@ test('QVAC assistant drafts, trivia banks, and moderation preserve guardrails', 
   assert.equal(review.body.labels.includes('external-link'), true)
 })
 
+test('QVAC result evidence referee reviews social and web sources for combat cards', () => {
+  const readyReview = qvac.createResultEvidenceReview({
+    targetType: 'fixture',
+    targetId: 'bareknuckle-main-event',
+    title: 'Bareknuckle Main Event',
+    claimedWinner: 'Mika Stone',
+    evidenceItems: [
+      {
+        sourceKind: 'verified-social',
+        sourceName: 'promotion account',
+        sourceUrl: 'https://social.example.invalid/post/1',
+        claimedWinner: 'Mika Stone',
+        method: 'decision',
+        round: 5
+      },
+      {
+        sourceKind: 'web-search',
+        sourceName: 'search result',
+        sourceUrl: 'https://search.example.invalid/result/2',
+        claimedWinner: 'Mika Stone',
+        method: 'decision',
+        round: 5
+      }
+    ],
+    createdAt: '2026-07-04T00:00:00.000Z'
+  })
+  const heldReview = qvac.createResultEvidenceReview({
+    targetType: 'fixture',
+    targetId: 'kickboxing-co-main',
+    claimedWinner: 'Blue Corner',
+    evidenceItems: [
+      {
+        sourceKind: 'social',
+        sourceUrl: 'https://social.example.invalid/post/2',
+        claimedWinner: 'Blue Corner'
+      },
+      {
+        sourceKind: 'web-search',
+        sourceUrl: 'https://search.example.invalid/result/3',
+        claimedWinner: 'Red Corner'
+      }
+    ],
+    createdAt: '2026-07-04T00:00:00.000Z'
+  })
+
+  assert.equal(readyReview.lane, 'result-evidence')
+  assert.equal(readyReview.status, 'ready')
+  assert.equal(readyReview.body.consensusWinner, 'Mika Stone')
+  assert.equal(readyReview.body.method, 'decision')
+  assert.equal(readyReview.body.sourceSummary.verifiedSocial, 1)
+  assert.equal(readyReview.body.sourceSummary.searchResults, 1)
+  assert.equal(readyReview.body.guardrails.socialEvidenceRequiresCorroboration, true)
+  assert.equal(qvac.qvacGate(readyReview).ok, true)
+
+  assert.equal(heldReview.status, 'held')
+  assert.equal(heldReview.body.blockers.includes('conflicting winner claims require manual review'), true)
+  assert.equal(qvac.qvacGate(heldReview).ok, false)
+})
+
 test('runtime replays QVAC records into watch, creator, settings, and bridge surfaces', () => {
   const app = platform.createUltimateSportsPlatform({ peerId: 'host' })
   app.applyScenario('soccer-knockout', {
@@ -227,6 +286,28 @@ test('runtime replays QVAC records into watch, creator, settings, and bridge sur
       ]
     }
   })
+  const resultReviewEvent = app.dispatch({
+    type: 'qvac:reviewResultEvidence',
+    actorId: 'combat-referee',
+    occurredAt: '2026-07-03T20:09:00.000Z',
+    payload: {
+      targetType: 'fixture',
+      targetId: 'qvac-fight-main',
+      claimedWinner: 'Mika Stone',
+      evidenceItems: [
+        {
+          sourceKind: 'verified-social',
+          sourceUrl: 'https://social.example.invalid/post/1',
+          claimedWinner: 'Mika Stone'
+        },
+        {
+          sourceKind: 'web-search',
+          sourceUrl: 'https://search.example.invalid/result/2',
+          claimedWinner: 'Mika Stone'
+        }
+      ]
+    }
+  })
   const handler = bridge.createBridgeHandler({ platform: app })
   const bridgedWatch = handler.handle(bridge.createBridgeRequest({
     action: 'createSurface',
@@ -246,10 +327,12 @@ test('runtime replays QVAC records into watch, creator, settings, and bridge sur
   assert.equal(view.qvacModerationReviews[reviewEvent.payload.qvacRecordId].body.recommendedAction, 'hide-message')
   assert.equal(view.qvacCreatorDrafts[draftEvent.payload.qvacRecordId].body.templateConfig.kind, 'fight-card')
   assert.equal(view.qvacTriviaBanks[bankEvent.payload.qvacRecordId].status, 'held')
+  assert.equal(view.qvacResultEvidenceReviews[resultReviewEvent.payload.qvacRecordId].status, 'ready')
   assert.deepEqual(view.qvacRoomSummariesByRoom['qvac-runtime-room'], [summaryEvent.payload.qvacRecordId])
 
   assert.equal(watch.qvacSummaries[0].roomId, 'qvac-runtime-room')
   assert.equal(watch.qvacCommentary[0].sourceFeedEventIds[0], 'qvac-runtime-goal')
+  assert.equal(watch.qvacResultEvidence[0].consensusWinner, 'Mika Stone')
   assert.equal(creator.assistantDrafts[0].templateKind, 'fight-card')
   assert.equal(creator.triviaBanks[0].status, 'held')
   assert.equal(settings.moderationReviews[0].recommendedAction, 'hide-message')

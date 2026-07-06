@@ -24,6 +24,14 @@ Peer games:
   with response time as tie break.
 - `reaction-challenge`: moment feed, tap target, latency window, fastest valid
   tap wins each moment.
+- `buzzer-beater-duel`: basketball aim, power, defender read, commit/reveal, two
+  points for a basket and one for an on-target shot.
+- `ace-serve-duel`: tennis serve placement, power, spin, returner read,
+  commit/reveal, two points for an ace and one for an in-bounds serve.
+- `home-run-derby`: baseball pitch read, power, timing, commit/reveal, four
+  points for a home run and one for a hit.
+- `prediction-duel`: structured outcome prediction (method, round, winner, etc.),
+  answer-key scoring with response-time tie break.
 
 Live markets:
 
@@ -76,7 +84,8 @@ Draft:
 ### `march-madness`
 
 - Games: `next-event`, `scoreline-lock`, `trivia-duel`, `peer-mini-fantasy`,
-  `player-prop-duel`, `watch-party-streak`, `reaction-challenge`.
+  `player-prop-duel`, `watch-party-streak`, `reaction-challenge`,
+  `buzzer-beater-duel`.
 - Event options: next basket, three, foul, rebound, assist, lead change, timeout.
 - Props: points, assists, rebounds, blocks, steals, fouls.
 - Trivia: seeds, regions, upsets, coaches, mascots.
@@ -87,7 +96,7 @@ Draft:
 
 - Games: `next-event`, `scoreline-lock`, `player-prop-duel`,
   `peer-mini-fantasy`, `watch-party-streak`, `reaction-challenge`,
-  `momentum-duel`.
+  `momentum-duel`, `buzzer-beater-duel`, `home-run-derby`.
 - Event options: next goal, next run, next basket, save, strikeout, power play,
   lead change.
 - Props: points, goals, runs, assists, saves, strikeouts.
@@ -98,7 +107,7 @@ Draft:
 ### `tennis-grand-slams`
 
 - Games: `next-event`, `scoreline-lock`, `player-prop-duel`,
-  `reaction-challenge`, `watch-party-streak`.
+  `reaction-challenge`, `watch-party-streak`, `ace-serve-duel`.
 - Event options: next game, break point, ace, double fault, tiebreak, set winner.
 - Props: aces, double faults, breaks, sets won.
 - Trivia: surfaces, seeds, slam history, head-to-head records.
@@ -107,8 +116,8 @@ Draft:
 
 ### `esports-major`
 
-- Games: `next-event`, `momentum-duel`, `trivia-duel`,
-  `reaction-challenge`, `watch-party-streak`.
+- Games: `next-event`, `momentum-duel`, `trivia-duel`, `reaction-challenge`,
+  `watch-party-streak`, `prediction-duel`.
 - Event options: next map, first blood, objective, clutch, ace, overtime,
   economy swing.
 - Props: kills, assists, objectives, saves, goals.
@@ -118,18 +127,35 @@ Draft:
 
 ### `mma-boxing-fight-card`
 
-- Games: `player-prop-duel`, `next-event`, `trivia-duel`,
-  `reaction-challenge`, `watch-party-streak`, `momentum-duel`.
+- Games: `player-prop-duel`, `next-event`, `trivia-duel`, `reaction-challenge`,
+  `watch-party-streak`, `momentum-duel`, `prediction-duel`.
+- Format: reusable combat-card flow for MMA, boxing, kickboxing,
+  ONE-style cards, bareknuckle, Muay Thai, and similar bout lists.
 - Event options: round winner, knockdown, takedown, submission, stoppage,
   decision.
 - Props: method, round, knockdowns, takedowns, significant strikes.
 - Trivia: fighters, weight classes, prior bouts, methods.
 - Reactions: knockdown, submission, stoppage, walkout, decision.
-- Result source: official feed.
+- Result source: covered combat API when available; otherwise QVAC
+  `result-evidence` review from official web, social, and search sources.
+
+### `sailgp-companion`
+
+- Games: `next-event`, `momentum-duel`, `player-prop-duel`, `trivia-duel`,
+  `reaction-challenge`, `watch-party-streak`, `peer-mini-fantasy`,
+  `prediction-duel`.
+- Event options: start winner, first mark, lead change, penalty turn, foil drop,
+  gate split, race winner.
+- Props: race winner, podium, top speed, foil time, mark position, penalty
+  count.
+- Trivia: teams, drivers, F50 roles, race venues, wind strategy.
+- Reactions: start line, mark rounding, lead change, near collision, finish.
+- Result source: hybrid official or partner feed with QVAC-reviewed evidence.
 
 ### `creator-reality-brackets`
 
-- Games: `trivia-duel`, `reaction-challenge`, `watch-party-streak`.
+- Games: `trivia-duel`, `reaction-challenge`, `watch-party-streak`,
+  `prediction-duel`.
 - Event options: reveal, judge choice, fan vote, challenge winner, elimination.
 - Props: winner, category score, fan votes, judge pick.
 - Trivia: creators, episodes, songs, dishes, challenges.
@@ -138,7 +164,8 @@ Draft:
 
 ### `awards-prediction-pools`
 
-- Games: `trivia-duel`, `watch-party-streak`, `reaction-challenge`.
+- Games: `trivia-duel`, `watch-party-streak`, `reaction-challenge`,
+  `prediction-duel`.
 - Event options: category winner, upset, speech, performance, jury vote, public
   vote.
 - Props: winner, speech length, jury vote, public vote.
@@ -150,7 +177,7 @@ Draft:
 
 - Games: `penalty-clash`, `free-kick-duel`, `trivia-duel`, `next-event`,
   `peer-mini-fantasy`, `watch-party-streak`, `reaction-challenge`,
-  `momentum-duel`, `player-prop-duel`.
+  `momentum-duel`, `player-prop-duel`, `prediction-duel`.
 - Event options: next score, player prop, team streak, manual stat, local
   trivia.
 - Props: goals, points, assists, saves, custom stat.

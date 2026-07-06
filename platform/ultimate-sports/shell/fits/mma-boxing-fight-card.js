@@ -131,32 +131,12 @@
     { user: 'milo', team: 'adesanya', record: '3-2', trust: '97.9%' }
   ]
 
-  const bouts = round32Matches.map((m, i) => {
-    const redCorner = teams.find(t => t.id === m.slots[0])
-    const blueCorner = teams.find(t => t.id === m.slots[1])
-    const labels = ['Main event', 'Co-main', 'Featured', 'Featured', 'Prelim', 'Prelim', 'Prelim', 'Prelim']
-    const weights = ['Light Heavyweight', 'Women\'s Bantamweight', 'Lightweight', 'Bantamweight', 'Featherweight', 'Middleweight', 'Welterweight', 'Light Heavyweight']
-    return {
-      id: m.id,
-      label: labels[i],
-      weightClass: weights[i],
-      status: m.status,
-      red: m.slots[0],
-      blue: m.slots[1],
-      redRecord: `${[12, 10, 11, 9, 14, 8, 13, 7][i]}-${[3, 2, 4, 3, 2, 5, 3, 4][i]}-${[0, 1, 0, 1, 0, 1, 0, 0][i]}`,
-      blueRecord: `${[10, 12, 9, 11, 8, 14, 7, 13][i]}-${[2, 3, 3, 4, 4, 2, 5, 3][i]}-${[1, 0, 1, 0, 1, 0, 0, 1][i]}`,
-      method: ['KO/TKO', 'Submission', 'Decision', 'Decision'][i % 4],
-      round: [1, 2, 3, 3][i % 4]
-    }
-  })
-
   root.registerFit('mma-boxing-fight-card', {
     fitId: 'mma-boxing-fight-card',
     title: 'Combat Sport Fight Cards',
     subtitle: 'Ultimate Sports',
     category: 'combat-sports',
     entrantShape: 'player',
-    templateKinds: ['fight-card'],
     defaultTeam: 'silva',
     background: '#121214',
     theme: {
@@ -191,7 +171,6 @@
     defaultChat,
     gameRounds,
     gameLeaderboardRows,
-    templateData: { bouts },
     assets: {
       heroBackdrop: '../generated/mma-card/hero-backdrop/wide.png'
     }

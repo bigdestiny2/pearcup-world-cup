@@ -149,14 +149,38 @@
     })
   }
 
-  function createUltimateSportsBridgeHandler (options = {}) {
-    const platformBridge = typeof require !== 'undefined'
-      ? require('../platform/ultimate-sports/src/bridge-protocol.js')
-      : null
-    if (!platformBridge || typeof platformBridge.createBridgeHandler !== 'function') {
-      throw new Error('Ultimate sports bridge protocol is not available in this runtime')
+  function createUltimateSportsBridgeHandler ({ rootObject = root, handler, platformOptions = {} } = {}) {
+    if (handler && typeof handler.handle === 'function') return handler
+    const exposed = rootObject && (
+      rootObject.PearCupUltimateSportsBridge ||
+      rootObject.__PEARCUP_ULTIMATE_SPORTS_BRIDGE__ ||
+      rootObject.UltimateSportsBridge
+    )
+    if (exposed && typeof exposed.handle === 'function') return exposed
+    if (typeof require !== 'undefined') {
+      try {
+        const ultimateBridge = require('../platform/ultimate-sports/src/bridge-protocol.js')
+        return ultimateBridge.createBridgeHandler({
+          platformOptions: {
+            peerId: 'pearcup-worker-ultimate',
+            ...platformOptions
+          }
+        })
+      } catch (err) {
+        const error = new Error(`Ultimate sports bridge unavailable: ${err.message}`)
+        error.code = 'PEARCUP_ULTIMATE_SPORTS_BRIDGE_UNAVAILABLE'
+        throw error
+      }
     }
-    return platformBridge.createBridgeHandler(options)
+    const error = new Error('Ultimate sports bridge unavailable in this runtime')
+    error.code = 'PEARCUP_ULTIMATE_SPORTS_BRIDGE_UNAVAILABLE'
+    throw error
+  }
+
+  function normalizeUltimateSportsRequest (payload = {}) {
+    if (payload.request && typeof payload.request === 'object') return payload.request
+    if (payload.envelope && typeof payload.envelope === 'object') return payload.envelope
+    return payload
   }
 
   function createPearWorkerBridgeProtocol ({
@@ -185,6 +209,7 @@
       activeService.status().settings
     ) || {}
     const dispatchCommand = createGuardedDispatcher({ service: activeService, harness })
+    let ultimateSportsHandler = null
 
     async function handleEnvelope (envelope) {
       try {
@@ -212,9 +237,12 @@
           responseService = settlementServiceForRequest({ activeService, harness, opts: requestOpts })
           result = await responseService.settleBracketPoolWithReceipt(payload.payload || {}, requestOpts)
         } else if (envelope.action === 'ultimateSports') {
-          const nestedRequest = payload.request || payload
-          const ultimateHandler = createUltimateSportsBridgeHandler(payload.handlerOptions || {})
-          result = ultimateHandler.handle(nestedRequest)
+          ultimateSportsHandler = createUltimateSportsBridgeHandler({
+            rootObject,
+            handler: ultimateSportsHandler || payload.handler,
+            platformOptions: payload.platformOptions || {}
+          })
+          result = ultimateSportsHandler.handle(normalizeUltimateSportsRequest(payload))
         } else {
           throw new Error(`Unsupported Pear worker bridge action: ${envelope.action}`)
         }

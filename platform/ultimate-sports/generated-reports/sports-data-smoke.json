@@ -1,0 +1,1018 @@
+{
+  "reportVersion": "ultimate-sports-data-smoke-v1",
+  "generatedAt": "2026-07-04T00:00:00.000Z",
+  "serverOnly": true,
+  "noClientSecrets": true,
+  "standupFixtures": true,
+  "overallStatus": "standup-fixture-smoke-passed",
+  "planSummary": {
+    "totalChecks": 11,
+    "apiChecks": 8,
+    "localChecks": 3,
+    "readyToRun": 0,
+    "fixtureReady": 8,
+    "localReady": 3,
+    "missingCredentials": 0,
+    "missingParams": 0,
+    "needsOAuthToken": 0,
+    "blocked": 0
+  },
+  "summary": {
+    "totalChecks": 11,
+    "apiChecks": 8,
+    "localChecks": 3,
+    "readyToRun": 0,
+    "fixtureReady": 8,
+    "localReady": 3,
+    "missingCredentials": 0,
+    "missingParams": 0,
+    "needsOAuthToken": 0,
+    "blocked": 0,
+    "passedChecks": 11,
+    "executed": 0,
+    "passedLive": 0,
+    "passedFixture": 8,
+    "passedLocal": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "checks": [
+    {
+      "sourceId": "sportradar-official",
+      "title": "Sportradar official sports APIs client",
+      "providerId": "sportradar",
+      "clientKind": "http-json",
+      "sourceKind": "api",
+      "settlementTier": "source-of-truth",
+      "status": "standup-fixture-ready",
+      "canCallNetwork": false,
+      "canUseStandupFixture": true,
+      "liveBlockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "SPORTRADAR_API_KEY",
+            "SPORTRADAR_PRODUCT_CONFIG"
+          ],
+          "message": "Missing required env: SPORTRADAR_API_KEY, SPORTRADAR_PRODUCT_CONFIG"
+        }
+      ],
+      "target": {
+        "entityType": "competition",
+        "operation": "competition:list",
+        "params": {}
+      },
+      "blockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "SPORTRADAR_API_KEY",
+            "SPORTRADAR_PRODUCT_CONFIG"
+          ],
+          "message": "Missing required env: SPORTRADAR_API_KEY, SPORTRADAR_PRODUCT_CONFIG"
+        }
+      ],
+      "request": {
+        "requestId": "sports-data-request-sportradar-official-3df87732",
+        "method": "GET",
+        "operation": "competition:list",
+        "entityType": "competition",
+        "url": "https://api.sportradar.com/soccer/trial/v4/en/competitions.json?api_key=%3Credacted%3ASPORTRADAR_API_KEY%3E",
+        "path": "/soccer/trial/v4/en/competitions.json",
+        "query": {
+          "api_key": "<redacted:SPORTRADAR_API_KEY>"
+        },
+        "headers": {
+          "Accept": "application/json"
+        },
+        "missingEnv": [
+          "SPORTRADAR_API_KEY",
+          "SPORTRADAR_PRODUCT_CONFIG"
+        ],
+        "missingParams": [],
+        "ready": false,
+        "redacted": true
+      },
+      "expectedEvidence": "HTTP 2xx response from source-of-truth provider sample endpoint",
+      "nextAction": "Use standup fixtures for sportradar-official locally, then run live smoke when backend credentials are contracted.",
+      "acceptanceCriteria": [
+        "Required provider credentials are present only in the backend runtime.",
+        "The smoke check returns passed-live with an HTTP 2xx provider response.",
+        "The redacted smoke report stores status, duration, payload shape, and item count without credential values."
+      ],
+      "readinessChecklist": [
+        {
+          "item": "server-only request builder",
+          "status": "present",
+          "sensitive": false
+        },
+        {
+          "item": "SPORTRADAR_API_KEY",
+          "status": "missing",
+          "sensitive": true
+        },
+        {
+          "item": "SPORTRADAR_PRODUCT_CONFIG",
+          "status": "missing",
+          "sensitive": true
+        },
+        {
+          "item": "redacted smoke acceptance",
+          "status": "ready",
+          "sensitive": false
+        }
+      ]
+    },
+    {
+      "sourceId": "sportsdataio-mma",
+      "title": "SportsDataIO UFC / MMA client",
+      "providerId": "sportsdataio",
+      "clientKind": "http-json",
+      "sourceKind": "api",
+      "settlementTier": "source-of-truth",
+      "status": "standup-fixture-ready",
+      "canCallNetwork": false,
+      "canUseStandupFixture": true,
+      "liveBlockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "SPORTSDATAIO_MMA_API_KEY"
+          ],
+          "message": "Missing required env: SPORTSDATAIO_MMA_API_KEY"
+        }
+      ],
+      "target": {
+        "entityType": "event",
+        "operation": "event:list",
+        "params": {
+          "season": "current"
+        }
+      },
+      "blockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "SPORTSDATAIO_MMA_API_KEY"
+          ],
+          "message": "Missing required env: SPORTSDATAIO_MMA_API_KEY"
+        }
+      ],
+      "request": {
+        "requestId": "sports-data-request-sportsdataio-mma-23c7d269",
+        "method": "GET",
+        "operation": "event:list",
+        "entityType": "event",
+        "url": "https://api.sportsdata.io/v3/mma/scores/json/Schedule/current",
+        "path": "/scores/json/Schedule/current",
+        "query": {},
+        "headers": {
+          "Accept": "application/json",
+          "Ocp-Apim-Subscription-Key": "<redacted:SPORTSDATAIO_MMA_API_KEY>"
+        },
+        "missingEnv": [
+          "SPORTSDATAIO_MMA_API_KEY"
+        ],
+        "missingParams": [],
+        "ready": false,
+        "redacted": true
+      },
+      "expectedEvidence": "HTTP 2xx response from source-of-truth provider sample endpoint",
+      "nextAction": "Use standup fixtures for sportsdataio-mma locally, then run live smoke when backend credentials are contracted.",
+      "acceptanceCriteria": [
+        "Required provider credentials are present only in the backend runtime.",
+        "The smoke check returns passed-live with an HTTP 2xx provider response.",
+        "The redacted smoke report stores status, duration, payload shape, and item count without credential values."
+      ],
+      "readinessChecklist": [
+        {
+          "item": "server-only request builder",
+          "status": "present",
+          "sensitive": false
+        },
+        {
+          "item": "SPORTSDATAIO_MMA_API_KEY",
+          "status": "missing",
+          "sensitive": true
+        },
+        {
+          "item": "redacted smoke acceptance",
+          "status": "ready",
+          "sensitive": false
+        }
+      ]
+    },
+    {
+      "sourceId": "sportsdataio-global",
+      "title": "SportsDataIO league/global client",
+      "providerId": "sportsdataio",
+      "clientKind": "http-json",
+      "sourceKind": "api",
+      "settlementTier": "trusted-secondary",
+      "status": "standup-fixture-ready",
+      "canCallNetwork": false,
+      "canUseStandupFixture": true,
+      "liveBlockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "SPORTSDATAIO_GLOBAL_API_KEY"
+          ],
+          "message": "Missing required env: SPORTSDATAIO_GLOBAL_API_KEY"
+        }
+      ],
+      "target": {
+        "entityType": "competition",
+        "operation": "competition:list",
+        "params": {
+          "league": "soccer"
+        }
+      },
+      "blockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "SPORTSDATAIO_GLOBAL_API_KEY"
+          ],
+          "message": "Missing required env: SPORTSDATAIO_GLOBAL_API_KEY"
+        }
+      ],
+      "request": {
+        "requestId": "sports-data-request-sportsdataio-global-376f92ea",
+        "method": "GET",
+        "operation": "competition:list",
+        "entityType": "competition",
+        "url": "https://api.sportsdata.io/v3/soccer/scores/json/Competitions",
+        "path": "/soccer/scores/json/Competitions",
+        "query": {},
+        "headers": {
+          "Accept": "application/json",
+          "Ocp-Apim-Subscription-Key": "<redacted:SPORTSDATAIO_GLOBAL_API_KEY>"
+        },
+        "missingEnv": [
+          "SPORTSDATAIO_GLOBAL_API_KEY"
+        ],
+        "missingParams": [],
+        "ready": false,
+        "redacted": true
+      },
+      "expectedEvidence": "HTTP 2xx response from trusted secondary provider sample endpoint",
+      "nextAction": "Use standup fixtures for sportsdataio-global locally, then run live smoke when backend credentials are contracted.",
+      "acceptanceCriteria": [
+        "Required provider credentials are present only in the backend runtime.",
+        "The smoke check returns passed-live with an HTTP 2xx provider response.",
+        "The redacted smoke report stores status, duration, payload shape, and item count without credential values."
+      ],
+      "readinessChecklist": [
+        {
+          "item": "server-only request builder",
+          "status": "present",
+          "sensitive": false
+        },
+        {
+          "item": "SPORTSDATAIO_GLOBAL_API_KEY",
+          "status": "missing",
+          "sensitive": true
+        },
+        {
+          "item": "redacted smoke acceptance",
+          "status": "ready",
+          "sensitive": false
+        }
+      ]
+    },
+    {
+      "sourceId": "pandascore-esports",
+      "title": "PandaScore esports client",
+      "providerId": "pandascore",
+      "clientKind": "http-json",
+      "sourceKind": "api",
+      "settlementTier": "source-of-truth",
+      "status": "standup-fixture-ready",
+      "canCallNetwork": false,
+      "canUseStandupFixture": true,
+      "liveBlockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "PANDASCORE_TOKEN"
+          ],
+          "message": "Missing required env: PANDASCORE_TOKEN"
+        }
+      ],
+      "target": {
+        "entityType": "event",
+        "operation": "event:list",
+        "params": {}
+      },
+      "blockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "PANDASCORE_TOKEN"
+          ],
+          "message": "Missing required env: PANDASCORE_TOKEN"
+        }
+      ],
+      "request": {
+        "requestId": "sports-data-request-pandascore-esports-bd4b7b5d",
+        "method": "GET",
+        "operation": "event:list",
+        "entityType": "event",
+        "url": "https://api.pandascore.co/matches/upcoming",
+        "path": "/matches/upcoming",
+        "query": {},
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "Bearer <redacted:PANDASCORE_TOKEN>"
+        },
+        "missingEnv": [
+          "PANDASCORE_TOKEN"
+        ],
+        "missingParams": [],
+        "ready": false,
+        "redacted": true
+      },
+      "expectedEvidence": "HTTP 2xx response from source-of-truth provider sample endpoint",
+      "nextAction": "Use standup fixtures for pandascore-esports locally, then run live smoke when backend credentials are contracted.",
+      "acceptanceCriteria": [
+        "Required provider credentials are present only in the backend runtime.",
+        "The smoke check returns passed-live with an HTTP 2xx provider response.",
+        "The redacted smoke report stores status, duration, payload shape, and item count without credential values."
+      ],
+      "readinessChecklist": [
+        {
+          "item": "server-only request builder",
+          "status": "present",
+          "sensitive": false
+        },
+        {
+          "item": "PANDASCORE_TOKEN",
+          "status": "missing",
+          "sensitive": true
+        },
+        {
+          "item": "redacted smoke acceptance",
+          "status": "ready",
+          "sensitive": false
+        }
+      ]
+    },
+    {
+      "sourceId": "abios-esports",
+      "title": "Abios esports data client",
+      "providerId": "abios",
+      "clientKind": "http-json",
+      "sourceKind": "api",
+      "settlementTier": "trusted-secondary",
+      "status": "standup-fixture-ready",
+      "canCallNetwork": false,
+      "canUseStandupFixture": true,
+      "liveBlockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "ABIOS_CLIENT_ID",
+            "ABIOS_CLIENT_SECRET"
+          ],
+          "message": "Missing required env: ABIOS_CLIENT_ID, ABIOS_CLIENT_SECRET"
+        }
+      ],
+      "target": {
+        "entityType": "event",
+        "operation": "event:list",
+        "params": {}
+      },
+      "blockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "ABIOS_CLIENT_ID",
+            "ABIOS_CLIENT_SECRET"
+          ],
+          "message": "Missing required env: ABIOS_CLIENT_ID, ABIOS_CLIENT_SECRET"
+        }
+      ],
+      "request": {
+        "requestId": "sports-data-request-abios-esports-2e8ca0a2",
+        "method": "GET",
+        "operation": "event:list",
+        "entityType": "event",
+        "url": "https://api.abiosgaming.com/v3/matches",
+        "path": "/matches",
+        "query": {},
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "Bearer <oauth-client-credentials-token>"
+        },
+        "missingEnv": [
+          "ABIOS_CLIENT_ID",
+          "ABIOS_CLIENT_SECRET"
+        ],
+        "missingParams": [],
+        "ready": false,
+        "redacted": true
+      },
+      "expectedEvidence": "HTTP 2xx response from trusted secondary provider sample endpoint",
+      "nextAction": "Use standup fixtures for abios-esports locally, then run live smoke when backend credentials are contracted.",
+      "acceptanceCriteria": [
+        "Required provider credentials are present only in the backend runtime.",
+        "The smoke check returns passed-live with an HTTP 2xx provider response.",
+        "The redacted smoke report stores status, duration, payload shape, and item count without credential values."
+      ],
+      "readinessChecklist": [
+        {
+          "item": "server-only request builder",
+          "status": "present",
+          "sensitive": false
+        },
+        {
+          "item": "ABIOS_CLIENT_ID",
+          "status": "missing",
+          "sensitive": true
+        },
+        {
+          "item": "ABIOS_CLIENT_SECRET",
+          "status": "missing",
+          "sensitive": true
+        },
+        {
+          "item": "redacted smoke acceptance",
+          "status": "ready",
+          "sensitive": false
+        }
+      ]
+    },
+    {
+      "sourceId": "the-odds-api-context",
+      "title": "The Odds API context client",
+      "providerId": "the-odds-api",
+      "clientKind": "http-json",
+      "sourceKind": "api",
+      "settlementTier": "context-only",
+      "status": "standup-fixture-ready",
+      "canCallNetwork": false,
+      "canUseStandupFixture": true,
+      "liveBlockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "ODDS_API_KEY"
+          ],
+          "message": "Missing required env: ODDS_API_KEY"
+        }
+      ],
+      "target": {
+        "entityType": "event",
+        "operation": "event:list",
+        "params": {
+          "sportKey": "soccer_fifa_world_cup"
+        }
+      },
+      "blockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "ODDS_API_KEY"
+          ],
+          "message": "Missing required env: ODDS_API_KEY"
+        }
+      ],
+      "request": {
+        "requestId": "sports-data-request-the-odds-api-context-f9e4877e",
+        "method": "GET",
+        "operation": "event:list",
+        "entityType": "event",
+        "url": "https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/events?apiKey=%3Credacted%3AODDS_API_KEY%3E",
+        "path": "/sports/soccer_fifa_world_cup/events",
+        "query": {
+          "apiKey": "<redacted:ODDS_API_KEY>"
+        },
+        "headers": {
+          "Accept": "application/json"
+        },
+        "missingEnv": [
+          "ODDS_API_KEY"
+        ],
+        "missingParams": [],
+        "ready": false,
+        "redacted": true
+      },
+      "expectedEvidence": "HTTP 2xx response from context provider sample endpoint",
+      "nextAction": "Use standup fixtures for the-odds-api-context locally, then run live smoke when backend credentials are contracted.",
+      "acceptanceCriteria": [
+        "Required provider credentials are present only in the backend runtime.",
+        "The smoke check returns passed-live with an HTTP 2xx provider response.",
+        "The redacted smoke report stores status, duration, payload shape, and item count without credential values."
+      ],
+      "readinessChecklist": [
+        {
+          "item": "server-only request builder",
+          "status": "present",
+          "sensitive": false
+        },
+        {
+          "item": "ODDS_API_KEY",
+          "status": "missing",
+          "sensitive": true
+        },
+        {
+          "item": "redacted smoke acceptance",
+          "status": "ready",
+          "sensitive": false
+        }
+      ]
+    },
+    {
+      "sourceId": "sailgp-partner-feed",
+      "title": "SailGP partner-feed client",
+      "providerId": "sailgp-official-or-partner",
+      "clientKind": "http-json",
+      "sourceKind": "api-or-partner-drop",
+      "settlementTier": "source-of-truth",
+      "status": "standup-fixture-ready",
+      "canCallNetwork": false,
+      "canUseStandupFixture": true,
+      "liveBlockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "SAILGP_PARTNER_FEED_KEY",
+            "SAILGP_PARTNER_FEED_BASE_URL"
+          ],
+          "message": "Missing required env: SAILGP_PARTNER_FEED_KEY, SAILGP_PARTNER_FEED_BASE_URL"
+        }
+      ],
+      "target": {
+        "entityType": "event",
+        "operation": "event:list",
+        "params": {}
+      },
+      "blockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "SAILGP_PARTNER_FEED_KEY",
+            "SAILGP_PARTNER_FEED_BASE_URL"
+          ],
+          "message": "Missing required env: SAILGP_PARTNER_FEED_KEY, SAILGP_PARTNER_FEED_BASE_URL"
+        }
+      ],
+      "request": {
+        "requestId": "sports-data-request-sailgp-partner-feed-040ecdfd",
+        "method": "GET",
+        "operation": "event:list",
+        "entityType": "event",
+        "url": "<required:SAILGP_PARTNER_FEED_BASE_URL>/events",
+        "path": "/events",
+        "query": {},
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "Bearer <redacted:SAILGP_PARTNER_FEED_KEY>"
+        },
+        "missingEnv": [
+          "SAILGP_PARTNER_FEED_KEY",
+          "SAILGP_PARTNER_FEED_BASE_URL"
+        ],
+        "missingParams": [],
+        "ready": false,
+        "redacted": true
+      },
+      "expectedEvidence": "HTTP 2xx response from source-of-truth provider sample endpoint",
+      "nextAction": "Use standup fixtures for sailgp-partner-feed locally, then run live smoke when backend credentials are contracted.",
+      "acceptanceCriteria": [
+        "Required provider credentials are present only in the backend runtime.",
+        "The smoke check returns passed-live with an HTTP 2xx provider response.",
+        "The redacted smoke report stores status, duration, payload shape, and item count without credential values."
+      ],
+      "readinessChecklist": [
+        {
+          "item": "server-only request builder",
+          "status": "present",
+          "sensitive": false
+        },
+        {
+          "item": "SAILGP_PARTNER_FEED_KEY",
+          "status": "missing",
+          "sensitive": true
+        },
+        {
+          "item": "SAILGP_PARTNER_FEED_BASE_URL",
+          "status": "missing",
+          "sensitive": true
+        },
+        {
+          "item": "redacted smoke acceptance",
+          "status": "ready",
+          "sensitive": false
+        }
+      ]
+    },
+    {
+      "sourceId": "official-web-evidence",
+      "title": "Official web evidence capture client",
+      "providerId": "host-evidence-qvac",
+      "clientKind": "evidence-packet",
+      "sourceKind": "evidence",
+      "settlementTier": "evidence-review",
+      "status": "local-ready",
+      "canCallNetwork": false,
+      "canUseStandupFixture": false,
+      "liveBlockers": [],
+      "target": {
+        "entityType": "evidence",
+        "operation": "evidence:create",
+        "params": {}
+      },
+      "blockers": [],
+      "request": {
+        "requestId": "sports-data-request-official-web-evidence-35084443",
+        "method": "GET",
+        "operation": "evidence:create",
+        "entityType": "evidence",
+        "url": "qvac://official-web-evidence/captures",
+        "path": "/captures",
+        "query": {},
+        "headers": {
+          "Accept": "application/json"
+        },
+        "missingEnv": [],
+        "missingParams": [],
+        "ready": true,
+        "redacted": true
+      },
+      "expectedEvidence": "local QVAC/evidence lane available",
+      "nextAction": "Use this local QVAC/evidence lane for host-entered results, corrections, and no-API settlement reviews.",
+      "acceptanceCriteria": [
+        "Local evidence packets can be created without provider credentials.",
+        "QVAC review records can reference the evidence packet before prize settlement.",
+        "No provider credentials are required or serialized."
+      ],
+      "readinessChecklist": [
+        {
+          "item": "server-only request builder",
+          "status": "present",
+          "sensitive": false
+        },
+        {
+          "item": "redacted smoke acceptance",
+          "status": "ready",
+          "sensitive": false
+        }
+      ]
+    },
+    {
+      "sourceId": "social-web-evidence",
+      "title": "Social + web result evidence client",
+      "providerId": "host-evidence-qvac",
+      "clientKind": "evidence-packet",
+      "sourceKind": "evidence",
+      "settlementTier": "evidence-review",
+      "status": "local-ready",
+      "canCallNetwork": false,
+      "canUseStandupFixture": false,
+      "liveBlockers": [],
+      "target": {
+        "entityType": "evidence",
+        "operation": "evidence:create",
+        "params": {}
+      },
+      "blockers": [],
+      "request": {
+        "requestId": "sports-data-request-social-web-evidence-773835c5",
+        "method": "GET",
+        "operation": "evidence:create",
+        "entityType": "evidence",
+        "url": "qvac://social-web-evidence/captures",
+        "path": "/captures",
+        "query": {},
+        "headers": {
+          "Accept": "application/json"
+        },
+        "missingEnv": [],
+        "missingParams": [],
+        "ready": true,
+        "redacted": true
+      },
+      "expectedEvidence": "local QVAC/evidence lane available",
+      "nextAction": "Use this local QVAC/evidence lane for host-entered results, corrections, and no-API settlement reviews.",
+      "acceptanceCriteria": [
+        "Local evidence packets can be created without provider credentials.",
+        "QVAC review records can reference the evidence packet before prize settlement.",
+        "No provider credentials are required or serialized."
+      ],
+      "readinessChecklist": [
+        {
+          "item": "server-only request builder",
+          "status": "present",
+          "sensitive": false
+        },
+        {
+          "item": "redacted smoke acceptance",
+          "status": "ready",
+          "sensitive": false
+        }
+      ]
+    },
+    {
+      "sourceId": "host-evidence-qvac",
+      "title": "Host evidence + QVAC referee client",
+      "providerId": "host-evidence-qvac",
+      "clientKind": "qvac-local",
+      "sourceKind": "manual",
+      "settlementTier": "evidence-review",
+      "status": "local-ready",
+      "canCallNetwork": false,
+      "canUseStandupFixture": false,
+      "liveBlockers": [],
+      "target": {
+        "entityType": "evidence",
+        "operation": "evidence:create",
+        "params": {}
+      },
+      "blockers": [],
+      "request": {
+        "requestId": "sports-data-request-host-evidence-qvac-5697b0e5",
+        "method": "GET",
+        "operation": "evidence:create",
+        "entityType": "evidence",
+        "url": "qvac://host-evidence-qvac/evidence",
+        "path": "/evidence",
+        "query": {},
+        "headers": {
+          "Accept": "application/json"
+        },
+        "missingEnv": [],
+        "missingParams": [],
+        "ready": true,
+        "redacted": true
+      },
+      "expectedEvidence": "local QVAC/evidence lane available",
+      "nextAction": "Use this local QVAC/evidence lane for host-entered results, corrections, and no-API settlement reviews.",
+      "acceptanceCriteria": [
+        "Local evidence packets can be created without provider credentials.",
+        "QVAC review records can reference the evidence packet before prize settlement.",
+        "No provider credentials are required or serialized."
+      ],
+      "readinessChecklist": [
+        {
+          "item": "server-only request builder",
+          "status": "present",
+          "sensitive": false
+        },
+        {
+          "item": "redacted smoke acceptance",
+          "status": "ready",
+          "sensitive": false
+        }
+      ]
+    },
+    {
+      "sourceId": "stats-perform-opta",
+      "title": "Stats Perform / Opta evaluation client",
+      "providerId": "stats-perform",
+      "clientKind": "http-json",
+      "sourceKind": "api",
+      "settlementTier": "trusted-secondary",
+      "status": "standup-fixture-ready",
+      "canCallNetwork": false,
+      "canUseStandupFixture": true,
+      "liveBlockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "STATSPERFORM_API_KEY",
+            "STATSPERFORM_BASE_URL"
+          ],
+          "message": "Missing required env: STATSPERFORM_API_KEY, STATSPERFORM_BASE_URL"
+        }
+      ],
+      "target": {
+        "entityType": "competition",
+        "operation": "competition:list",
+        "params": {
+          "sport": "soccer",
+          "version": "v1"
+        }
+      },
+      "blockers": [
+        {
+          "blockerType": "missing-env",
+          "items": [
+            "STATSPERFORM_API_KEY",
+            "STATSPERFORM_BASE_URL"
+          ],
+          "message": "Missing required env: STATSPERFORM_API_KEY, STATSPERFORM_BASE_URL"
+        }
+      ],
+      "request": {
+        "requestId": "sports-data-request-stats-perform-opta-6cc32ad4",
+        "method": "GET",
+        "operation": "competition:list",
+        "entityType": "competition",
+        "url": "<required:STATSPERFORM_BASE_URL>/soccer/v1/competitions",
+        "path": "/soccer/v1/competitions",
+        "query": {},
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "Bearer <redacted:STATSPERFORM_API_KEY>"
+        },
+        "missingEnv": [
+          "STATSPERFORM_API_KEY",
+          "STATSPERFORM_BASE_URL"
+        ],
+        "missingParams": [],
+        "ready": false,
+        "redacted": true
+      },
+      "expectedEvidence": "HTTP 2xx response from trusted secondary provider sample endpoint",
+      "nextAction": "Use standup fixtures for stats-perform-opta locally, then run live smoke when backend credentials are contracted.",
+      "acceptanceCriteria": [
+        "Required provider credentials are present only in the backend runtime.",
+        "The smoke check returns passed-live with an HTTP 2xx provider response.",
+        "The redacted smoke report stores status, duration, payload shape, and item count without credential values."
+      ],
+      "readinessChecklist": [
+        {
+          "item": "server-only request builder",
+          "status": "present",
+          "sensitive": false
+        },
+        {
+          "item": "STATSPERFORM_API_KEY",
+          "status": "missing",
+          "sensitive": true
+        },
+        {
+          "item": "STATSPERFORM_BASE_URL",
+          "status": "missing",
+          "sensitive": true
+        },
+        {
+          "item": "redacted smoke acceptance",
+          "status": "ready",
+          "sensitive": false
+        }
+      ]
+    }
+  ],
+  "results": [
+    {
+      "sourceId": "sportradar-official",
+      "status": "passed-fixture",
+      "ok": true,
+      "networkCalled": false,
+      "fixtureMode": true,
+      "payload": {
+        "kind": "standup-fixture",
+        "itemCount": 2
+      },
+      "normalizedRecordCount": 2,
+      "recordHashes": [
+        "59b9de06",
+        "3fcb47f9"
+      ],
+      "evidence": "Standup fixture response exercised the provider request contract and normalization without live credentials."
+    },
+    {
+      "sourceId": "sportsdataio-mma",
+      "status": "passed-fixture",
+      "ok": true,
+      "networkCalled": false,
+      "fixtureMode": true,
+      "payload": {
+        "kind": "standup-fixture",
+        "itemCount": 2
+      },
+      "normalizedRecordCount": 2,
+      "recordHashes": [
+        "27369f73",
+        "6a5700e5"
+      ],
+      "evidence": "Standup fixture response exercised the provider request contract and normalization without live credentials."
+    },
+    {
+      "sourceId": "sportsdataio-global",
+      "status": "passed-fixture",
+      "ok": true,
+      "networkCalled": false,
+      "fixtureMode": true,
+      "payload": {
+        "kind": "standup-fixture",
+        "itemCount": 2
+      },
+      "normalizedRecordCount": 2,
+      "recordHashes": [
+        "e6032aa8",
+        "4c0c0ca9"
+      ],
+      "evidence": "Standup fixture response exercised the provider request contract and normalization without live credentials."
+    },
+    {
+      "sourceId": "pandascore-esports",
+      "status": "passed-fixture",
+      "ok": true,
+      "networkCalled": false,
+      "fixtureMode": true,
+      "payload": {
+        "kind": "standup-fixture",
+        "itemCount": 2
+      },
+      "normalizedRecordCount": 2,
+      "recordHashes": [
+        "9e471cea",
+        "082adaaa"
+      ],
+      "evidence": "Standup fixture response exercised the provider request contract and normalization without live credentials."
+    },
+    {
+      "sourceId": "abios-esports",
+      "status": "passed-fixture",
+      "ok": true,
+      "networkCalled": false,
+      "fixtureMode": true,
+      "payload": {
+        "kind": "standup-fixture",
+        "itemCount": 2
+      },
+      "normalizedRecordCount": 2,
+      "recordHashes": [
+        "9b8ebb9d",
+        "c6adef76"
+      ],
+      "evidence": "Standup fixture response exercised the provider request contract and normalization without live credentials."
+    },
+    {
+      "sourceId": "the-odds-api-context",
+      "status": "passed-fixture",
+      "ok": true,
+      "networkCalled": false,
+      "fixtureMode": true,
+      "payload": {
+        "kind": "standup-fixture",
+        "itemCount": 2
+      },
+      "normalizedRecordCount": 2,
+      "recordHashes": [
+        "d5d12be4",
+        "113780dd"
+      ],
+      "evidence": "Standup fixture response exercised the provider request contract and normalization without live credentials."
+    },
+    {
+      "sourceId": "sailgp-partner-feed",
+      "status": "passed-fixture",
+      "ok": true,
+      "networkCalled": false,
+      "fixtureMode": true,
+      "payload": {
+        "kind": "standup-fixture",
+        "itemCount": 2
+      },
+      "normalizedRecordCount": 2,
+      "recordHashes": [
+        "bf3506d2",
+        "a95056b8"
+      ],
+      "evidence": "Standup fixture response exercised the provider request contract and normalization without live credentials."
+    },
+    {
+      "sourceId": "official-web-evidence",
+      "status": "passed-local",
+      "ok": true,
+      "networkCalled": false,
+      "evidence": "Local evidence/QVAC lane is available without provider credentials."
+    },
+    {
+      "sourceId": "social-web-evidence",
+      "status": "passed-local",
+      "ok": true,
+      "networkCalled": false,
+      "evidence": "Local evidence/QVAC lane is available without provider credentials."
+    },
+    {
+      "sourceId": "host-evidence-qvac",
+      "status": "passed-local",
+      "ok": true,
+      "networkCalled": false,
+      "evidence": "Local evidence/QVAC lane is available without provider credentials."
+    },
+    {
+      "sourceId": "stats-perform-opta",
+      "status": "passed-fixture",
+      "ok": true,
+      "networkCalled": false,
+      "fixtureMode": true,
+      "payload": {
+        "kind": "standup-fixture",
+        "itemCount": 2
+      },
+      "normalizedRecordCount": 2,
+      "recordHashes": [
+        "1cf35bdb",
+        "b19bfe90"
+      ],
+      "evidence": "Standup fixture response exercised the provider request contract and normalization without live credentials."
+    }
+  ]
+}

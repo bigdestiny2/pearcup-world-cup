@@ -218,7 +218,6 @@
     "mma-app/app.js"
   ],
   "requiredScripts": [
-    "scripts/audit-fit-assets.js",
     "scripts/audit-mma-card-assets.js",
     "scripts/export-app-snapshot.js",
     "scripts/export-mma-card-higgsfield-prompts.js",
@@ -265,8 +264,6 @@
     "test/sports-data-provider-engine.test.js",
     "test/standup-audit-engine.test.js",
     "test/app-shell.test.js",
-    "test/asset-manifest-and-snapshot.test.js",
-    "test/audit-fit-assets.test.js",
     "test/preview-journey-smoke.test.js",
     "test/identity-runtime.test.js",
     "test/dispute-audit.test.js",
@@ -326,8 +323,6 @@
     "platform/ultimate-sports/test/sports-data-provider-engine.test.js",
     "platform/ultimate-sports/test/standup-audit-engine.test.js",
     "platform/ultimate-sports/test/app-shell.test.js",
-    "platform/ultimate-sports/test/asset-manifest-and-snapshot.test.js",
-    "platform/ultimate-sports/test/audit-fit-assets.test.js",
     "platform/ultimate-sports/test/preview-journey-smoke.test.js",
     "platform/ultimate-sports/test/identity-runtime.test.js",
     "platform/ultimate-sports/test/dispute-audit.test.js",

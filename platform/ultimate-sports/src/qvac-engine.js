@@ -8,7 +8,8 @@ const QVAC_LANES = Object.freeze([
   'room-summary',
   'creator-assistant',
   'moderation-helper',
-  'trivia-bank'
+  'trivia-bank',
+  'result-evidence'
 ])
 
 const QVAC_RECORD_STATUSES = Object.freeze([
@@ -200,6 +201,74 @@ function createTriviaQuestionBank (input = {}) {
   })
 }
 
+function createResultEvidenceReview (input = {}) {
+  const targetType = input.targetType || 'fixture'
+  const targetId = input.targetId || input.fixtureId || input.boutId || input.eventId
+  assertNonEmptyString(targetType, 'targetType')
+  assertNonEmptyString(targetId, 'targetId')
+  const evidenceItems = normalizeResultEvidenceItems(input.evidenceItems || input.sources || [])
+  const claimedWinner = input.claimedWinner || input.winner || null
+  const expectedWinner = claimedWinner ? normalizeWinnerName(claimedWinner) : null
+  const claims = evidenceItems
+    .map(item => item.claimedWinnerNormalized)
+    .filter(Boolean)
+  const claimCounts = countValues(claims)
+  const topClaim = Object.entries(claimCounts).sort((a, b) => b[1] - a[1])[0] || null
+  const consensusWinner = topClaim ? topClaim[0] : null
+  const corroboratingEvidence = evidenceItems.filter(item => item.claimedWinnerNormalized && item.claimedWinnerNormalized === consensusWinner)
+  const trustedEvidence = corroboratingEvidence.filter(item => item.trustTier === 'official' || item.trustTier === 'verified-social' || item.trustTier === 'search-result')
+  const minEvidenceCount = input.minEvidenceCount || 2
+  const hasEnoughEvidence = corroboratingEvidence.length >= minEvidenceCount
+  const hasTrustedEvidence = trustedEvidence.length > 0
+  const expectedMatchesConsensus = !expectedWinner || expectedWinner === consensusWinner
+  const hasConflict = Object.keys(claimCounts).length > 1
+  const ready = Boolean(consensusWinner && hasEnoughEvidence && hasTrustedEvidence && expectedMatchesConsensus && !hasConflict)
+  const status = ready ? 'ready' : 'held'
+  const blockers = [
+    !consensusWinner ? 'no winner claim found in evidence' : null,
+    consensusWinner && !hasEnoughEvidence ? `needs ${minEvidenceCount} corroborating evidence items` : null,
+    consensusWinner && !hasTrustedEvidence ? 'needs official, verified social, or web-search evidence' : null,
+    !expectedMatchesConsensus ? 'claimed winner does not match evidence consensus' : null,
+    hasConflict ? 'conflicting winner claims require manual review' : null
+  ].filter(Boolean)
+  const createdAt = input.createdAt || new Date().toISOString()
+
+  return qvacRecord({
+    qvacRecordId: input.reviewId || input.qvacRecordId,
+    prefix: `qvac-result-${targetType}-${targetId}`,
+    lane: 'result-evidence',
+    status,
+    targetType,
+    targetId,
+    title: input.title || 'Result evidence review',
+    text: status === 'ready'
+      ? `Result evidence consensus is ${displayWinner(consensusWinner)} from ${corroboratingEvidence.length} corroborating source${corroboratingEvidence.length === 1 ? '' : 's'}.`
+      : `Result evidence is held: ${blockers.join('; ') || 'review required'}.`,
+    body: {
+      competitionId: input.competitionId || null,
+      fixtureId: input.fixtureId || targetId,
+      resultPolicy: input.resultPolicy || 'qvac-evidence-review',
+      claimedWinner: claimedWinner || null,
+      consensusWinner: consensusWinner ? displayWinner(consensusWinner) : null,
+      consensusWinnerNormalized: consensusWinner,
+      method: input.method || consensusField(corroboratingEvidence, 'method') || null,
+      round: input.round || consensusField(corroboratingEvidence, 'round') || null,
+      evidenceItems,
+      sourceSummary: summarizeResultEvidence(evidenceItems),
+      blockers,
+      webSearchQuery: input.webSearchQuery || buildResultSearchQuery(input),
+      guardrails: {
+        officialResultsInvented: false,
+        socialEvidenceRequiresCorroboration: true,
+        webSearchEvidenceRequiresSourceUrl: true,
+        prizeSettlementRequiresReadyReview: true
+      }
+    },
+    evidenceEvents: input.evidenceEvents || [],
+    createdAt
+  })
+}
+
 function createModerationReview (input = {}) {
   const message = input.message || null
   const bodyText = input.body || message && message.body || ''
@@ -237,6 +306,91 @@ function createModerationReview (input = {}) {
     evidenceEvents: input.evidenceEvents || [],
     createdAt
   })
+}
+
+function normalizeResultEvidenceItems (items = []) {
+  return items.map((item, index) => {
+    const sourceKind = item.sourceKind || item.kind || 'web-search'
+    const trustTier = trustTierForEvidenceSource(sourceKind, item)
+    return {
+      evidenceId: item.evidenceId || stableId(`result-evidence-${index + 1}`, item),
+      sourceKind,
+      trustTier,
+      sourceName: item.sourceName || item.publisher || null,
+      sourceUrl: item.sourceUrl || item.url || null,
+      capturedAt: item.capturedAt || item.seenAt || null,
+      publishedAt: item.publishedAt || null,
+      claimedWinner: item.claimedWinner || item.winner || null,
+      claimedWinnerNormalized: normalizeWinnerName(item.claimedWinner || item.winner || ''),
+      method: item.method || null,
+      round: item.round || null,
+      confidence: item.confidence == null ? null : Number(item.confidence),
+      excerpt: item.excerpt || item.snippet || null,
+      hasSourceUrl: Boolean(item.sourceUrl || item.url)
+    }
+  })
+}
+
+function trustTierForEvidenceSource (sourceKind, item = {}) {
+  if (item.trustTier) return item.trustTier
+  if (sourceKind === 'official-page' || sourceKind === 'official-api' || sourceKind === 'sanctioning-body') return 'official'
+  if (sourceKind === 'verified-social' || item.verified === true) return 'verified-social'
+  if (sourceKind === 'web-search' || sourceKind === 'news-search' || sourceKind === 'search-result') return 'search-result'
+  return 'social'
+}
+
+function summarizeResultEvidence (items = []) {
+  const summary = {
+    total: items.length,
+    official: 0,
+    verifiedSocial: 0,
+    searchResults: 0,
+    social: 0,
+    withUrls: 0
+  }
+  items.forEach(item => {
+    if (item.trustTier === 'official') summary.official += 1
+    else if (item.trustTier === 'verified-social') summary.verifiedSocial += 1
+    else if (item.trustTier === 'search-result') summary.searchResults += 1
+    else summary.social += 1
+    if (item.hasSourceUrl) summary.withUrls += 1
+  })
+  return summary
+}
+
+function buildResultSearchQuery (input = {}) {
+  const parts = [
+    input.title || input.eventTitle || input.competitionId || 'fight card',
+    input.fixtureTitle || input.boutTitle || input.fixtureId || input.targetId || '',
+    'result winner method round'
+  ].filter(Boolean)
+  return parts.join(' ')
+}
+
+function consensusField (items = [], field) {
+  const values = items.map(item => item[field]).filter(value => value != null && value !== '')
+  const counts = countValues(values.map(value => String(value).toLowerCase()))
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
+  return top ? values.find(value => String(value).toLowerCase() === top[0]) : null
+}
+
+function countValues (items = []) {
+  return items.reduce((counts, item) => {
+    counts[item] = (counts[item] || 0) + 1
+    return counts
+  }, {})
+}
+
+function normalizeWinnerName (value) {
+  return String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+}
+
+function displayWinner (normalized) {
+  return String(normalized || '')
+    .split('-')
+    .filter(Boolean)
+    .map(part => part.slice(0, 1).toUpperCase() + part.slice(1))
+    .join(' ')
 }
 
 function verifyQvacRecord ({ record, evidenceEvents = [] } = {}) {
@@ -498,6 +652,7 @@ module.exports = {
   createCommentaryFrame,
   createCreatorAssistantDraft,
   createTriviaQuestionBank,
+  createResultEvidenceReview,
   createModerationReview,
   verifyQvacRecord,
   qvacGate,

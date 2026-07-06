@@ -266,7 +266,6 @@ let bracketMatchIds = [
 if (typeof window !== 'undefined' && window.ULTIMATE_FIT_CONFIG) {
   const cfg = window.ULTIMATE_FIT_CONFIG
   if (cfg.teams) teams = cfg.teams
-  else if (cfg.entrants) teams = cfg.entrants
   if (cfg.pools) pools = cfg.pools
   if (cfg.round32Matches) round32Matches = cfg.round32Matches
   if (cfg.bracketLinks) bracketLinks = cfg.bracketLinks
@@ -275,192 +274,10 @@ if (typeof window !== 'undefined' && window.ULTIMATE_FIT_CONFIG) {
   if (cfg.defaultChat) defaultChat = cfg.defaultChat
   if (cfg.liveTabs) liveTabs = cfg.liveTabs
   if (cfg.homeFixtures) homeFixtures = cfg.homeFixtures
-  if (cfg.fixtures && !cfg.homeFixtures) homeFixtures = cfg.fixtures
   if (cfg.matchStats) matchStats = cfg.matchStats
   if (cfg.leaders) leaders = cfg.leaders
   if (cfg.gameRounds) gameRounds = cfg.gameRounds
   if (cfg.gameLeaderboardRows) gameLeaderboardRows = cfg.gameLeaderboardRows
-}
-
-// Fit-aware helpers: derive fit-specific fallbacks so non-soccer fits never leak
-// the default World Cup Spain/Austria data.
-function fitConfig () {
-  return (typeof window !== 'undefined' && window.ULTIMATE_FIT_CONFIG) || { fitId: 'world-cup', title: 'World Cup', category: 'soccer' }
-}
-function fitTitle () { return fitConfig().title || 'World Cup' }
-function fitSubtitle () { return fitConfig().subtitle || 'PearCup' }
-function fitCategory () { return fitConfig().category || 'soccer' }
-function fitTemplateKind () {
-  const cfg = fitConfig()
-  return cfg.templateKind || (cfg.templateKinds && cfg.templateKinds[0]) || 'single-elimination'
-}
-function fitLayoutKind () {
-  const cfg = fitConfig()
-  const kinds = cfg.templateKinds || [fitTemplateKind()]
-  // Use the most specific template kind for the actual layout region. This lets
-  // fits that support multiple templates (e.g. esports-major, sailgp-companion)
-  // render their distinctive non-bracket surface even when the primary catalog
-  // kind is bracket-oriented. Series-playoff is treated as more specific than
-  // round-robin so racing/sailing series render a scoreboard/leaderboard first,
-  // while round-robin is more specific than creator-custom so local leagues
-  // render standings instead of a custom stage.
-  if (kinds.includes('fight-card')) return 'fight-card'
-  if (kinds.includes('awards-card')) return 'awards-card'
-  if (kinds.includes('series-playoff')) return 'series-playoff'
-  if (kinds.includes('round-robin')) return 'round-robin'
-  if (kinds.includes('creator-custom')) return 'creator-custom'
-  if (kinds.includes('group-plus-knockout')) return 'group-plus-knockout'
-  return kinds[0] || 'single-elimination'
-}
-function fitTemplateData () {
-  const cfg = fitConfig()
-  return cfg.templateData || {}
-}
-function fitAssets () {
-  const cfg = fitConfig()
-  const fitId = cfg.fitId || 'world-cup'
-  // The canonical generated-assets tree is the source of truth for hero and
-  // bracket-board skins. Fixture assets may contain stale legacy paths, so the
-  // canonical paths always win for these two required types.
-  const canonical = {
-    heroBackdrop: `../generated-assets/${fitId}/hero-backdrop/hero.jpg`,
-    bracketBoardSkin: `../generated-assets/${fitId}/bracket-board-skin/board.jpg`
-  }
-  return Object.assign({}, cfg.assets || {}, canonical)
-}
-function fitLiveMatch () {
-  const cfg = fitConfig()
-  return cfg.liveMatch || (Array.isArray(cfg.homeFixtures) && cfg.homeFixtures.find(f => f.live)) || null
-}
-function parseMatchTitle (title) {
-  if (!title) return null
-  const parts = String(title).split(/\s+vs\s+/i)
-  if (parts.length !== 2) return null
-  return { home: parts[0].trim(), away: parts[1].trim() }
-}
-function teamByName (name) {
-  return teams.find(t => t.name === name) || { name: name || 'Home', flag: '⚽', id: 'home', colors: ['#888', '#aaa', '#ccc'] }
-}
-function fitDefaultHome () {
-  const live = fitLiveMatch()
-  const parsed = live && parseMatchTitle(live.title)
-  if (parsed) return teamByName(parsed.home)
-  return teamById('br')
-}
-function fitDefaultAway () {
-  const live = fitLiveMatch()
-  const parsed = live && parseMatchTitle(live.title)
-  if (parsed) return teamByName(parsed.away)
-  return teamById('at')
-}
-function fitCompetitionName () { return fitTitle() }
-function fitStageLabel () {
-  const live = fitLiveMatch()
-  if (live && live.detail) return live.detail
-  const kind = fitTemplateKind()
-  if (kind === 'group-plus-knockout') return 'Group stage'
-  if (kind === 'series-playoff') return 'Series'
-  if (kind === 'fight-card') return 'Main card'
-  if (kind === 'awards-card') return 'Awards pool'
-  if (kind === 'round-robin') return 'Standings'
-  return 'Round of 32'
-}
-function bracketTitleForKind () {
-  const layout = fitLayoutKind()
-  const title = fitTitle()
-  if (layout === 'fight-card') return `${title} fight card`
-  if (layout === 'awards-card') return `${title} categories`
-  if (layout === 'round-robin') return `${title} standings`
-  if (layout === 'creator-custom') return `${title} bracket stage`
-  if (layout === 'series-playoff') return `${title} series grid`
-  if (layout === 'group-plus-knockout') return `Enter a ${title} bracket`
-  return `Enter a ${title} bracket`
-}
-function fitEntrantLabel () {
-  const shape = fitConfig().entrantShape || 'team'
-  const map = { team: 'team', player: 'player', fighter: 'fighter', creator: 'creator', nominee: 'nominee' }
-  return map[shape] || shape
-}
-function onboardingHeading () {
-  const cfg = fitConfig()
-  if (cfg.onboardingTitle) return cfg.onboardingTitle
-  return cfg.title || 'World Cup'
-}
-
-// Pool variant and mini-game titles sourced from catalog-engine.js. The shell
-// runs in the browser, so we keep a lightweight mirror of the catalog titles
-// here and use the fit config's recommended id arrays to filter surfaces.
-const POOL_VARIANT_TITLES = {
-  'classic-bracket': 'Classic Bracket Pick Em',
-  'confidence': 'Confidence Scoring',
-  'survivor': 'Survivor Pool',
-  'upset-bounty': 'Upset Bounty',
-  'head-to-head-duel': 'Head-to-head Bracket Duel',
-  'group-stage-card': 'Prediction Pick Card',
-  'fantasy-lite-draft': 'Fantasy-lite Draft',
-  'watch-party-bingo': 'Watch-party Bingo',
-  'next-event': 'Next Event Prediction',
-  'scoreline-lock': 'Scoreline Lock',
-  'player-prop': 'Player Prop Duel',
-  'side-quest': 'Bracket Side Quest'
-}
-
-const MINI_GAME_TITLES = {
-  'penalty-clash': 'Penalty Clash',
-  'free-kick-duel': 'Free-kick Duel',
-  'trivia-duel': 'Trivia Duel',
-  'next-event': 'Next Event Prediction',
-  'scoreline-lock': 'Scoreline Lock',
-  'momentum-duel': 'Momentum Duel',
-  'player-prop-duel': 'Player Prop Duel',
-  'reaction-challenge': 'Reaction Challenge',
-  'watch-party-streak': 'Watch-party Streak',
-  'peer-mini-fantasy': 'Peer Mini Fantasy'
-}
-
-function fitRecommendedVariants () {
-  const cfg = fitConfig()
-  return Array.isArray(cfg.recommendedVariants) ? cfg.recommendedVariants : []
-}
-function fitRecommendedMiniGames () {
-  const cfg = fitConfig()
-  return Array.isArray(cfg.recommendedMiniGames) ? cfg.recommendedMiniGames : []
-}
-function fitPrimaryMiniGame () {
-  const games = fitRecommendedMiniGames()
-  return games[0] || 'penalty-clash'
-}
-function fitMiniGameTitle (gameType) {
-  return MINI_GAME_TITLES[gameType] || gameType
-}
-function fitPoolVariantTitle (variantId) {
-  return POOL_VARIANT_TITLES[variantId] || variantId
-}
-
-function applyFitAssets () {
-  const cfg = fitConfig()
-  const kind = fitTemplateKind()
-  const layout = fitLayoutKind()
-  document.body.setAttribute('data-template-kind', kind)
-  document.body.setAttribute('data-layout-kind', layout)
-  document.body.setAttribute('data-fit-id', cfg.fitId || 'world-cup')
-  const assets = fitAssets()
-  if (assets.heroBackdrop) {
-    document.body.style.setProperty('--fit-hero-backdrop', `url(${assets.heroBackdrop})`)
-    document.body.setAttribute('data-hero-backdrop', assets.heroBackdrop)
-  }
-  const liveCommand = document.querySelector('.live-command')
-  if (liveCommand && assets.heroBackdrop) {
-    liveCommand.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.25), rgba(0,0,0,0.35)), url(${assets.heroBackdrop})`
-    liveCommand.style.backgroundSize = 'cover'
-    liveCommand.style.backgroundPosition = 'center'
-  }
-  const bracketBoard = document.querySelector('.bracket-board')
-  if (bracketBoard && assets.bracketBoardSkin) {
-    bracketBoard.style.backgroundImage = `linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.88)), url(${assets.bracketBoardSkin})`
-    bracketBoard.style.backgroundSize = 'cover'
-    bracketBoard.setAttribute('data-bracket-skin', assets.bracketBoardSkin)
-  }
 }
 
 const state = loadState()
@@ -471,8 +288,7 @@ const $ = (selector, root = document) => root.querySelector(selector)
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)]
 
 function loadState () {
-  const cfg = fitConfig()
-  const fitDefaultTeam = cfg.defaultTeam || (teams[0] && teams[0].id) || 'br'
+  const fitDefaultTeam = (typeof window !== 'undefined' && window.ULTIMATE_FIT_CONFIG && window.ULTIMATE_FIT_CONFIG.defaultTeam) || 'br'
   const fallback = {
     view: 'onboarding',
     username: 'captain',
@@ -1312,14 +1128,13 @@ function renderHomeHero () {
   set('#heroHomeFlag', flag(snap.home)); set('#heroAwayFlag', flag(snap.away))
   set('#heroHomeName', escapeHtml(snap.home.name)); set('#heroAwayName', escapeHtml(snap.away.name))
   set('#heroScore', snap.st && snap.st.hasScore === false ? 'vs' : `${snap.home.goals} - ${snap.away.goals}`)
-  const poss = (st && st.possession && st.possession !== 50) ? `${st.possession}% possession` : (snap.live ? fitCompetitionName() : 'Pre-match room')
+  const poss = (st && st.possession && st.possession !== 50) ? `${st.possession}% possession` : (snap.live ? 'World Cup' : 'Pre-match room')
   set('#heroHomeSub', escapeHtml(poss))
-  set('#heroAwaySub', escapeHtml(st ? stageLabel(st) || fitCompetitionName() : fitStageLabel()))
+  set('#heroAwaySub', escapeHtml(st ? stageLabel(st) || 'World Cup' : 'Round of 32'))
   const clockEl = $('#heroClock')
   if (clockEl) clockEl.textContent = st ? (st.matchStatus === 'FINISHED' ? 'FT' : st.minute ? `${st.minute}'` : snap.status) : '15:00 ET'
   const stateEl = $('#heroState')
   if (stateEl) { stateEl.textContent = snap.status; stateEl.className = snap.live && st && /IN_PLAY|LIVE|PAUSED/.test(st.matchStatus) ? 'is-live' : '' }
-  applyFitAssets()
 }
 
 function renderHomeDashboard () {
@@ -1395,8 +1210,8 @@ function livePanelSnapshot () {
   let st = null
   try { st = feedState() } catch { st = null }
   const live = isLiveApi()
-  const home = st ? st.home : Object.assign({}, fitDefaultHome(), { goals: 0 })
-  const away = st ? st.away : Object.assign({}, fitDefaultAway(), { goals: 0 })
+  const home = st ? st.home : { name: 'Spain', flag: '🇪🇸', goals: 0, teamId: 'es' }
+  const away = st ? st.away : { name: 'Austria', flag: '🇦🇹', goals: 0, teamId: 'at' }
   const status = st ? matchStateLabel(st).txt : 'Kicks off 15:00 ET'
   const events = (state.feedEvents || [])
   return { st, live, home, away, status, events }
@@ -1628,13 +1443,6 @@ function renderLivePanel (tab) {
 
 function renderTeams () {
   $('#usernameInput').value = state.username
-  const titleEl = $('#onboardingTitle')
-  if (titleEl) titleEl.textContent = onboardingHeading()
-  const homeTitleEl = $('#homeTitle')
-  if (homeTitleEl) homeTitleEl.textContent = fitTitle()
-  const fitLabel = fitEntrantLabel()
-  const entrantLabelEl = $('#entrantLabel')
-  if (entrantLabelEl) entrantLabelEl.textContent = `Choose your ${fitLabel}`
   $('#teamGrid').innerHTML = teams.map(team => `
     <button class="team-card ${team.id === state.team ? 'is-selected' : ''}" type="button" data-team="${team.id}" aria-pressed="${team.id === state.team}">
       <span class="flag-tile">${team.flag}</span>
@@ -1661,72 +1469,36 @@ function renderTeams () {
 }
 
 function renderPools () {
-  const sampleTeams = teams.slice(0, 3).map(t => t.id)
+  const sampleTeams = ['es', 'at', 'pt']
   const railMode = serviceModeLabel(integrationRuntime.readiness.tetherWdk)
   const railState = integrationRuntime.canUseRealMoney ? 'Live USDT' : `${railMode} locked`
-  const variants = fitRecommendedVariants()
-
-  // Build pool cards from the fit's recommended variants (catalog-engine.js).
-  // Each variant borrows a tier pool for realistic prize/entrant metadata.
-  const cards = variants.length > 0
-    ? variants.map((variantId, index) => {
-        const pool = pools[index % pools.length]
-        return `
-          <article class="pool-card" data-variant="${escapeHtml(variantId)}">
-            <div class="pool-top">
-              <div>
-                <p class="stake variant-title">${escapeHtml(fitPoolVariantTitle(variantId))}</p>
-                <span class="rail-chip ${integrationRuntime.canUseRealMoney ? 'is-live' : 'is-locked'}">Tether WDK ${railState}</span>
-              </div>
-              <span class="pool-badge">${pool.heat}</span>
-            </div>
-            <div class="pool-meta">
-              <div><span>Prize pool</span><strong>${pool.prize}</strong></div>
-              <div><span>Entrants</span><strong>${pool.entrants}/${pool.max}</strong></div>
-              <div><span>Closes</span><strong>${pool.closes}</strong></div>
-            </div>
-            <div class="pool-footer">
-              <div class="avatar-stack" aria-hidden="true">
-                ${sampleTeams.map((id, i) => avatarSvg(['lina', 'vera', 'milo'][i], teamById(id), true)).join('')}
-              </div>
-              <button class="primary-button" type="button" data-pool="${pool.tier}" data-variant="${escapeHtml(variantId)}">
-                <span class="button-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-                </span>
-                Enter
-              </button>
-            </div>
-          </article>`
-      })
-    : pools.map(pool => `
-        <article class="pool-card">
-          <div class="pool-top">
-            <div>
-              <p class="stake">$${pool.tier} <span>entry</span></p>
-              <span class="rail-chip ${integrationRuntime.canUseRealMoney ? 'is-live' : 'is-locked'}">Tether WDK ${railState}</span>
-            </div>
-            <span class="pool-badge">${pool.heat}</span>
-          </div>
-          <div class="pool-meta">
-            <div><span>Prize pool</span><strong>${pool.prize}</strong></div>
-            <div><span>Entrants</span><strong>${pool.entrants}/${pool.max}</strong></div>
-            <div><span>Closes</span><strong>${pool.closes}</strong></div>
-          </div>
-          <div class="pool-footer">
-            <div class="avatar-stack" aria-hidden="true">
-              ${sampleTeams.map((id, index) => avatarSvg(['lina', 'vera', 'milo'][index], teamById(id), true)).join('')}
-            </div>
-            <button class="primary-button" type="button" data-pool="${pool.tier}">
-              <span class="button-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-              </span>
-              Enter
-            </button>
-          </div>
-        </article>
-      `)
-
-  $('#poolGrid').innerHTML = cards.join('')
+  $('#poolGrid').innerHTML = pools.map(pool => `
+    <article class="pool-card">
+      <div class="pool-top">
+        <div>
+          <p class="stake">$${pool.tier} <span>entry</span></p>
+          <span class="rail-chip ${integrationRuntime.canUseRealMoney ? 'is-live' : 'is-locked'}">Tether WDK ${railState}</span>
+        </div>
+        <span class="pool-badge">${pool.heat}</span>
+      </div>
+      <div class="pool-meta">
+        <div><span>Prize pool</span><strong>${pool.prize}</strong></div>
+        <div><span>Entrants</span><strong>${pool.entrants}/${pool.max}</strong></div>
+        <div><span>Closes</span><strong>${pool.closes}</strong></div>
+      </div>
+      <div class="pool-footer">
+        <div class="avatar-stack" aria-hidden="true">
+          ${sampleTeams.map((id, index) => avatarSvg(['lina', 'vera', 'milo'][index], teamById(id), true)).join('')}
+        </div>
+        <button class="primary-button" type="button" data-pool="${pool.tier}">
+          <span class="button-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </span>
+          Enter
+        </button>
+      </div>
+    </article>
+  `).join('')
 
   $$('#poolGrid [data-pool]').forEach(button => {
     button.addEventListener('click', () => {
@@ -2330,9 +2102,13 @@ function settlementStackAvailable () {
 }
 
 function demoBracketEntrants () {
-  const sampleIds = teams.slice(0, 5).map(t => t.id)
-  const names = ['lina', 'amara', 'diego', 'vera', 'kenji']
-  return sampleIds.map((teamId, index) => ({ entrant: { username: names[index], userId: `user-${names[index]}`, teamId } }))
+  return [
+    { entrant: { username: 'lina', userId: 'user-lina', teamId: 'br' } },
+    { entrant: { username: 'amara', userId: 'user-amara', teamId: 'ci' } },
+    { entrant: { username: 'diego', userId: 'user-diego', teamId: 'ar' } },
+    { entrant: { username: 'vera', userId: 'user-vera', teamId: 'no' } },
+    { entrant: { username: 'kenji', userId: 'user-kenji', teamId: 'jp' } }
+  ]
 }
 
 function renderBracketDemoStats (selectedPool) {
@@ -2391,7 +2167,7 @@ function renderBracketDemoStats (selectedPool) {
   })
 }
 
-function renderKnockoutBracketBoard () {
+function renderBracketBoard () {
   const placements = {
     round32: index => ({ column: 1, row: index + 2, span: 1 }),
     round16: index => ({ column: 2, row: 2 + (index * 2), span: 2 }),
@@ -2401,7 +2177,7 @@ function renderKnockoutBracketBoard () {
   }
   const rounds = buildRounds()
 
-  return `
+  $('#bracketBoard').innerHTML = `
     <svg class="bracket-lines" id="bracketLines" aria-hidden="true"></svg>
     ${rounds.map((round, roundIndex) => `
     <p class="round-title" style="grid-column:${roundIndex + 1};grid-row:1">${round.label}</p>
@@ -2420,246 +2196,16 @@ function renderKnockoutBracketBoard () {
     }).join('')}
     `).join('')}
   `
-}
 
-function renderGroupStageRegion () {
-  const data = fitTemplateData()
-  const groups = (data && data.groups) || []
-  if (!groups.length) return ''
-  return `
-    <div class="group-stage-region" aria-label="Group stage tables">
-      <p class="eyebrow">Group stage</p>
-      <div class="group-grid">
-        ${groups.map(group => `
-          <article class="group-card">
-            <header class="group-header">${escapeHtml(group.name)}</header>
-            <table class="group-table">
-              <thead>
-                <tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>Pts</th></tr>
-              </thead>
-              <tbody>
-                ${group.entrants.map(entrant => `
-                  <tr>
-                    <td><span class="group-flag">${entrant.flag || ''}</span> ${escapeHtml(entrant.name)}</td>
-                    <td>${entrant.played}</td>
-                    <td>${entrant.wins}</td>
-                    <td>${entrant.draws}</td>
-                    <td>${entrant.losses}</td>
-                    <td><strong>${entrant.points}</strong></td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </article>
-        `).join('')}
-      </div>
-    </div>
-  `
-}
-
-function renderSeriesGridRegion () {
-  const data = fitTemplateData()
-  const series = (data && data.series) || []
-  if (!series.length) return ''
-  return `
-    <div class="series-grid-region" aria-label="Series scoreboard">
-      <p class="eyebrow">Series scoreboard</p>
-      <div class="series-grid">
-        ${series.map(s => {
-          const home = teamById(s.home)
-          const away = teamById(s.away)
-          return `
-            <article class="series-card" data-series-id="${s.id}">
-              <div class="series-meta">
-                <span>Best of ${s.needed * 2 - 1}</span>
-                <span class="series-status">${escapeHtml(s.status)}</span>
-              </div>
-              <div class="series-teams">
-                <div class="series-team">
-                  <span class="series-flag">${home.flag}</span>
-                  <strong>${escapeHtml(home.name)}</strong>
-                  <span class="series-wins">${s.homeWins}</span>
-                </div>
-                <div class="series-divider">-</div>
-                <div class="series-team is-away">
-                  <span class="series-flag">${away.flag}</span>
-                  <strong>${escapeHtml(away.name)}</strong>
-                  <span class="series-wins">${s.awayWins}</span>
-                </div>
-              </div>
-              <div class="series-games">
-                ${s.games.map(g => `
-                  <span class="series-game" title="Game ${g.number}">${g.homeScore}-${g.awayScore}</span>
-                `).join('')}
-              </div>
-            </article>
-          `
-        }).join('')}
-      </div>
-    </div>
-  `
-}
-
-function renderBoutListRegion () {
-  const data = fitTemplateData()
-  const bouts = (data && data.bouts) || []
-  if (!bouts.length) return ''
-  return `
-    <div class="bout-list-region" aria-label="Fight card bouts">
-      <p class="eyebrow">Main card</p>
-      <div class="bout-list">
-        ${bouts.map(bout => {
-          const red = teamById(bout.red)
-          const blue = teamById(bout.blue)
-          return `
-            <article class="bout-card" data-bout-id="${bout.id}">
-              <div class="bout-meta">
-                <span class="bout-label">${escapeHtml(bout.label)}</span>
-                <span class="bout-weight">${escapeHtml(bout.weightClass)}</span>
-                <span class="bout-method">${escapeHtml(bout.method)} · Round ${bout.round}</span>
-              </div>
-              <div class="bout-corners">
-                <div class="bout-corner is-red">
-                  <span class="corner-tag">Red</span>
-                  <strong>${escapeHtml(red.name)}</strong>
-                  <span class="bout-record">${escapeHtml(bout.redRecord)}</span>
-                </div>
-                <div class="bout-vs">VS</div>
-                <div class="bout-corner is-blue">
-                  <span class="corner-tag">Blue</span>
-                  <strong>${escapeHtml(blue.name)}</strong>
-                  <span class="bout-record">${escapeHtml(bout.blueRecord)}</span>
-                </div>
-              </div>
-            </article>
-          `
-        }).join('')}
-      </div>
-    </div>
-  `
-}
-
-function renderCategoryCardsRegion () {
-  const data = fitTemplateData()
-  const categories = (data && data.categories) || []
-  if (!categories.length) return ''
-  return `
-    <div class="category-cards-region" aria-label="Awards categories">
-      <p class="eyebrow">Award categories</p>
-      <div class="category-grid">
-        ${categories.map(cat => `
-          <article class="category-card" data-category-id="${cat.id}">
-            <header class="category-header">${escapeHtml(cat.name)}</header>
-            <div class="nominee-list">
-              ${cat.nominees.map(nomineeId => {
-                const nominee = teamById(nomineeId)
-                return `
-                  <div class="nominee-row">
-                    <span class="nominee-flag">${nominee.flag}</span>
-                    <span>${escapeHtml(nominee.name)}</span>
-                  </div>
-                `
-              }).join('')}
-            </div>
-          </article>
-        `).join('')}
-      </div>
-    </div>
-  `
-}
-
-function renderStandingsRegion () {
-  const data = fitTemplateData()
-  const standings = (data && data.standings) || []
-  if (!standings.length) return ''
-  return `
-    <div class="standings-region" aria-label="League standings">
-      <p class="eyebrow">Standings</p>
-      <table class="standings-table">
-        <thead>
-          <tr><th>#</th><th>Team</th><th>P</th><th>W</th><th>L</th><th>Pts</th></tr>
-        </thead>
-        <tbody>
-          ${standings.map((row, index) => `
-            <tr>
-              <td>${index + 1}</td>
-              <td><span class="standings-flag">${row.flag || ''}</span> ${escapeHtml(row.name)}</td>
-              <td>${row.played}</td>
-              <td>${row.wins}</td>
-              <td>${row.losses}</td>
-              <td><strong>${row.points}</strong></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  `
-}
-
-function renderCreatorStageRegion () {
-  const data = fitTemplateData()
-  const stage = (data && data.customStage) || { name: 'Creator bracket', rounds: [] }
-  return `
-    <div class="creator-stage-region" aria-label="Creator tournament stage">
-      <p class="eyebrow">${escapeHtml(stage.name || 'Creator stage')}</p>
-      ${stage.rounds.map(round => `
-        <div class="creator-round">
-          <p class="creator-round-name">${escapeHtml(round.name)}</p>
-          <div class="creator-matchups">
-            ${round.matchups.map(matchup => {
-              const a = teamById(matchup.slots[0])
-              const b = teamById(matchup.slots[1])
-              return `
-                <article class="creator-matchup" data-matchup-id="${matchup.id}">
-                  <span class="creator-slot">${escapeHtml(a.name)}</span>
-                  <span class="creator-vs">vs</span>
-                  <span class="creator-slot">${escapeHtml(b.name)}</span>
-                </article>
-              `
-            }).join('')}
-          </div>
-        </div>
-      `).join('')}
-    </div>
-  `
-}
-
-function renderBracketBoard () {
-  const layout = fitLayoutKind()
-  const board = $('#bracketBoard')
-  if (!board) return
-
-  if (layout === 'fight-card') {
-    board.innerHTML = renderBoutListRegion()
-  } else if (layout === 'awards-card') {
-    board.innerHTML = renderCategoryCardsRegion()
-  } else if (layout === 'round-robin') {
-    board.innerHTML = renderStandingsRegion()
-  } else if (layout === 'creator-custom') {
-    board.innerHTML = renderCreatorStageRegion()
-  } else if (layout === 'series-playoff') {
-    board.innerHTML = renderSeriesGridRegion()
-  } else if (layout === 'group-plus-knockout') {
-    board.innerHTML = `
-      ${renderGroupStageRegion()}
-      <div class="bracket-region" data-region="knockout-bracket" style="display:contents">${renderKnockoutBracketBoard()}</div>
-    `
-  } else {
-    board.innerHTML = renderKnockoutBracketBoard()
-  }
-
-  if (layout === 'single-elimination' || layout === 'group-plus-knockout') {
-    $$('#bracketBoard [data-pick]').forEach(button => {
-      button.addEventListener('click', () => {
-        state.picks[button.dataset.match] = button.dataset.pick
-        clearDownstream(button.dataset.match)
-        persist()
-        renderBracket()
-      })
+  $$('#bracketBoard [data-pick]').forEach(button => {
+    button.addEventListener('click', () => {
+      state.picks[button.dataset.match] = button.dataset.pick
+      clearDownstream(button.dataset.match)
+      persist()
+      renderBracket()
     })
-    scheduleBracketConnectors()
-  }
-  applyFitAssets()
+  })
+  scheduleBracketConnectors()
 }
 
 async function renderBracket () {
@@ -2668,8 +2214,6 @@ async function renderBracket () {
   const wdk = integrationRuntime.readiness.tetherWdk
   const entered = !!state.enteredPools[selectedPool.tier]
   $('#bracketTierLabel').textContent = `$${selectedPool.tier} pool${entered ? ' · entered' : ''}`
-  const bracketTitleEl = $('#bracketTitle')
-  if (bracketTitleEl) bracketTitleEl.textContent = bracketTitleForKind()
   renderPoolSelect()
   const remaining = remainingPicks()
   const pr = $('#picksRemaining')
@@ -2841,16 +2385,14 @@ function clearDownstream (matchId) {
 }
 
 function watchParticipants () {
-  const home = fitDefaultHome()
-  const away = fitDefaultAway()
-  const livePick = [home.id, away.id].includes(state.picks['r32-11']) ? state.picks['r32-11'] : home.id
+  const livePick = ['es', 'at'].includes(state.picks['r32-11']) ? state.picks['r32-11'] : 'es'
   return [
     { name: state.username || 'captain', pick: livePick, role: 'you' },
-    { name: 'lina', pick: home.id, role: 'stream host' },
-    { name: 'amara', pick: away.id, role: 'voice' },
-    { name: 'vera', pick: away.id, role: 'voice' },
-    { name: 'diego', pick: home.id, role: 'chat' },
-    { name: 'kwame', pick: away.id, role: 'chat' }
+    { name: 'lina', pick: 'es', role: 'stream host' },
+    { name: 'amara', pick: 'at', role: 'voice' },
+    { name: 'vera', pick: 'at', role: 'voice' },
+    { name: 'diego', pick: 'es', role: 'chat' },
+    { name: 'kwame', pick: 'at', role: 'chat' }
   ]
 }
 
@@ -2878,13 +2420,10 @@ function commentaryLine (type, teamName, lang) {
 function createSimLiveFeed () {
   const listeners = new Set()
   let timer = null
-  const homeTeam = fitDefaultHome()
-  const awayTeam = fitDefaultAway()
-  const live = fitLiveMatch()
   const st = {
     minute: 0,
-    home: { name: homeTeam.name, flag: homeTeam.flag, teamId: homeTeam.id, goals: 0 },
-    away: { name: awayTeam.name, flag: awayTeam.flag, teamId: awayTeam.id, goals: 0 },
+    home: { name: 'Spain', flag: '🇪🇸', teamId: 'es', goals: 0 },
+    away: { name: 'Austria', flag: '🇦🇹', teamId: 'at', goals: 0 },
     possession: 50,
     shots: [0, 0],
     threat: 50,
@@ -2892,12 +2431,12 @@ function createSimLiveFeed () {
     matchStatus: 'TIMED',
     utcDate: '2026-07-02T19:00:00Z',
     stage: 'LAST_32',
-    competition: { name: fitCompetitionName() }
+    competition: { name: 'FIFA World Cup' }
   }
   const emit = ev => listeners.forEach(fn => fn(ev, st))
   function tick () {
     if (st.matchStatus === 'TIMED' || st.matchStatus === 'SCHEDULED') {
-      emit({ type: 'preview', team: `${homeTeam.name} vs ${awayTeam.name} room is open.`, clock: 'Soon', minute: 0 })
+      emit({ type: 'preview', team: 'Spain vs Austria room is open. Kickoff is 15:00 ET.', clock: 'Soon', minute: 0 })
       return
     }
     st.minute += 1
@@ -2941,7 +2480,7 @@ function mapFeed (st, provider, data) {
     st.hasScore = hasScore
     st.minute = m.minute ?? st.minute
     st.matchStatus = m.status || 'IN_PLAY'
-    st.competition = { name: (m.competition && m.competition.name) || fitCompetitionName(), emblem: (m.competition && m.competition.emblem) || '' }
+    st.competition = { name: (m.competition && m.competition.name) || 'FIFA World Cup', emblem: (m.competition && m.competition.emblem) || '' }
     st.utcDate = m.utcDate || ''
     st.stage = m.stage || ''
     st.matchday = m.matchday || null
@@ -2991,12 +2530,10 @@ function apiRequest (config) {
 function createApiLiveFeed (config) {
   const listeners = new Set()
   let timer = null
-  const homeTeam = fitDefaultHome()
-  const awayTeam = fitDefaultAway()
   const st = {
     minute: 0,
-    home: { name: homeTeam.name, flag: homeTeam.flag, teamId: homeTeam.id, goals: 0 },
-    away: { name: awayTeam.name, flag: awayTeam.flag, teamId: awayTeam.id, goals: 0 },
+    home: { name: 'Home', flag: '⚽', teamId: 'es', goals: 0 },
+    away: { name: 'Away', flag: '⚽', teamId: 'at', goals: 0 },
     possession: 50, shots: [0, 0], threat: 50, matchStatus: 'connecting'
   }
   const emit = ev => listeners.forEach(fn => fn(ev, st))
@@ -3037,17 +2574,10 @@ function feedState () { return activeFeed.state() }
 
 function seedFeedEvents () {
   if (!state.feedEvents || !state.feedEvents.length) {
-    const home = fitDefaultHome()
-    const away = fitDefaultAway()
-    const live = fitLiveMatch()
-    const upcoming = homeFixtures.filter(f => !f.live).slice(0, 2)
-    const nextLine = upcoming.length
-      ? upcoming.map(f => f.title).join(' and ') + ' follow later today.'
-      : 'More match rooms open soon.'
     state.feedEvents = [
-      { clock: 'Today', type: 'preview', team: `${home.name} vs ${away.name} room is open.` },
-      { clock: live ? (live.status || 'Today') : 'Today', type: 'preview', team: live ? live.detail : 'Pre-match room' },
-      { clock: 'Up next', type: 'preview', team: nextLine }
+      { clock: 'Today', type: 'preview', team: 'Spain vs Austria room is open.' },
+      { clock: '19:00Z', type: 'preview', team: 'Kickoff at SoFi Stadium.' },
+      { clock: 'R32', type: 'preview', team: 'Portugal vs Croatia and Switzerland vs Algeria follow later today.' }
     ]
   }
 }
@@ -3108,7 +2638,7 @@ function renderLiveBoard (st) {
   el.innerHTML = `
     <div class="lb-comp">
       ${st.competition && st.competition.emblem ? `<img class="lb-emblem" src="${escapeHtml(st.competition.emblem)}" alt="">` : ''}
-      <span>${escapeHtml((st.competition && st.competition.name) || fitCompetitionName())}${stageLabel(st) ? ' · ' + stageLabel(st) : ''}</span>
+      <span>${escapeHtml((st.competition && st.competition.name) || 'FIFA World Cup')}${stageLabel(st) ? ' · ' + stageLabel(st) : ''}</span>
     </div>
     <div class="lb-teams">
       <div class="lb-team">${crest(st.home.crest)}<strong>${escapeHtml(st.home.name)}</strong></div>
@@ -3225,10 +2755,6 @@ function isRelay (proxy) { return /\.json(\?|$)/.test(proxy || '') }
 async function detectLiveRelay () {
   const cfg = state.liveConfig || {}
   if (cfg.apiKey && cfg.enabled) return           // an explicit API/proxy config wins
-  // The packaged live-match.json is World Cup demo data. Don't let it override
-  // a per-fit shell's own live match for non-soccer/non-World-Cup fits.
-  const cfgFit = fitConfig()
-  if (cfgFit.fitId && cfgFit.fitId !== 'world-cup') return
   try {
     const res = await fetch(`${RELAY_FILE}?t=${Date.now()}`, { cache: 'no-store' })
     if (!res.ok) return
@@ -3499,9 +3025,7 @@ function renderWatch () {
   renderWatchStats(feedState())
   applyFeedTick(null, feedState())
   const room = watchParticipants()
-  const home = fitDefaultHome()
-  const away = fitDefaultAway()
-  const grouped = [home.id, away.id].map(teamId => {
+  const grouped = ['es', 'at'].map(teamId => {
     const picked = room.filter(person => person.pick === teamId)
     return { team: teamById(teamId), picked }
   })
@@ -4396,54 +3920,19 @@ function completeProfileOnboarding () {
   showToast(`${state.username} joined as ${teamById(state.team).name}`)
 }
 
-function miniGameIcon (gameType) {
-  const map = {
-    'penalty-clash': '⚽',
-    'free-kick-duel': '🎯',
-    'trivia-duel': '❓',
-    'next-event': '🔮',
-    'scoreline-lock': '🔒',
-    'momentum-duel': '⚡',
-    'player-prop-duel': '📊',
-    'reaction-challenge': '👏',
-    'watch-party-streak': '🔥',
-    'peer-mini-fantasy': '⭐'
-  }
-  return map[gameType] || '🎮'
-}
-
-function miniGameTag (gameType) {
-  return (gameType === 'penalty-clash' || gameType === 'free-kick-duel') ? 'Play now' : 'Coming soon'
-}
-
 function renderGameLobby () {
   const el = $('#gameLobby')
   if (!el) return
-  const primaryGame = fitPrimaryMiniGame()
-  const primaryTitle = fitMiniGameTitle(primaryGame)
-  const recommendedGames = fitRecommendedMiniGames()
-  const dockHtml = recommendedGames.length > 0
-    ? `<div class="mini-game-dock" aria-label="Recommended mini-games">
-        ${recommendedGames.map(gameType => `
-          <button class="mini-game-card ${gameType === primaryGame ? 'is-primary' : ''}" type="button" data-game-type="${escapeHtml(gameType)}">
-            <span class="mini-game-icon" aria-hidden="true">${miniGameIcon(gameType)}</span>
-            <strong>${escapeHtml(fitMiniGameTitle(gameType))}</strong>
-            <span>${miniGameTag(gameType)}</span>
-          </button>
-        `).join('')}
-       </div>`
-    : ''
   el.innerHTML = `
     <div class="lobby-hero">
       <img class="lobby-mascot" src="assets/mascot.png" alt="">
       <div class="lobby-hero-copy">
-        <p class="eyebrow">${escapeHtml(primaryTitle)} · Lobby</p>
+        <p class="eyebrow">Penalty Clash · Lobby</p>
         <h2 class="lobby-title">Find a match</h2>
-        <p class="lobby-sub">Best-of-five ${escapeHtml(primaryTitle)} — you take 5 penalties and keep their 5. Outscore them for the win.</p>
+        <p class="lobby-sub">Best-of-five Penalty Clash — you take 5 penalties and keep their 5. Outscore them for the win.</p>
       </div>
       <button class="lobby-quick" id="quickMatchBtn" type="button">⚡ Practice vs AI</button>
     </div>
-    ${dockHtml}
 
     <div class="lobby-friend">
       <div class="lobby-friend-copy">
@@ -4477,14 +3966,6 @@ function renderGameLobby () {
   const quick = $('#quickMatchBtn')
   if (quick) quick.addEventListener('click', () => startMatch(practice(LOBBY_PLAYERS[Math.floor(Math.random() * LOBBY_PLAYERS.length)])))
   $$('#gameLobby .lobby-challenge').forEach(btn => btn.addEventListener('click', () => showStakeConfirm(LOBBY_PLAYERS[Number(btn.dataset.lobby)])))
-  $$('#gameLobby .mini-game-card').forEach(btn => btn.addEventListener('click', () => {
-    const gameType = btn.dataset.gameType
-    if (gameType === 'penalty-clash' || gameType === 'free-kick-duel') {
-      startMatch(practice(LOBBY_PLAYERS[Math.floor(Math.random() * LOBBY_PLAYERS.length)]))
-    } else {
-      showToast(`${fitMiniGameTitle(gameType)} coming soon`)
-    }
-  }))
   const invite = $('#inviteFriendBtn')
   if (invite) invite.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.host())
   const joinFriend = $('#joinFriendBtn')
@@ -4573,8 +4054,6 @@ function restartShootout ({ blockActiveStake = false, message = 'New penalty sho
 }
 
 async function renderGames () {
-  const gamesTitle = $('#gamesTitle')
-  if (gamesTitle) gamesTitle.textContent = fitMiniGameTitle(fitPrimaryMiniGame())
   const so = ensureShootout()
   ensureShootoutDom()
   // A live peer match owns its own turn loop.
@@ -4902,7 +4381,6 @@ function bindEvents () {
 
 function renderAll () {
   sendBootCheckpoint('renderAll:start')
-  applyFitAssets()
   renderTeams()
   renderProfile()
   sendBootCheckpoint('renderAll:shell')
@@ -5496,7 +4974,6 @@ function boot () {
 
 function hydrateStaticShell () {
   try {
-    applyFitAssets()
     if ($('#teamGrid')) renderTeams()
     if ($('#profileChip') || $('#avatarPreview')) renderProfile()
     document.documentElement.dataset.pearcupUiHydrated = 'true'

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f97316" stop-opacity=".95"/>
+      <stop offset="55%" stop-color="#c2410c" stop-opacity=".92"/>
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity=".88"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="400" rx="36" fill="url(#g)"/>
+  <circle cx="680" cy="120" r="160" fill="#ffffff" opacity=".08"/>
+  <circle cx="120" cy="320" r="120" fill="#ffffff" opacity=".06"/>
+  <text x="60" y="210" font-size="140" font-family="Arial, sans-serif">🏀</text>
+  <text x="60" y="300" font-size="36" font-weight="900" fill="#ffffff" font-family="ui-rounded, system-ui, sans-serif" letter-spacing="-0.02em">March Madness</text>
+  <text x="60" y="340" font-size="18" fill="#ffffff" opacity=".85" font-family="ui-sans-serif, system-ui, sans-serif">Ultimate Sports</text>
+</svg>

@@ -100,6 +100,278 @@ const pools = [
   { tier: 100, entrants: 19, closes: '5h', max: 64, prize: '$1,900', heat: 'Elite', rail: 'USDT demo' }
 ]
 
+const eventTemplates = [
+  {
+    id: 'world-cup',
+    title: 'World Cup',
+    category: 'Soccer',
+    entrant: 'National teams',
+    template: 'Group + knockout',
+    policy: 'Official feed',
+    variants: ['Bracket', 'Confidence', 'Group card', 'Upset bounty'],
+    games: ['Penalty Clash', 'Free-kick Duel', 'Scoreline Lock'],
+    settlement: ['Demo', 'Sponsor prize'],
+    priority: 'V0'
+  },
+  {
+    id: 'champions-league',
+    title: 'Champions League Knockout',
+    category: 'Soccer',
+    entrant: 'Clubs',
+    template: 'Single elimination',
+    policy: 'Official feed',
+    variants: ['Bracket', 'Head-to-head', 'Confidence', 'Upset bounty'],
+    games: ['Momentum Duel', 'Free-kick Duel', 'Reaction Challenge'],
+    settlement: ['Demo', 'Sponsor prize'],
+    priority: 'V0'
+  },
+  {
+    id: 'march-madness',
+    title: 'March Madness',
+    category: 'Basketball',
+    entrant: 'Seeded teams',
+    template: '64-team bracket',
+    policy: 'Official feed',
+    variants: ['Region bracket', 'Confidence', 'Survivor', 'Upset bounty'],
+    games: ['Trivia Duel', 'Player Props', 'Watch Streak'],
+    settlement: ['Demo', 'Sponsor prize'],
+    priority: 'V1'
+  },
+  {
+    id: 'pro-playoffs',
+    title: 'NBA / NHL / MLB Playoffs',
+    category: 'Pro sports',
+    entrant: 'Series teams',
+    template: 'Best-of series',
+    policy: 'Official feed',
+    variants: ['Series bracket', 'Survivor', 'Fantasy-lite', 'Props'],
+    games: ['Peer Fantasy', 'Momentum Duel', 'Live Streak'],
+    settlement: ['Demo', 'Sponsor prize'],
+    priority: 'V1'
+  },
+  {
+    id: 'tennis',
+    title: 'Tennis Grand Slam',
+    category: 'Tennis',
+    entrant: 'Seeded players',
+    template: 'Draw bracket',
+    policy: 'Official feed',
+    variants: ['Player bracket', 'Confidence', 'Set lock', 'Props'],
+    games: ['Next Game', 'Break Point', 'Reaction Challenge'],
+    settlement: ['Demo', 'Sponsor prize'],
+    priority: 'V1'
+  },
+  {
+    id: 'esports',
+    title: 'Esports Major',
+    category: 'Esports',
+    entrant: 'Teams',
+    template: 'Groups + series',
+    policy: 'Hybrid feed',
+    variants: ['Map cards', 'Bracket', 'Survivor', 'Fantasy-lite'],
+    games: ['Momentum Duel', 'Trivia Duel', 'Reaction Challenge'],
+    settlement: ['Demo', 'Sponsor prize'],
+    priority: 'V1'
+  },
+  {
+    id: 'fight-card',
+    title: 'MMA / Boxing Fight Card',
+    category: 'Combat sports',
+    entrant: 'Fighters',
+    template: 'Fight card',
+    policy: 'Official + host correction',
+    variants: ['Method pick', 'Round prop', 'Confidence', 'Card duel'],
+    games: ['Trivia Duel', 'Reaction Challenge', 'Method Lock'],
+    settlement: ['Demo', 'Sponsor prize'],
+    priority: 'V1'
+  },
+  {
+    id: 'sailgp',
+    title: 'SailGP Companion',
+    category: 'Sailing',
+    entrant: 'Fleet teams',
+    template: 'Race series',
+    policy: 'Hybrid evidence',
+    variants: ['Race card', 'Survivor', 'Podium props', 'Fantasy-lite'],
+    games: ['Next Mark', 'Pressure Window', 'Peer Fantasy'],
+    settlement: ['Demo', 'Sponsor prize'],
+    priority: 'V1'
+  },
+  {
+    id: 'creator',
+    title: 'Reality / Creator Tournament',
+    category: 'Creator',
+    entrant: 'Custom creators',
+    template: 'Creator custom',
+    policy: 'Host-entered',
+    variants: ['Custom bracket', 'Bingo', 'Side quest', 'Confidence'],
+    games: ['Trivia Duel', 'Reaction Challenge', 'Watch Streak'],
+    settlement: ['Demo', 'Sponsor prize'],
+    priority: 'V2'
+  },
+  {
+    id: 'awards',
+    title: 'Awards Prediction Night',
+    category: 'Awards',
+    entrant: 'Nominees',
+    template: 'Awards card',
+    policy: 'Host-entered',
+    variants: ['Category card', 'Confidence', 'Bingo', 'Head-to-head'],
+    games: ['Trivia Duel', 'Bingo', 'Reaction Challenge'],
+    settlement: ['Demo', 'Sponsor prize'],
+    priority: 'V2'
+  },
+  {
+    id: 'local',
+    title: 'School / Office / Pub League',
+    category: 'Local',
+    entrant: 'Custom teams',
+    template: 'Round robin / bracket',
+    policy: 'Host-entered',
+    variants: ['Bracket', 'Round robin', 'Survivor', 'Manual results'],
+    games: ['Penalty Clash', 'Trivia Duel', 'Peer Fantasy'],
+    settlement: ['Demo', 'Sponsor prize'],
+    priority: 'V2'
+  }
+]
+
+const sportLanguageMap = [
+  { sport: 'Soccer', prompts: 'goal, corner, card, VAR, first scorer', controls: 'bracket path, scoreline lock, penalty clash' },
+  { sport: 'Basketball', prompts: 'next basket, three, foul, rebound swing', controls: 'region tabs, upset markers, fantasy slate' },
+  { sport: 'Combat', prompts: 'round winner, takedown, knockdown, method', controls: 'bout cards, method selector, correction trail' },
+  { sport: 'Sailing', prompts: 'start, mark, gate split, penalty turn', controls: 'race cards, wind panel, podium props' },
+  { sport: 'Creator', prompts: 'reveal, vote swing, episode moment, finale', controls: 'custom labels, bingo, host result workbench' }
+]
+
+const creatorSteps = [
+  { id: 'fit', label: 'Event fit', status: 'complete', detail: 'World Cup stack selected' },
+  { id: 'entrants', label: 'Entrants', status: 'complete', detail: '32 teams seeded' },
+  { id: 'format', label: 'Format', status: 'complete', detail: 'Group + knockout' },
+  { id: 'pools', label: 'Pools', status: 'active', detail: '4 pool variants enabled' },
+  { id: 'room', label: 'Room', status: 'active', detail: 'Watch room and prompt tray ready' },
+  { id: 'settlement', label: 'Settlement', status: 'warn', detail: 'Sponsor prize gate pending' },
+  { id: 'publish', label: 'Preview', status: 'next', detail: 'Command plan generated' }
+]
+
+const creatorEntrants = [
+  { seed: 1, name: 'Spain', meta: 'Official feed id matched', status: 'complete' },
+  { seed: 2, name: 'Austria', meta: 'Official feed id matched', status: 'complete' },
+  { seed: 3, name: 'Portugal', meta: 'Kickoff lock imported', status: 'complete' },
+  { seed: 4, name: 'Croatia', meta: 'Kit colors verified', status: 'complete' },
+  { seed: 5, name: 'Switzerland', meta: 'Venue time pending', status: 'warn' },
+  { seed: 6, name: 'Algeria', meta: 'Manual correction allowed', status: 'warn' }
+]
+
+const launchChecklistItems = [
+  { label: 'Template compatibility', detail: 'Pools, games, rooms, and result policy align', status: 'complete' },
+  { label: 'Entrant validation', detail: 'Seeds, display names, flags, and fixture slots ready', status: 'complete' },
+  { label: 'Pick locks', detail: 'Kickoff and stale-entry behavior visible before publish', status: 'complete' },
+  { label: 'QVAC lane', detail: 'Commentary and result summary can run in demo mode', status: 'complete' },
+  { label: 'Sponsor prize gate', detail: 'Prize terms and fulfillment owner need approval', status: 'warn' },
+  { label: 'Real-money mode', detail: 'KYC, region, WDK, and responsible-play gates stay locked', status: 'locked' }
+]
+
+const pickModes = [
+  {
+    id: 'bracket',
+    title: 'Bracket Builder',
+    status: '18 picks left',
+    detail: 'Fixture columns, projected path, lock badges, owner chips, and changed-pick summary.',
+    stats: ['32 teams', '5 rounds', 'Official locks'],
+    elements: ['Round columns', 'Pick chips', 'Settlement receipt']
+  },
+  {
+    id: 'confidence',
+    title: 'Confidence Card',
+    status: 'Budget ready',
+    detail: 'Ranked point assignment with duplicate warnings and pick confidence totals.',
+    stats: ['16 weights', 'No duplicates', 'Mobile steppers'],
+    elements: ['Point steppers', 'Duplicate warning', 'Completion meter']
+  },
+  {
+    id: 'survivor',
+    title: 'Survivor Pool',
+    status: 'Round 3 open',
+    detail: 'Used-team rail, invalid-repeat blocking, and next-round availability.',
+    stats: ['2 used', '1 pick due', 'Auto-lock at kickoff'],
+    elements: ['Used strip', 'Round selector', 'Invalid repeat state']
+  },
+  {
+    id: 'prediction',
+    title: 'Prediction Card',
+    status: '7 of 10 fields',
+    detail: 'Winner, totals, method, round, category, and custom prop rows for non-bracket events.',
+    stats: ['10 fields', '3 required', 'Host labels'],
+    elements: ['Field rows', 'Nominee/fighter selector', 'Required markers']
+  },
+  {
+    id: 'draft',
+    title: 'Fantasy-lite Draft',
+    status: '3 roster slots',
+    detail: 'Compact athlete table, roster slots, stat preview, and slate lock state.',
+    stats: ['8 athletes', '3 slots', 'Stat preview'],
+    elements: ['Roster slots', 'Athlete table', 'Scoring preview']
+  },
+  {
+    id: 'bingo',
+    title: 'Watch-party Bingo',
+    status: '2 lines possible',
+    detail: 'Fixed event grid with marked moments, evidence links, and line-count resolution.',
+    stats: ['3x3 grid', '4 marked', 'QVAC evidence'],
+    elements: ['Bingo cells', 'Line counter', 'Moment evidence']
+  }
+]
+
+const walletAccounts = [
+  { label: 'Demo credits', value: '2,480', status: 'Active', tone: 'complete' },
+  { label: 'Sponsor claims', value: '$190', status: 'Needs route', tone: 'warn' },
+  { label: 'Real-money rail', value: 'Locked', status: 'KYC + region', tone: 'locked' }
+]
+
+const walletHolds = [
+  { title: '$25 bracket pool', detail: 'Held until Spain vs Austria resolves', amount: '$25', status: 'Held' },
+  { title: 'Penalty Clash', detail: 'QVAC round receipt sealed', amount: '5 USDT demo', status: 'Ready' },
+  { title: 'Sponsor jersey claim', detail: 'Fulfillment address missing', amount: 'Prize', status: 'Needs route' }
+]
+
+const walletReceipts = [
+  { id: 'bracket-25-r32', title: 'Bracket submission locked', hash: '0x9cf1a28b', status: 'Sealed' },
+  { id: 'pc-round-3', title: 'Penalty Clash result', hash: '0x46de19a0', status: 'QVAC signed' },
+  { id: 'room-watch-streak', title: 'Watch streak payout', hash: '0x7b13f0ac', status: 'Pending result' }
+]
+
+const walletReadiness = [
+  { label: 'Age and region', status: 'Pending', tone: 'warn' },
+  { label: 'Responsible-play limits', status: 'Configured', tone: 'complete' },
+  { label: 'Tether WDK SDK', status: serviceModeLabel(integrationRuntime.readiness.tetherWdk), tone: integrationRuntime.readiness.tetherWdk.sdkReady ? 'complete' : 'warn' },
+  { label: 'QVAC verifier', status: serviceModeLabel(integrationRuntime.readiness.qvac), tone: integrationRuntime.readiness.qvac.sdkReady ? 'complete' : 'warn' }
+]
+
+const opsHealthItems = [
+  { label: 'Official feed lag', value: '0.4s', status: 'complete' },
+  { label: 'Peer topics', value: '38 peers', status: 'complete' },
+  { label: 'QVAC summaries', value: '4 languages', status: 'complete' },
+  { label: 'Prize gates', value: '1 blocked', status: 'warn' }
+]
+
+const opsDisputes = [
+  { title: 'Method prop correction', target: 'Fight card demo', status: 'Responded', detail: 'Host changed R2 submission to R3 decision.' },
+  { title: 'Late bracket lock', target: '$50 World Cup pool', status: 'Open', detail: 'One entry arrived after feed lock timestamp.' },
+  { title: 'Sponsor route missing', target: 'Jersey claim', status: 'Needs evidence', detail: 'Winner payout route is not confirmed.' }
+]
+
+const resultWorkbenchRows = [
+  { event: 'Spain vs Austria', source: 'Official feed', state: 'Scheduled', action: 'Await kickoff' },
+  { event: 'Creator finale', source: 'Host-entered', state: 'Missing winner', action: 'Record result' },
+  { event: 'SailGP race 2', source: 'Hybrid evidence', state: 'QVAC review', action: 'Attach telemetry' }
+]
+
+const notificationBatches = [
+  { title: 'Pick locks', count: 418, status: 'Queued' },
+  { title: 'Room invites', count: 92, status: 'Ready' },
+  { title: 'Dispute updates', count: 3, status: 'Needs review' }
+]
+
 const round32Matches = [
   { id: 'r32-1', time: 'Sat, 06/28', status: 'FT', slots: ['ca', 'za'], score: [1, 0], sample: { ca: ['noah'], za: ['zola'] } },
   { id: 'r32-2', time: 'Sun, 06/29', status: 'PEN 3-2', slots: ['ma', 'nl'], score: [1, 1], sample: { ma: ['youssef'], nl: ['daan'] } },
@@ -303,6 +575,9 @@ function loadState () {
     submittedPicksByTier: {},
     language: 'EN',
     liveTab: 'overview',
+    selectedEventTemplate: 'world-cup',
+    creatorStep: 'pools',
+    pickMode: 'bracket',
     gameRound: 0,
     gameSpectating: false,
     voice: false,
@@ -630,16 +905,28 @@ function resetScrollPosition () {
   setTimeout(() => window.scrollTo(0, 0), 640)
 }
 
-function setView (view) {
+function setView (view, { focus = true } = {}) {
+  if (!document.getElementById(view)) view = 'home'
   state.view = view
   persist()
   $$('.screen').forEach(screen => screen.classList.toggle('is-active', screen.id === view))
   $$('.topnav button').forEach(button => {
     button.classList.toggle('is-active', button.dataset.view === view)
+    if (button.dataset.view === view) button.setAttribute('aria-current', 'page')
+    else button.removeAttribute('aria-current')
   })
   if (view === 'bracket') scheduleBracketConnectors()
   if (view === 'games') renderGames()
   resetScrollPosition()
+  if (focus) {
+    requestAnimationFrame(() => {
+      const activeScreen = document.getElementById(view)
+      const heading = activeScreen && activeScreen.querySelector('h1, h2')
+      if (!heading) return
+      heading.setAttribute('tabindex', '-1')
+      heading.focus({ preventScroll: true })
+    })
+  }
 }
 
 function renderProfile () {
@@ -669,7 +956,7 @@ function renderHomeDashboard () {
   state.liveTab = activeTab
 
   $('#liveMenu').innerHTML = liveTabs.map(tab => `
-    <button type="button" class="${tab.id === activeTab ? 'is-active' : ''}" data-live-tab="${tab.id}">
+    <button type="button" role="tab" class="${tab.id === activeTab ? 'is-active' : ''}" data-live-tab="${tab.id}" aria-selected="${tab.id === activeTab ? 'true' : 'false'}">
       ${tab.label}
     </button>
   `).join('')
@@ -932,6 +1219,468 @@ function renderPools () {
       setView('bracket')
     })
   })
+}
+
+function selectedEventTemplate () {
+  const selected = eventTemplates.find(template => template.id === state.selectedEventTemplate)
+  return selected || eventTemplates[0]
+}
+
+function selectedPickMode () {
+  const selected = pickModes.find(mode => mode.id === state.pickMode)
+  return selected || pickModes[0]
+}
+
+function statusClass (status) {
+  if (status === 'complete' || status === 'Active' || status === 'Ready' || status === 'Sealed' || status === 'QVAC signed') return 'is-complete'
+  if (status === 'locked' || status === 'Locked') return 'is-locked'
+  return 'is-warn'
+}
+
+function renderTagList (items, className = 'surface-tags') {
+  return `
+    <div class="${className}">
+      ${items.map(item => `<span>${escapeHtml(item)}</span>`).join('')}
+    </div>
+  `
+}
+
+function renderDiscover () {
+  const selected = selectedEventTemplate()
+  state.selectedEventTemplate = selected.id
+
+  $('#eventTemplateGrid').innerHTML = eventTemplates.map(template => `
+    <article class="template-card ${template.id === selected.id ? 'is-selected' : ''}">
+      <div class="template-card-top">
+        <div>
+          <span class="surface-badge">${escapeHtml(template.priority)}</span>
+          <h2>${escapeHtml(template.title)}</h2>
+        </div>
+        <button class="icon-button" type="button" data-template="${escapeHtml(template.id)}" aria-label="Inspect ${escapeHtml(template.title)}">
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+      </div>
+      <div class="template-facts">
+        <div><span>Category</span><strong>${escapeHtml(template.category)}</strong></div>
+        <div><span>Template</span><strong>${escapeHtml(template.template)}</strong></div>
+        <div><span>Results</span><strong>${escapeHtml(template.policy)}</strong></div>
+      </div>
+      ${renderTagList(template.variants.slice(0, 4))}
+    </article>
+  `).join('')
+
+  $('#templateStackPanel').innerHTML = `
+    <div class="rail-header">
+      <p class="eyebrow">Stack preview</p>
+      <strong>${escapeHtml(selected.category)}</strong>
+    </div>
+    <div class="stack-hero">
+      <span>${escapeHtml(selected.priority)}</span>
+      <h2>${escapeHtml(selected.title)}</h2>
+      <p>${escapeHtml(selected.template)} for ${escapeHtml(selected.entrant.toLowerCase())}, with ${escapeHtml(selected.policy.toLowerCase())} result handling.</p>
+    </div>
+    <div class="surface-block">
+      <span>Pool variants</span>
+      ${renderTagList(selected.variants)}
+    </div>
+    <div class="surface-block">
+      <span>Live games</span>
+      ${renderTagList(selected.games)}
+    </div>
+    <div class="surface-block">
+      <span>Settlement modes</span>
+      ${renderTagList(selected.settlement)}
+    </div>
+    <button class="primary-button inline-action" type="button" data-view="creator">
+      <span class="button-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </span>
+      Configure ${escapeHtml(selected.category)}
+    </button>
+  `
+
+  $('#sportLanguagePanel').innerHTML = `
+    <div class="rail-header">
+      <p class="eyebrow">UX language</p>
+      <strong>Sport-specific controls</strong>
+    </div>
+    <div class="language-map">
+      ${sportLanguageMap.map(row => `
+        <div>
+          <strong>${escapeHtml(row.sport)}</strong>
+          <span>${escapeHtml(row.prompts)}</span>
+          <em>${escapeHtml(row.controls)}</em>
+        </div>
+      `).join('')}
+    </div>
+  `
+
+  $$('#eventTemplateGrid [data-template]').forEach(button => {
+    button.addEventListener('click', () => {
+      state.selectedEventTemplate = button.dataset.template
+      persist()
+      renderDiscover()
+    })
+  })
+  bindViewButtons($('#discover'))
+}
+
+function renderCreator () {
+  const selected = selectedEventTemplate()
+  const activeStep = creatorSteps.some(step => step.id === state.creatorStep) ? state.creatorStep : 'pools'
+  state.creatorStep = activeStep
+
+  $('#creatorSteps').innerHTML = `
+    <div class="rail-header">
+      <p class="eyebrow">Wizard</p>
+      <strong>Launch flow</strong>
+    </div>
+    <div class="step-list">
+      ${creatorSteps.map((step, index) => `
+        <button class="${step.id === activeStep ? 'is-active' : ''} ${statusClass(step.status)}" type="button" data-creator-step="${escapeHtml(step.id)}">
+          <span>${index + 1}</span>
+          <strong>${escapeHtml(step.label)}</strong>
+          <em>${escapeHtml(step.detail)}</em>
+        </button>
+      `).join('')}
+    </div>
+  `
+
+  $('#creatorStackPreview').innerHTML = `
+    <div class="rail-header">
+      <p class="eyebrow">Launch preview</p>
+      <strong>${escapeHtml(selected.title)}</strong>
+    </div>
+    <div class="creator-stack-grid">
+      <div>
+        <span>Event fit</span>
+        <strong>${escapeHtml(selected.template)}</strong>
+        <em>${escapeHtml(selected.policy)}</em>
+      </div>
+      <div>
+        <span>Pools</span>
+        <strong>${selected.variants.length} variants</strong>
+        <em>${escapeHtml(selected.variants.slice(0, 3).join(', '))}</em>
+      </div>
+      <div>
+        <span>Live room</span>
+        <strong>${selected.games.length} prompts</strong>
+        <em>${escapeHtml(selected.games.slice(0, 3).join(', '))}</em>
+      </div>
+      <div>
+        <span>Settlement</span>
+        <strong>${escapeHtml(selected.settlement.join(' / '))}</strong>
+        <em>Real-money remains gated</em>
+      </div>
+    </div>
+  `
+
+  $('#entrantWorkbench').innerHTML = `
+    <div class="rail-header">
+      <p class="eyebrow">Entrants</p>
+      <strong>Validation table</strong>
+    </div>
+    <div class="entrant-table">
+      ${creatorEntrants.map(row => `
+        <div class="${statusClass(row.status)}">
+          <span>${row.seed}</span>
+          <strong>${escapeHtml(row.name)}</strong>
+          <em>${escapeHtml(row.meta)}</em>
+        </div>
+      `).join('')}
+    </div>
+  `
+
+  $('#launchChecklist').innerHTML = `
+    <div class="rail-header">
+      <p class="eyebrow">Publish checklist</p>
+      <strong>Replayable commands</strong>
+    </div>
+    <div class="checklist-grid">
+      ${launchChecklistItems.map(item => `
+        <div class="${statusClass(item.status)}">
+          <span>${escapeHtml(item.label)}</span>
+          <strong>${escapeHtml(item.status)}</strong>
+          <em>${escapeHtml(item.detail)}</em>
+        </div>
+      `).join('')}
+    </div>
+    <button class="secondary-button inline-action" type="button" id="publishDraftPreview">
+      <span class="button-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M5 12l4 4L19 6"/></svg>
+      </span>
+      Seal preview
+    </button>
+  `
+
+  $$('#creatorSteps [data-creator-step]').forEach(button => {
+    button.addEventListener('click', () => {
+      state.creatorStep = button.dataset.creatorStep
+      persist()
+      renderCreator()
+    })
+  })
+  const previewButton = $('#publishDraftPreview')
+  if (previewButton) previewButton.addEventListener('click', () => showToast('Launch preview sealed as a demo command plan'))
+  bindViewButtons($('#creator'))
+}
+
+function renderPickPreview (mode) {
+  if (mode.id === 'confidence') {
+    return `
+      <div class="confidence-preview">
+        ${[16, 15, 14, 13, 12, 11].map((points, index) => `
+          <div>
+            <span>${points}</span>
+            <strong>${escapeHtml(['Spain', 'Portugal', 'Brazil', 'France', 'Argentina', 'Japan'][index])}</strong>
+            <em>${index === 2 ? 'Duplicate blocked' : 'Ready'}</em>
+          </div>
+        `).join('')}
+      </div>
+    `
+  }
+
+  if (mode.id === 'survivor') {
+    return `
+      <div class="survivor-preview">
+        ${['Brazil', 'France', 'Spain', 'Portugal', 'Japan'].map((team, index) => `
+          <button type="button" class="${index < 2 ? 'is-used' : index === 2 ? 'is-picked' : ''}">
+            <span>${index < 2 ? 'Used' : index === 2 ? 'Pick' : 'Available'}</span>
+            <strong>${escapeHtml(team)}</strong>
+          </button>
+        `).join('')}
+      </div>
+    `
+  }
+
+  if (mode.id === 'prediction') {
+    return `
+      <div class="card-preview">
+        ${['Winner', 'Method / margin', 'Round / period', 'Total score', 'Upset call'].map((field, index) => `
+          <label>
+            <span>${escapeHtml(field)}</span>
+            <input value="${escapeHtml(['Spain', '2-1', '90 min', '3 goals', 'No'][index])}" readonly>
+          </label>
+        `).join('')}
+      </div>
+    `
+  }
+
+  if (mode.id === 'draft') {
+    return `
+      <div class="draft-preview">
+        <div class="roster-slots"><span>FWD</span><span>MID</span><span>GK</span></div>
+        ${['Lina Torres', 'Vera Holm', 'Milo Costa', 'Amina Diallo'].map((player, index) => `
+          <div>
+            <strong>${escapeHtml(player)}</strong>
+            <span>${['xG + shots', 'saves', 'assists', 'tackles'][index]}</span>
+            <em>${[42, 36, 31, 28][index]} pts</em>
+          </div>
+        `).join('')}
+      </div>
+    `
+  }
+
+  if (mode.id === 'bingo') {
+    return `
+      <div class="bingo-preview">
+        ${['Goal', 'VAR', 'Corner', 'Save', 'Upset', 'Card', 'Sub', 'Streak', 'Penalty'].map((cell, index) => `
+          <span class="${[0, 2, 4, 8].includes(index) ? 'is-marked' : ''}">${escapeHtml(cell)}</span>
+        `).join('')}
+      </div>
+    `
+  }
+
+  return `
+    <div class="bracket-preview-mini">
+      ${['R32', 'R16', 'QF', 'SF', 'Final'].map((round, roundIndex) => `
+        <div>
+          <strong>${round}</strong>
+          ${Array.from({ length: Math.max(1, 4 - roundIndex) }).map((_, index) => `<span>${escapeHtml(['Spain', 'Brazil', 'France', 'Japan'][index] || 'TBD')}</span>`).join('')}
+        </div>
+      `).join('')}
+    </div>
+  `
+}
+
+function renderPicksWorkbench () {
+  const selected = selectedPickMode()
+  state.pickMode = selected.id
+
+  $('#pickModeGrid').innerHTML = pickModes.map(mode => `
+    <button class="pick-mode-card ${mode.id === selected.id ? 'is-selected' : ''}" type="button" data-pick-mode="${escapeHtml(mode.id)}">
+      <span>${escapeHtml(mode.status)}</span>
+      <strong>${escapeHtml(mode.title)}</strong>
+      <em>${escapeHtml(mode.detail)}</em>
+    </button>
+  `).join('')
+
+  $('#pickDetailPanel').innerHTML = `
+    <div class="rail-header">
+      <p class="eyebrow">Workbench</p>
+      <strong>${escapeHtml(selected.title)}</strong>
+    </div>
+    <div class="pick-detail-grid">
+      <div>
+        <span>Status</span>
+        <strong>${escapeHtml(selected.status)}</strong>
+        <em>${escapeHtml(selected.detail)}</em>
+      </div>
+      ${selected.stats.map(stat => `
+        <div>
+          <span>Signal</span>
+          <strong>${escapeHtml(stat)}</strong>
+          <em>Visible before lock</em>
+        </div>
+      `).join('')}
+    </div>
+    ${renderPickPreview(selected)}
+    <div class="surface-block">
+      <span>Required UI elements</span>
+      ${renderTagList(selected.elements)}
+    </div>
+  `
+
+  $$('#pickModeGrid [data-pick-mode]').forEach(button => {
+    button.addEventListener('click', () => {
+      state.pickMode = button.dataset.pickMode
+      persist()
+      renderPicksWorkbench()
+    })
+  })
+  bindViewButtons($('#picks'))
+}
+
+function renderWallet () {
+  $('#walletSummary').innerHTML = `
+    <div class="rail-header">
+      <p class="eyebrow">Accounts</p>
+      <strong>${integrationRuntime.canUseRealMoney ? 'Live-ready' : 'Demo safe'}</strong>
+    </div>
+    <div class="wallet-account-grid">
+      ${walletAccounts.map(account => `
+        <div class="${statusClass(account.tone)}">
+          <span>${escapeHtml(account.label)}</span>
+          <strong>${escapeHtml(account.value)}</strong>
+          <em>${escapeHtml(account.status)}</em>
+        </div>
+      `).join('')}
+    </div>
+  `
+
+  $('#walletHolds').innerHTML = `
+    <div class="rail-header">
+      <p class="eyebrow">Holds</p>
+      <strong>Claims and releases</strong>
+    </div>
+    <div class="wallet-list">
+      ${walletHolds.map(item => `
+        <div>
+          <strong>${escapeHtml(item.title)}</strong>
+          <span>${escapeHtml(item.detail)}</span>
+          <em>${escapeHtml(item.amount)} - ${escapeHtml(item.status)}</em>
+        </div>
+      `).join('')}
+    </div>
+  `
+
+  $('#walletReceipts').innerHTML = `
+    <div class="rail-header">
+      <p class="eyebrow">Receipts</p>
+      <strong>Evidence trail</strong>
+    </div>
+    <div class="wallet-list">
+      ${walletReceipts.map(item => `
+        <div>
+          <strong>${escapeHtml(item.title)}</strong>
+          <span>${escapeHtml(item.id)}</span>
+          <code>${escapeHtml(item.hash)}</code>
+          <em>${escapeHtml(item.status)}</em>
+        </div>
+      `).join('')}
+    </div>
+  `
+
+  $('#walletReadiness').innerHTML = `
+    <div class="rail-header">
+      <p class="eyebrow">Readiness</p>
+      <strong>Real-money gates</strong>
+    </div>
+    <div class="status-list">
+      ${walletReadiness.map(item => `
+        <div class="${statusClass(item.tone)}">
+          <span>${escapeHtml(item.label)}</span>
+          <strong>${escapeHtml(item.status)}</strong>
+        </div>
+      `).join('')}
+    </div>
+  `
+}
+
+function renderOps () {
+  $('#opsHealth').innerHTML = `
+    <div class="rail-header">
+      <p class="eyebrow">Health</p>
+      <strong>Live event system</strong>
+    </div>
+    <div class="ops-health-grid">
+      ${opsHealthItems.map(item => `
+        <div class="${statusClass(item.status)}">
+          <span>${escapeHtml(item.label)}</span>
+          <strong>${escapeHtml(item.value)}</strong>
+        </div>
+      `).join('')}
+    </div>
+  `
+
+  $('#opsDisputes').innerHTML = `
+    <div class="rail-header">
+      <p class="eyebrow">Disputes</p>
+      <strong>Review queue</strong>
+    </div>
+    <div class="ops-list">
+      ${opsDisputes.map(item => `
+        <div>
+          <strong>${escapeHtml(item.title)}</strong>
+          <span>${escapeHtml(item.target)}</span>
+          <em>${escapeHtml(item.status)} - ${escapeHtml(item.detail)}</em>
+        </div>
+      `).join('')}
+    </div>
+  `
+
+  $('#opsResults').innerHTML = `
+    <div class="rail-header">
+      <p class="eyebrow">Results</p>
+      <strong>Workbench</strong>
+    </div>
+    <div class="result-table">
+      ${resultWorkbenchRows.map(row => `
+        <div>
+          <strong>${escapeHtml(row.event)}</strong>
+          <span>${escapeHtml(row.source)}</span>
+          <em>${escapeHtml(row.state)}</em>
+          <button class="secondary-button compact-action" type="button">${escapeHtml(row.action)}</button>
+        </div>
+      `).join('')}
+    </div>
+  `
+
+  $('#opsNotifications').innerHTML = `
+    <div class="rail-header">
+      <p class="eyebrow">Notifications</p>
+      <strong>Batch ops</strong>
+    </div>
+    <div class="notification-grid">
+      ${notificationBatches.map(batch => `
+        <div>
+          <span>${escapeHtml(batch.title)}</span>
+          <strong>${batch.count}</strong>
+          <em>${escapeHtml(batch.status)}</em>
+        </div>
+      `).join('')}
+    </div>
+  `
 }
 
 function appStateNamespace () {
@@ -2395,7 +3144,7 @@ function renderWatch () {
   `).join('')
 
   $('#languageTabs').innerHTML = Object.keys(commentary).map(language => `
-    <button type="button" class="${language === state.language ? 'is-active' : ''}" data-language="${language}">
+    <button type="button" role="tab" class="${language === state.language ? 'is-active' : ''}" data-language="${language}" aria-selected="${language === state.language ? 'true' : 'false'}">
       ${language}
     </button>
   `).join('')
@@ -3166,14 +3915,19 @@ function renderAll () {
   renderProfile()
   renderHomeDashboard()
   renderPools()
+  renderDiscover()
+  renderCreator()
+  renderPicksWorkbench()
   renderBracket()
   renderWatch()
   renderGames()
+  renderWallet()
+  renderOps()
 }
 
 bindCoreFallbackEvents()
 renderAll()
-setView(state.view)
+setView(state.view, { focus: false })
 bindEvents()
 window.addEventListener('load', resetScrollPosition)
 window.addEventListener('pageshow', resetScrollPosition)

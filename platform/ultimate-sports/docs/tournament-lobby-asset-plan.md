@@ -212,6 +212,20 @@ Quality gates:
 - Asset direction: fight-night walkout, neutral gloves, round cards, strong
   contrast.
 
+### `sailgp-companion`
+
+- Lobby skin: foiling race waterline.
+- GUI shell: SailGP companion shell.
+- APIs: event schedule, race results, season standings, team rosters, wind
+  conditions, telemetry or manual evidence.
+- Competition: fleet-race companion with event leaderboard and season table.
+- Pools: confidence, survivor, watch-party bingo, fantasy-lite draft, side
+  quest.
+- Mini-games: next event, momentum duel, player prop duel, trivia duel,
+  reaction challenge, watch-party streak, peer mini fantasy.
+- Asset direction: high-speed foiling catamarans, water spray, wind map
+  overlays, national team color accents, clean telemetry dashboard.
+
 ### `creator-reality-brackets`
 
 - Lobby skin: creator stage.

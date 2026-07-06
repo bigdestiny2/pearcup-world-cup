@@ -1,77 +1,41 @@
-// Ultimate Sports fit loader — runs synchronously before the kawaii tournament shell boots.
+// Ultimate Sports fit loader — runs before the kawaii tournament shell boots.
 // It picks a fit from the query string or from window.ULTIMATE_SPORTS_FIT,
 // applies the fit's theme tokens, sets the document title, and exposes the
-// resolved config as window.ULTIMATE_FIT_CONFIG so shell/app.js can override defaults.
-// Unknown or missing fit parameters fall back safely to the world-cup fit.
+// config as window.ULTIMATE_FIT_CONFIG so shell/app.js can override defaults.
 (function (root) {
   'use strict'
 
-  function safeSearch (root) {
-    try {
-      const loc = root.location || {}
-      if (typeof root.URLSearchParams === 'function' && typeof loc.search === 'string') {
-        return new root.URLSearchParams(loc.search)
-      }
-    } catch (e) {}
-    return null
-  }
-
-  const params = safeSearch(root)
-  const requestedFitId = (root.ULTIMATE_SPORTS_FIT || (params && params.get('fit')) || 'world-cup').trim()
+  const params = new URLSearchParams(root.location.search)
+  const fitId = root.ULTIMATE_SPORTS_FIT || params.get('fit') || 'world-cup'
   const configs = root.ULTIMATE_FIT_REGISTRY || {}
-  const fallbackFitId = 'world-cup'
+  const cfg = configs[fitId] || configs['world-cup'] || {}
 
-  // Resolve to a known fit; anything unknown or empty falls back to world-cup.
-  const resolvedFitId = (requestedFitId && configs[requestedFitId]) ? requestedFitId : fallbackFitId
-  const cfg = configs[resolvedFitId] || configs[fallbackFitId] || {}
+  root.CURRENT_FIT_ID = fitId
+  root.ULTIMATE_FIT_CONFIG = cfg
 
-  // Always expose a consistent config object with the resolved fitId.
-  root.CURRENT_FIT_ID = resolvedFitId
-  root.ULTIMATE_FIT_CONFIG = Object.assign({}, cfg, { fitId: resolvedFitId })
-
-  // Mark the loader as complete so the shell and tests can observe ordering.
-  root.__ULTIMATE_FIT_LOADER_READY = true
-  try {
-    if (typeof root.dispatchEvent === 'function') {
-      root.dispatchEvent(new root.Event('ultimate-fit-loader:ready'))
-    }
-  } catch (e) {}
-
-  function safeDocument () {
-    try { return root.document } catch (e) { return null }
+  if (cfg.title) {
+    root.document.title = cfg.title + (cfg.subtitle ? ' — ' + cfg.subtitle : ' — Ultimate Sports')
   }
 
-  const doc = safeDocument()
-
-  if (cfg.title && doc) {
-    try {
-      doc.title = cfg.title + (cfg.subtitle ? ' — ' + cfg.subtitle : ' — Ultimate Sports')
-    } catch (e) {}
+  if (cfg.theme && root.document && root.document.documentElement) {
+    const html = root.document.documentElement
+    Object.entries(cfg.theme).forEach(([key, value]) => {
+      html.style.setProperty(key, value)
+    })
   }
 
-  if (cfg.theme && doc && doc.documentElement && doc.documentElement.style) {
-    try {
-      const html = doc.documentElement
-      Object.entries(cfg.theme).forEach(([key, value]) => {
-        html.style.setProperty(key, value)
-      })
-    } catch (e) {}
-  }
-
-  if (cfg.background && doc && doc.body && doc.body.classList && doc.body.style) {
-    try {
-      doc.body.classList.add('fit-dark')
-      doc.body.style.background = cfg.background
-    } catch (e) {}
+  if (cfg.background && root.document && root.document.body) {
+    root.document.body.classList.add('fit-dark')
+    root.document.body.style.background = cfg.background
   }
 
   // When the shell is embedded in the Ultimate Sports lobby, add a close button
   // that asks the parent to close the app loader.
   function addCloseButton () {
     if (root.self === root.top) return
-    const header = doc.querySelector('.topbar')
+    const header = root.document.querySelector('.topbar')
     if (!header || header.querySelector('.shell-close-btn')) return
-    const btn = doc.createElement('button')
+    const btn = root.document.createElement('button')
     btn.type = 'button'
     btn.className = 'shell-close-btn'
     btn.setAttribute('aria-label', 'Back to lobby')
@@ -83,13 +47,9 @@
     header.appendChild(btn)
   }
 
-  if (!doc) return
-
-  try {
-    if (doc.readyState === 'loading') {
-      doc.addEventListener('DOMContentLoaded', addCloseButton)
-    } else {
-      addCloseButton()
-    }
-  } catch (e) {}
+  if (root.document.readyState === 'loading') {
+    root.document.addEventListener('DOMContentLoaded', addCloseButton)
+  } else {
+    try { addCloseButton() } catch (e) {}
+  }
 })(window)

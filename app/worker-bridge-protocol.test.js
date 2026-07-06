@@ -464,3 +464,27 @@ test('Pear worker bridge protocol rejects unsupported envelopes without throwing
   assert.match(response.error, /Unsupported PearCup worker protocol/)
   await bridge.close()
 })
+
+test('Pear worker bridge protocol delegates optional ultimate sports requests', async () => {
+  const bridge = bridgeProtocol.createPearWorkerBridgeProtocol({ requireLive: false })
+  const response = await bridge.request({
+    protocol: bridgeProtocol.protocolVersion,
+    requestId: 'req-ultimate-1',
+    action: 'ultimateSports',
+    payload: {
+      request: {
+        protocol: 'ultimate-sports-platform-v1',
+        requestId: 'ultimate-catalog',
+        action: 'catalog',
+        payload: {}
+      }
+    }
+  })
+
+  assert.equal(response.ok, true)
+  assert.equal(response.requestId, 'req-ultimate-1')
+  assert.equal(response.result.ok, true)
+  assert.equal(response.result.result.eventFits.some(fit => fit.fitId === 'world-cup'), true)
+  assert.equal(response.view.typeCounts.GameCommitmentSubmitted || 0, 0)
+  await bridge.close()
+})

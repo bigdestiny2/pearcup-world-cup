@@ -605,3 +605,31 @@ test('PearBrowser swarm watch room challenge requests can be accepted into Penal
   host.context.PearCupPeerMatch.leave(true)
   guest.context.PearCupPeerMatch.leave(true)
 })
+
+test('PearBrowser swarm watch sync relays screen share state', async () => {
+  const swarm = createPearBrowserSwarmHub()
+  const host = createClient({ pear: swarm.pear, name: 'Host', team: 'br' })
+  const guest = createClient({ pear: swarm.pear, name: 'Guest', team: 'jp' })
+
+  host.context.PearCupWatchSync.ensureRoom()
+  guest.context.PearCupWatchSync.ensureRoom()
+
+  await waitFor(() => {
+    return host.context.PearCupWatchSync.peerCount() === 2 &&
+      guest.context.PearCupWatchSync.peerCount() === 2
+  }, 'watch room presence')
+
+  host.context.PearCupWatchSync.broadcastScreen({ t: 'screen:start' })
+  await waitFor(() => {
+    const st = guest.context.PearCupWatchSync.screenShareState()
+    return st.sharing === true && st.sharerName === 'Host'
+  }, 'guest learned host is sharing screen')
+
+  host.context.PearCupWatchSync.broadcastScreen({ t: 'screen:stop' })
+  await waitFor(() => {
+    return guest.context.PearCupWatchSync.screenShareState().sharing === false
+  }, 'guest learned host stopped sharing')
+
+  host.context.PearCupWatchSync.leave()
+  guest.context.PearCupWatchSync.leave()
+})

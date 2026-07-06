@@ -54,6 +54,7 @@ test('user stories and UX map names every sport category represented by the cata
     ['tennis', 'Tennis:'],
     ['esports', 'Esports:'],
     ['combat-sports', 'Combat sports:'],
+    ['sailing', 'Sailing:'],
     ['creator', 'Creator and reality:'],
     ['awards', 'Awards:'],
     ['local', 'Local:']

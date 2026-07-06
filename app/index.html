@@ -23,9 +23,14 @@
         <nav class="topnav" aria-label="Primary">
           <button type="button" data-view="onboarding">Profile</button>
           <button type="button" data-view="home">Home</button>
+          <button type="button" data-view="discover">Discover</button>
+          <button type="button" data-view="creator">Create</button>
+          <button type="button" data-view="picks">Picks</button>
           <button type="button" data-view="bracket">Bracket</button>
           <button type="button" data-view="watch">Watch</button>
           <button type="button" data-view="games">Games</button>
+          <button type="button" data-view="wallet">Wallet</button>
+          <button type="button" data-view="ops">Ops</button>
         </nav>
 
         <div class="profile-chip" id="profileChip" aria-live="polite">
@@ -174,7 +179,7 @@
                     </div>
                   </div>
                 </div>
-                <div class="live-menu" id="liveMenu" aria-label="Live menu"></div>
+                <div class="live-menu" id="liveMenu" role="tablist" aria-label="Live menu"></div>
                 <div class="live-detail" id="liveDetail"></div>
               </section>
 
@@ -213,6 +218,75 @@
                 </div>
               </div>
             </aside>
+          </div>
+        </section>
+
+        <section class="screen" id="discover" aria-labelledby="discoverTitle">
+          <div class="surface-titlebar">
+            <div class="section-heading compact">
+              <p class="eyebrow">Discover</p>
+              <h1 id="discoverTitle">Event template launcher</h1>
+            </div>
+            <button class="primary-button" type="button" data-view="creator">
+              <span class="button-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              </span>
+              Build stack
+            </button>
+          </div>
+
+          <div class="ultimate-layout">
+            <div class="ultimate-main">
+              <div class="template-grid" id="eventTemplateGrid"></div>
+            </div>
+            <aside class="ultimate-rail">
+              <section class="surface-panel" id="templateStackPanel"></section>
+              <section class="surface-panel" id="sportLanguagePanel"></section>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen" id="creator" aria-labelledby="creatorTitle">
+          <div class="surface-titlebar">
+            <div class="section-heading compact">
+              <p class="eyebrow">Creator</p>
+              <h1 id="creatorTitle">Launch workbench</h1>
+            </div>
+            <button class="primary-button" type="button" data-view="watch">
+              <span class="button-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </span>
+              Preview room
+            </button>
+          </div>
+
+          <div class="creator-layout">
+            <aside class="creator-steps" id="creatorSteps"></aside>
+            <div class="creator-workbench">
+              <section class="surface-panel" id="creatorStackPreview"></section>
+              <section class="surface-panel" id="entrantWorkbench"></section>
+              <section class="surface-panel" id="launchChecklist"></section>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="picks" aria-labelledby="picksTitle">
+          <div class="surface-titlebar">
+            <div class="section-heading compact">
+              <p class="eyebrow">Picks</p>
+              <h1 id="picksTitle">Multi-format pick workbench</h1>
+            </div>
+            <button class="primary-button" type="button" data-view="bracket">
+              <span class="button-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 10h16M10 4v16"/></svg>
+              </span>
+              Open bracket
+            </button>
+          </div>
+
+          <div class="picks-layout">
+            <div class="pick-mode-grid" id="pickModeGrid"></div>
+            <section class="surface-panel pick-detail-panel" id="pickDetailPanel"></section>
           </div>
         </section>
 
@@ -309,8 +383,8 @@
                   <p class="eyebrow">QVAC</p>
                   <strong>Commentary</strong>
                 </div>
-                <div class="language-tabs" id="languageTabs"></div>
-                <div class="commentary-feed" id="commentaryFeed"></div>
+                <div class="language-tabs" id="languageTabs" role="tablist" aria-label="Commentary language"></div>
+                <div class="commentary-feed" id="commentaryFeed" role="log" aria-live="polite" aria-label="QVAC commentary updates"></div>
               </div>
 
               <div class="chat-panel">
@@ -318,8 +392,9 @@
                   <p class="eyebrow">Room</p>
                   <strong>Chat</strong>
                 </div>
-                <div class="chat-feed" id="chatFeed"></div>
+                <div class="chat-feed" id="chatFeed" role="log" aria-live="polite" aria-label="Room chat messages"></div>
                 <form class="chat-form" id="chatForm">
+                  <label class="sr-only" for="chatInput">Message the room</label>
                   <input id="chatInput" maxlength="120" placeholder="Message the room">
                   <button class="icon-button" type="submit" aria-label="Send message">
                     <svg viewBox="0 0 24 24"><path d="M4 12 20 4l-4 16-4-6-8-2Z"/></svg>
@@ -379,6 +454,50 @@
               <section class="integration-panel" id="qvacRefPanel"></section>
               <section class="integration-panel" id="gameLeaderboard"></section>
             </aside>
+          </div>
+        </section>
+
+        <section class="screen" id="wallet" aria-labelledby="walletTitle">
+          <div class="surface-titlebar">
+            <div class="section-heading compact">
+              <p class="eyebrow">Wallet</p>
+              <h1 id="walletTitle">Prize wallet and claims</h1>
+            </div>
+            <button class="secondary-button" type="button" data-view="ops">
+              <span class="button-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/></svg>
+              </span>
+              Readiness
+            </button>
+          </div>
+
+          <div class="wallet-layout">
+            <section class="surface-panel wallet-summary" id="walletSummary"></section>
+            <section class="surface-panel" id="walletHolds"></section>
+            <section class="surface-panel" id="walletReceipts"></section>
+            <section class="surface-panel" id="walletReadiness"></section>
+          </div>
+        </section>
+
+        <section class="screen" id="ops" aria-labelledby="opsTitle">
+          <div class="surface-titlebar">
+            <div class="section-heading compact">
+              <p class="eyebrow">Ops</p>
+              <h1 id="opsTitle">Trust and event operations</h1>
+            </div>
+            <button class="primary-button" type="button" data-view="creator">
+              <span class="button-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 12h16M12 4v16"/></svg>
+              </span>
+              Fix launch
+            </button>
+          </div>
+
+          <div class="ops-layout">
+            <section class="surface-panel" id="opsHealth"></section>
+            <section class="surface-panel" id="opsDisputes"></section>
+            <section class="surface-panel" id="opsResults"></section>
+            <section class="surface-panel" id="opsNotifications"></section>
           </div>
         </section>
       </main>

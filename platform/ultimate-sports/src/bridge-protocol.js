@@ -18,6 +18,19 @@ const BRIDGE_ACTIONS = Object.freeze([
   'createLaunchMatrix',
   'createExperience',
   'createSurface',
+  'createStandupAudit',
+  'createSportsDataAggregatorPlan',
+  'aggregatorRouteForFit',
+  'normalizeSportsDataRecord',
+  'createSportsDataAggregatorHealthPlan',
+  'createSportsDataClientPlan',
+  'sourceClientFor',
+  'credentialReadinessForSource',
+  'createSportsDataRequestPlan',
+  'createSportsDataSmokePlan',
+  'createSportsDataProviderPlan',
+  'providerPlanForFit',
+  'recommendSportsDataProviderStack',
   'createChallengeWagerPlan',
   'materializeChallenge',
   'dispatchMaterializedChallenge',
@@ -128,6 +141,32 @@ function routeAction (platform, action, payload) {
       return platform.createExperience(payload.input || payload)
     case 'createSurface':
       return platform.createSurface(payload.surfaceId, payload.input || {})
+    case 'createStandupAudit':
+      return platform.createStandupAudit(payload.input || payload)
+    case 'createSportsDataAggregatorPlan':
+      return platform.createSportsDataAggregatorPlan(payload.input || payload)
+    case 'aggregatorRouteForFit':
+      return platform.aggregatorRouteForFit(payload.fit || payload.fitId || payload, payload.options || {})
+    case 'normalizeSportsDataRecord':
+      return platform.normalizeSportsDataRecord(payload.input || payload)
+    case 'createSportsDataAggregatorHealthPlan':
+      return platform.createSportsDataAggregatorHealthPlan(payload.input || payload)
+    case 'createSportsDataClientPlan':
+      return platform.createSportsDataClientPlan(payload.input || payload)
+    case 'sourceClientFor':
+      return platform.sourceClientFor(payload.sourceId || payload)
+    case 'credentialReadinessForSource':
+      return platform.credentialReadinessForSource(payload.sourceId, payload.env || {})
+    case 'createSportsDataRequestPlan':
+      return platform.createSportsDataRequestPlan(payload.input || payload)
+    case 'createSportsDataSmokePlan':
+      return platform.createSportsDataSmokePlan(payload.input || payload)
+    case 'createSportsDataProviderPlan':
+      return platform.createSportsDataProviderPlan(payload.input || payload)
+    case 'providerPlanForFit':
+      return platform.providerPlanForFit(payload.fit || payload.fitId || payload)
+    case 'recommendSportsDataProviderStack':
+      return platform.recommendSportsDataProviderStack(payload.input || payload)
     case 'createChallengeWagerPlan':
       return platform.createChallengeWagerPlan(payload.challengeId || payload.challengeRef || payload.challenge, payload.input || {})
     case 'materializeChallenge':

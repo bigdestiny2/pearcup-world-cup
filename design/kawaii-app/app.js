@@ -2779,50 +2779,203 @@ function startLiveFeed () {
   activeFeed.start()
 }
 
-// ---- Screen share (real getDisplayMedia capture; P2P relay to peers is the Pear/WebRTC seam) ----
+// ---- Screen share (real getDisplayMedia capture + WebRTC relay over the watch topic) ----
 let shareStream = null
+let screenShareRtc = null
+const RTC_CONFIG = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ]
+}
+function ensureScreenShareRtc () {
+  if (screenShareRtc) return screenShareRtc
+  screenShareRtc = { peers: new Map(), polite: new Map() }
+  return screenShareRtc
+}
+function closeScreenShareRtc () {
+  if (!screenShareRtc) return
+  screenShareRtc.peers.forEach(pc => { try { pc.close() } catch (e) {} })
+  screenShareRtc.peers.clear()
+  screenShareRtc.polite.clear()
+  screenShareRtc = null
+}
+function selfPeerId () {
+  return window.PearCupWatchSync && window.PearCupWatchSync._state && window.PearCupWatchSync._state.self
+    ? window.PearCupWatchSync._state.self
+    : state.username || 'me'
+}
+function isPolite (peerId) { return String(selfPeerId()) < String(peerId) }
+function createPeerConnection (peerId, polite) {
+  const pc = new RTCPeerConnection(RTC_CONFIG)
+  const rtc = ensureScreenShareRtc()
+  rtc.peers.set(peerId, pc)
+  rtc.polite.set(peerId, polite)
+  pc.onicecandidate = ev => {
+    if (ev.candidate) {
+      window.PearCupWatchSync.broadcastScreen({ t: 'screen:ice', to: peerId, candidate: ev.candidate.toJSON() })
+    }
+  }
+  pc.ontrack = ev => {
+    const video = $('#shareVideo')
+    if (video && ev.streams && ev.streams[0]) {
+      video.srcObject = ev.streams[0]
+      video.hidden = false
+      video.play().catch(() => {})
+    }
+    const pitch = $('#tvPitch'); if (pitch) pitch.style.opacity = '0'
+    updateScreenShareBadge()
+  }
+  pc.onconnectionstatechange = () => {
+    if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) {
+      pc.close()
+      rtc.peers.delete(peerId)
+      updateScreenShareBadge()
+    }
+  }
+  return pc
+}
+async function ensureLocalStreamTracksOnPc (pc) {
+  if (!shareStream) return
+  for (const track of shareStream.getTracks()) {
+    const senders = pc.getSenders().filter(s => s.track && s.track.kind === track.kind)
+    if (senders.length === 0) pc.addTrack(track, shareStream)
+  }
+}
+async function startScreenShareToPeer (peerId) {
+  if (!shareStream || !window.PearCupWatchSync) return
+  const rtc = ensureScreenShareRtc()
+  if (rtc.peers.has(peerId)) return
+  const pc = createPeerConnection(peerId, isPolite(peerId))
+  await ensureLocalStreamTracksOnPc(pc)
+  const offer = await pc.createOffer()
+  await pc.setLocalDescription(offer)
+  window.PearCupWatchSync.broadcastScreen({ t: 'screen:offer', to: peerId, sdp: pc.localDescription })
+}
+async function handleScreenOffer (m) {
+  if (!window.PearCupWatchSync) return
+  const rtc = ensureScreenShareRtc()
+  const peerId = m.from
+  const polite = isPolite(peerId)
+  let pc = rtc.peers.get(peerId)
+  if (!pc) pc = createPeerConnection(peerId, polite)
+  const offerCollision = pc.signalingState !== 'stable'
+  if (offerCollision && !polite) return
+  if (offerCollision) await pc.setLocalDescription({ type: 'rollback' })
+  await pc.setRemoteDescription(new RTCSessionDescription(m.sdp))
+  const answer = await pc.createAnswer()
+  await pc.setLocalDescription(answer)
+  window.PearCupWatchSync.broadcastScreen({ t: 'screen:answer', to: peerId, sdp: pc.localDescription })
+}
+async function handleScreenAnswer (m) {
+  const pc = screenShareRtc && screenShareRtc.peers.get(m.from)
+  if (!pc) return
+  await pc.setRemoteDescription(new RTCSessionDescription(m.sdp))
+}
+async function handleScreenIce (m) {
+  const pc = screenShareRtc && screenShareRtc.peers.get(m.from)
+  if (!pc) return
+  try { await pc.addIceCandidate(new RTCIceCandidate(m.candidate)) } catch (e) {}
+}
+function updateScreenShareBadge () {
+  const badge = $('#shareBadge')
+  if (!badge) return
+  const sharer = window.PearCupWatchSync && typeof window.PearCupWatchSync.screenShareState === 'function'
+    ? window.PearCupWatchSync.screenShareState()
+    : null
+  const n = Math.max(0, realSpectatorCount() - 1)
+  const rtcCount = screenShareRtc ? screenShareRtc.peers.size : 0
+  if (shareStream) {
+    badge.hidden = false
+    badge.innerHTML = `<i></i>You are sharing your screen · ${n} peer${n === 1 ? '' : 's'} in room${rtcCount ? ` · ${rtcCount} relay connected` : ''}`
+  } else if (sharer && sharer.sharing) {
+    badge.hidden = false
+    badge.innerHTML = `<i></i>${escapeHtml(sharer.sharerName || 'A watcher')} is sharing their screen`
+  } else {
+    badge.hidden = true
+  }
+}
+function bindScreenShareSignaling () {
+  if (!window.PearCupWatchSync || window.PearCupWatchSync._screenShareBound) return
+  window.PearCupWatchSync._screenShareBound = true
+  window.PearCupWatchSync.onScreenShare(m => {
+    if (!m || !m.t) return
+    if (m.to && m.to !== selfPeerId()) return
+    switch (m.t) {
+      case 'screen:start': updateScreenShareBadge(); break
+      case 'screen:stop': closeScreenShareRtc(); updateScreenShareBadge(); break
+      case 'screen:offer': handleScreenOffer(m); break
+      case 'screen:answer': handleScreenAnswer(m); break
+      case 'screen:ice': handleScreenIce(m); break
+    }
+  })
+  window.PearCupWatchSync.onPeerJoined((peerId) => {
+    if (shareStream) startScreenShareToPeer(peerId)
+  })
+}
 async function startScreenShare () {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
     showToast('Screen share needs the Pear runtime / a supported browser')
     return
   }
+  bindScreenShareSignaling()
   try {
     shareStream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false })
   } catch (err) { showToast('Screen share cancelled'); return }
   const video = $('#shareVideo')
   if (video) { video.srcObject = shareStream; video.hidden = false; video.play().catch(() => {}) }
   const pitch = $('#tvPitch'); if (pitch) pitch.style.opacity = '0'
-  const badge = $('#shareBadge'); if (badge) { badge.hidden = false; badge.innerHTML = `<i></i>You are sharing your screen · relaying to ${Math.max(1, (state.spectators || 2) - 1)} peer${(state.spectators || 2) - 1 === 1 ? '' : 's'}` }
   const btn = $('#shareScreenBtn'); if (btn) btn.classList.add('is-live')
   showToast('Sharing your screen to the room')
   const track = shareStream.getVideoTracks()[0]
   if (track) track.addEventListener('ended', stopScreenShare)
+  if (window.PearCupWatchSync) {
+    window.PearCupWatchSync.broadcastScreen({ t: 'screen:start' })
+    if (window.PearCupWatchSync._state && window.PearCupWatchSync._state.peers) {
+      for (const peerId of window.PearCupWatchSync._state.peers.keys()) startScreenShareToPeer(peerId)
+    }
+  }
+  updateScreenShareBadge()
 }
 function stopScreenShare () {
   if (shareStream) { shareStream.getTracks().forEach(t => t.stop()); shareStream = null }
   const video = $('#shareVideo'); if (video) { video.hidden = true; video.srcObject = null }
   const pitch = $('#tvPitch'); if (pitch) pitch.style.opacity = ''
-  const badge = $('#shareBadge'); if (badge) badge.hidden = true
   const btn = $('#shareScreenBtn'); if (btn) btn.classList.remove('is-live')
+  if (window.PearCupWatchSync) window.PearCupWatchSync.broadcastScreen({ t: 'screen:stop' })
+  closeScreenShareRtc()
+  updateScreenShareBadge()
 }
 function toggleScreenShare () { shareStream ? stopScreenShare() : startScreenShare() }
 
-// ---- Share the room / spectate (surfaces the existing P2P topic; sim peers join now) ----
+// ---- Share the room / spectate (real peer count from the watch room) ----
 let spectatorTimer = null
 function roomCode () {
   const st = feedState()
   const seed = hashString(`${st.home.teamId}-${st.away.teamId}-${state.username || 'host'}`)
   return `pear://pearcup/watch/${st.home.teamId}-${st.away.teamId}-${(seed % 100000).toString(36)}`
 }
+function realSpectatorCount () {
+  if (window.PearCupWatchSync && typeof window.PearCupWatchSync.peerCount === 'function') {
+    return window.PearCupWatchSync.peerCount()
+  }
+  return 1
+}
+function updateSpectatorCount () {
+  const n = realSpectatorCount()
+  state.spectators = n
+  const el = $('#spectatorCount')
+  if (el) el.textContent = `${n} peer${n === 1 ? '' : 's'} watching`
+}
 function toggleInviteBar () {
   const bar = $('#roomShareBar')
   if (!bar) return
   if (!bar.hidden) { bar.hidden = true; stopSpectatorSim(); return }
   const code = roomCode()
-  state.spectators = state.spectators || 38
+  state.spectators = realSpectatorCount()
   bar.hidden = false
   bar.innerHTML = `
-    <div class="share-room-head"><strong>Watching together</strong><span id="spectatorCount">${state.spectators} peers watching</span></div>
+    <div class="share-room-head"><strong>Watching together</strong><span id="spectatorCount">${state.spectators} peer${state.spectators === 1 ? '' : 's'} watching</span></div>
     <div class="share-room-link">
       <code id="roomLink">${escapeHtml(code)}</code>
       <button class="secondary-button compact-action" type="button" id="copyRoomLink">Copy invite</button>
@@ -2833,16 +2986,15 @@ function toggleInviteBar () {
     if (navigator.clipboard) navigator.clipboard.writeText(code).catch(() => {})
     showToast('Invite link copied')
   })
-  startSpectatorSim()
+  // Real peers update via watch-sync heartbeat; keep the invite bar in sync.
+  stopSpectatorSim()
+  spectatorTimer = setInterval(updateSpectatorCount, 5000)
+  updateSpectatorCount()
 }
 function startSpectatorSim () {
   stopSpectatorSim()
-  spectatorTimer = setInterval(() => {
-    state.spectators = Math.max(12, (state.spectators || 38) + (Math.random() > 0.4 ? 1 : -1))
-    const el = $('#spectatorCount')
-    if (el) el.textContent = `${state.spectators} peers watching`
-    else stopSpectatorSim()
-  }, 2600)
+  spectatorTimer = setInterval(updateSpectatorCount, 5000)
+  updateSpectatorCount()
 }
 function stopSpectatorSim () { if (spectatorTimer) { clearInterval(spectatorTimer); spectatorTimer = null } }
 
@@ -4602,12 +4754,20 @@ function runtimeHashRouteEvidence (view) {
   const board = document.querySelector('#bracketBoard')
   const boardRect = board && typeof board.getBoundingClientRect === 'function' ? board.getBoundingClientRect() : null
   const watchChallengeList = document.querySelector('#watchChallengeList')
+  const avatarPreview = document.querySelector('#avatarPreview')
   return {
     view,
     hash: location.hash || '',
     activeScreen: active ? active.id : null,
     activeScreenDataset: document.documentElement.dataset.pearcupActiveScreen || null,
     activeNav: Array.from(document.querySelectorAll('.topnav button.is-active')).map(el => el.textContent.trim()),
+    teamCards: document.querySelectorAll('#teamGrid .team-card').length,
+    profileChipReady: Boolean(document.querySelector('#profileChip svg.avatar-art')),
+    avatarPreviewReady: Boolean(avatarPreview && avatarPreview.querySelector('svg.avatar-art')),
+    liveMenuButtons: document.querySelectorAll('#liveMenu button').length,
+    liveDetailReady: Boolean(document.querySelector('#liveDetail') && document.querySelector('#liveDetail').textContent.trim()),
+    poolCards: document.querySelectorAll('#poolGrid .pool-card').length,
+    fixtureCards: document.querySelectorAll('#homeFixtures .mini-fixture').length,
     boardVisible: Boolean(board && boardRect && boardRect.width > 0 && boardRect.height > 0),
     matchCards: document.querySelectorAll('#bracketBoard .bracket-match').length,
     inviteButton: Boolean(document.querySelector('#inviteFriendBtn')),
@@ -4619,7 +4779,7 @@ function runtimeHashRouteEvidence (view) {
 }
 
 async function runRuntimeHashRouteSelfTest () {
-  const routes = ['bracket', 'games', 'watch']
+  const routes = ['onboarding', 'home', 'bracket', 'games', 'watch']
   const results = []
   for (const view of routes) {
     try {
@@ -4679,7 +4839,7 @@ async function runBootRuntimeSelfTest () {
     if (!evidence.hashRoutes || evidence.hashRoutes.passed !== true) {
       errors.push('Same-document hash route changes did not activate Bracket, Games, and Watch')
     }
-    for (const view of ['bracket', 'games', 'watch']) {
+    for (const view of ['onboarding', 'home', 'bracket', 'games', 'watch']) {
       const route = evidence.hashRoutes && Array.isArray(evidence.hashRoutes.results)
         ? evidence.hashRoutes.results.find(item => item.view === view)
         : null
@@ -4689,6 +4849,17 @@ async function runBootRuntimeSelfTest () {
         if (route.activeScreen !== view) errors.push(`Hash route ${view} activeScreen was ${route.activeScreen || '(missing)'}`)
         if (route.activeScreenDataset !== view) errors.push(`Hash route ${view} activeScreenDataset was ${route.activeScreenDataset || '(missing)'}`)
         if (route.passed !== true) errors.push(`Hash route ${view} did not pass`)
+        if (view === 'onboarding') {
+          if (route.teamCards < 32) errors.push(`Profile route rendered ${route.teamCards || 0} team cards`)
+          if (route.profileChipReady !== true) errors.push('Profile route did not hydrate the profile chip avatar')
+          if (route.avatarPreviewReady !== true) errors.push('Profile route did not hydrate the avatar preview')
+        }
+        if (view === 'home') {
+          if (route.liveMenuButtons < 5) errors.push(`Home route rendered ${route.liveMenuButtons || 0} live menu buttons`)
+          if (route.liveDetailReady !== true) errors.push('Home route did not hydrate live detail')
+          if (route.poolCards < 3) errors.push(`Home route rendered ${route.poolCards || 0} pool cards`)
+          if (route.fixtureCards < 2) errors.push(`Home route rendered ${route.fixtureCards || 0} fixture cards`)
+        }
         if (view === 'watch') {
           if (route.watchChallengePanel !== true) errors.push('Watch route did not render the challenge panel')
           if (route.watchChallengeList !== true) errors.push('Watch route did not render the challenge list')
@@ -4775,6 +4946,9 @@ function boot () {
   window.addEventListener('load', resetScrollPosition)
   window.addEventListener('pageshow', resetScrollPosition)
   window.addEventListener('resize', scheduleBracketConnectors)
+  // Auto-detect a worker-relayed live-match.json feed (no browser CORS).
+  detectLiveRelay()
+  setInterval(detectLiveRelay, 60_000)
 }
 
 function hydrateStaticShell () {

@@ -4,29 +4,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 
-const { EVENT_FITS } = require('../src/catalog-engine.js')
-
 const OUT_FILE = path.resolve(__dirname, '..', 'shell', 'fits', 'generic-fits.js')
-const FIXTURES_DIR = path.resolve(__dirname, '..', 'shell', 'fits', 'fixtures')
-
-// Catalog-derived mappings so generated fixtures stay in sync with src/catalog-engine.js.
-const CATALOG_FIT_MAP = new Map(EVENT_FITS.map(fit => [fit.fitId, fit]))
-
-function catalogTemplateKinds (fitId) {
-  return (CATALOG_FIT_MAP.get(fitId) && CATALOG_FIT_MAP.get(fitId).templateKinds) || ['single-elimination']
-}
-
-function catalogEntrantShape (fitId) {
-  return (CATALOG_FIT_MAP.get(fitId) && CATALOG_FIT_MAP.get(fitId).entrantShape) || 'team'
-}
-
-function catalogRecommendedVariants (fitId) {
-  return (CATALOG_FIT_MAP.get(fitId) && CATALOG_FIT_MAP.get(fitId).recommendedVariants) || []
-}
-
-function catalogRecommendedMiniGames (fitId) {
-  return (CATALOG_FIT_MAP.get(fitId) && CATALOG_FIT_MAP.get(fitId).recommendedMiniGames) || []
-}
 
 function makeTheme (primary, secondary, accent, ink, soft, surface) {
   return {
@@ -424,172 +402,7 @@ function poolsForFit (fitId) {
   return base
 }
 
-// Deterministic pseudo-random helper so regenerated fixtures stay stable.
-function seededChoice (seed, choices) {
-  let hash = 0
-  for (let i = 0; i < seed.length; i++) {
-    hash = ((hash << 5) - hash) + seed.charCodeAt(i)
-    hash |= 0
-  }
-  return choices[Math.abs(hash) % choices.length]
-}
-
-function buildGroups (teams) {
-  const groupNames = ['Group A', 'Group B', 'Group C', 'Group D']
-  const baseRecords = [
-    [{ played: 3, wins: 2, draws: 1, losses: 0, points: 7, gd: 4 },
-     { played: 3, wins: 1, draws: 1, losses: 1, points: 4, gd: 0 },
-     { played: 3, wins: 1, draws: 0, losses: 2, points: 3, gd: -2 },
-     { played: 3, wins: 0, draws: 0, losses: 3, points: 0, gd: -2 }],
-    [{ played: 3, wins: 2, draws: 0, losses: 1, points: 6, gd: 2 },
-     { played: 3, wins: 1, draws: 2, losses: 0, points: 5, gd: 1 },
-     { played: 3, wins: 1, draws: 1, losses: 1, points: 4, gd: -1 },
-     { played: 3, wins: 0, draws: 1, losses: 2, points: 1, gd: -2 }],
-    [{ played: 3, wins: 2, draws: 1, losses: 0, points: 7, gd: 3 },
-     { played: 3, wins: 2, draws: 0, losses: 1, points: 6, gd: 2 },
-     { played: 3, wins: 0, draws: 1, losses: 2, points: 1, gd: -3 },
-     { played: 3, wins: 0, draws: 0, losses: 3, points: 0, gd: -2 }],
-    [{ played: 3, wins: 3, draws: 0, losses: 0, points: 9, gd: 5 },
-     { played: 3, wins: 1, draws: 1, losses: 1, points: 4, gd: 0 },
-     { played: 3, wins: 1, draws: 0, losses: 2, points: 3, gd: -2 },
-     { played: 3, wins: 0, draws: 1, losses: 2, points: 1, gd: -3 }]
-  ]
-  return groupNames.map((name, gi) => ({
-    name,
-    entrants: teams.slice(gi * 4, gi * 4 + 4).map((team, i) => ({
-      teamId: team.id,
-      name: team.name,
-      flag: team.flag,
-      ...baseRecords[gi][i]
-    }))
-  }))
-}
-
-function buildSeries (teams, fitId) {
-  const needed = fitId === 'sailgp-companion' ? 3 : 4
-  const records = [
-    { homeWins: 2, awayWins: 1 }, { homeWins: 1, awayWins: 2 },
-    { homeWins: 3, awayWins: 1 }, { homeWins: 2, awayWins: 0 },
-    { homeWins: 1, awayWins: 3 }, { homeWins: 2, awayWins: 2 },
-    { homeWins: 3, awayWins: 0 }, { homeWins: 0, awayWins: 2 }
-  ]
-  return teams.filter((_, i) => i % 2 === 0).map((home, i) => {
-    const away = teams[i * 2 + 1]
-    const rec = records[i]
-    const total = rec.homeWins + rec.awayWins
-    const games = []
-    for (let g = 0; g < total; g++) {
-      const homeScore = seededChoice(`${fitId}:${home.id}:${away.id}:g${g}:h`, [98, 104, 110, 101, 95])
-      const awayScore = seededChoice(`${fitId}:${home.id}:${away.id}:g${g}:a`, [96, 100, 107, 99, 102])
-      games.push({ number: g + 1, homeScore, awayScore })
-    }
-    const winner = rec.homeWins > rec.awayWins ? home.name : away.name
-    return {
-      id: `series-${i + 1}`,
-      home: home.id,
-      away: away.id,
-      homeName: home.name,
-      awayName: away.name,
-      homeWins: rec.homeWins,
-      awayWins: rec.awayWins,
-      needed,
-      status: rec.homeWins === needed || rec.awayWins === needed ? `${winner} wins series` : 'In progress',
-      games
-    }
-  })
-}
-
-function buildCategories (teams, fitId) {
-  const filmNames = ['Best Picture', 'Best Director', 'Best Actor', 'Best Actress']
-  const musicNames = ['Record of the Year', 'Album of the Year', 'Best Pop', 'Best Rock']
-  const isMusic = fitId === 'awards-prediction-pools' && teams.some(t => t.id === 'tayl')
-  const names = isMusic ? musicNames : filmNames
-  return names.map((name, ci) => ({
-    id: `cat-${ci + 1}`,
-    name,
-    nominees: teams.slice(ci * 4, ci * 4 + 4).map(t => t.id)
-  }))
-}
-
-function buildStandings (teams, fitId) {
-  const playedValues = [4, 5, 5, 6]
-  const winsValues = [4, 3, 2, 1]
-  const lossesValues = [0, 2, 3, 4]
-  const pointsValues = [12, 9, 6, 3]
-  return teams.map((team, i) => {
-    const slot = i % 4
-    return {
-      teamId: team.id,
-      name: team.name,
-      flag: team.flag,
-      played: playedValues[slot],
-      wins: winsValues[slot],
-      losses: lossesValues[slot],
-      points: pointsValues[slot]
-    }
-  })
-}
-
-function buildCreatorStage (teams) {
-  return {
-    name: 'Creator Bracket Stage',
-    rounds: [
-      { name: 'Round of 16', matchups: teams.filter((_, i) => i < 16).map((t, i) => ({ id: `creator-r16-${i + 1}`, slots: [t.id, teams[(i + 1) % teams.length].id] })) },
-      { name: 'Quarterfinals', matchups: teams.filter((_, i) => i < 8).map((t, i) => ({ id: `creator-qf-${i + 1}`, slots: [t.id, teams[(i + 2) % teams.length].id] })) }
-    ]
-  }
-}
-
-function buildTemplateData (fitId, teams) {
-  const kinds = catalogTemplateKinds(fitId)
-  const data = {}
-  if (kinds.includes('group-plus-knockout')) data.groups = buildGroups(teams)
-  if (kinds.includes('series-playoff')) data.series = buildSeries(teams, fitId)
-  if (kinds.includes('awards-card')) data.categories = buildCategories(teams, fitId)
-  if (kinds.includes('round-robin')) data.standings = buildStandings(teams, fitId)
-  if (kinds.includes('creator-custom')) data.customStage = buildCreatorStage(teams)
-  return data
-}
-
-function buildFixtureConfig (fit) {
-  const data = buildBracket(fit.entrants, fit.id)
-  const liveMatch = data.homeFixtures.find(f => f.live) || data.homeFixtures[0]
-  return {
-    fitId: fit.id,
-    title: fit.title,
-    subtitle: 'Ultimate Sports',
-    category: fit.category,
-    entrantShape: catalogEntrantShape(fit.id),
-    templateKinds: catalogTemplateKinds(fit.id),
-    recommendedVariants: catalogRecommendedVariants(fit.id),
-    recommendedMiniGames: catalogRecommendedMiniGames(fit.id),
-    defaultTeam: fit.defaultTeam,
-    theme: fit.theme,
-    entrants: data.teams,
-    teams: data.teams,
-    fixtures: data.homeFixtures,
-    homeFixtures: data.homeFixtures,
-    round32Matches: data.round32Matches,
-    bracketLinks: data.bracketLinks,
-    bracketMatchIds: data.bracketMatchIds,
-    liveMatch,
-    pools: poolsForFit(fit.id),
-    matchStats: fit.stats,
-    leaders: data.leaders,
-    commentary: data.commentary,
-    defaultChat: data.defaultChat,
-    gameRounds: data.gameRounds,
-    gameLeaderboardRows: data.gameLeaderboardRows,
-    templateData: buildTemplateData(fit.id, data.teams),
-    assets: { heroBackdrop: '../generated/fit-heroes/' + fit.id + '.svg' }
-  }
-}
-
-function serializeJsValue (value, indent = 2) {
-  return JSON.stringify(value, null, indent)
-}
-
-const genericLines = [
+const lines = [
   "// Generic themed fits for all non-MMA, non-World-Cup event shapes.",
   "// Generated by scripts/generate-generic-fit-data.js",
   "(function (root) {",
@@ -620,111 +433,65 @@ const genericLines = [
   ""
 ]
 
-const fixtureConfigs = fits.map(buildFixtureConfig)
-
-fixtureConfigs.forEach(cfg => {
-  const dataVar = `${cfg.fitId.replace(/-/g, '_')}_data`
-  genericLines.push(`  // ${cfg.title}`)
-  genericLines.push(`  const ${dataVar} = (function () {`)
-  genericLines.push(`    const teams = ${JSON.stringify(cfg.teams)}`)
-  genericLines.push(`    const round32Matches = ${JSON.stringify(cfg.round32Matches)}`)
-  genericLines.push(`    const bracketLinks = ${JSON.stringify(cfg.bracketLinks)}`)
-  genericLines.push(`    const bracketMatchIds = ${JSON.stringify(cfg.bracketMatchIds)}`)
-  genericLines.push(`    const homeFixtures = ${JSON.stringify(cfg.homeFixtures)}`)
-  genericLines.push(`    const leaders = ${JSON.stringify(cfg.leaders)}`)
-  genericLines.push(`    const gameLeaderboardRows = ${JSON.stringify(cfg.gameLeaderboardRows)}`)
-  genericLines.push(`    const gameRounds = ${JSON.stringify(cfg.gameRounds)}`)
-  genericLines.push(`    const commentary = ${JSON.stringify(cfg.commentary)}`)
-  genericLines.push(`    const defaultChat = ${JSON.stringify(cfg.defaultChat)}`)
-  genericLines.push(`    const templateData = ${JSON.stringify(cfg.templateData)}`)
-  genericLines.push(`    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat, templateData }`)
-  genericLines.push(`  })()`)
-  genericLines.push(``)
+fits.forEach(fit => {
+  const data = buildBracket(fit.entrants, fit.id)
+  lines.push(`  // ${fit.title}`)
+  lines.push(`  const ${fit.id.replace(/-/g, '_')}_data = (function () {`)
+  lines.push(`    const teams = ${JSON.stringify(data.teams)}`)
+  lines.push(`    const round32Matches = ${JSON.stringify(data.round32Matches)}`)
+  lines.push(`    const bracketLinks = ${JSON.stringify(data.bracketLinks)}`)
+  lines.push(`    const bracketMatchIds = ${JSON.stringify(data.bracketMatchIds)}`)
+  lines.push(`    const homeFixtures = ${JSON.stringify(data.homeFixtures)}`)
+  lines.push(`    const leaders = ${JSON.stringify(data.leaders)}`)
+  lines.push(`    const gameLeaderboardRows = ${JSON.stringify(data.gameLeaderboardRows)}`)
+  lines.push(`    const gameRounds = ${JSON.stringify(data.gameRounds)}`)
+  lines.push(`    const commentary = ${JSON.stringify(data.commentary)}`)
+  lines.push(`    const defaultChat = ${JSON.stringify(data.defaultChat)}`)
+  lines.push(`    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat }`)
+  lines.push(`  })()`)
+  lines.push(``)
 })
 
-genericLines.push(`  const fits = [`)
-fixtureConfigs.forEach(cfg => {
-  const dataVar = `${cfg.fitId.replace(/-/g, '_')}_data`
-  genericLines.push(`    {`)
-  genericLines.push(`      id: '${cfg.fitId}',`)
-  genericLines.push(`      title: '${cfg.title}',`)
-  genericLines.push(`      category: '${cfg.category}',`)
-  genericLines.push(`      entrantShape: '${cfg.entrantShape}',`)
-  genericLines.push(`      templateKinds: ${JSON.stringify(cfg.templateKinds)},`)
-  genericLines.push(`      recommendedVariants: ${JSON.stringify(cfg.recommendedVariants)},`)
-  genericLines.push(`      recommendedMiniGames: ${JSON.stringify(cfg.recommendedMiniGames)},`)
-  genericLines.push(`      defaultTeam: '${cfg.defaultTeam}',`)
-  genericLines.push(`      theme: makeTheme('${cfg.theme['--green']}', '${cfg.theme['--red']}', '${cfg.theme['--green-deep']}', '${cfg.theme['--ink']}', '${cfg.theme['--soft']}', '${cfg.theme['--surface']}'),`)
-  genericLines.push(`      data: ${dataVar}`)
-  genericLines.push(`    },`)
+lines.push(`  const fits = [`)
+fits.forEach(fit => {
+  const dataVar = `${fit.id.replace(/-/g, '_')}_data`
+  lines.push(`    {`)
+  lines.push(`      id: '${fit.id}',`)
+  lines.push(`      title: '${fit.title}',`)
+  lines.push(`      category: '${fit.category}',`)
+  lines.push(`      defaultTeam: '${fit.defaultTeam}',`)
+  lines.push(`      theme: makeTheme('${fit.theme['--green']}', '${fit.theme['--red']}', '${fit.theme['--green-deep']}', '${fit.theme['--ink']}', '${fit.theme['--soft']}', '${fit.theme['--surface']}'),`)
+  lines.push(`      data: ${dataVar}`)
+  lines.push(`    },`)
 })
-genericLines.push(`  ]`)
-genericLines.push(``)
-genericLines.push(`  fits.forEach(fit => {`)
-genericLines.push(`    const liveMatch = fit.data.homeFixtures.find(f => f.live) || fit.data.homeFixtures[0]`)
-genericLines.push(`    root.registerFit(fit.id, {`)
-genericLines.push(`      fitId: fit.id,`)
-genericLines.push(`      title: fit.title,`)
-genericLines.push(`      subtitle: 'Ultimate Sports',`)
-genericLines.push(`      category: fit.category,`)
-genericLines.push(`      entrantShape: fit.entrantShape,`)
-genericLines.push(`      templateKinds: fit.templateKinds,`)
-genericLines.push(`      recommendedVariants: fit.recommendedVariants,`)
-genericLines.push(`      recommendedMiniGames: fit.recommendedMiniGames,`)
-genericLines.push(`      defaultTeam: fit.defaultTeam,`)
-genericLines.push(`      theme: fit.theme,`)
-genericLines.push(`      entrants: fit.data.teams,`)
-genericLines.push(`      teams: fit.data.teams,`)
-genericLines.push(`      fixtures: fit.data.homeFixtures,`)
-genericLines.push(`      homeFixtures: fit.data.homeFixtures,`)
-genericLines.push(`      round32Matches: fit.data.round32Matches,`)
-genericLines.push(`      bracketLinks: fit.data.bracketLinks,`)
-genericLines.push(`      bracketMatchIds: fit.data.bracketMatchIds,`)
-genericLines.push(`      liveMatch,`)
-genericLines.push(`      pools: [{ tier: 10, entrants: 92, closes: '12h', max: 256, prize: '$920', heat: 'Open', rail: 'USDT demo' }, { tier: 25, entrants: 58, closes: '9h', max: 160, prize: '$1,450', heat: 'Hot', rail: 'USDT demo' }, { tier: 50, entrants: 32, closes: '7h', max: 96, prize: '$1,600', heat: 'Sharp', rail: 'USDT demo' }, { tier: 100, entrants: 16, closes: '5h', max: 64, prize: '$1,600', heat: 'Elite', rail: 'USDT demo' }],`)
-genericLines.push(`      matchStats: fit.stats,`)
-genericLines.push(`      leaders: fit.data.leaders,`)
-genericLines.push(`      commentary: fit.data.commentary,`)
-genericLines.push(`      defaultChat: fit.data.defaultChat,`)
-genericLines.push(`      gameRounds: fit.data.gameRounds,`)
-genericLines.push(`      gameLeaderboardRows: fit.data.gameLeaderboardRows,`)
-genericLines.push(`      templateData: fit.data.templateData,`)
-genericLines.push(`      assets: { heroBackdrop: '../generated/fit-heroes/' + fit.id + '.svg' },`)
-genericLines.push(`    })`)
-genericLines.push(`  })`)
-genericLines.push(`})(window)`)
-genericLines.push(``)
+lines.push(`  ]`)
+lines.push(``)
+lines.push(`  fits.forEach(fit => {`)
+lines.push(`    root.registerFit(fit.id, {`)
+lines.push(`      fitId: fit.id,`)
+lines.push(`      title: fit.title,`)
+lines.push(`      subtitle: 'Ultimate Sports',`)
+lines.push(`      category: fit.category,`)
+lines.push(`      entrantShape: 'team',`)
+lines.push(`      defaultTeam: fit.defaultTeam,`)
+lines.push(`      theme: fit.theme,`)
+lines.push(`      teams: fit.data.teams,`)
+lines.push(`      pools: [{ tier: 10, entrants: 92, closes: '12h', max: 256, prize: '$920', heat: 'Open', rail: 'USDT demo' }, { tier: 25, entrants: 58, closes: '9h', max: 160, prize: '$1,450', heat: 'Hot', rail: 'USDT demo' }, { tier: 50, entrants: 32, closes: '7h', max: 96, prize: '$1,600', heat: 'Sharp', rail: 'USDT demo' }, { tier: 100, entrants: 16, closes: '5h', max: 64, prize: '$1,600', heat: 'Elite', rail: 'USDT demo' }],`)
+lines.push(`      round32Matches: fit.data.round32Matches,`)
+lines.push(`      bracketLinks: fit.data.bracketLinks,`)
+lines.push(`      bracketMatchIds: fit.data.bracketMatchIds,`)
+lines.push(`      homeFixtures: fit.data.homeFixtures,`)
+lines.push(`      matchStats: fit.stats,`)
+lines.push(`      leaders: fit.data.leaders,`)
+lines.push(`      commentary: fit.data.commentary,`)
+lines.push(`      defaultChat: fit.data.defaultChat,`)
+lines.push(`      gameRounds: fit.data.gameRounds,`)
+lines.push(`      gameLeaderboardRows: fit.data.gameLeaderboardRows,`)
+      lines.push(`      assets: { heroBackdrop: '../generated/fit-heroes/' + fit.id + '.svg' },`)
+lines.push(`    })`)
+lines.push(`  })`)
+lines.push(`})(window)`)
+lines.push(``)
 
-fs.writeFileSync(OUT_FILE, genericLines.join('\n') + '\n')
+fs.writeFileSync(OUT_FILE, lines.join('\n') + '\n')
 console.log(`Wrote ${OUT_FILE}`)
-
-fs.mkdirSync(FIXTURES_DIR, { recursive: true })
-
-fixtureConfigs.forEach(cfg => {
-  const fixtureFile = path.join(FIXTURES_DIR, `${cfg.fitId}.js`)
-  const cfgClone = { ...cfg }
-  delete cfgClone.entrants
-  delete cfgClone.fixtures
-  const fixtureLines = [
-    `// ${cfg.title} fixture`,
-    `(function (root) {`,
-    `  'use strict'`,
-    ``,
-    `  const cfg = ${serializeJsValue(cfgClone, 2)}`,
-    ``,
-    `  cfg.entrants = cfg.teams`,
-    `  cfg.fixtures = cfg.homeFixtures`,
-    ``,
-    `  if (typeof root !== 'undefined' && typeof root.registerFit === 'function') {`,
-    `    root.registerFit(cfg.fitId, cfg)`,
-    `  }`,
-    ``,
-    `  if (typeof module !== 'undefined' && module.exports) {`,
-    `    module.exports = cfg`,
-    `  }`,
-    `})(typeof window !== 'undefined' ? window : globalThis)`,
-    ``
-  ]
-  fs.writeFileSync(fixtureFile, fixtureLines.join('\n'))
-  console.log(`Wrote ${fixtureFile}`)
-})

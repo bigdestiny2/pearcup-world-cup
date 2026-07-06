@@ -21,6 +21,8 @@ const qvac = require('./qvac-engine')
 const room = require('./room-engine')
 const settlement = require('./settlement-engine')
 const wallet = require('./wallet-engine')
+const wdk = require('./wdk-adapter-engine')
+const miniGameRunner = require('./mini-game-runner-engine')
 
 function createPlatformRuntime ({ events = [] } = {}) {
   const log = eventLog.createEventLog(events)
@@ -202,6 +204,21 @@ function createPlatformRuntime ({ events = [] } = {}) {
           createdAt: payload.createdAt || command.occurredAt
         })
         return append('QvacTriviaBankCreated', item, actorId, command.occurredAt)
+      }
+      case 'qvac:reviewResultEvidence': {
+        const evidenceEvents = qvacEvidenceEvents({
+          log,
+          payload,
+          fallbackEvents: payload.fixtureId
+            ? log.events().filter(event => event.payload && event.payload.fixtureId === payload.fixtureId)
+            : []
+        })
+        const item = qvac.createResultEvidenceReview({
+          ...payload,
+          evidenceEvents,
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('QvacResultEvidenceReviewCreated', item, actorId, command.occurredAt)
       }
       case 'creator:draftCompetition': {
         const item = creator.createCreatorCompetitionDraft({
@@ -648,15 +665,40 @@ function createPlatformRuntime ({ events = [] } = {}) {
         const settlementResult = payload.settlementResult || settlementResultForPlan(current, plan)
         if (!settlementResult) throw new Error(`settlement result not found: ${plan.targetType || 'pool'}:${plan.targetId || plan.poolId}`)
         const sourceEvents = payload.sourceEvents || log.events().filter(event => (plan.sourceEventIds || []).includes(event.eventId))
+        const requiredTypes = payload.requiredTypes || requiredEvidenceTypesForPlan(current, plan)
         const receipt = settlement.createSettlementReceipt({
           settlementPlan: plan,
           settlementResult,
           sourceEvents,
-          requiredTypes: payload.requiredTypes,
+          requiredTypes,
           eventRoot: log.root(),
           createdAt: payload.createdAt || command.occurredAt
         })
         return append('SettlementReceiptCreated', receipt, actorId, command.occurredAt)
+      }
+      case 'settlement:preparePayout': {
+        const receipt = payload.receipt || current.settlementReceipts[payload.receiptId]
+        if (!receipt) throw new Error(`settlement receipt not found: ${payload.receiptId}`)
+        if (receipt.status !== 'complete') throw new Error(`settlement receipt is not complete: ${receipt.receiptId}`)
+        const record = wdk.createPoolPayout({
+          poolId: payload.poolId || receipt.body.poolId || receipt.body.targetId,
+          receiptId: receipt.receiptId,
+          winnerUserIds: payload.winnerUserIds || receipt.body.winnerUserIds,
+          amountPerWinner: payload.amountPerWinner,
+          currency: payload.currency,
+          mode: payload.mode || 'demo',
+          ledgerEntries: payload.ledgerEntries || ledgerEntriesForWdkAction(current, {
+            userIds: payload.winnerUserIds || receipt.body.winnerUserIds,
+            currency: payload.currency,
+            mode: payload.mode || 'demo',
+            amount: payload.amountPerWinner,
+            type: 'award',
+            reason: 'pool payout',
+            sourceType: 'pool',
+            sourceId: payload.poolId || receipt.body.poolId || receipt.body.targetId
+          })
+        })
+        return append('TetherWdkPoolPayoutPrepared', record, actorId, command.occurredAt)
       }
       case 'sponsor:createFulfillment': {
         const receipt = payload.receipt || current.settlementReceipts[payload.receiptId]
@@ -722,6 +764,132 @@ function createPlatformRuntime ({ events = [] } = {}) {
           createdAt: payload.createdAt || command.occurredAt
         })
         return append('WalletRewardsGranted', grant, actorId, command.occurredAt)
+      }
+      case 'wdk:createGameEscrow': {
+        const record = wdk.createGameEscrow({
+          ...payload,
+          ledgerEntries: payload.ledgerEntries || ledgerEntriesForWdkAction(current, {
+            userIds: payload.userIds,
+            currency: payload.currency,
+            mode: payload.mode,
+            amount: payload.amountPerPlayer,
+            type: 'debit',
+            reason: 'mini-game escrow',
+            sourceType: 'game',
+            sourceId: payload.gameId
+          })
+        })
+        return append('TetherWdkGameEscrowLocked', record, actorId, command.occurredAt)
+      }
+      case 'wdk:releaseGameEscrow': {
+        const escrow = payload.escrow || current.wdkGameEscrows[payload.escrowId]
+        if (!escrow) throw new Error(`game escrow not found: ${payload.escrowId}`)
+        const record = wdk.releaseGameEscrow({
+          ...payload,
+          escrow,
+          releasedAmount: payload.releasedAmount != null ? payload.releasedAmount : escrow.totalAmount,
+          ledgerEntries: payload.ledgerEntries || ledgerEntriesForWdkAction(current, {
+            userIds: payload.winnerUserIds,
+            currency: escrow.currency,
+            mode: escrow.mode,
+            amount: payload.amountPerWinner || escrow.amountPerPlayer,
+            type: 'award',
+            reason: 'mini-game payout',
+            sourceType: 'game',
+            sourceId: escrow.gameId
+          })
+        })
+        return append('TetherWdkEscrowReleased', record, actorId, command.occurredAt)
+      }
+      case 'wdk:refundGameEscrow': {
+        const escrow = payload.escrow || current.wdkGameEscrows[payload.escrowId]
+        if (!escrow) throw new Error(`game escrow not found: ${payload.escrowId}`)
+        const record = wdk.refundGameEscrow({
+          ...payload,
+          escrow,
+          refundedAmount: payload.refundedAmount != null ? payload.refundedAmount : escrow.totalAmount,
+          ledgerEntries: payload.ledgerEntries || ledgerEntriesForWdkAction(current, {
+            userIds: payload.userIds || escrow.userIds,
+            currency: escrow.currency,
+            mode: escrow.mode,
+            amount: payload.amountPerUser || escrow.amountPerPlayer,
+            type: 'credit',
+            reason: 'mini-game refund',
+            sourceType: 'game',
+            sourceId: escrow.gameId
+          })
+        })
+        return append('TetherWdkEscrowRefunded', record, actorId, command.occurredAt)
+      }
+      case 'wdk:createEntryIntent': {
+        const record = wdk.createEntryIntent({
+          ...payload,
+          ledgerEntries: payload.ledgerEntries || ledgerEntriesForWdkAction(current, {
+            userIds: [payload.userId],
+            currency: payload.currency,
+            mode: payload.mode,
+            amount: payload.amount,
+            type: 'debit',
+            reason: 'pool entry',
+            sourceType: 'pool',
+            sourceId: payload.poolId
+          })
+        })
+        return append('TetherWdkEntryIntentCreated', record, actorId, command.occurredAt)
+      }
+      case 'wdk:confirmEntryIntent': {
+        const intent = payload.intent || current.wdkEntryIntents[payload.intentId]
+        if (!intent) throw new Error(`entry intent not found: ${payload.intentId}`)
+        const record = wdk.confirmEntryIntent({ ...payload, intent })
+        return append('TetherWdkEntryConfirmed', record, actorId, command.occurredAt)
+      }
+      case 'wdk:reconcileEntryIntent': {
+        const intent = payload.intent || current.wdkEntryIntents[payload.intentId]
+        if (!intent) throw new Error(`entry intent not found: ${payload.intentId}`)
+        const record = wdk.reconcileEntryIntent({ ...payload, intent })
+        return append('TetherWdkEntryReconciled', record, actorId, command.occurredAt)
+      }
+      case 'wdk:refundEntryIntent': {
+        const intent = payload.intent || current.wdkEntryIntents[payload.intentId]
+        if (!intent) throw new Error(`entry intent not found: ${payload.intentId}`)
+        const record = wdk.refundEntryIntent({
+          ...payload,
+          intent,
+          ledgerEntries: payload.ledgerEntries || ledgerEntriesForWdkAction(current, {
+            userIds: [intent.userId],
+            currency: intent.currency,
+            mode: intent.mode,
+            amount: intent.amount,
+            type: 'credit',
+            reason: 'pool entry refund',
+            sourceType: 'pool',
+            sourceId: intent.poolId
+          })
+        })
+        return append('TetherWdkEntryRefunded', record, actorId, command.occurredAt)
+      }
+      case 'wdk:createPoolPayout': {
+        const receipt = payload.receiptId ? (current.settlementReceipts[payload.receiptId] || null) : null
+        if (payload.receiptId && !receipt) throw new Error(`settlement receipt not found: ${payload.receiptId}`)
+        const record = wdk.createPoolPayout({
+          ...payload,
+          receiptId: receipt ? receipt.receiptId : (payload.receiptId || null),
+          winnerUserIds: payload.winnerUserIds || (receipt && receipt.body.winnerUserIds) || [],
+          amountPerWinner: payload.amountPerWinner,
+          currency: payload.currency,
+          mode: payload.mode,
+          ledgerEntries: payload.ledgerEntries || ledgerEntriesForWdkAction(current, {
+            userIds: payload.winnerUserIds || (receipt && receipt.body.winnerUserIds) || [],
+            currency: payload.currency,
+            mode: payload.mode,
+            amount: payload.amountPerWinner,
+            type: 'award',
+            reason: 'pool payout',
+            sourceType: 'pool',
+            sourceId: payload.poolId || (receipt && (receipt.body.poolId || receipt.body.targetId)) || null
+          })
+        })
+        return append('TetherWdkPoolPayoutPrepared', record, actorId, command.occurredAt)
       }
       case 'market:create': {
         const market = livePrediction.createPredictionMarket(payload)
@@ -864,6 +1032,50 @@ function createPlatformRuntime ({ events = [] } = {}) {
         })
         return append('DraftSlateResolved', item, actorId, command.occurredAt)
       }
+      case 'mini-game:createRun': {
+        const plan = miniGameRunner.createMiniGameRunPlan({
+          fitId: payload.fitId,
+          gameType: payload.gameType,
+          settlementMode: payload.settlementMode || 'demo',
+          roomId: payload.roomId,
+          competitionId: payload.competitionId,
+          fixtureId: payload.fixtureId || null,
+          players: payload.players,
+          userIds: payload.userIds,
+          createdAt: payload.createdAt || command.occurredAt
+        })
+        return append('MiniGameRunCreated', plan, actorId, command.occurredAt)
+      }
+      case 'mini-game:resolveRun': {
+        const run = payload.run || current.miniGameRuns[payload.runId]
+        if (!run) throw new Error(`mini-game run not found: ${payload.runId}`)
+        const resolved = miniGameRunner.resolveMiniGameRun({
+          plan: run,
+          reveals: payload.reveals || [],
+          result: payload.result || {},
+          predictions: payload.predictions || [],
+          entries: payload.entries || [],
+          athleteStats: payload.athleteStats || {},
+          marketResolutions: payload.marketResolutions || [],
+          userIds: payload.userIds || [],
+          evidenceEvents: payload.evidenceEvents || [],
+          qvacInput: payload.qvacInput || {},
+          resolvedAt: payload.resolvedAt || command.occurredAt
+        })
+        return append('MiniGameRunResolved', resolved, actorId, command.occurredAt)
+      }
+      case 'mini-game:attest': {
+        const resolution = payload.resolution || current.miniGameRunResolutions[payload.runId]
+        if (!resolution) throw new Error(`mini-game run resolution not found: ${payload.runId}`)
+        const packet = resolution.refereePacket || null
+        return append('MiniGameAttestationCreated', {
+          runId: resolution.runId,
+          fitId: resolution.fitId,
+          gameType: resolution.gameType,
+          refereePacket: packet,
+          createdAt: payload.createdAt || command.occurredAt
+        }, actorId, command.occurredAt)
+      }
       default:
         throw new Error(`unknown command: ${command.type}`)
     }
@@ -908,6 +1120,8 @@ function derivePlatformView (events = []) {
     creatorCompetitionDrafts: {},
     creatorPublishPlans: {},
     qvacTriviaBanks: {},
+    qvacResultEvidenceReviews: {},
+    qvacResultEvidenceReviewsByTarget: {},
     qvacModerationReviews: {},
     qvacModerationReviewsByMessage: {},
     spectatorReplays: {},
@@ -953,6 +1167,16 @@ function derivePlatformView (events = []) {
     walletBalances: {},
     payoutRoutes: {},
     walletRewardGrants: {},
+    wdkGameEscrows: {},
+    wdkEscrowReleases: {},
+    wdkEscrowRefunds: {},
+    wdkEntryIntents: {},
+    wdkEntryConfirmations: {},
+    wdkEntryReconciliations: {},
+    wdkEntryRefunds: {},
+    wdkPoolPayouts: {},
+    miniGameRuns: {},
+    miniGameRunResolutions: {},
     markets: {},
     watchPredictions: {},
     marketResolutions: {},
@@ -1035,6 +1259,11 @@ function derivePlatformView (events = []) {
       case 'QvacTriviaBankCreated':
         indexQvacRecord(view, payload)
         view.qvacTriviaBanks[payload.qvacRecordId] = payload
+        break
+      case 'QvacResultEvidenceReviewCreated':
+        indexQvacRecord(view, payload)
+        view.qvacResultEvidenceReviews[payload.qvacRecordId] = payload
+        appendIndexedId(view.qvacResultEvidenceReviewsByTarget, targetKey(payload.targetType, payload.targetId), payload.qvacRecordId)
         break
       case 'QvacModerationReviewCreated':
         indexQvacRecord(view, payload)
@@ -1195,6 +1424,48 @@ function derivePlatformView (events = []) {
           view.walletLedgerEntries[entry.entryId] = entry
         })
         break
+      case 'TetherWdkGameEscrowLocked':
+        view.wdkGameEscrows[payload.escrowId] = payload
+        ;(payload.ledgerEntries || []).forEach(entry => {
+          view.walletLedgerEntries[entry.entryId] = entry
+        })
+        break
+      case 'TetherWdkEscrowReleased':
+        view.wdkEscrowReleases[payload.releaseId] = payload
+        ;(payload.ledgerEntries || []).forEach(entry => {
+          view.walletLedgerEntries[entry.entryId] = entry
+        })
+        break
+      case 'TetherWdkEscrowRefunded':
+        view.wdkEscrowRefunds[payload.refundId] = payload
+        ;(payload.ledgerEntries || []).forEach(entry => {
+          view.walletLedgerEntries[entry.entryId] = entry
+        })
+        break
+      case 'TetherWdkEntryIntentCreated':
+        view.wdkEntryIntents[payload.intentId] = payload
+        ;(payload.ledgerEntries || []).forEach(entry => {
+          view.walletLedgerEntries[entry.entryId] = entry
+        })
+        break
+      case 'TetherWdkEntryConfirmed':
+        view.wdkEntryConfirmations[payload.confirmationId] = payload
+        break
+      case 'TetherWdkEntryReconciled':
+        view.wdkEntryReconciliations[payload.reconciliationId] = payload
+        break
+      case 'TetherWdkEntryRefunded':
+        view.wdkEntryRefunds[payload.refundId] = payload
+        ;(payload.ledgerEntries || []).forEach(entry => {
+          view.walletLedgerEntries[entry.entryId] = entry
+        })
+        break
+      case 'TetherWdkPoolPayoutPrepared':
+        view.wdkPoolPayouts[payload.payoutId] = payload
+        ;(payload.ledgerEntries || []).forEach(entry => {
+          view.walletLedgerEntries[entry.entryId] = entry
+        })
+        break
       case 'PayoutRouteCreated':
         view.payoutRoutes[payload.routeId] = payload
         break
@@ -1211,6 +1482,26 @@ function derivePlatformView (events = []) {
         break
       case 'WatchPredictionStreakResolved':
         view.streakResolutions[payload.streakId] = payload
+        break
+      case 'MiniGameRunCreated':
+        view.miniGameRuns[payload.runId] = payload
+        break
+      case 'MiniGameRunResolved':
+        view.miniGameRunResolutions[payload.runId] = payload
+        if (payload.refereePacket && payload.refereePacket.attestation) {
+          view.attestations[payload.refereePacket.attestation.attestationId] = payload.refereePacket.attestation
+          appendIndexedId(view.attestationsByTarget, targetKey(payload.refereePacket.attestation.targetType, payload.refereePacket.attestation.targetId), payload.refereePacket.attestation.attestationId)
+        }
+        break
+      case 'MiniGameAttestationCreated':
+        if (payload.refereePacket && payload.refereePacket.attestation) {
+          view.attestations[payload.refereePacket.attestation.attestationId] = payload.refereePacket.attestation
+          appendIndexedId(view.attestationsByTarget, targetKey(payload.refereePacket.attestation.targetType, payload.refereePacket.attestation.targetId), payload.refereePacket.attestation.attestationId)
+          if (payload.refereePacket.questionBank) {
+            view.qvacRecords[payload.refereePacket.questionBank.qvacRecordId] = payload.refereePacket.questionBank
+            view.qvacTriviaBanks[payload.refereePacket.questionBank.qvacRecordId] = payload.refereePacket.questionBank
+          }
+        }
         break
       case 'PeerGameSessionCreated':
       case 'PeerGameSessionStarted':
@@ -1408,10 +1699,53 @@ function accountsByUserForReward (view, payload = {}) {
   return accountsByUserId
 }
 
+function accountForUser (view, userId, currency = 'CREDITS', mode = 'demo-credit') {
+  const account = Object.values(view.walletAccounts).find(a =>
+    a.userId === userId && a.currency === currency && a.status === 'active'
+  )
+  if (account) return account
+  const fallback = Object.values(view.walletAccounts).find(a =>
+    a.userId === userId && a.status === 'active'
+  )
+  if (fallback) return fallback
+  throw new Error(`wallet account not found for user: ${userId}`)
+}
+
+function ledgerEntriesForWdkAction (view, { userIds, currency, mode, amount, type, reason, sourceType, sourceId } = {}) {
+  if (!Array.isArray(userIds) || userIds.length === 0) return []
+  const entries = []
+  for (const userId of userIds) {
+    const account = accountForUser(view, userId, currency || 'CREDITS', mode || 'demo-credit')
+    entries.push(wallet.createLedgerEntry({
+      accountId: account.accountId,
+      userId,
+      type,
+      amount,
+      currency: currency || account.currency || 'CREDITS',
+      reason: reason || 'WDK action',
+      sourceType: sourceType || null,
+      sourceId: sourceId || null
+    }))
+  }
+  return entries
+}
+
 function feedFramesForAdapter (view, adapterId, frameIds = null) {
   const selectedFrameIds = Array.isArray(frameIds) ? new Set(frameIds) : null
   return Object.values(view.feedFrames || {})
     .filter(frame => frame.adapterId === adapterId && (!selectedFrameIds || selectedFrameIds.has(frame.frameId)))
+}
+
+function requiredEvidenceTypesForPlan (view, plan = {}) {
+  if (plan.mode !== 'real-money' && plan.mode !== 'sponsor-prize') return []
+  if (plan.targetType !== 'pool') return []
+  const pool = view.pools[plan.poolId || plan.targetId]
+  const competition = pool && view.competitions[pool.competitionId]
+  const resultSource = competition && (competition.resultPolicy || (competition.metadata && competition.metadata.resultSource))
+  if (resultSource && resultSource !== 'official-feed') {
+    return ['QvacResultEvidenceReviewCreated']
+  }
+  return []
 }
 
 function feedFramesForCompetition (view, competitionId, fixtureId = null) {
@@ -1506,6 +1840,7 @@ function disputeTargetExists (view, targetType, targetId) {
   if (targetType === 'qvac-commentary') return Boolean(view.qvacCommentaryFrames[targetId])
   if (targetType === 'qvac-creator-draft') return Boolean(view.qvacCreatorDrafts[targetId])
   if (targetType === 'qvac-trivia-bank') return Boolean(view.qvacTriviaBanks[targetId])
+  if (targetType === 'qvac-result-evidence') return Boolean(view.qvacResultEvidenceReviews[targetId])
   if (targetType === 'qvac-moderation-review') return Boolean(view.qvacModerationReviews[targetId])
   if (targetType === 'compliance-profile') {
     return Boolean(view.complianceProfiles[targetId] || Object.values(view.complianceProfiles).some(item => item.complianceProfileId === targetId))
@@ -1549,6 +1884,7 @@ function eventTouchesTarget (event = {}, targetType, targetId) {
   if (targetType === 'qvac-commentary') return payload.qvacRecordId === targetId && payload.lane === 'commentary'
   if (targetType === 'qvac-creator-draft') return payload.qvacRecordId === targetId && payload.lane === 'creator-assistant'
   if (targetType === 'qvac-trivia-bank') return payload.qvacRecordId === targetId && payload.lane === 'trivia-bank'
+  if (targetType === 'qvac-result-evidence') return payload.qvacRecordId === targetId && payload.lane === 'result-evidence'
   if (targetType === 'qvac-moderation-review') return payload.qvacRecordId === targetId && payload.lane === 'moderation-helper'
   if (targetType === 'compliance-profile') return payload.userId === targetId || payload.complianceProfileId === targetId
   if (targetType === 'responsible-limit') return payload.limitId === targetId

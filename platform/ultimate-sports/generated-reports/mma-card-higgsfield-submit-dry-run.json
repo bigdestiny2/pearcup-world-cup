@@ -1,0 +1,1027 @@
+{
+  "submissionVersion": "ultimate-sports-mma-card-higgsfield-submission-v1",
+  "generatedAt": "2026-07-04T00:00:00.000Z",
+  "provider": "higgsfield-api",
+  "dryRun": true,
+  "overallStatus": "dry-run-blocked",
+  "readyForSubmission": false,
+  "requestCount": 13,
+  "submittedCount": 0,
+  "failedCount": 0,
+  "blockers": [
+    "HIGGSFIELD_API_KEY is not configured in the backend runtime",
+    "HIGGSFIELD_API_CREATE_PATH is required because Higgsfield raw API endpoints are account/contract specific"
+  ],
+  "requestPlan": {
+    "requestPlanVersion": "ultimate-sports-mma-card-higgsfield-api-request-plan-v1",
+    "provider": "higgsfield-api",
+    "surface": "raw-api",
+    "serverOnly": true,
+    "noClientSecrets": true,
+    "readyForSubmission": false,
+    "apiBaseUrl": "https://api.higgsfield.ai",
+    "createPath": null,
+    "auth": {
+      "type": "bearer",
+      "header": "Authorization",
+      "env": "HIGGSFIELD_API_KEY",
+      "redactedValue": null
+    },
+    "requiredEnv": [
+      "HIGGSFIELD_API_KEY"
+    ],
+    "requiredConfig": [
+      "HIGGSFIELD_API_CREATE_PATH"
+    ],
+    "missingEnv": [
+      "HIGGSFIELD_API_KEY"
+    ],
+    "missingConfig": [
+      "HIGGSFIELD_API_CREATE_PATH"
+    ],
+    "blockers": [
+      "HIGGSFIELD_API_KEY is not configured in the backend runtime",
+      "HIGGSFIELD_API_CREATE_PATH is required because Higgsfield raw API endpoints are account/contract specific"
+    ],
+    "queueJobCount": 13,
+    "requestCount": 13,
+    "requests": [
+      {
+        "requestId": "higgsfield-request-higgsfield-lobby-icon-cb6bb7b2-6f0671da",
+        "jobId": "higgsfield-lobby-icon-cb6bb7b2",
+        "assetType": "lobby-icon",
+        "kind": "image",
+        "method": "POST",
+        "url": null,
+        "headers": {
+          "Authorization": "Bearer [redacted]",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "metadata": {
+            "tournamentId": "mma-card",
+            "title": "MMA Fight Card",
+            "jobId": "higgsfield-lobby-icon-cb6bb7b2",
+            "assetType": "lobby-icon",
+            "outputTargets": [
+              {
+                "variant": "full-color",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/lobby-icon/full-color.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "single-color-mask",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/lobby-icon/single-color-mask.png",
+                "status": "pending-generation"
+              }
+            ]
+          },
+          "generationType": "image",
+          "prompt": "MMA Fight Card square app icon, abstract octagon cage outline, red and blue corner glow, matte black canvas, subtle gold edge sparks, crisp silhouette readable at 24px, transparent-safe border, premium mixed martial arts broadcast, octagon-inspired cage geometry, red corner and blue corner tension, matte black arena darkness, canvas white fight surface, championship gold accent sparks, dramatic walkout light beams, mobile-safe interface negative space, no official league logos, no real fighter likenesses, production-ready mobile app asset, leave clean negative space for dynamic UI text, high contrast, polished sports broadcast finish",
+          "negativePrompt": "letters, words, official promotion logos, real fighter faces, blood, gore, brand marks",
+          "aspectRatios": [
+            "1:1"
+          ],
+          "modelHints": [
+            "Nano Banana Pro",
+            "GPT Image 2",
+            "Seedream 4.5"
+          ],
+          "resolution": "1024x1024",
+          "variants": [
+            "full-color",
+            "single-color-mask"
+          ]
+        },
+        "outputTargets": [
+          {
+            "variant": "full-color",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/lobby-icon/full-color.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "single-color-mask",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/lobby-icon/single-color-mask.png",
+            "status": "pending-generation"
+          }
+        ]
+      },
+      {
+        "requestId": "higgsfield-request-higgsfield-server-card-cover-c333a4dd-d45de9ea",
+        "jobId": "higgsfield-server-card-cover-c333a4dd",
+        "assetType": "server-card-cover",
+        "kind": "image",
+        "method": "POST",
+        "url": null,
+        "headers": {
+          "Authorization": "Bearer [redacted]",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "metadata": {
+            "tournamentId": "mma-card",
+            "title": "MMA Fight Card",
+            "jobId": "higgsfield-server-card-cover-c333a4dd",
+            "assetType": "server-card-cover",
+            "outputTargets": [
+              {
+                "variant": "desktop-cover",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/server-card-cover/desktop-cover.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "mobile-crop",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/server-card-cover/mobile-crop.png",
+                "status": "pending-generation"
+              }
+            ]
+          },
+          "generationType": "image",
+          "prompt": "MMA Fight Card premium fight-night server card cover, empty cage under arena lights, red corner and blue corner towels, cinematic haze, center-safe subject, open top-left title space, premium mixed martial arts broadcast, octagon-inspired cage geometry, red corner and blue corner tension, matte black arena darkness, canvas white fight surface, championship gold accent sparks, dramatic walkout light beams, mobile-safe interface negative space, no official league logos, no real fighter likenesses, production-ready mobile app asset, leave clean negative space for dynamic UI text, high contrast, polished sports broadcast finish",
+          "negativePrompt": "UFC logo, real sponsor boards, readable venue names, real fighter likenesses, excessive violence",
+          "aspectRatios": [
+            "4:3",
+            "16:9"
+          ],
+          "modelHints": [
+            "Nano Banana Pro",
+            "GPT Image 2",
+            "Seedream 4.5"
+          ],
+          "resolution": "1600x1200",
+          "variants": [
+            "desktop-cover",
+            "mobile-crop"
+          ]
+        },
+        "outputTargets": [
+          {
+            "variant": "desktop-cover",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/server-card-cover/desktop-cover.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "mobile-crop",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/server-card-cover/mobile-crop.png",
+            "status": "pending-generation"
+          }
+        ]
+      },
+      {
+        "requestId": "higgsfield-request-higgsfield-motion-server-card-cover-b3b1159b-aa430f3b",
+        "jobId": "higgsfield-motion-server-card-cover-b3b1159b",
+        "assetType": "server-card-cover",
+        "kind": "video-loop",
+        "method": "POST",
+        "url": null,
+        "headers": {
+          "Authorization": "Bearer [redacted]",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "metadata": {
+            "tournamentId": "mma-card",
+            "title": "MMA Fight Card",
+            "jobId": "higgsfield-motion-server-card-cover-b3b1159b",
+            "assetType": "server-card-cover",
+            "outputTargets": [
+              {
+                "variant": "motion-loop",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/server-card-cover/motion-loop.mp4",
+                "status": "pending-generation"
+              }
+            ]
+          },
+          "generationType": "video-loop",
+          "prompt": "6 second cinematic loop from the Fight Card Server Cover: subtle arena light movement, drifting haze, slow broadcast camera push, no text, no logos, no identifiable people",
+          "negativePrompt": "UFC logo, real sponsor boards, readable venue names, real fighter likenesses, excessive violence",
+          "aspectRatios": [
+            "4:3",
+            "16:9"
+          ],
+          "modelHints": [
+            "Seedance 2.0",
+            "Veo 3.1",
+            "Cinema Studio 3.0"
+          ],
+          "durationSeconds": 6
+        },
+        "outputTargets": [
+          {
+            "variant": "motion-loop",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/server-card-cover/motion-loop.mp4",
+            "status": "pending-generation"
+          }
+        ]
+      },
+      {
+        "requestId": "higgsfield-request-higgsfield-hero-backdrop-8a1e6084-e347b488",
+        "jobId": "higgsfield-hero-backdrop-8a1e6084",
+        "assetType": "hero-backdrop",
+        "kind": "image",
+        "method": "POST",
+        "url": null,
+        "headers": {
+          "Authorization": "Bearer [redacted]",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "metadata": {
+            "tournamentId": "mma-card",
+            "title": "MMA Fight Card",
+            "jobId": "higgsfield-hero-backdrop-8a1e6084",
+            "assetType": "hero-backdrop",
+            "outputTargets": [
+              {
+                "variant": "wide",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/hero-backdrop/wide.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "vertical",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/hero-backdrop/vertical.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "tablet",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/hero-backdrop/tablet.png",
+                "status": "pending-generation"
+              }
+            ]
+          },
+          "generationType": "image",
+          "prompt": "MMA Fight Card wide cinematic hero backdrop for a mixed martial arts card, walkout tunnel lights leading toward an empty cage, canvas white center, matte black crowd falloff, red and blue corner rim lights, broad negative space for UI, premium mixed martial arts broadcast, octagon-inspired cage geometry, red corner and blue corner tension, matte black arena darkness, canvas white fight surface, championship gold accent sparks, dramatic walkout light beams, mobile-safe interface negative space, no official league logos, no real fighter likenesses, production-ready mobile app asset, leave clean negative space for dynamic UI text, high contrast, polished sports broadcast finish",
+          "negativePrompt": "official logos, text, close-up injuries, identifiable athletes, copyrighted marks",
+          "aspectRatios": [
+            "16:9",
+            "9:16",
+            "4:3"
+          ],
+          "modelHints": [
+            "Nano Banana Pro",
+            "GPT Image 2",
+            "Seedream 4.5"
+          ],
+          "resolution": "3840x2160",
+          "variants": [
+            "wide",
+            "vertical",
+            "tablet"
+          ]
+        },
+        "outputTargets": [
+          {
+            "variant": "wide",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/hero-backdrop/wide.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "vertical",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/hero-backdrop/vertical.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "tablet",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/hero-backdrop/tablet.png",
+            "status": "pending-generation"
+          }
+        ]
+      },
+      {
+        "requestId": "higgsfield-request-higgsfield-motion-hero-backdrop-cb192ca9-6bf55496",
+        "jobId": "higgsfield-motion-hero-backdrop-cb192ca9",
+        "assetType": "hero-backdrop",
+        "kind": "video-loop",
+        "method": "POST",
+        "url": null,
+        "headers": {
+          "Authorization": "Bearer [redacted]",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "metadata": {
+            "tournamentId": "mma-card",
+            "title": "MMA Fight Card",
+            "jobId": "higgsfield-motion-hero-backdrop-cb192ca9",
+            "assetType": "hero-backdrop",
+            "outputTargets": [
+              {
+                "variant": "motion-loop",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/hero-backdrop/motion-loop.mp4",
+                "status": "pending-generation"
+              }
+            ]
+          },
+          "generationType": "video-loop",
+          "prompt": "6 second cinematic loop from the Fight Night Hero Backdrop: subtle arena light movement, drifting haze, slow broadcast camera push, no text, no logos, no identifiable people",
+          "negativePrompt": "official logos, text, close-up injuries, identifiable athletes, copyrighted marks",
+          "aspectRatios": [
+            "16:9",
+            "9:16",
+            "4:3"
+          ],
+          "modelHints": [
+            "Seedance 2.0",
+            "Veo 3.1",
+            "Cinema Studio 3.0"
+          ],
+          "durationSeconds": 6
+        },
+        "outputTargets": [
+          {
+            "variant": "motion-loop",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/hero-backdrop/motion-loop.mp4",
+            "status": "pending-generation"
+          }
+        ]
+      },
+      {
+        "requestId": "higgsfield-request-higgsfield-bracket-board-skin-5342db0b-ebc96212",
+        "jobId": "higgsfield-bracket-board-skin-5342db0b",
+        "assetType": "bracket-board-skin",
+        "kind": "image",
+        "method": "POST",
+        "url": null,
+        "headers": {
+          "Authorization": "Bearer [redacted]",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "metadata": {
+            "tournamentId": "mma-card",
+            "title": "MMA Fight Card",
+            "jobId": "higgsfield-bracket-board-skin-5342db0b",
+            "assetType": "bracket-board-skin",
+            "outputTargets": [
+              {
+                "variant": "bout-list-board",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/bracket-board-skin/bout-list-board.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "scorecard-board",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/bracket-board-skin/scorecard-board.png",
+                "status": "pending-generation"
+              }
+            ]
+          },
+          "generationType": "image",
+          "prompt": "MMA Fight Card UI skin for a fight-card bout list, judge scorecard paper texture, round-number chips, method-result slots, subtle cage mesh pattern, strong contrast but calm enough for dense data, premium mixed martial arts broadcast, octagon-inspired cage geometry, red corner and blue corner tension, matte black arena darkness, canvas white fight surface, championship gold accent sparks, dramatic walkout light beams, mobile-safe interface negative space, no official league logos, no real fighter likenesses, production-ready mobile app asset, leave clean negative space for dynamic UI text, high contrast, polished sports broadcast finish",
+          "negativePrompt": "busy posters, official logos, unreadable texture, embedded text, fighter photos",
+          "aspectRatios": [
+            "16:9"
+          ],
+          "modelHints": [
+            "Nano Banana Pro",
+            "GPT Image 2",
+            "Seedream 4.5"
+          ],
+          "resolution": "2400x1350",
+          "variants": [
+            "bout-list-board",
+            "scorecard-board"
+          ]
+        },
+        "outputTargets": [
+          {
+            "variant": "bout-list-board",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/bracket-board-skin/bout-list-board.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "scorecard-board",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/bracket-board-skin/scorecard-board.png",
+            "status": "pending-generation"
+          }
+        ]
+      },
+      {
+        "requestId": "higgsfield-request-higgsfield-pool-card-accent-9f0f8e03-5b77e3a2",
+        "jobId": "higgsfield-pool-card-accent-9f0f8e03",
+        "assetType": "pool-card-accent",
+        "kind": "image",
+        "method": "POST",
+        "url": null,
+        "headers": {
+          "Authorization": "Bearer [redacted]",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "metadata": {
+            "tournamentId": "mma-card",
+            "title": "MMA Fight Card",
+            "jobId": "higgsfield-pool-card-accent-9f0f8e03",
+            "assetType": "pool-card-accent",
+            "outputTargets": [
+              {
+                "variant": "horizontal-strip",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/pool-card-accent/horizontal-strip.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "badge-accent",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/pool-card-accent/badge-accent.png",
+                "status": "pending-generation"
+              }
+            ]
+          },
+          "generationType": "image",
+          "prompt": "MMA Fight Card small UI accent for confidence picks and method props, glove tape wraps, red blue split corner motif, gold tick mark energy, clean transparent edges, premium mixed martial arts broadcast, octagon-inspired cage geometry, red corner and blue corner tension, matte black arena darkness, canvas white fight surface, championship gold accent sparks, dramatic walkout light beams, mobile-safe interface negative space, no official league logos, no real fighter likenesses, production-ready mobile app asset, leave clean negative space for dynamic UI text, high contrast, polished sports broadcast finish",
+          "negativePrompt": "blood splatter, official brand marks, text, real athletes",
+          "aspectRatios": [
+            "3:1",
+            "1:1"
+          ],
+          "modelHints": [
+            "Nano Banana Pro",
+            "GPT Image 2",
+            "Seedream 4.5"
+          ],
+          "resolution": "1800x600",
+          "variants": [
+            "horizontal-strip",
+            "badge-accent"
+          ]
+        },
+        "outputTargets": [
+          {
+            "variant": "horizontal-strip",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/pool-card-accent/horizontal-strip.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "badge-accent",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/pool-card-accent/badge-accent.png",
+            "status": "pending-generation"
+          }
+        ]
+      },
+      {
+        "requestId": "higgsfield-request-higgsfield-mini-game-icon-set-5c060caf-1b05e408",
+        "jobId": "higgsfield-mini-game-icon-set-5c060caf",
+        "assetType": "mini-game-icon-set",
+        "kind": "image",
+        "method": "POST",
+        "url": null,
+        "headers": {
+          "Authorization": "Bearer [redacted]",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "metadata": {
+            "tournamentId": "mma-card",
+            "title": "MMA Fight Card",
+            "jobId": "higgsfield-mini-game-icon-set-5c060caf",
+            "assetType": "mini-game-icon-set",
+            "outputTargets": [
+              {
+                "variant": "round-winner",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/round-winner.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "knockdown",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/knockdown.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "takedown",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/takedown.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "submission",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/submission.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "stoppage",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/stoppage.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "decision",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/decision.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "trivia",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/trivia.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "reaction",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/reaction.png",
+                "status": "pending-generation"
+              }
+            ]
+          },
+          "generationType": "image",
+          "prompt": "MMA Fight Card consistent icon set for fight-night mini games, flat-but-premium broadcast glyphs, cage geometry, red and blue corner accents, one-color compatible silhouettes, no letters, premium mixed martial arts broadcast, octagon-inspired cage geometry, red corner and blue corner tension, matte black arena darkness, canvas white fight surface, championship gold accent sparks, dramatic walkout light beams, mobile-safe interface negative space, no official league logos, no real fighter likenesses, production-ready mobile app asset, leave clean negative space for dynamic UI text, high contrast, polished sports broadcast finish",
+          "negativePrompt": "detailed faces, official logos, violent injuries, tiny unreadable detail, text",
+          "aspectRatios": [
+            "1:1"
+          ],
+          "modelHints": [
+            "Nano Banana Pro",
+            "GPT Image 2",
+            "Seedream 4.5"
+          ],
+          "resolution": "1024x1024",
+          "variants": [
+            "round-winner",
+            "knockdown",
+            "takedown",
+            "submission",
+            "stoppage",
+            "decision",
+            "trivia",
+            "reaction"
+          ]
+        },
+        "outputTargets": [
+          {
+            "variant": "round-winner",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/round-winner.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "knockdown",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/knockdown.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "takedown",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/takedown.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "submission",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/submission.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "stoppage",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/stoppage.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "decision",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/decision.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "trivia",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/trivia.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "reaction",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/reaction.png",
+            "status": "pending-generation"
+          }
+        ]
+      },
+      {
+        "requestId": "higgsfield-request-higgsfield-watch-room-stage-feec7d15-795f06e7",
+        "jobId": "higgsfield-watch-room-stage-feec7d15",
+        "assetType": "watch-room-stage",
+        "kind": "image",
+        "method": "POST",
+        "url": null,
+        "headers": {
+          "Authorization": "Bearer [redacted]",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "metadata": {
+            "tournamentId": "mma-card",
+            "title": "MMA Fight Card",
+            "jobId": "higgsfield-watch-room-stage-feec7d15",
+            "assetType": "watch-room-stage",
+            "outputTargets": [
+              {
+                "variant": "live-stage",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/watch-room-stage/live-stage.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "between-fights-stage",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/watch-room-stage/between-fights-stage.png",
+                "status": "pending-generation"
+              }
+            ]
+          },
+          "generationType": "image",
+          "prompt": "MMA Fight Card watch-room stage backdrop for live fight card, camera angle outside cage fence, arena LEDs, neutral canvas, open lower third for chat and predictions, dramatic but not cluttered, premium mixed martial arts broadcast, octagon-inspired cage geometry, red corner and blue corner tension, matte black arena darkness, canvas white fight surface, championship gold accent sparks, dramatic walkout light beams, mobile-safe interface negative space, no official league logos, no real fighter likenesses, production-ready mobile app asset, leave clean negative space for dynamic UI text, high contrast, polished sports broadcast finish",
+          "negativePrompt": "broadcast logos, real event branding, blood, named fighters, text overlays",
+          "aspectRatios": [
+            "16:9",
+            "9:16"
+          ],
+          "modelHints": [
+            "Nano Banana Pro",
+            "GPT Image 2",
+            "Seedream 4.5"
+          ],
+          "resolution": "2560x1440",
+          "variants": [
+            "live-stage",
+            "between-fights-stage"
+          ]
+        },
+        "outputTargets": [
+          {
+            "variant": "live-stage",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/watch-room-stage/live-stage.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "between-fights-stage",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/watch-room-stage/between-fights-stage.png",
+            "status": "pending-generation"
+          }
+        ]
+      },
+      {
+        "requestId": "higgsfield-request-higgsfield-motion-watch-room-stage-2e1c1219-aade9b9a",
+        "jobId": "higgsfield-motion-watch-room-stage-2e1c1219",
+        "assetType": "watch-room-stage",
+        "kind": "video-loop",
+        "method": "POST",
+        "url": null,
+        "headers": {
+          "Authorization": "Bearer [redacted]",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "metadata": {
+            "tournamentId": "mma-card",
+            "title": "MMA Fight Card",
+            "jobId": "higgsfield-motion-watch-room-stage-2e1c1219",
+            "assetType": "watch-room-stage",
+            "outputTargets": [
+              {
+                "variant": "motion-loop",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/watch-room-stage/motion-loop.mp4",
+                "status": "pending-generation"
+              }
+            ]
+          },
+          "generationType": "video-loop",
+          "prompt": "6 second cinematic loop from the Watch Room Fight Stage: subtle arena light movement, drifting haze, slow broadcast camera push, no text, no logos, no identifiable people",
+          "negativePrompt": "broadcast logos, real event branding, blood, named fighters, text overlays",
+          "aspectRatios": [
+            "16:9",
+            "9:16"
+          ],
+          "modelHints": [
+            "Seedance 2.0",
+            "Veo 3.1",
+            "Cinema Studio 3.0"
+          ],
+          "durationSeconds": 6
+        },
+        "outputTargets": [
+          {
+            "variant": "motion-loop",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/watch-room-stage/motion-loop.mp4",
+            "status": "pending-generation"
+          }
+        ]
+      },
+      {
+        "requestId": "higgsfield-request-higgsfield-result-share-card-6bf01ba7-d3094606",
+        "jobId": "higgsfield-result-share-card-6bf01ba7",
+        "assetType": "result-share-card",
+        "kind": "image",
+        "method": "POST",
+        "url": null,
+        "headers": {
+          "Authorization": "Bearer [redacted]",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "metadata": {
+            "tournamentId": "mma-card",
+            "title": "MMA Fight Card",
+            "jobId": "higgsfield-result-share-card-6bf01ba7",
+            "assetType": "result-share-card",
+            "outputTargets": [
+              {
+                "variant": "winner-card",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/result-share-card/winner-card.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "method-card",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/result-share-card/method-card.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "upset-card",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/result-share-card/upset-card.png",
+                "status": "pending-generation"
+              }
+            ]
+          },
+          "generationType": "image",
+          "prompt": "MMA Fight Card social share card background for fight result, split red blue corners, blank fighter-name panels, method and round badge placeholders, evidence seal area, premium sports graphic design, premium mixed martial arts broadcast, octagon-inspired cage geometry, red corner and blue corner tension, matte black arena darkness, canvas white fight surface, championship gold accent sparks, dramatic walkout light beams, mobile-safe interface negative space, no official league logos, no real fighter likenesses, production-ready mobile app asset, leave clean negative space for dynamic UI text, high contrast, polished sports broadcast finish",
+          "negativePrompt": "pre-rendered text, official logos, real fighter photos, cluttered UI, gore",
+          "aspectRatios": [
+            "1200x630",
+            "9:16"
+          ],
+          "modelHints": [
+            "Nano Banana Pro",
+            "GPT Image 2",
+            "Seedream 4.5"
+          ],
+          "resolution": "1200x630",
+          "variants": [
+            "winner-card",
+            "method-card",
+            "upset-card"
+          ]
+        },
+        "outputTargets": [
+          {
+            "variant": "winner-card",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/result-share-card/winner-card.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "method-card",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/result-share-card/method-card.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "upset-card",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/result-share-card/upset-card.png",
+            "status": "pending-generation"
+          }
+        ]
+      },
+      {
+        "requestId": "higgsfield-request-higgsfield-motion-result-share-card-f642a051-fb883d06",
+        "jobId": "higgsfield-motion-result-share-card-f642a051",
+        "assetType": "result-share-card",
+        "kind": "video-loop",
+        "method": "POST",
+        "url": null,
+        "headers": {
+          "Authorization": "Bearer [redacted]",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "metadata": {
+            "tournamentId": "mma-card",
+            "title": "MMA Fight Card",
+            "jobId": "higgsfield-motion-result-share-card-f642a051",
+            "assetType": "result-share-card",
+            "outputTargets": [
+              {
+                "variant": "motion-loop",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/result-share-card/motion-loop.mp4",
+                "status": "pending-generation"
+              }
+            ]
+          },
+          "generationType": "video-loop",
+          "prompt": "6 second cinematic loop from the Fight Result Share Card: subtle arena light movement, drifting haze, slow broadcast camera push, no text, no logos, no identifiable people",
+          "negativePrompt": "pre-rendered text, official logos, real fighter photos, cluttered UI, gore",
+          "aspectRatios": [
+            "9:16"
+          ],
+          "modelHints": [
+            "Seedance 2.0",
+            "Veo 3.1",
+            "Cinema Studio 3.0"
+          ],
+          "durationSeconds": 6
+        },
+        "outputTargets": [
+          {
+            "variant": "motion-loop",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/result-share-card/motion-loop.mp4",
+            "status": "pending-generation"
+          }
+        ]
+      },
+      {
+        "requestId": "higgsfield-request-higgsfield-empty-state-illustration-521e020a-40ff713f",
+        "jobId": "higgsfield-empty-state-illustration-521e020a",
+        "assetType": "empty-state-illustration",
+        "kind": "image",
+        "method": "POST",
+        "url": null,
+        "headers": {
+          "Authorization": "Bearer [redacted]",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "metadata": {
+            "tournamentId": "mma-card",
+            "title": "MMA Fight Card",
+            "jobId": "higgsfield-empty-state-illustration-521e020a",
+            "assetType": "empty-state-illustration",
+            "outputTargets": [
+              {
+                "variant": "no-live-card",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/empty-state-illustration/no-live-card.png",
+                "status": "pending-generation"
+              },
+              {
+                "variant": "waiting-room",
+                "path": "platform/ultimate-sports/generated-assets/mma-card/empty-state-illustration/waiting-room.png",
+                "status": "pending-generation"
+              }
+            ]
+          },
+          "generationType": "image",
+          "prompt": "MMA Fight Card empty fight arena illustration for no active tournament, folded stools in red and blue corners, spotlight on quiet canvas, inviting app UI mood, no specific event implied, premium mixed martial arts broadcast, octagon-inspired cage geometry, red corner and blue corner tension, matte black arena darkness, canvas white fight surface, championship gold accent sparks, dramatic walkout light beams, mobile-safe interface negative space, no official league logos, no real fighter likenesses, production-ready mobile app asset, leave clean negative space for dynamic UI text, high contrast, polished sports broadcast finish",
+          "negativePrompt": "sad tone, logos, text, injuries, recognizable athletes",
+          "aspectRatios": [
+            "4:3",
+            "1:1"
+          ],
+          "modelHints": [
+            "Nano Banana Pro",
+            "GPT Image 2",
+            "Seedream 4.5"
+          ],
+          "resolution": "1600x1200",
+          "variants": [
+            "no-live-card",
+            "waiting-room"
+          ]
+        },
+        "outputTargets": [
+          {
+            "variant": "no-live-card",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/empty-state-illustration/no-live-card.png",
+            "status": "pending-generation"
+          },
+          {
+            "variant": "waiting-room",
+            "path": "platform/ultimate-sports/generated-assets/mma-card/empty-state-illustration/waiting-room.png",
+            "status": "pending-generation"
+          }
+        ]
+      }
+    ],
+    "outputTargets": [
+      {
+        "variant": "full-color",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/lobby-icon/full-color.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "single-color-mask",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/lobby-icon/single-color-mask.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "desktop-cover",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/server-card-cover/desktop-cover.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "mobile-crop",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/server-card-cover/mobile-crop.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "motion-loop",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/server-card-cover/motion-loop.mp4",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "wide",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/hero-backdrop/wide.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "vertical",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/hero-backdrop/vertical.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "tablet",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/hero-backdrop/tablet.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "motion-loop",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/hero-backdrop/motion-loop.mp4",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "bout-list-board",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/bracket-board-skin/bout-list-board.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "scorecard-board",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/bracket-board-skin/scorecard-board.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "horizontal-strip",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/pool-card-accent/horizontal-strip.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "badge-accent",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/pool-card-accent/badge-accent.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "round-winner",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/round-winner.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "knockdown",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/knockdown.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "takedown",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/takedown.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "submission",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/submission.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "stoppage",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/stoppage.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "decision",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/decision.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "trivia",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/trivia.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "reaction",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/mini-game-icon-set/reaction.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "live-stage",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/watch-room-stage/live-stage.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "between-fights-stage",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/watch-room-stage/between-fights-stage.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "motion-loop",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/watch-room-stage/motion-loop.mp4",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "winner-card",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/result-share-card/winner-card.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "method-card",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/result-share-card/method-card.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "upset-card",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/result-share-card/upset-card.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "motion-loop",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/result-share-card/motion-loop.mp4",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "no-live-card",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/empty-state-illustration/no-live-card.png",
+        "status": "pending-generation"
+      },
+      {
+        "variant": "waiting-room",
+        "path": "platform/ultimate-sports/generated-assets/mma-card/empty-state-illustration/waiting-room.png",
+        "status": "pending-generation"
+      }
+    ],
+    "note": "This is a redacted server-side submission plan. Live calls require --live and a contracted Higgsfield raw API create path."
+  }
+}

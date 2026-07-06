@@ -41,6 +41,7 @@ test('latest launch status reports complete only after publish and remote friend
   const dir = mkdtempSync(join(tmpdir(), 'pearcup-launch-status-complete-'))
   const receipt = writeReceipt(dir)
   const publishResult = writePublishResult(dir, receipt)
+  writePearReleaseResult(dir)
   writeFriendResult(dir, receipt, publishResult)
 
   const result = run(['--receipt', receipt, '--json', '--require-complete'])
@@ -100,6 +101,7 @@ test('latest launch status rejects incomplete remote friend evidence', () => {
   const dir = mkdtempSync(join(tmpdir(), 'pearcup-launch-status-incomplete-friend-'))
   const receipt = writeReceipt(dir)
   const publishResult = writePublishResult(dir, receipt)
+  writePearReleaseResult(dir)
   writeFriendResult(dir, receipt, publishResult, {
     evidence: {
       expectedBundleSha256: sha,
@@ -127,6 +129,7 @@ test('latest launch status rejects stale friend evidence for another bundle', ()
   const dir = mkdtempSync(join(tmpdir(), 'pearcup-launch-status-stale-friend-'))
   const receipt = writeReceipt(dir)
   const publishResult = writePublishResult(dir, receipt)
+  writePearReleaseResult(dir)
   writeFriendResult(dir, receipt, publishResult, {
     bundleSha256: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
     evidence: {
@@ -236,10 +239,50 @@ function writeFriendResult (dir, receipt, publishResult, overrides = {}) {
   }, null, 2) + '\n')
 }
 
+function writePearReleaseResult (dir, overrides = {}) {
+  const pearReleaseResult = join(dir, 'pearcup-pear-release-result.json')
+  writeFileSync(pearReleaseResult, JSON.stringify({
+    app: 'PearCup',
+    status: 'pear-runtime-released-and-smoked',
+    releasedAt: '2026-07-04T13:41:55.826Z',
+    sourceGitHead: currentGitHead(),
+    sourceDirty: false,
+    pearUrl: 'pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo',
+    release: 1928,
+    length: 1929,
+    stageCommand: 'pear stage --no-ask pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo .',
+    releaseCommand: 'pear release --checkout 1928 pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo .',
+    seedCommand: 'pear seed --no-tty --stats-interval 30000 pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo',
+    evidence: {
+      releasePassed: true,
+      seedAnnounced: true,
+      publicPearInfoRelease: 1928,
+      publicPearRunSmokePassed: true
+    },
+    friendTest: {
+      status: 'pending-remote-friend',
+      requires: [
+        'remote friend runs the final pear:// link',
+        'remote friend reaches Games without fallback or boot error',
+        'host and friend complete a live P2P invite join',
+        'host and friend can start Penalty Clash from the joined room',
+        'record the observed room code'
+      ]
+    },
+    ...overrides
+  }, null, 2) + '\n')
+  return pearReleaseResult
+}
+
 function run (args) {
   return spawnSync(process.execPath, [script, ...args], {
     cwd: root,
-    encoding: 'utf8'
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      PEARCUP_LAUNCH_STATUS_CURRENT_HEAD: currentGitHead(),
+      PEARCUP_LAUNCH_STATUS_CURRENT_STATUS: ''
+    }
   })
 }
 

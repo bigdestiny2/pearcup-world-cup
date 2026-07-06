@@ -19,6 +19,7 @@ const REQUIRED_EVENT_FITS = Object.freeze([
   'tennis-grand-slams',
   'esports-major',
   'mma-boxing-fight-card',
+  'sailgp-companion',
   'creator-reality-brackets',
   'awards-prediction-pools',
   'local-leagues'

@@ -1,0 +1,51 @@
+{
+  "name": "ultimate-sports",
+  "version": "0.1.0",
+  "description": "Ultimate Sports: splash, server lobby, and sport loading for Pear.",
+  "type": "commonjs",
+  "main": "index.cjs",
+  "license": "MIT",
+  "pear": {
+    "name": "ultimate-sports",
+    "pre": "pear-electron/pre",
+    "gui": {
+      "main": "index.html",
+      "width": 1360,
+      "height": 900,
+      "minWidth": 1024,
+      "minHeight": 760,
+      "backgroundColor": "#0f172a"
+    },
+    "routes": {
+      "": ".",
+      "/": "."
+    },
+    "stage": {
+      "include": [
+        "/index.cjs",
+        "/package.json",
+        "/index.html",
+        "/styles.css",
+        "/app.js",
+        "/sports/kawaii-loader.js",
+        "/sports/mma-shell.js",
+        "/sports/sport-data.js",
+        "/assets",
+        "/assets/mma-card"
+      ],
+      "ignore": [
+        "/.git",
+        "/*.test.js"
+      ]
+    }
+  },
+  "scripts": {
+    "dev": "pear run --dev .",
+    "preview": "node -e \"const http=require('http');const fs=require('fs');const path=require('path');const mime={'html':'text/html','css':'text/css','js':'application/javascript','json':'application/json','png':'image/png','jpg':'image/jpeg','jpeg':'image/jpeg','mp4':'video/mp4','svg':'image/svg+xml'};const server=http.createServer((req,res)=>{const url=(req.url||'/').split('?')[0].split('#')[0];const file=url==='/'?'/index.html':url;const p=path.join(__dirname,file);fs.readFile(p,(err,data)=>{if(err){res.writeHead(404);res.end('not found');return;}const ext=path.extname(p).slice(1);res.writeHead(200,{'content-type':mime[ext]||'application/octet-stream'});res.end(data);});});server.listen(4200,'127.0.0.1',()=>console.log('http://127.0.0.1:4200/'));\"",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "pear-bridge": "^1.2.5",
+    "pear-electron": "^1.7.28"
+  }
+}

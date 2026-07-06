@@ -26,11 +26,17 @@ const modules = {
   policy: require('./policy-engine'),
   qvac: require('./qvac-engine'),
   scoring: require('./scoring-engine'),
+  sportsDataAggregator: require('./sports-data-aggregator-engine'),
+  sportsDataClients: require('./sports-data-client-engine'),
+  sportsDataSmoke: require('./sports-data-smoke-engine'),
+  sportsDataProviders: require('./sports-data-provider-engine'),
   livePrediction: require('./live-prediction-engine'),
   game: require('./game-engine'),
   identity: require('./identity-engine'),
+  mmaCardAssets: require('./mma-card-asset-engine'),
   miniGame: require('./mini-game-engine'),
   miniGameSpec: require('./mini-game-spec-engine'),
+  miniGameRunner: require('./mini-game-runner-engine'),
   notification: require('./notification-engine'),
   ops: require('./ops-engine'),
   surface: require('./surface-engine'),
@@ -41,6 +47,7 @@ const modules = {
   wallet: require('./wallet-engine'),
   walletOps: require('./wallet-ops-engine'),
   wager: require('./wager-engine'),
+  standupAudit: require('./standup-audit-engine'),
   creator: require('./creator-engine'),
   scenarios: require('./scenarios')
 }
@@ -384,8 +391,108 @@ function createUltimateSportsPlatform ({
     return modules.miniGameSpec.createMiniGameBuildMatrix(input)
   }
 
+  function createMiniGameRunPlan (input = {}) {
+    return modules.miniGameRunner.createMiniGameRunPlan(input)
+  }
+
+  function resolveMiniGameRun (input = {}) {
+    return modules.miniGameRunner.resolveMiniGameRun(input)
+  }
+
+  function createQvacMiniGameReferee (input = {}) {
+    return modules.miniGameRunner.createQvacRefereePacket(input)
+  }
+
+  function createMiniGameRunMatrix (input = {}) {
+    return modules.miniGameRunner.createMiniGameRunMatrix(input)
+  }
+
   function createAssetGenerationPlan (input = {}) {
     return modules.tournamentExperience.createAssetGenerationPlan(input)
+  }
+
+  function createStandupAudit (input = {}) {
+    return modules.standupAudit.createUltimateSportsStandupAudit(input)
+  }
+
+  function createSportsDataProviderPlan (input = {}) {
+    return modules.sportsDataProviders.createSportsDataProviderPlan(input)
+  }
+
+  function createSportsDataAggregatorPlan (input = {}) {
+    return modules.sportsDataAggregator.createSportsDataAggregatorPlan(input)
+  }
+
+  function aggregatorRouteForFit (fitOrInput, options = {}) {
+    return modules.sportsDataAggregator.aggregatorRouteForFit(fitOrInput, options)
+  }
+
+  function normalizeSportsDataRecord (input = {}) {
+    return modules.sportsDataAggregator.normalizeSportsDataRecord(input)
+  }
+
+  function createSportsDataAggregatorHealthPlan (input = {}) {
+    return modules.sportsDataAggregator.createAggregatorHealthCheckPlan(input)
+  }
+
+  function createSportsDataClientPlan (input = {}) {
+    return modules.sportsDataClients.createSportsDataClientPlan(input)
+  }
+
+  function sourceClientFor (sourceId) {
+    return modules.sportsDataClients.sourceClientFor(sourceId)
+  }
+
+  function credentialReadinessForSource (sourceId, env = {}) {
+    return modules.sportsDataClients.credentialReadinessForSource(sourceId, env)
+  }
+
+  function createSportsDataRequestPlan (input = {}) {
+    return modules.sportsDataClients.createSportsDataRequestPlan(input)
+  }
+
+  function executeSportsDataRequest (input = {}) {
+    return modules.sportsDataClients.executeSportsDataRequest(input)
+  }
+
+  function createSportsDataSmokePlan (input = {}) {
+    return modules.sportsDataSmoke.createSportsDataSmokePlan(input)
+  }
+
+  function runSportsDataSmokeChecks (input = {}) {
+    return modules.sportsDataSmoke.runSportsDataSmokeChecks(input)
+  }
+
+  function providerPlanForFit (fitOrId) {
+    return modules.sportsDataProviders.providerPlanForFit(fitOrId)
+  }
+
+  function recommendSportsDataProviderStack (input = {}) {
+    return modules.sportsDataProviders.recommendProviderStack(input)
+  }
+
+  function createMmaCardAssetPlan (input = {}) {
+    return modules.mmaCardAssets.createMmaCardAssetPlan(input)
+  }
+
+  function createMmaCardHiggsfieldQueue (input = {}) {
+    return modules.mmaCardAssets.createMmaCardHiggsfieldQueue(input)
+  }
+
+  function createMmaCardHiggsfieldApiRequestPlan (input = {}) {
+    return modules.mmaCardAssets.createMmaCardHiggsfieldApiRequestPlan(input)
+  }
+
+  function submitMmaCardHiggsfieldJobs (input = {}) {
+    return modules.mmaCardAssets.submitMmaCardHiggsfieldJobs(input)
+  }
+
+  function createMmaCardGeneratedAssetAudit (input = {}) {
+    return modules.mmaCardAssets.createMmaCardGeneratedAssetAudit(input)
+  }
+
+  function listMmaCardApiRequirements () {
+    return modules.mmaCardAssets.listMmaCardApiRequirements()
   }
 
   function createSurface (surfaceId, input = {}) {
@@ -502,7 +609,32 @@ function createUltimateSportsPlatform ({
     createMiniGameSpec,
     createMiniGameSuite,
     createMiniGameBuildMatrix,
+    createMiniGameRunPlan,
+    resolveMiniGameRun,
+    createQvacMiniGameReferee,
+    createMiniGameRunMatrix,
     createAssetGenerationPlan,
+    createStandupAudit,
+    createSportsDataAggregatorPlan,
+    aggregatorRouteForFit,
+    normalizeSportsDataRecord,
+    createSportsDataAggregatorHealthPlan,
+    createSportsDataClientPlan,
+    sourceClientFor,
+    credentialReadinessForSource,
+    createSportsDataRequestPlan,
+    executeSportsDataRequest,
+    createSportsDataSmokePlan,
+    runSportsDataSmokeChecks,
+    createSportsDataProviderPlan,
+    providerPlanForFit,
+    recommendSportsDataProviderStack,
+    createMmaCardAssetPlan,
+    createMmaCardHiggsfieldQueue,
+    createMmaCardHiggsfieldApiRequestPlan,
+    submitMmaCardHiggsfieldJobs,
+    createMmaCardGeneratedAssetAudit,
+    listMmaCardApiRequirements,
     createSurface,
     joinTopic,
     leaveTopic,

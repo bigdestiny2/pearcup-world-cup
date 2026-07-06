@@ -38,8 +38,7 @@
     const gameRounds = [{"shooter":"captain","shooterTeam":"fr","keeper":"vera","keeperTeam":"de","aim":"right-high","dive":"right-high","power":3,"curve":1,"releaseTick":42,"keeperTick":43},{"shooter":"vera","shooterTeam":"de","keeper":"captain","keeperTeam":"fr","aim":"left-low","dive":"center-low","power":4,"curve":-1,"releaseTick":39,"keeperTick":41},{"shooter":"captain","shooterTeam":"fr","keeper":"milo","keeperTeam":"pt","aim":"center-high","dive":"left-high","power":4,"curve":2,"releaseTick":45,"keeperTick":44}]
     const commentary = {"EN":[["Today","France vs Germany is the next Round of 16 room. Picks are open until kickoff."],["Next","Spain vs England follows later today."],["Bracket","Pool impact is live, but the fallback feed will not invent results before they happen."]],"PT":[["Today","France vs Germany e a proxima sala. Palpites abertos ate o inicio."],["Next","Spain vs England vem depois."],["Bracket","O impacto do bolao esta ativo, mas o fallback nao inventa resultados."]],"ES":[["Today","France vs Germany es la proxima sala. Picks abiertos hasta el inicio."],["Next","Spain vs England sigue mas tarde."],["Bracket","El impacto del pool esta activo, pero el fallback no inventa resultados."]],"FR":[["Today","France vs Germany est la prochaine salle. Picks ouverts jusqu au coup d envoi."],["Next","Spain vs England suit ensuite."],["Bracket","L impact du pool est actif, mais le fallback ne fabrique pas de resultats."]]}
     const defaultChat = [{"user":"lina","text":"France/Germany room is up. No fake result until the feed lands.","time":"Today"},{"user":"vera","text":"Spain/England pool is next on my list.","time":"Next"},{"user":"ash","text":"Bracket is still Round of 16.","time":"R16"}]
-    const templateData = {"groups":[{"name":"Group A","entrants":[{"teamId":"fr","name":"France","flag":"🇫🇷","played":3,"wins":2,"draws":1,"losses":0,"points":7,"gd":4},{"teamId":"de","name":"Germany","flag":"🇩🇪","played":3,"wins":1,"draws":1,"losses":1,"points":4,"gd":0},{"teamId":"es","name":"Spain","flag":"🇪🇸","played":3,"wins":1,"draws":0,"losses":2,"points":3,"gd":-2},{"teamId":"eng","name":"England","flag":"🏴","played":3,"wins":0,"draws":0,"losses":3,"points":0,"gd":-2}]},{"name":"Group B","entrants":[{"teamId":"pt","name":"Portugal","flag":"🇵🇹","played":3,"wins":2,"draws":0,"losses":1,"points":6,"gd":2},{"teamId":"it","name":"Italy","flag":"🇮🇹","played":3,"wins":1,"draws":2,"losses":0,"points":5,"gd":1},{"teamId":"nl","name":"Netherlands","flag":"🇳🇱","played":3,"wins":1,"draws":1,"losses":1,"points":4,"gd":-1},{"teamId":"ar","name":"Argentina","flag":"🇦🇷","played":3,"wins":0,"draws":1,"losses":2,"points":1,"gd":-2}]},{"name":"Group C","entrants":[{"teamId":"br","name":"Brazil","flag":"🇧🇷","played":3,"wins":2,"draws":1,"losses":0,"points":7,"gd":3},{"teamId":"mx","name":"Mexico","flag":"🇲🇽","played":3,"wins":2,"draws":0,"losses":1,"points":6,"gd":2},{"teamId":"co","name":"Colombia","flag":"🇨🇴","played":3,"wins":0,"draws":1,"losses":2,"points":1,"gd":-3},{"teamId":"us","name":"United States","flag":"🇺🇸","played":3,"wins":0,"draws":0,"losses":3,"points":0,"gd":-2}]},{"name":"Group D","entrants":[{"teamId":"ca","name":"Canada","flag":"🇨🇦","played":3,"wins":3,"draws":0,"losses":0,"points":9,"gd":5},{"teamId":"uy","name":"Uruguay","flag":"🇺🇾","played":3,"wins":1,"draws":1,"losses":1,"points":4,"gd":0},{"teamId":"ec","name":"Ecuador","flag":"🇪🇨","played":3,"wins":1,"draws":0,"losses":2,"points":3,"gd":-2},{"teamId":"cl","name":"Chile","flag":"🇨🇱","played":3,"wins":0,"draws":1,"losses":2,"points":1,"gd":-3}]}]}
-    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat, templateData }
+    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat }
   })()
 
   // Champions League Knockout
@@ -54,8 +53,7 @@
     const gameRounds = [{"shooter":"captain","shooterTeam":"rm","keeper":"vera","keeperTeam":"mc","aim":"right-high","dive":"right-high","power":3,"curve":1,"releaseTick":42,"keeperTick":43},{"shooter":"vera","shooterTeam":"mc","keeper":"captain","keeperTeam":"rm","aim":"left-low","dive":"center-low","power":4,"curve":-1,"releaseTick":39,"keeperTick":41},{"shooter":"captain","shooterTeam":"rm","keeper":"milo","keeperTeam":"liv","aim":"center-high","dive":"left-high","power":4,"curve":2,"releaseTick":45,"keeperTick":44}]
     const commentary = {"EN":[["Today","Real Madrid vs Man City is the next Round of 16 room. Picks are open until kickoff."],["Next","Bayern vs PSG follows later today."],["Bracket","Pool impact is live, but the fallback feed will not invent results before they happen."]],"PT":[["Today","Real Madrid vs Man City e a proxima sala. Palpites abertos ate o inicio."],["Next","Bayern vs PSG vem depois."],["Bracket","O impacto do bolao esta ativo, mas o fallback nao inventa resultados."]],"ES":[["Today","Real Madrid vs Man City es la proxima sala. Picks abiertos hasta el inicio."],["Next","Bayern vs PSG sigue mas tarde."],["Bracket","El impacto del pool esta activo, pero el fallback no inventa resultados."]],"FR":[["Today","Real Madrid vs Man City est la prochaine salle. Picks ouverts jusqu au coup d envoi."],["Next","Bayern vs PSG suit ensuite."],["Bracket","L impact du pool est actif, mais le fallback ne fabrique pas de resultats."]]}
     const defaultChat = [{"user":"lina","text":"Real Madrid/Man City room is up. No fake result until the feed lands.","time":"Today"},{"user":"vera","text":"Bayern/PSG pool is next on my list.","time":"Next"},{"user":"ash","text":"Bracket is still Round of 16.","time":"R16"}]
-    const templateData = {}
-    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat, templateData }
+    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat }
   })()
 
   // March Madness
@@ -70,8 +68,7 @@
     const gameRounds = [{"shooter":"captain","shooterTeam":"uconn","keeper":"vera","keeperTeam":"purdue","aim":"right-high","dive":"right-high","power":3,"curve":1,"releaseTick":42,"keeperTick":43},{"shooter":"vera","shooterTeam":"purdue","keeper":"captain","keeperTeam":"uconn","aim":"left-low","dive":"center-low","power":4,"curve":-1,"releaseTick":39,"keeperTick":41},{"shooter":"captain","shooterTeam":"uconn","keeper":"milo","keeperTeam":"kansas","aim":"center-high","dive":"left-high","power":4,"curve":2,"releaseTick":45,"keeperTick":44}]
     const commentary = {"EN":[["Today","UConn vs Purdue is the next Round of 16 room. Picks are open until kickoff."],["Next","North Carolina vs Duke follows later today."],["Bracket","Pool impact is live, but the fallback feed will not invent results before they happen."]],"PT":[["Today","UConn vs Purdue e a proxima sala. Palpites abertos ate o inicio."],["Next","North Carolina vs Duke vem depois."],["Bracket","O impacto do bolao esta ativo, mas o fallback nao inventa resultados."]],"ES":[["Today","UConn vs Purdue es la proxima sala. Picks abiertos hasta el inicio."],["Next","North Carolina vs Duke sigue mas tarde."],["Bracket","El impacto del pool esta activo, pero el fallback no inventa resultados."]],"FR":[["Today","UConn vs Purdue est la prochaine salle. Picks ouverts jusqu au coup d envoi."],["Next","North Carolina vs Duke suit ensuite."],["Bracket","L impact du pool est actif, mais le fallback ne fabrique pas de resultats."]]}
     const defaultChat = [{"user":"lina","text":"UConn/Purdue room is up. No fake result until the feed lands.","time":"Today"},{"user":"vera","text":"North Carolina/Duke pool is next on my list.","time":"Next"},{"user":"ash","text":"Bracket is still Round of 16.","time":"R16"}]
-    const templateData = {}
-    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat, templateData }
+    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat }
   })()
 
   // NBA / NHL / MLB Playoffs
@@ -86,8 +83,7 @@
     const gameRounds = [{"shooter":"captain","shooterTeam":"lal","keeper":"vera","keeperTeam":"bos","aim":"right-high","dive":"right-high","power":3,"curve":1,"releaseTick":42,"keeperTick":43},{"shooter":"vera","shooterTeam":"bos","keeper":"captain","keeperTeam":"lal","aim":"left-low","dive":"center-low","power":4,"curve":-1,"releaseTick":39,"keeperTick":41},{"shooter":"captain","shooterTeam":"lal","keeper":"milo","keeperTeam":"mia","aim":"center-high","dive":"left-high","power":4,"curve":2,"releaseTick":45,"keeperTick":44}]
     const commentary = {"EN":[["Today","Lakers vs Celtics is the next Round of 16 room. Picks are open until kickoff."],["Next","Warriors vs Nuggets follows later today."],["Bracket","Pool impact is live, but the fallback feed will not invent results before they happen."]],"PT":[["Today","Lakers vs Celtics e a proxima sala. Palpites abertos ate o inicio."],["Next","Warriors vs Nuggets vem depois."],["Bracket","O impacto do bolao esta ativo, mas o fallback nao inventa resultados."]],"ES":[["Today","Lakers vs Celtics es la proxima sala. Picks abiertos hasta el inicio."],["Next","Warriors vs Nuggets sigue mas tarde."],["Bracket","El impacto del pool esta activo, pero el fallback no inventa resultados."]],"FR":[["Today","Lakers vs Celtics est la prochaine salle. Picks ouverts jusqu au coup d envoi."],["Next","Warriors vs Nuggets suit ensuite."],["Bracket","L impact du pool est actif, mais le fallback ne fabrique pas de resultats."]]}
     const defaultChat = [{"user":"lina","text":"Lakers/Celtics room is up. No fake result until the feed lands.","time":"Today"},{"user":"vera","text":"Warriors/Nuggets pool is next on my list.","time":"Next"},{"user":"ash","text":"Bracket is still Round of 16.","time":"R16"}]
-    const templateData = {"series":[{"id":"series-1","home":"lal","away":"bos","homeName":"Lakers","awayName":"Celtics","homeWins":2,"awayWins":1,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":98,"awayScore":107},{"number":2,"homeScore":95,"awayScore":100},{"number":3,"homeScore":101,"awayScore":96}]},{"id":"series-2","home":"gs","away":"den","homeName":"Warriors","awayName":"Nuggets","homeWins":1,"awayWins":2,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":101,"awayScore":100},{"number":2,"homeScore":95,"awayScore":107},{"number":3,"homeScore":98,"awayScore":99}]},{"id":"series-3","home":"mia","away":"phi","homeName":"Heat","awayName":"76ers","homeWins":3,"awayWins":1,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":95,"awayScore":107},{"number":2,"homeScore":98,"awayScore":99},{"number":3,"homeScore":104,"awayScore":102},{"number":4,"homeScore":110,"awayScore":96}]},{"id":"series-4","home":"mil","away":"dal","homeName":"Bucks","awayName":"Mavericks","homeWins":2,"awayWins":0,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":110,"awayScore":96},{"number":2,"homeScore":101,"awayScore":100}]},{"id":"series-5","home":"col","away":"edm","homeName":"Avalanche","awayName":"Oilers","homeWins":1,"awayWins":3,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":110,"awayScore":102},{"number":2,"homeScore":104,"awayScore":99},{"number":3,"homeScore":98,"awayScore":107},{"number":4,"homeScore":95,"awayScore":100}]},{"id":"series-6","home":"nyr","away":"tb","homeName":"Rangers","awayName":"Lightning","homeWins":2,"awayWins":2,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":98,"awayScore":107},{"number":2,"homeScore":95,"awayScore":100},{"number":3,"homeScore":101,"awayScore":96},{"number":4,"homeScore":110,"awayScore":102}]},{"id":"series-7","home":"nyy","away":"lad","homeName":"Yankees","awayName":"Dodgers","homeWins":3,"awayWins":0,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":101,"awayScore":100},{"number":2,"homeScore":95,"awayScore":107},{"number":3,"homeScore":98,"awayScore":99}]},{"id":"series-8","home":"houa","away":"atl","homeName":"Astros","awayName":"Braves","homeWins":0,"awayWins":2,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":95,"awayScore":107},{"number":2,"homeScore":98,"awayScore":99}]}]}
-    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat, templateData }
+    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat }
   })()
 
   // Tennis Grand Slams
@@ -102,8 +98,7 @@
     const gameRounds = [{"shooter":"captain","shooterTeam":"alcaraz","keeper":"vera","keeperTeam":"djok","aim":"right-high","dive":"right-high","power":3,"curve":1,"releaseTick":42,"keeperTick":43},{"shooter":"vera","shooterTeam":"djok","keeper":"captain","keeperTeam":"alcaraz","aim":"left-low","dive":"center-low","power":4,"curve":-1,"releaseTick":39,"keeperTick":41},{"shooter":"captain","shooterTeam":"alcaraz","keeper":"milo","keeperTeam":"medv","aim":"center-high","dive":"left-high","power":4,"curve":2,"releaseTick":45,"keeperTick":44}]
     const commentary = {"EN":[["Today","Alcaraz vs Djokovic is the next Round of 16 room. Picks are open until kickoff."],["Next","Sinner vs Nadal follows later today."],["Bracket","Pool impact is live, but the fallback feed will not invent results before they happen."]],"PT":[["Today","Alcaraz vs Djokovic e a proxima sala. Palpites abertos ate o inicio."],["Next","Sinner vs Nadal vem depois."],["Bracket","O impacto do bolao esta ativo, mas o fallback nao inventa resultados."]],"ES":[["Today","Alcaraz vs Djokovic es la proxima sala. Picks abiertos hasta el inicio."],["Next","Sinner vs Nadal sigue mas tarde."],["Bracket","El impacto del pool esta activo, pero el fallback no inventa resultados."]],"FR":[["Today","Alcaraz vs Djokovic est la prochaine salle. Picks ouverts jusqu au coup d envoi."],["Next","Sinner vs Nadal suit ensuite."],["Bracket","L impact du pool est actif, mais le fallback ne fabrique pas de resultats."]]}
     const defaultChat = [{"user":"lina","text":"Alcaraz/Djokovic room is up. No fake result until the feed lands.","time":"Today"},{"user":"vera","text":"Sinner/Nadal pool is next on my list.","time":"Next"},{"user":"ash","text":"Bracket is still Round of 16.","time":"R16"}]
-    const templateData = {}
-    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat, templateData }
+    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat }
   })()
 
   // Esports Major
@@ -118,8 +113,7 @@
     const gameRounds = [{"shooter":"captain","shooterTeam":"t1","keeper":"vera","keeperTeam":"g2","aim":"right-high","dive":"right-high","power":3,"curve":1,"releaseTick":42,"keeperTick":43},{"shooter":"vera","shooterTeam":"g2","keeper":"captain","keeperTeam":"t1","aim":"left-low","dive":"center-low","power":4,"curve":-1,"releaseTick":39,"keeperTick":41},{"shooter":"captain","shooterTeam":"t1","keeper":"milo","keeperTeam":"navi","aim":"center-high","dive":"left-high","power":4,"curve":2,"releaseTick":45,"keeperTick":44}]
     const commentary = {"EN":[["Today","T1 vs G2 is the next Round of 16 room. Picks are open until kickoff."],["Next","Fnatic vs Team Liquid follows later today."],["Bracket","Pool impact is live, but the fallback feed will not invent results before they happen."]],"PT":[["Today","T1 vs G2 e a proxima sala. Palpites abertos ate o inicio."],["Next","Fnatic vs Team Liquid vem depois."],["Bracket","O impacto do bolao esta ativo, mas o fallback nao inventa resultados."]],"ES":[["Today","T1 vs G2 es la proxima sala. Picks abiertos hasta el inicio."],["Next","Fnatic vs Team Liquid sigue mas tarde."],["Bracket","El impacto del pool esta activo, pero el fallback no inventa resultados."]],"FR":[["Today","T1 vs G2 est la prochaine salle. Picks ouverts jusqu au coup d envoi."],["Next","Fnatic vs Team Liquid suit ensuite."],["Bracket","L impact du pool est actif, mais le fallback ne fabrique pas de resultats."]]}
     const defaultChat = [{"user":"lina","text":"T1/G2 room is up. No fake result until the feed lands.","time":"Today"},{"user":"vera","text":"Fnatic/Team Liquid pool is next on my list.","time":"Next"},{"user":"ash","text":"Bracket is still Round of 16.","time":"R16"}]
-    const templateData = {"groups":[{"name":"Group A","entrants":[{"teamId":"t1","name":"T1","flag":"🎮","played":3,"wins":2,"draws":1,"losses":0,"points":7,"gd":4},{"teamId":"g2","name":"G2","flag":"🎮","played":3,"wins":1,"draws":1,"losses":1,"points":4,"gd":0},{"teamId":"fnc","name":"Fnatic","flag":"🎮","played":3,"wins":1,"draws":0,"losses":2,"points":3,"gd":-2},{"teamId":"tl","name":"Team Liquid","flag":"🎮","played":3,"wins":0,"draws":0,"losses":3,"points":0,"gd":-2}]},{"name":"Group B","entrants":[{"teamId":"navi","name":"NAVI","flag":"🎮","played":3,"wins":2,"draws":0,"losses":1,"points":6,"gd":2},{"teamId":"vit","name":"Vitality","flag":"🎮","played":3,"wins":1,"draws":2,"losses":0,"points":5,"gd":1},{"teamId":"c9","name":"Cloud9","flag":"🎮","played":3,"wins":1,"draws":1,"losses":1,"points":4,"gd":-1},{"teamId":"sen","name":"Sentinels","flag":"🎮","played":3,"wins":0,"draws":1,"losses":2,"points":1,"gd":-2}]},{"name":"Group C","entrants":[{"teamId":"gen","name":"Gen.G","flag":"🎮","played":3,"wins":2,"draws":1,"losses":0,"points":7,"gd":3},{"teamId":"blg","name":"Bilibili","flag":"🎮","played":3,"wins":2,"draws":0,"losses":1,"points":6,"gd":2},{"teamId":"faze","name":"FaZe","flag":"🎮","played":3,"wins":0,"draws":1,"losses":2,"points":1,"gd":-3},{"teamId":"og","name":"OG","flag":"🎮","played":3,"wins":0,"draws":0,"losses":3,"points":0,"gd":-2}]},{"name":"Group D","entrants":[{"teamId":"eg","name":"Evil Geniuses","flag":"🎮","played":3,"wins":3,"draws":0,"losses":0,"points":9,"gd":5},{"teamId":"100t","name":"100 Thieves","flag":"🎮","played":3,"wins":1,"draws":1,"losses":1,"points":4,"gd":0},{"teamId":"tsm","name":"TSM","flag":"🎮","played":3,"wins":1,"draws":0,"losses":2,"points":3,"gd":-2},{"teamId":"koi","name":"KOI","flag":"🎮","played":3,"wins":0,"draws":1,"losses":2,"points":1,"gd":-3}]}],"series":[{"id":"series-1","home":"t1","away":"g2","homeName":"T1","awayName":"G2","homeWins":2,"awayWins":1,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":101,"awayScore":100},{"number":2,"homeScore":95,"awayScore":107},{"number":3,"homeScore":98,"awayScore":99}]},{"id":"series-2","home":"fnc","away":"tl","homeName":"Fnatic","awayName":"Team Liquid","homeWins":1,"awayWins":2,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":95,"awayScore":107},{"number":2,"homeScore":98,"awayScore":99},{"number":3,"homeScore":104,"awayScore":102}]},{"id":"series-3","home":"navi","away":"vit","homeName":"NAVI","awayName":"Vitality","homeWins":3,"awayWins":1,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":104,"awayScore":99},{"number":2,"homeScore":98,"awayScore":107},{"number":3,"homeScore":95,"awayScore":100},{"number":4,"homeScore":101,"awayScore":96}]},{"id":"series-4","home":"c9","away":"sen","homeName":"Cloud9","awayName":"Sentinels","homeWins":2,"awayWins":0,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":98,"awayScore":99},{"number":2,"homeScore":104,"awayScore":102}]},{"id":"series-5","home":"gen","away":"blg","homeName":"Gen.G","awayName":"Bilibili","homeWins":1,"awayWins":3,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":101,"awayScore":96},{"number":2,"homeScore":110,"awayScore":102},{"number":3,"homeScore":104,"awayScore":99},{"number":4,"homeScore":98,"awayScore":107}]},{"id":"series-6","home":"faze","away":"og","homeName":"FaZe","awayName":"OG","homeWins":2,"awayWins":2,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":104,"awayScore":102},{"number":2,"homeScore":110,"awayScore":96},{"number":3,"homeScore":101,"awayScore":100},{"number":4,"homeScore":95,"awayScore":107}]},{"id":"series-7","home":"eg","away":"100t","homeName":"Evil Geniuses","awayName":"100 Thieves","homeWins":3,"awayWins":0,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":95,"awayScore":107},{"number":2,"homeScore":98,"awayScore":99},{"number":3,"homeScore":104,"awayScore":102}]},{"id":"series-8","home":"tsm","away":"koi","homeName":"TSM","awayName":"KOI","homeWins":0,"awayWins":2,"needed":4,"status":"In progress","games":[{"number":1,"homeScore":104,"awayScore":99},{"number":2,"homeScore":98,"awayScore":107}]}]}
-    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat, templateData }
+    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat }
   })()
 
   // SailGP Companion
@@ -134,8 +128,7 @@
     const gameRounds = [{"shooter":"captain","shooterTeam":"aus","keeper":"vera","keeperTeam":"gbr","aim":"right-high","dive":"right-high","power":3,"curve":1,"releaseTick":42,"keeperTick":43},{"shooter":"vera","shooterTeam":"gbr","keeper":"captain","keeperTeam":"aus","aim":"left-low","dive":"center-low","power":4,"curve":-1,"releaseTick":39,"keeperTick":41},{"shooter":"captain","shooterTeam":"aus","keeper":"milo","keeperTeam":"fra","aim":"center-high","dive":"left-high","power":4,"curve":2,"releaseTick":45,"keeperTick":44}]
     const commentary = {"EN":[["Today","Australia vs Great Britain is the next Round of 16 room. Picks are open until kickoff."],["Next","New Zealand vs United States follows later today."],["Bracket","Pool impact is live, but the fallback feed will not invent results before they happen."]],"PT":[["Today","Australia vs Great Britain e a proxima sala. Palpites abertos ate o inicio."],["Next","New Zealand vs United States vem depois."],["Bracket","O impacto do bolao esta ativo, mas o fallback nao inventa resultados."]],"ES":[["Today","Australia vs Great Britain es la proxima sala. Picks abiertos hasta el inicio."],["Next","New Zealand vs United States sigue mas tarde."],["Bracket","El impacto del pool esta activo, pero el fallback no inventa resultados."]],"FR":[["Today","Australia vs Great Britain est la prochaine salle. Picks ouverts jusqu au coup d envoi."],["Next","New Zealand vs United States suit ensuite."],["Bracket","L impact du pool est actif, mais le fallback ne fabrique pas de resultats."]]}
     const defaultChat = [{"user":"lina","text":"Australia/Great Britain room is up. No fake result until the feed lands.","time":"Today"},{"user":"vera","text":"New Zealand/United States pool is next on my list.","time":"Next"},{"user":"ash","text":"Bracket is still Round of 16.","time":"R16"}]
-    const templateData = {"series":[{"id":"series-1","home":"aus","away":"gbr","homeName":"Australia","awayName":"Great Britain","homeWins":2,"awayWins":1,"needed":3,"status":"In progress","games":[{"number":1,"homeScore":95,"awayScore":107},{"number":2,"homeScore":98,"awayScore":99},{"number":3,"homeScore":104,"awayScore":102}]},{"id":"series-2","home":"nz","away":"usa","homeName":"New Zealand","awayName":"United States","homeWins":1,"awayWins":2,"needed":3,"status":"In progress","games":[{"number":1,"homeScore":95,"awayScore":107},{"number":2,"homeScore":98,"awayScore":99},{"number":3,"homeScore":104,"awayScore":102}]},{"id":"series-3","home":"fra","away":"den","homeName":"France","awayName":"Denmark","homeWins":3,"awayWins":1,"needed":3,"status":"France wins series","games":[{"number":1,"homeScore":101,"awayScore":100},{"number":2,"homeScore":95,"awayScore":107},{"number":3,"homeScore":98,"awayScore":99},{"number":4,"homeScore":104,"awayScore":102}]},{"id":"series-4","home":"jpn","away":"esp","homeName":"Japan","awayName":"Spain","homeWins":2,"awayWins":0,"needed":3,"status":"In progress","games":[{"number":1,"homeScore":104,"awayScore":99},{"number":2,"homeScore":98,"awayScore":107}]},{"id":"series-5","home":"ger","away":"can","homeName":"Germany","awayName":"Canada","homeWins":1,"awayWins":3,"needed":3,"status":"Canada wins series","games":[{"number":1,"homeScore":95,"awayScore":100},{"number":2,"homeScore":101,"awayScore":96},{"number":3,"homeScore":110,"awayScore":102},{"number":4,"homeScore":104,"awayScore":99}]},{"id":"series-6","home":"sui","away":"bra","homeName":"Switzerland","awayName":"Brazil","homeWins":2,"awayWins":2,"needed":3,"status":"In progress","games":[{"number":1,"homeScore":101,"awayScore":96},{"number":2,"homeScore":110,"awayScore":102},{"number":3,"homeScore":104,"awayScore":99},{"number":4,"homeScore":98,"awayScore":107}]},{"id":"series-7","home":"ita","away":"ned","homeName":"Italy","awayName":"Netherlands","homeWins":3,"awayWins":0,"needed":3,"status":"Italy wins series","games":[{"number":1,"homeScore":95,"awayScore":107},{"number":2,"homeScore":98,"awayScore":99},{"number":3,"homeScore":104,"awayScore":102}]},{"id":"series-8","home":"arg","away":"swe","homeName":"Argentina","awayName":"Sweden","homeWins":0,"awayWins":2,"needed":3,"status":"In progress","games":[{"number":1,"homeScore":101,"awayScore":100},{"number":2,"homeScore":95,"awayScore":107}]}],"standings":[{"teamId":"aus","name":"Australia","flag":"🇦🇺","played":4,"wins":4,"losses":0,"points":12},{"teamId":"gbr","name":"Great Britain","flag":"🇬🇧","played":5,"wins":3,"losses":2,"points":9},{"teamId":"nz","name":"New Zealand","flag":"🇳🇿","played":5,"wins":2,"losses":3,"points":6},{"teamId":"usa","name":"United States","flag":"🇺🇸","played":6,"wins":1,"losses":4,"points":3},{"teamId":"fra","name":"France","flag":"🇫🇷","played":4,"wins":4,"losses":0,"points":12},{"teamId":"den","name":"Denmark","flag":"🇩🇰","played":5,"wins":3,"losses":2,"points":9},{"teamId":"jpn","name":"Japan","flag":"🇯🇵","played":5,"wins":2,"losses":3,"points":6},{"teamId":"esp","name":"Spain","flag":"🇪🇸","played":6,"wins":1,"losses":4,"points":3},{"teamId":"ger","name":"Germany","flag":"🇩🇪","played":4,"wins":4,"losses":0,"points":12},{"teamId":"can","name":"Canada","flag":"🇨🇦","played":5,"wins":3,"losses":2,"points":9},{"teamId":"sui","name":"Switzerland","flag":"🇨🇭","played":5,"wins":2,"losses":3,"points":6},{"teamId":"bra","name":"Brazil","flag":"🇧🇷","played":6,"wins":1,"losses":4,"points":3},{"teamId":"ita","name":"Italy","flag":"🇮🇹","played":4,"wins":4,"losses":0,"points":12},{"teamId":"ned","name":"Netherlands","flag":"🇳🇱","played":5,"wins":3,"losses":2,"points":9},{"teamId":"arg","name":"Argentina","flag":"🇦🇷","played":5,"wins":2,"losses":3,"points":6},{"teamId":"swe","name":"Sweden","flag":"🇸🇪","played":6,"wins":1,"losses":4,"points":3}]}
-    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat, templateData }
+    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat }
   })()
 
   // Reality / Creator Tournaments
@@ -150,8 +143,7 @@
     const gameRounds = [{"shooter":"captain","shooterTeam":"alpha","keeper":"vera","keeperTeam":"beta","aim":"right-high","dive":"right-high","power":3,"curve":1,"releaseTick":42,"keeperTick":43},{"shooter":"vera","shooterTeam":"beta","keeper":"captain","keeperTeam":"alpha","aim":"left-low","dive":"center-low","power":4,"curve":-1,"releaseTick":39,"keeperTick":41},{"shooter":"captain","shooterTeam":"alpha","keeper":"milo","keeperTeam":"echo","aim":"center-high","dive":"left-high","power":4,"curve":2,"releaseTick":45,"keeperTick":44}]
     const commentary = {"EN":[["Today","Alpha Squad vs Beta House is the next Round of 16 room. Picks are open until kickoff."],["Next","Gamma Crew vs Delta Fam follows later today."],["Bracket","Pool impact is live, but the fallback feed will not invent results before they happen."]],"PT":[["Today","Alpha Squad vs Beta House e a proxima sala. Palpites abertos ate o inicio."],["Next","Gamma Crew vs Delta Fam vem depois."],["Bracket","O impacto do bolao esta ativo, mas o fallback nao inventa resultados."]],"ES":[["Today","Alpha Squad vs Beta House es la proxima sala. Picks abiertos hasta el inicio."],["Next","Gamma Crew vs Delta Fam sigue mas tarde."],["Bracket","El impacto del pool esta activo, pero el fallback no inventa resultados."]],"FR":[["Today","Alpha Squad vs Beta House est la prochaine salle. Picks ouverts jusqu au coup d envoi."],["Next","Gamma Crew vs Delta Fam suit ensuite."],["Bracket","L impact du pool est actif, mais le fallback ne fabrique pas de resultats."]]}
     const defaultChat = [{"user":"lina","text":"Alpha Squad/Beta House room is up. No fake result until the feed lands.","time":"Today"},{"user":"vera","text":"Gamma Crew/Delta Fam pool is next on my list.","time":"Next"},{"user":"ash","text":"Bracket is still Round of 16.","time":"R16"}]
-    const templateData = {"customStage":{"name":"Creator Bracket Stage","rounds":[{"name":"Round of 16","matchups":[{"id":"creator-r16-1","slots":["alpha","beta"]},{"id":"creator-r16-2","slots":["beta","gamma"]},{"id":"creator-r16-3","slots":["gamma","delta"]},{"id":"creator-r16-4","slots":["delta","echo"]},{"id":"creator-r16-5","slots":["echo","foxy"]},{"id":"creator-r16-6","slots":["foxy","ghost"]},{"id":"creator-r16-7","slots":["ghost","hype"]},{"id":"creator-r16-8","slots":["hype","ivy"]},{"id":"creator-r16-9","slots":["ivy","jolt"]},{"id":"creator-r16-10","slots":["jolt","krew"]},{"id":"creator-r16-11","slots":["krew","luxe"]},{"id":"creator-r16-12","slots":["luxe","muse"]},{"id":"creator-r16-13","slots":["muse","nova"]},{"id":"creator-r16-14","slots":["nova","orbit"]},{"id":"creator-r16-15","slots":["orbit","pulse"]},{"id":"creator-r16-16","slots":["pulse","alpha"]}]},{"name":"Quarterfinals","matchups":[{"id":"creator-qf-1","slots":["alpha","gamma"]},{"id":"creator-qf-2","slots":["beta","delta"]},{"id":"creator-qf-3","slots":["gamma","echo"]},{"id":"creator-qf-4","slots":["delta","foxy"]},{"id":"creator-qf-5","slots":["echo","ghost"]},{"id":"creator-qf-6","slots":["foxy","hype"]},{"id":"creator-qf-7","slots":["ghost","ivy"]},{"id":"creator-qf-8","slots":["hype","jolt"]}]}]}}
-    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat, templateData }
+    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat }
   })()
 
   // Oscars / Grammys / Eurovision
@@ -166,8 +158,7 @@
     const gameRounds = [{"shooter":"captain","shooterTeam":"oppen","keeper":"vera","keeperTeam":"barb","aim":"right-high","dive":"right-high","power":3,"curve":1,"releaseTick":42,"keeperTick":43},{"shooter":"vera","shooterTeam":"barb","keeper":"captain","keeperTeam":"oppen","aim":"left-low","dive":"center-low","power":4,"curve":-1,"releaseTick":39,"keeperTick":41},{"shooter":"captain","shooterTeam":"oppen","keeper":"milo","keeperTeam":"hold","aim":"center-high","dive":"left-high","power":4,"curve":2,"releaseTick":45,"keeperTick":44}]
     const commentary = {"EN":[["Today","Oppenheimer vs Barbie is the next Round of 16 room. Picks are open until kickoff."],["Next","Poor Things vs Killers of the Flower Moon follows later today."],["Bracket","Pool impact is live, but the fallback feed will not invent results before they happen."]],"PT":[["Today","Oppenheimer vs Barbie e a proxima sala. Palpites abertos ate o inicio."],["Next","Poor Things vs Killers of the Flower Moon vem depois."],["Bracket","O impacto do bolao esta ativo, mas o fallback nao inventa resultados."]],"ES":[["Today","Oppenheimer vs Barbie es la proxima sala. Picks abiertos hasta el inicio."],["Next","Poor Things vs Killers of the Flower Moon sigue mas tarde."],["Bracket","El impacto del pool esta activo, pero el fallback no inventa resultados."]],"FR":[["Today","Oppenheimer vs Barbie est la prochaine salle. Picks ouverts jusqu au coup d envoi."],["Next","Poor Things vs Killers of the Flower Moon suit ensuite."],["Bracket","L impact du pool est actif, mais le fallback ne fabrique pas de resultats."]]}
     const defaultChat = [{"user":"lina","text":"Oppenheimer/Barbie room is up. No fake result until the feed lands.","time":"Today"},{"user":"vera","text":"Poor Things/Killers of the Flower Moon pool is next on my list.","time":"Next"},{"user":"ash","text":"Bracket is still Round of 16.","time":"R16"}]
-    const templateData = {"categories":[{"id":"cat-1","name":"Record of the Year","nominees":["oppen","barb","poor","kill"]},{"id":"cat-2","name":"Album of the Year","nominees":["hold","past","anat","zone"]},{"id":"cat-3","name":"Best Pop","nominees":["tayl","sza","bilal","lore"]},{"id":"cat-4","name":"Best Rock","nominees":["kaar","mahn","corn","samr"]}]}
-    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat, templateData }
+    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat }
   })()
 
   // School / Office / Pub / Rec Sports
@@ -182,8 +173,7 @@
     const gameRounds = [{"shooter":"captain","shooterTeam":"phoenix","keeper":"vera","keeperTeam":"titan","aim":"right-high","dive":"right-high","power":3,"curve":1,"releaseTick":42,"keeperTick":43},{"shooter":"vera","shooterTeam":"titan","keeper":"captain","keeperTeam":"phoenix","aim":"left-low","dive":"center-low","power":4,"curve":-1,"releaseTick":39,"keeperTick":41},{"shooter":"captain","shooterTeam":"phoenix","keeper":"milo","keeperTeam":"thund","aim":"center-high","dive":"left-high","power":4,"curve":2,"releaseTick":45,"keeperTick":44}]
     const commentary = {"EN":[["Today","Phoenix FC vs Titan United is the next Round of 16 room. Picks are open until kickoff."],["Next","Rovers vs Stingers follows later today."],["Bracket","Pool impact is live, but the fallback feed will not invent results before they happen."]],"PT":[["Today","Phoenix FC vs Titan United e a proxima sala. Palpites abertos ate o inicio."],["Next","Rovers vs Stingers vem depois."],["Bracket","O impacto do bolao esta ativo, mas o fallback nao inventa resultados."]],"ES":[["Today","Phoenix FC vs Titan United es la proxima sala. Picks abiertos hasta el inicio."],["Next","Rovers vs Stingers sigue mas tarde."],["Bracket","El impacto del pool esta activo, pero el fallback no inventa resultados."]],"FR":[["Today","Phoenix FC vs Titan United est la prochaine salle. Picks ouverts jusqu au coup d envoi."],["Next","Rovers vs Stingers suit ensuite."],["Bracket","L impact du pool est actif, mais le fallback ne fabrique pas de resultats."]]}
     const defaultChat = [{"user":"lina","text":"Phoenix FC/Titan United room is up. No fake result until the feed lands.","time":"Today"},{"user":"vera","text":"Rovers/Stingers pool is next on my list.","time":"Next"},{"user":"ash","text":"Bracket is still Round of 16.","time":"R16"}]
-    const templateData = {"standings":[{"teamId":"phoenix","name":"Phoenix FC","flag":"⚽","played":4,"wins":4,"losses":0,"points":12},{"teamId":"titan","name":"Titan United","flag":"⚽","played":5,"wins":3,"losses":2,"points":9},{"teamId":"rover","name":"Rovers","flag":"⚽","played":5,"wins":2,"losses":3,"points":6},{"teamId":"sting","name":"Stingers","flag":"⚽","played":6,"wins":1,"losses":4,"points":3},{"teamId":"thund","name":"Thunder","flag":"⚽","played":4,"wins":4,"losses":0,"points":12},{"teamId":"shark","name":"Sharks","flag":"⚽","played":5,"wins":3,"losses":2,"points":9},{"teamId":"vultu","name":"Vultures","flag":"⚽","played":5,"wins":2,"losses":3,"points":6},{"teamId":"panda","name":"Pandas","flag":"⚽","played":6,"wins":1,"losses":4,"points":3},{"teamId":"eagle","name":"Eagles","flag":"🏈","played":4,"wins":4,"losses":0,"points":12},{"teamId":"lion","name":"Lions","flag":"🏈","played":5,"wins":3,"losses":2,"points":9},{"teamId":"hawk","name":"Hawks","flag":"🏀","played":5,"wins":2,"losses":3,"points":6},{"teamId":"blaze","name":"Blazers","flag":"🏀","played":6,"wins":1,"losses":4,"points":3},{"teamId":"orca","name":"Orcas","flag":"🏐","played":4,"wins":4,"losses":0,"points":12},{"teamId":"cobra","name":"Cobras","flag":"🏐","played":5,"wins":3,"losses":2,"points":9},{"teamId":"falcon","name":"Falcons","flag":"🥎","played":5,"wins":2,"losses":3,"points":6},{"teamId":"wolf","name":"Wolves","flag":"🥎","played":6,"wins":1,"losses":4,"points":3}],"customStage":{"name":"Creator Bracket Stage","rounds":[{"name":"Round of 16","matchups":[{"id":"creator-r16-1","slots":["phoenix","titan"]},{"id":"creator-r16-2","slots":["titan","rover"]},{"id":"creator-r16-3","slots":["rover","sting"]},{"id":"creator-r16-4","slots":["sting","thund"]},{"id":"creator-r16-5","slots":["thund","shark"]},{"id":"creator-r16-6","slots":["shark","vultu"]},{"id":"creator-r16-7","slots":["vultu","panda"]},{"id":"creator-r16-8","slots":["panda","eagle"]},{"id":"creator-r16-9","slots":["eagle","lion"]},{"id":"creator-r16-10","slots":["lion","hawk"]},{"id":"creator-r16-11","slots":["hawk","blaze"]},{"id":"creator-r16-12","slots":["blaze","orca"]},{"id":"creator-r16-13","slots":["orca","cobra"]},{"id":"creator-r16-14","slots":["cobra","falcon"]},{"id":"creator-r16-15","slots":["falcon","wolf"]},{"id":"creator-r16-16","slots":["wolf","phoenix"]}]},{"name":"Quarterfinals","matchups":[{"id":"creator-qf-1","slots":["phoenix","rover"]},{"id":"creator-qf-2","slots":["titan","sting"]},{"id":"creator-qf-3","slots":["rover","thund"]},{"id":"creator-qf-4","slots":["sting","shark"]},{"id":"creator-qf-5","slots":["thund","vultu"]},{"id":"creator-qf-6","slots":["shark","panda"]},{"id":"creator-qf-7","slots":["vultu","eagle"]},{"id":"creator-qf-8","slots":["panda","lion"]}]}]}}
-    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat, templateData }
+    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat }
   })()
 
   const fits = [
@@ -191,10 +181,6 @@
       id: 'euros-copa-america',
       title: 'Euros / Copa America',
       category: 'soccer',
-      entrantShape: 'team',
-      templateKinds: ["group-plus-knockout","single-elimination"],
-      recommendedVariants: ["classic-bracket","confidence","group-stage-card","upset-bounty"],
-      recommendedMiniGames: ["penalty-clash","next-event","scoreline-lock","player-prop-duel","watch-party-streak","reaction-challenge"],
       defaultTeam: 'fr',
       theme: makeTheme('#3b82f6', '#ef4444', '#1d4ed8', '#1e293b', '#eff6ff', '#ffffff'),
       data: euros_copa_america_data
@@ -203,10 +189,6 @@
       id: 'champions-league-knockout',
       title: 'Champions League Knockout',
       category: 'soccer',
-      entrantShape: 'team',
-      templateKinds: ["single-elimination"],
-      recommendedVariants: ["classic-bracket","confidence","upset-bounty","head-to-head-duel"],
-      recommendedMiniGames: ["penalty-clash","free-kick-duel","next-event","momentum-duel","watch-party-streak","reaction-challenge"],
       defaultTeam: 'rm',
       theme: makeTheme('#0ea5e9', '#f59e0b', '#0369a1', '#0f172a', '#f0f9ff', '#ffffff'),
       data: champions_league_knockout_data
@@ -215,10 +197,6 @@
       id: 'march-madness',
       title: 'March Madness',
       category: 'basketball',
-      entrantShape: 'team',
-      templateKinds: ["single-elimination"],
-      recommendedVariants: ["classic-bracket","confidence","upset-bounty","head-to-head-duel"],
-      recommendedMiniGames: ["next-event","scoreline-lock","trivia-duel","peer-mini-fantasy","player-prop-duel","watch-party-streak","reaction-challenge"],
       defaultTeam: 'uconn',
       theme: makeTheme('#f97316', '#3b82f6', '#c2410c', '#2a1510', '#fff7ed', '#ffffff'),
       data: march_madness_data
@@ -227,10 +205,6 @@
       id: 'pro-playoffs',
       title: 'NBA / NHL / MLB Playoffs',
       category: 'pro-sports',
-      entrantShape: 'team',
-      templateKinds: ["series-playoff"],
-      recommendedVariants: ["classic-bracket","confidence","survivor","fantasy-lite-draft"],
-      recommendedMiniGames: ["next-event","scoreline-lock","player-prop-duel","peer-mini-fantasy","watch-party-streak","reaction-challenge","momentum-duel"],
       defaultTeam: 'lal',
       theme: makeTheme('#8b5cf6', '#f43f5e', '#6d28d9', '#1a1025', '#f5f3ff', '#ffffff'),
       data: pro_playoffs_data
@@ -239,10 +213,6 @@
       id: 'tennis-grand-slams',
       title: 'Tennis Grand Slams',
       category: 'tennis',
-      entrantShape: 'player',
-      templateKinds: ["single-elimination"],
-      recommendedVariants: ["classic-bracket","confidence","head-to-head-duel","fantasy-lite-draft"],
-      recommendedMiniGames: ["next-event","scoreline-lock","player-prop-duel","reaction-challenge","watch-party-streak"],
       defaultTeam: 'alcaraz',
       theme: makeTheme('#10b981', '#f59e0b', '#047857', '#0f2c22', '#ecfdf5', '#ffffff'),
       data: tennis_grand_slams_data
@@ -251,10 +221,6 @@
       id: 'esports-major',
       title: 'Esports Major',
       category: 'esports',
-      entrantShape: 'team',
-      templateKinds: ["group-plus-knockout","single-elimination","series-playoff"],
-      recommendedVariants: ["classic-bracket","confidence","survivor","fantasy-lite-draft","side-quest"],
-      recommendedMiniGames: ["next-event","momentum-duel","trivia-duel","reaction-challenge","watch-party-streak"],
       defaultTeam: 't1',
       theme: makeTheme('#ec4899', '#6366f1', '#be185d', '#1e1b4b', '#fdf2f8', '#ffffff'),
       data: esports_major_data
@@ -263,10 +229,6 @@
       id: 'sailgp-companion',
       title: 'SailGP Companion',
       category: 'sailing',
-      entrantShape: 'team',
-      templateKinds: ["series-playoff","round-robin"],
-      recommendedVariants: ["confidence","survivor","watch-party-bingo","fantasy-lite-draft","side-quest"],
-      recommendedMiniGames: ["next-event","momentum-duel","player-prop-duel","trivia-duel","reaction-challenge","watch-party-streak","peer-mini-fantasy"],
       defaultTeam: 'aus',
       theme: makeTheme('#06b6d4', '#f43f5e', '#0e7490', '#082f49', '#ecfeff', '#ffffff'),
       data: sailgp_companion_data
@@ -275,10 +237,6 @@
       id: 'creator-reality-brackets',
       title: 'Reality / Creator Tournaments',
       category: 'creator',
-      entrantShape: 'creator',
-      templateKinds: ["single-elimination","creator-custom"],
-      recommendedVariants: ["classic-bracket","confidence","watch-party-bingo","side-quest"],
-      recommendedMiniGames: ["trivia-duel","reaction-challenge","watch-party-streak"],
       defaultTeam: 'alpha',
       theme: makeTheme('#d946ef', '#22c55e', '#a21caf', '#2a0a2e', '#fdf4ff', '#ffffff'),
       data: creator_reality_brackets_data
@@ -287,10 +245,6 @@
       id: 'awards-prediction-pools',
       title: 'Oscars / Grammys / Eurovision',
       category: 'awards',
-      entrantShape: 'nominee',
-      templateKinds: ["awards-card"],
-      recommendedVariants: ["group-stage-card","confidence","watch-party-bingo","head-to-head-duel"],
-      recommendedMiniGames: ["trivia-duel","watch-party-streak","reaction-challenge"],
       defaultTeam: 'oppen',
       theme: makeTheme('#f59e0b', '#ec4899', '#b45309', '#2a1a08', '#fffbeb', '#ffffff'),
       data: awards_prediction_pools_data
@@ -299,10 +253,6 @@
       id: 'local-leagues',
       title: 'School / Office / Pub / Rec Sports',
       category: 'local',
-      entrantShape: 'team',
-      templateKinds: ["round-robin","single-elimination","creator-custom"],
-      recommendedVariants: ["classic-bracket","confidence","survivor","watch-party-bingo","side-quest"],
-      recommendedMiniGames: ["penalty-clash","free-kick-duel","trivia-duel","next-event","peer-mini-fantasy","watch-party-streak","reaction-challenge","momentum-duel","player-prop-duel"],
       defaultTeam: 'phoenix',
       theme: makeTheme('#22c55e', '#3b82f6', '#15803d', '#0f291e', '#f0fdf4', '#ffffff'),
       data: local_leagues_data
@@ -310,34 +260,26 @@
   ]
 
   fits.forEach(fit => {
-    const liveMatch = fit.data.homeFixtures.find(f => f.live) || fit.data.homeFixtures[0]
     root.registerFit(fit.id, {
       fitId: fit.id,
       title: fit.title,
       subtitle: 'Ultimate Sports',
       category: fit.category,
-      entrantShape: fit.entrantShape,
-      templateKinds: fit.templateKinds,
-      recommendedVariants: fit.recommendedVariants,
-      recommendedMiniGames: fit.recommendedMiniGames,
+      entrantShape: 'team',
       defaultTeam: fit.defaultTeam,
       theme: fit.theme,
-      entrants: fit.data.teams,
       teams: fit.data.teams,
-      fixtures: fit.data.homeFixtures,
-      homeFixtures: fit.data.homeFixtures,
+      pools: [{ tier: 10, entrants: 92, closes: '12h', max: 256, prize: '$920', heat: 'Open', rail: 'USDT demo' }, { tier: 25, entrants: 58, closes: '9h', max: 160, prize: '$1,450', heat: 'Hot', rail: 'USDT demo' }, { tier: 50, entrants: 32, closes: '7h', max: 96, prize: '$1,600', heat: 'Sharp', rail: 'USDT demo' }, { tier: 100, entrants: 16, closes: '5h', max: 64, prize: '$1,600', heat: 'Elite', rail: 'USDT demo' }],
       round32Matches: fit.data.round32Matches,
       bracketLinks: fit.data.bracketLinks,
       bracketMatchIds: fit.data.bracketMatchIds,
-      liveMatch,
-      pools: [{ tier: 10, entrants: 92, closes: '12h', max: 256, prize: '$920', heat: 'Open', rail: 'USDT demo' }, { tier: 25, entrants: 58, closes: '9h', max: 160, prize: '$1,450', heat: 'Hot', rail: 'USDT demo' }, { tier: 50, entrants: 32, closes: '7h', max: 96, prize: '$1,600', heat: 'Sharp', rail: 'USDT demo' }, { tier: 100, entrants: 16, closes: '5h', max: 64, prize: '$1,600', heat: 'Elite', rail: 'USDT demo' }],
+      homeFixtures: fit.data.homeFixtures,
       matchStats: fit.stats,
       leaders: fit.data.leaders,
       commentary: fit.data.commentary,
       defaultChat: fit.data.defaultChat,
       gameRounds: fit.data.gameRounds,
       gameLeaderboardRows: fit.data.gameLeaderboardRows,
-      templateData: fit.data.templateData,
       assets: { heroBackdrop: '../generated/fit-heroes/' + fit.id + '.svg' },
     })
   })

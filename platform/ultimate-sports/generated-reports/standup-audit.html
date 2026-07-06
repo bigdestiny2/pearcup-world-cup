@@ -1,0 +1,876 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ultimate Sports Standup Audit</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17211c;
+      --muted: #637068;
+      --line: #d9e0dc;
+      --panel: #ffffff;
+      --wash: #f5f7f2;
+      --accent: #0f766e;
+      --warn: #b45309;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--wash);
+    }
+    header {
+      padding: 28px clamp(18px, 5vw, 56px) 18px;
+      border-bottom: 1px solid var(--line);
+      background: #ffffff;
+    }
+    h1 { margin: 0 0 6px; font-size: clamp(28px, 5vw, 48px); letter-spacing: 0; }
+    h2 { margin: 0 0 14px; font-size: 20px; letter-spacing: 0; }
+    p { margin: 0; color: var(--muted); max-width: 860px; }
+    main { padding: 24px clamp(18px, 5vw, 56px) 44px; }
+    .scoreline {
+      display: grid;
+      grid-template-columns: minmax(180px, 260px) 1fr;
+      gap: 18px;
+      align-items: stretch;
+      margin-bottom: 24px;
+    }
+    .score, .metric, .section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+    .score { padding: 20px; }
+    .score strong { display: block; font-size: 44px; color: var(--accent); letter-spacing: 0; }
+    .score span { color: var(--muted); }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+    }
+    .metric { padding: 16px; min-height: 116px; }
+    .metric-value { font-size: 24px; font-weight: 700; color: var(--ink); }
+    .metric-label { font-weight: 700; margin-bottom: 6px; }
+    .metric p { font-size: 12px; }
+    .section { margin-top: 18px; overflow: hidden; }
+    .section > h2 { padding: 18px 18px 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 11px 12px; text-align: left; vertical-align: top; border-top: 1px solid var(--line); }
+    th { font-size: 12px; color: var(--muted); background: #fafbf8; }
+    td span { color: var(--muted); font-size: 12px; }
+    code { background: #edf2ee; border: 1px solid var(--line); border-radius: 4px; padding: 1px 4px; }
+    .commands { display: grid; gap: 8px; padding: 0 18px 18px; }
+    .commands code { display: block; overflow-wrap: anywhere; padding: 10px; }
+    @media (max-width: 760px) {
+      .scoreline { grid-template-columns: 1fr; }
+      table { font-size: 12px; }
+      th, td { padding: 9px 8px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Ultimate Sports Standup Audit</h1>
+    <p>Generated 2026-07-04T14:00:43.291Z. This report boots the isolated v2 facade, walks every event fit, checks launch and mini-game coverage, confirms data aggregator routes, and lists the remaining grind.</p>
+  </header>
+  <main>
+    <div class="scoreline">
+      <section class="score">
+        <strong>100%</strong>
+        <span>product-standup-ready coverage score</span>
+      </section>
+      <div class="metrics">
+    <section class="metric">
+      <div class="metric-value">1/1</div>
+      <div class="metric-label">Manifest contract</div>
+      <p>Verifier passes the isolated scaffold contract.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">12/12</div>
+      <div class="metric-label">Event fits</div>
+      <p>Catalog, launch, shell, and data rows are present per event fit.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">12/12</div>
+      <div class="metric-label">Launch plans</div>
+      <p>Primary launch plans are generated for each event fit.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">52/52</div>
+      <div class="metric-label">Pool variants</div>
+      <p>Recommended variants are present in primary or alternate launch plans.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">70/70</div>
+      <div class="metric-label">Mini-game launch coverage</div>
+      <p>Recommended mini-games map to commands or activation tasks.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">70/70</div>
+      <div class="metric-label">Mini-game run plans</div>
+      <p>Executable run plans exist for recommended mini-game specs.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">12/12</div>
+      <div class="metric-label">Aggregator routes</div>
+      <p>Every fit has a normalized sports data route.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">12/12</div>
+      <div class="metric-label">Result settlement paths</div>
+      <p>Every fit must have either source-of-truth auto settlement or a QVAC result-evidence settlement lane.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">8/8</div>
+      <div class="metric-label">Provider stack</div>
+      <p>Provider matrix is available for route decisions.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">12/12</div>
+      <div class="metric-label">Tournament asset packs</div>
+      <p>Each fit has required generated/licensed asset prompts.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">10/10</div>
+      <div class="metric-label">App surfaces</div>
+      <p>The facade can derive home, discover, pool, pick, watch, game, creator, wallet, ops, and settings surfaces.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">6/6</div>
+      <div class="metric-label">Scenarios</div>
+      <p>Manifest scenarios replay through the facade.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">1/1</div>
+      <div class="metric-label">User-facing v2 UI</div>
+      <p>A dedicated ultimate sports UI folder exists.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">8/8</div>
+      <div class="metric-label">Live provider clients</div>
+      <p>Server-side HTTP client request builders exist for API-backed aggregator sources; live credentials still need smoke verification.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">1/1</div>
+      <div class="metric-label">Provider smoke runner</div>
+      <p>Redacted smoke-check plan covers 11 sources; 0/8 API checks are ready to call with current env.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">1/1</div>
+      <div class="metric-label">Preview journey smoke runner</div>
+      <p>Served preview journey smoke script and regression test are in the manifest. Latest report: passed, 19/19 checks, 100% coverage.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">30/30</div>
+      <div class="metric-label">Generated visual assets</div>
+      <p>30/30 MMA generated asset outputs are present on disk.</p>
+    </section>
+    <section class="metric">
+      <div class="metric-value">1/1</div>
+      <div class="metric-label">Pear worker bridge wiring</div>
+      <p>Existing Pear worker bridge delegates optional nested ultimateSports requests into the isolated v2 bridge while preserving v1 actions.</p>
+    </section></div>
+    </div>
+    <section class="section">
+      <h2>Launch Readiness Gates</h2>
+      <table>
+        <thead><tr><th>Gate</th><th>Status</th><th>Evidence</th><th>Blockers</th><th>Proof command</th></tr></thead>
+        <tbody>
+    <tr>
+      <td><strong>Local Preview Standup</strong><br><span>local-preview-ready</span></td>
+      <td>passed</td>
+      <td>Preview smoke passes and coverage is 100%.</td>
+      <td><span>none</span></td>
+      <td><code>node platform/ultimate-sports/scripts/preview-journey-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Replayable Demo Product</strong><br><span>demo-product-ready</span></td>
+      <td>passed</td>
+      <td>12 event fits launch, 6/6 scenarios replay, and all required surfaces are present.</td>
+      <td><span>none</span></td>
+      <td><code>node platform/ultimate-sports/scripts/standup-audit.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Live Provider Data</strong><br><span>provider-live-data-ready</span></td>
+      <td>blocked</td>
+      <td>0/8 API smoke checks are ready; 8 checks blocked; 3 local evidence lanes ready.</td>
+      <td>8 API checks are missing credentials or provider config.<br>A redacted passed-live smoke report has not been produced for every API-backed provider.</td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Combat Generated Asset Pack</strong><br><span>combat-asset-pack-ready</span></td>
+      <td>ready</td>
+      <td>30/30 MMA/combat generated outputs are present.</td>
+      <td>Visual QA and QVAC/human review evidence must be attached before prize-mode promotion.</td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Pear Production Integration</strong><br><span>pear-production-integration-ready</span></td>
+      <td>ready</td>
+      <td>Optional ultimateSports bridge action exists and preview smoke passes; production topic mapping remains a graduation task.</td>
+      <td>Final Pear UI routing is still isolated from the current PearCup start flow.<br>Production Pear topic/storage mapping for v2 rooms is not yet deployed.</td>
+      <td><code>node platform/ultimate-sports/scripts/verify-platform.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Real-money / Prize-mode Readiness</strong><br><span>real-money-prize-mode-ready</span></td>
+      <td>blocked</td>
+      <td>Real-money remains policy-gated; demo and sponsor-prize models exist, but regulated mode is intentionally disabled.</td>
+      <td>Real-money policy flag is disabled by default.<br>Compliance, payout recipient, processor evidence, live provider smoke, and asset QA evidence must be complete before live prize mode.<br>10 backlog tickets still depend on external credentials, contracts, or generated assets.</td>
+      <td><code>npm test</code></td>
+    </tr></tbody>
+      </table>
+    </section>
+    <section class="section">
+      <h2>Fit Readiness Matrix</h2>
+      <table>
+        <thead><tr><th>Fit</th><th>Mode</th><th>Demo</th><th>Live data</th><th>Settlement</th><th>Assets</th><th>QVAC referee</th><th>Next step</th></tr></thead>
+        <tbody>
+    <tr>
+      <td><strong>World Cup</strong><br><span>world-cup</span></td>
+      <td>api-with-qvac-fallback</td>
+      <td>passed</td>
+      <td>blocked-provider-credentials<br><span>sportradar-official</span></td>
+      <td>passed<br><span>auto-source-with-qvac-correction</span></td>
+      <td>prompt-ready</td>
+      <td>yes<br><span>host-evidence-qvac</span></td>
+      <td>Add backend credentials for sportradar-official and run node platform/ultimate-sports/scripts/sports-data-smoke.js.</td>
+    </tr>
+    <tr>
+      <td><strong>Euros / Copa America</strong><br><span>euros-copa-america</span></td>
+      <td>api-with-qvac-fallback</td>
+      <td>passed</td>
+      <td>blocked-provider-credentials<br><span>sportradar-official</span></td>
+      <td>passed<br><span>auto-source-with-qvac-correction</span></td>
+      <td>prompt-ready</td>
+      <td>yes<br><span>host-evidence-qvac</span></td>
+      <td>Add backend credentials for sportradar-official and run node platform/ultimate-sports/scripts/sports-data-smoke.js.</td>
+    </tr>
+    <tr>
+      <td><strong>Champions League Knockout</strong><br><span>champions-league-knockout</span></td>
+      <td>api-with-qvac-fallback</td>
+      <td>passed</td>
+      <td>blocked-provider-credentials<br><span>sportradar-official</span></td>
+      <td>passed<br><span>auto-source-with-qvac-correction</span></td>
+      <td>prompt-ready</td>
+      <td>yes<br><span>host-evidence-qvac</span></td>
+      <td>Add backend credentials for sportradar-official and run node platform/ultimate-sports/scripts/sports-data-smoke.js.</td>
+    </tr>
+    <tr>
+      <td><strong>March Madness</strong><br><span>march-madness</span></td>
+      <td>api-with-qvac-fallback</td>
+      <td>passed</td>
+      <td>blocked-provider-credentials<br><span>sportradar-official</span></td>
+      <td>passed<br><span>auto-source-with-qvac-correction</span></td>
+      <td>prompt-ready</td>
+      <td>yes<br><span>host-evidence-qvac</span></td>
+      <td>Add backend credentials for sportradar-official and run node platform/ultimate-sports/scripts/sports-data-smoke.js.</td>
+    </tr>
+    <tr>
+      <td><strong>NBA / NHL / MLB Playoffs</strong><br><span>pro-playoffs</span></td>
+      <td>api-with-qvac-fallback</td>
+      <td>passed</td>
+      <td>blocked-provider-credentials<br><span>sportradar-official</span></td>
+      <td>passed<br><span>auto-source-with-qvac-correction</span></td>
+      <td>prompt-ready</td>
+      <td>yes<br><span>host-evidence-qvac</span></td>
+      <td>Add backend credentials for sportradar-official and run node platform/ultimate-sports/scripts/sports-data-smoke.js.</td>
+    </tr>
+    <tr>
+      <td><strong>Tennis Grand Slams</strong><br><span>tennis-grand-slams</span></td>
+      <td>api-with-qvac-fallback</td>
+      <td>passed</td>
+      <td>blocked-provider-credentials<br><span>sportradar-official</span></td>
+      <td>passed<br><span>auto-source-with-qvac-correction</span></td>
+      <td>prompt-ready</td>
+      <td>yes<br><span>host-evidence-qvac</span></td>
+      <td>Add backend credentials for sportradar-official and run node platform/ultimate-sports/scripts/sports-data-smoke.js.</td>
+    </tr>
+    <tr>
+      <td><strong>Valorant / LoL Worlds / CS / Dota / Rocket League</strong><br><span>esports-major</span></td>
+      <td>api-with-qvac-fallback</td>
+      <td>passed</td>
+      <td>blocked-provider-credentials<br><span>pandascore-esports</span></td>
+      <td>passed<br><span>auto-source-with-qvac-correction</span></td>
+      <td>prompt-ready</td>
+      <td>yes<br><span>host-evidence-qvac</span></td>
+      <td>Add backend credentials for pandascore-esports and run node platform/ultimate-sports/scripts/sports-data-smoke.js.</td>
+    </tr>
+    <tr>
+      <td><strong>Combat Sport Fight Cards</strong><br><span>mma-boxing-fight-card</span></td>
+      <td>api-with-qvac-fallback</td>
+      <td>passed</td>
+      <td>blocked-provider-credentials<br><span>sportsdataio-mma, sportradar-official</span></td>
+      <td>passed<br><span>auto-source-with-qvac-correction</span></td>
+      <td>ready-for-qa</td>
+      <td>yes<br><span>official-web-evidence, social-web-evidence, host-evidence-qvac</span></td>
+      <td>Add backend credentials for sportsdataio-mma, sportradar-official and run node platform/ultimate-sports/scripts/sports-data-smoke.js.</td>
+    </tr>
+    <tr>
+      <td><strong>SailGP Companion</strong><br><span>sailgp-companion</span></td>
+      <td>api-with-qvac-fallback</td>
+      <td>passed</td>
+      <td>blocked-provider-credentials<br><span>sailgp-partner-feed</span></td>
+      <td>passed<br><span>auto-source-with-qvac-correction</span></td>
+      <td>prompt-ready</td>
+      <td>yes<br><span>host-evidence-qvac, official-web-evidence</span></td>
+      <td>Add backend credentials for sailgp-partner-feed and run node platform/ultimate-sports/scripts/sports-data-smoke.js.</td>
+    </tr>
+    <tr>
+      <td><strong>Reality / Creator Tournaments</strong><br><span>creator-reality-brackets</span></td>
+      <td>qvac-referee-local</td>
+      <td>passed</td>
+      <td>qvac-local-ready<br><span>no provider required</span></td>
+      <td>passed<br><span>qvac-result-evidence</span></td>
+      <td>prompt-ready</td>
+      <td>yes<br><span>host-evidence-qvac, official-web-evidence</span></td>
+      <td>Keep the QVAC result-evidence packet visible in result, dispute, and prize-settlement states.</td>
+    </tr>
+    <tr>
+      <td><strong>Oscars / Grammys / Eurovision</strong><br><span>awards-prediction-pools</span></td>
+      <td>qvac-referee-local</td>
+      <td>passed</td>
+      <td>qvac-local-ready<br><span>no provider required</span></td>
+      <td>passed<br><span>qvac-result-evidence</span></td>
+      <td>prompt-ready</td>
+      <td>yes<br><span>host-evidence-qvac, official-web-evidence</span></td>
+      <td>Keep the QVAC result-evidence packet visible in result, dispute, and prize-settlement states.</td>
+    </tr>
+    <tr>
+      <td><strong>School / Office / Pub / Rec Sports</strong><br><span>local-leagues</span></td>
+      <td>qvac-referee-local</td>
+      <td>passed</td>
+      <td>qvac-local-ready<br><span>no provider required</span></td>
+      <td>passed<br><span>qvac-result-evidence</span></td>
+      <td>prompt-ready</td>
+      <td>yes<br><span>host-evidence-qvac, official-web-evidence</span></td>
+      <td>Keep the QVAC result-evidence packet visible in result, dispute, and prize-settlement states.</td>
+    </tr></tbody>
+      </table>
+    </section>
+    <section class="section">
+      <h2>Event Fit Coverage</h2>
+      <table>
+        <thead><tr><th>Fit</th><th>Category</th><th>Launch</th><th>Variants</th><th>Mini-games</th><th>Data route</th><th>Shell</th><th>Assets</th></tr></thead>
+        <tbody>
+    <tr>
+      <td><strong>World Cup</strong><br><span>world-cup</span></td>
+      <td>soccer</td>
+      <td>yes</td>
+      <td>5/5</td>
+      <td>6/6</td>
+      <td>sportradar-official<br><span>auto-source-with-qvac-correction</span></td>
+      <td>yes</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <td><strong>Euros / Copa America</strong><br><span>euros-copa-america</span></td>
+      <td>soccer</td>
+      <td>yes</td>
+      <td>4/4</td>
+      <td>6/6</td>
+      <td>sportradar-official<br><span>auto-source-with-qvac-correction</span></td>
+      <td>yes</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <td><strong>Champions League Knockout</strong><br><span>champions-league-knockout</span></td>
+      <td>soccer</td>
+      <td>yes</td>
+      <td>4/4</td>
+      <td>6/6</td>
+      <td>sportradar-official<br><span>auto-source-with-qvac-correction</span></td>
+      <td>yes</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <td><strong>March Madness</strong><br><span>march-madness</span></td>
+      <td>basketball</td>
+      <td>yes</td>
+      <td>4/4</td>
+      <td>7/7</td>
+      <td>sportradar-official<br><span>auto-source-with-qvac-correction</span></td>
+      <td>yes</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <td><strong>NBA / NHL / MLB Playoffs</strong><br><span>pro-playoffs</span></td>
+      <td>pro-sports</td>
+      <td>yes</td>
+      <td>4/4</td>
+      <td>7/7</td>
+      <td>sportradar-official<br><span>auto-source-with-qvac-correction</span></td>
+      <td>yes</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <td><strong>Tennis Grand Slams</strong><br><span>tennis-grand-slams</span></td>
+      <td>tennis</td>
+      <td>yes</td>
+      <td>4/4</td>
+      <td>5/5</td>
+      <td>sportradar-official<br><span>auto-source-with-qvac-correction</span></td>
+      <td>yes</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <td><strong>Valorant / LoL Worlds / CS / Dota / Rocket League</strong><br><span>esports-major</span></td>
+      <td>esports</td>
+      <td>yes</td>
+      <td>5/5</td>
+      <td>5/5</td>
+      <td>pandascore-esports<br><span>auto-source-with-qvac-correction</span></td>
+      <td>yes</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <td><strong>Combat Sport Fight Cards</strong><br><span>mma-boxing-fight-card</span></td>
+      <td>combat-sports</td>
+      <td>yes</td>
+      <td>4/4</td>
+      <td>6/6</td>
+      <td>sportsdataio-mma<br><span>auto-source-with-qvac-correction</span></td>
+      <td>yes</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <td><strong>SailGP Companion</strong><br><span>sailgp-companion</span></td>
+      <td>sailing</td>
+      <td>yes</td>
+      <td>5/5</td>
+      <td>7/7</td>
+      <td>sailgp-partner-feed<br><span>auto-source-with-qvac-correction</span></td>
+      <td>yes</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <td><strong>Reality / Creator Tournaments</strong><br><span>creator-reality-brackets</span></td>
+      <td>creator</td>
+      <td>yes</td>
+      <td>4/4</td>
+      <td>3/3</td>
+      <td>host-evidence-qvac<br><span>qvac-result-evidence</span></td>
+      <td>yes</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <td><strong>Oscars / Grammys / Eurovision</strong><br><span>awards-prediction-pools</span></td>
+      <td>awards</td>
+      <td>yes</td>
+      <td>4/4</td>
+      <td>3/3</td>
+      <td>host-evidence-qvac<br><span>qvac-result-evidence</span></td>
+      <td>yes</td>
+      <td>9</td>
+    </tr>
+    <tr>
+      <td><strong>School / Office / Pub / Rec Sports</strong><br><span>local-leagues</span></td>
+      <td>local</td>
+      <td>yes</td>
+      <td>5/5</td>
+      <td>9/9</td>
+      <td>host-evidence-qvac<br><span>qvac-result-evidence</span></td>
+      <td>yes</td>
+      <td>9</td>
+    </tr></tbody>
+      </table>
+    </section>
+    <section class="section">
+      <h2>Grind List</h2>
+      <table>
+        <thead><tr><th>Work</th><th>Priority</th><th>Status</th><th>Evidence</th><th>Next step</th></tr></thead>
+        <tbody>
+    <tr>
+      <td><strong>Build the actual ultimate sports app shell</strong><br><span>Product UI</span></td>
+      <td>P0</td>
+      <td>covered</td>
+      <td>Dedicated platform UI folder exists.</td>
+      <td>Create the Pear/Web renderer that consumes createTournamentShell, createExperience, and the standup audit data.</td>
+    </tr>
+    <tr>
+      <td><strong>Implement real provider API clients behind the aggregator routes</strong><br><span>Live data</span></td>
+      <td>P0</td>
+      <td>covered</td>
+      <td>Server-only request builders exist for every API-backed aggregator source, with redacted auth and credential readiness checks.</td>
+      <td>Keep credentials server-side and run provider smoke checks as contracts are secured.</td>
+    </tr>
+    <tr>
+      <td><strong>Verify provider credentials and contracts with live smoke checks</strong><br><span>Live data</span></td>
+      <td>P0</td>
+      <td>open</td>
+      <td>Smoke runner exists, but 8/8 API checks are missing required env in the current process.</td>
+      <td>Run node platform/ultimate-sports/scripts/sports-data-smoke.js from the backend once contracted provider env vars are present, then store the redacted JSON report.</td>
+    </tr>
+    <tr>
+      <td><strong>Prove no-API result settlement lanes</strong><br><span>Settlement</span></td>
+      <td>P2</td>
+      <td>covered</td>
+      <td>9 fits have source-of-truth auto settlement and 3 fits use QVAC result-evidence settlement.</td>
+      <td>Expose QVAC result-evidence status in result, dispute, and prize-settlement UI states while provider contracts are finalized.</td>
+    </tr>
+    <tr>
+      <td><strong>Secure SailGP and premium sports data access</strong><br><span>Provider contracts</span></td>
+      <td>P1</td>
+      <td>open</td>
+      <td>SailGP route is hybrid and keeps official web/QVAC fallback active.</td>
+      <td>Confirm SailGP partner-feed availability and decide whether Stats Perform/Opta is worth licensing for soccer depth.</td>
+    </tr>
+    <tr>
+      <td><strong>Generate and QA sport-specific asset packs</strong><br><span>Assets</span></td>
+      <td>P1</td>
+      <td>covered</td>
+      <td>30/30 MMA asset output targets are present. Status: generated-assets-ready-for-qa.</td>
+      <td>Run visual QA, attach QVAC review evidence, and upload approved finals to the asset store/CDN.</td>
+    </tr>
+    <tr>
+      <td><strong>Wire v2 commands through the existing Pear worker boundary</strong><br><span>Worker bridge</span></td>
+      <td>P1</td>
+      <td>covered</td>
+      <td>Existing Pear worker bridge delegates optional nested ultimateSports requests into the isolated v2 bridge while preserving v1 actions.</td>
+      <td>Keep the optional ultimateSports action isolated from v1 startup, then add production Pear topic mapping when the v2 UI graduates from preview.</td>
+    </tr>
+    <tr>
+      <td><strong>Add automated preview journey tests for the UI shell</strong><br><span>Quality</span></td>
+      <td>P2</td>
+      <td>covered</td>
+      <td>Served preview journey smoke script and regression test are in the manifest. Latest report: passed, 19/19 checks, 100% coverage.</td>
+      <td>Keep running npm run smoke:ultimate-preview for the isolated shell, then add screenshot/click automation when the preview graduates into a production Pear UI.</td>
+    </tr></tbody>
+      </table>
+    </section>
+    <section class="section">
+      <h2>Grind Matrix</h2>
+      <table>
+        <thead><tr><th>Group</th><th>Task</th><th>Status</th><th>Next action</th><th>Command</th></tr></thead>
+        <tbody>
+    <tr>
+      <td><strong>Provider Credentials And Live Smoke</strong><br><span>provider:sportradar-official</span></td>
+      <td>Sportradar official sports APIs client</td>
+      <td>blocked</td>
+      <td>Set backend-only env for sportradar-official: SPORTRADAR_API_KEY, SPORTRADAR_PRODUCT_CONFIG.</td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Provider Credentials And Live Smoke</strong><br><span>provider:sportsdataio-mma</span></td>
+      <td>SportsDataIO UFC / MMA client</td>
+      <td>blocked</td>
+      <td>Set backend-only env for sportsdataio-mma: SPORTSDATAIO_MMA_API_KEY.</td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Provider Credentials And Live Smoke</strong><br><span>provider:sportsdataio-global</span></td>
+      <td>SportsDataIO league/global client</td>
+      <td>blocked</td>
+      <td>Set backend-only env for sportsdataio-global: SPORTSDATAIO_GLOBAL_API_KEY.</td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Provider Credentials And Live Smoke</strong><br><span>provider:pandascore-esports</span></td>
+      <td>PandaScore esports client</td>
+      <td>blocked</td>
+      <td>Set backend-only env for pandascore-esports: PANDASCORE_TOKEN.</td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Provider Credentials And Live Smoke</strong><br><span>provider:abios-esports</span></td>
+      <td>Abios esports data client</td>
+      <td>blocked</td>
+      <td>Set backend-only env for abios-esports: ABIOS_CLIENT_ID, ABIOS_CLIENT_SECRET.</td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Provider Credentials And Live Smoke</strong><br><span>provider:the-odds-api-context</span></td>
+      <td>The Odds API context client</td>
+      <td>blocked</td>
+      <td>Set backend-only env for the-odds-api-context: ODDS_API_KEY.</td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Provider Credentials And Live Smoke</strong><br><span>provider:sailgp-partner-feed</span></td>
+      <td>SailGP partner-feed client</td>
+      <td>blocked</td>
+      <td>Set backend-only env for sailgp-partner-feed: SAILGP_PARTNER_FEED_KEY, SAILGP_PARTNER_FEED_BASE_URL.</td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Provider Credentials And Live Smoke</strong><br><span>provider:official-web-evidence</span></td>
+      <td>Official web evidence capture client</td>
+      <td>covered</td>
+      <td>Use this local QVAC/evidence lane for host-entered results, corrections, and no-API settlement reviews.</td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Provider Credentials And Live Smoke</strong><br><span>provider:social-web-evidence</span></td>
+      <td>Social + web result evidence client</td>
+      <td>covered</td>
+      <td>Use this local QVAC/evidence lane for host-entered results, corrections, and no-API settlement reviews.</td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Provider Credentials And Live Smoke</strong><br><span>provider:host-evidence-qvac</span></td>
+      <td>Host evidence + QVAC referee client</td>
+      <td>covered</td>
+      <td>Use this local QVAC/evidence lane for host-entered results, corrections, and no-API settlement reviews.</td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Provider Credentials And Live Smoke</strong><br><span>provider:stats-perform-opta</span></td>
+      <td>Stats Perform / Opta evaluation client</td>
+      <td>blocked</td>
+      <td>Set backend-only env for stats-perform-opta: STATSPERFORM_API_KEY, STATSPERFORM_BASE_URL.</td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>SailGP And Premium Data Access</strong><br><span>sailgp:partner-feed-contract</span></td>
+      <td>Secure SailGP official or partner feed</td>
+      <td>blocked</td>
+      <td>Set backend-only env for sailgp-partner-feed: SAILGP_PARTNER_FEED_KEY, SAILGP_PARTNER_FEED_BASE_URL.</td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js --source sailgp-partner-feed</code></td>
+    </tr>
+    <tr>
+      <td><strong>SailGP And Premium Data Access</strong><br><span>premium:stats-perform-decision</span></td>
+      <td>Decide whether Stats Perform / Opta is worth licensing</td>
+      <td>blocked</td>
+      <td>Set backend-only env for stats-perform-opta: STATSPERFORM_API_KEY, STATSPERFORM_BASE_URL.</td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js --source stats-perform-opta</code></td>
+    </tr>
+    <tr>
+      <td><strong>Combat Generated Assets</strong><br><span>combat-assets:lobby-icon</span></td>
+      <td>Fight Card Lobby Icon</td>
+      <td>ready-for-qa</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.</td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Combat Generated Assets</strong><br><span>combat-assets:server-card-cover</span></td>
+      <td>Fight Card Server Cover</td>
+      <td>ready-for-qa</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.</td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Combat Generated Assets</strong><br><span>combat-assets:hero-backdrop</span></td>
+      <td>Fight Night Hero Backdrop</td>
+      <td>ready-for-qa</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.</td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Combat Generated Assets</strong><br><span>combat-assets:bracket-board-skin</span></td>
+      <td>Bout List Board Skin</td>
+      <td>ready-for-qa</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.</td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Combat Generated Assets</strong><br><span>combat-assets:pool-card-accent</span></td>
+      <td>Fight Pool Card Accent</td>
+      <td>ready-for-qa</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.</td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Combat Generated Assets</strong><br><span>combat-assets:mini-game-icon-set</span></td>
+      <td>Fight Mini-game Icon Set</td>
+      <td>ready-for-qa</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.</td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Combat Generated Assets</strong><br><span>combat-assets:watch-room-stage</span></td>
+      <td>Watch Room Fight Stage</td>
+      <td>ready-for-qa</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.</td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Combat Generated Assets</strong><br><span>combat-assets:result-share-card</span></td>
+      <td>Fight Result Share Card</td>
+      <td>ready-for-qa</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.</td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>Combat Generated Assets</strong><br><span>combat-assets:empty-state-illustration</span></td>
+      <td>Empty Fight Arena Illustration</td>
+      <td>ready-for-qa</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.</td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr></tbody>
+      </table>
+    </section>
+    <section class="section">
+      <h2>Actionable Backlog</h2>
+      <table>
+        <thead><tr><th>Ticket</th><th>Work</th><th>Priority</th><th>Status</th><th>Evidence needed</th><th>Command</th></tr></thead>
+        <tbody>
+    <tr>
+      <td><strong>US-GRIND-001</strong><br><span>backend-data</span></td>
+      <td><strong>Sportradar official sports APIs client</strong><br><span>Provider Credentials And Live Smoke</span></td>
+      <td>P0</td>
+      <td>blocked</td>
+      <td>Set backend-only env for sportradar-official: SPORTRADAR_API_KEY, SPORTRADAR_PRODUCT_CONFIG.<br><span>HTTP 2xx response from source-of-truth provider sample endpoint</span></td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-002</strong><br><span>backend-data</span></td>
+      <td><strong>SportsDataIO UFC / MMA client</strong><br><span>Provider Credentials And Live Smoke</span></td>
+      <td>P0</td>
+      <td>blocked</td>
+      <td>Set backend-only env for sportsdataio-mma: SPORTSDATAIO_MMA_API_KEY.<br><span>HTTP 2xx response from source-of-truth provider sample endpoint</span></td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-003</strong><br><span>backend-data</span></td>
+      <td><strong>SportsDataIO league/global client</strong><br><span>Provider Credentials And Live Smoke</span></td>
+      <td>P0</td>
+      <td>blocked</td>
+      <td>Set backend-only env for sportsdataio-global: SPORTSDATAIO_GLOBAL_API_KEY.<br><span>HTTP 2xx response from trusted secondary provider sample endpoint</span></td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-004</strong><br><span>backend-data</span></td>
+      <td><strong>PandaScore esports client</strong><br><span>Provider Credentials And Live Smoke</span></td>
+      <td>P0</td>
+      <td>blocked</td>
+      <td>Set backend-only env for pandascore-esports: PANDASCORE_TOKEN.<br><span>HTTP 2xx response from source-of-truth provider sample endpoint</span></td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-005</strong><br><span>backend-data</span></td>
+      <td><strong>Abios esports data client</strong><br><span>Provider Credentials And Live Smoke</span></td>
+      <td>P0</td>
+      <td>blocked</td>
+      <td>Set backend-only env for abios-esports: ABIOS_CLIENT_ID, ABIOS_CLIENT_SECRET.<br><span>HTTP 2xx response from trusted secondary provider sample endpoint</span></td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-006</strong><br><span>backend-data</span></td>
+      <td><strong>The Odds API context client</strong><br><span>Provider Credentials And Live Smoke</span></td>
+      <td>P0</td>
+      <td>blocked</td>
+      <td>Set backend-only env for the-odds-api-context: ODDS_API_KEY.<br><span>HTTP 2xx response from context provider sample endpoint</span></td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-007</strong><br><span>backend-data</span></td>
+      <td><strong>SailGP partner-feed client</strong><br><span>Provider Credentials And Live Smoke</span></td>
+      <td>P0</td>
+      <td>blocked</td>
+      <td>Set backend-only env for sailgp-partner-feed: SAILGP_PARTNER_FEED_KEY, SAILGP_PARTNER_FEED_BASE_URL.<br><span>HTTP 2xx response from source-of-truth provider sample endpoint</span></td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-008</strong><br><span>backend-data</span></td>
+      <td><strong>Stats Perform / Opta evaluation client</strong><br><span>Provider Credentials And Live Smoke</span></td>
+      <td>P0</td>
+      <td>blocked</td>
+      <td>Set backend-only env for stats-perform-opta: STATSPERFORM_API_KEY, STATSPERFORM_BASE_URL.<br><span>HTTP 2xx response from trusted secondary provider sample endpoint</span></td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-009</strong><br><span>partnerships-and-licensing</span></td>
+      <td><strong>Secure SailGP official or partner feed</strong><br><span>SailGP And Premium Data Access</span></td>
+      <td>P1</td>
+      <td>blocked</td>
+      <td>Set backend-only env for sailgp-partner-feed: SAILGP_PARTNER_FEED_KEY, SAILGP_PARTNER_FEED_BASE_URL.<br><span>HTTP 2xx response from source-of-truth provider sample endpoint</span></td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js --source sailgp-partner-feed</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-010</strong><br><span>partnerships-and-licensing</span></td>
+      <td><strong>Decide whether Stats Perform / Opta is worth licensing</strong><br><span>SailGP And Premium Data Access</span></td>
+      <td>P1</td>
+      <td>blocked</td>
+      <td>Set backend-only env for stats-perform-opta: STATSPERFORM_API_KEY, STATSPERFORM_BASE_URL.<br><span>HTTP 2xx response from trusted secondary provider sample endpoint</span></td>
+      <td><code>node platform/ultimate-sports/scripts/sports-data-smoke.js --source stats-perform-opta</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-011</strong><br><span>creative-ops</span></td>
+      <td><strong>Fight Card Lobby Icon</strong><br><span>Combat Generated Assets</span></td>
+      <td>P1</td>
+      <td>ready</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.<br><span>Generated PNG/MP4 output files plus prompt metadata and visual QA evidence.</span></td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-012</strong><br><span>creative-ops</span></td>
+      <td><strong>Fight Card Server Cover</strong><br><span>Combat Generated Assets</span></td>
+      <td>P1</td>
+      <td>ready</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.<br><span>Generated PNG/MP4 output files plus prompt metadata and visual QA evidence.</span></td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-013</strong><br><span>creative-ops</span></td>
+      <td><strong>Fight Night Hero Backdrop</strong><br><span>Combat Generated Assets</span></td>
+      <td>P1</td>
+      <td>ready</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.<br><span>Generated PNG/MP4 output files plus prompt metadata and visual QA evidence.</span></td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-014</strong><br><span>creative-ops</span></td>
+      <td><strong>Bout List Board Skin</strong><br><span>Combat Generated Assets</span></td>
+      <td>P1</td>
+      <td>ready</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.<br><span>Generated PNG/MP4 output files plus prompt metadata and visual QA evidence.</span></td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-015</strong><br><span>creative-ops</span></td>
+      <td><strong>Fight Pool Card Accent</strong><br><span>Combat Generated Assets</span></td>
+      <td>P1</td>
+      <td>ready</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.<br><span>Generated PNG/MP4 output files plus prompt metadata and visual QA evidence.</span></td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-016</strong><br><span>creative-ops</span></td>
+      <td><strong>Fight Mini-game Icon Set</strong><br><span>Combat Generated Assets</span></td>
+      <td>P1</td>
+      <td>ready</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.<br><span>Generated PNG/MP4 output files plus prompt metadata and visual QA evidence.</span></td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-017</strong><br><span>creative-ops</span></td>
+      <td><strong>Watch Room Fight Stage</strong><br><span>Combat Generated Assets</span></td>
+      <td>P1</td>
+      <td>ready</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.<br><span>Generated PNG/MP4 output files plus prompt metadata and visual QA evidence.</span></td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-018</strong><br><span>creative-ops</span></td>
+      <td><strong>Fight Result Share Card</strong><br><span>Combat Generated Assets</span></td>
+      <td>P1</td>
+      <td>ready</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.<br><span>Generated PNG/MP4 output files plus prompt metadata and visual QA evidence.</span></td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr>
+    <tr>
+      <td><strong>US-GRIND-019</strong><br><span>creative-ops</span></td>
+      <td><strong>Empty Fight Arena Illustration</strong><br><span>Combat Generated Assets</span></td>
+      <td>P1</td>
+      <td>ready</td>
+      <td>Run visual QA, rights review, crop review, and attach QVAC/human review evidence.<br><span>Generated PNG/MP4 output files plus prompt metadata and visual QA evidence.</span></td>
+      <td><code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code></td>
+    </tr></tbody>
+      </table>
+    </section>
+    <section class="section">
+      <h2>Commands</h2>
+      <div class="commands">
+        <code>node platform/ultimate-sports/scripts/standup-audit.js</code>
+        <code>node platform/ultimate-sports/scripts/preview-journey-smoke.js</code>
+        <code>node platform/ultimate-sports/scripts/audit-mma-card-assets.js</code>
+        <code>node platform/ultimate-sports/scripts/sports-data-smoke.js</code>
+        <code>node platform/ultimate-sports/scripts/verify-platform.js</code>
+        <code>node -e &quot;const { spawnSync } = require(&#39;node:child_process&#39;); const manifest = require(&#39;./platform/ultimate-sports/platform.manifest.json&#39;); const result = spawnSync(manifest.testCommand[0], manifest.testCommand.slice(1), { stdio: &#39;inherit&#39; }); process.exit(result.status || 0)&quot;</code>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

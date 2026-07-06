@@ -117,11 +117,23 @@ const EXPERIENCE_PROFILES = Object.freeze({
     shellId: 'fight-card-shell',
     layoutMode: 'bout-list',
     bracketStyle: 'fight-card',
-    visualTone: 'fight-night walkout, neutral gloves, round cards, strong contrast',
-    palette: ['canvas-white', 'corner-red', 'corner-blue', 'matte-black'],
+    visualTone: 'premium MMA fight-night broadcast, octagon-inspired cage walkout, neutral gloves, round cards, red and blue corners, strong contrast, no official marks',
+    palette: ['matte-black', 'canvas-white', 'corner-red', 'corner-blue', 'championship-gold'],
     apiAdapters: ['bout-card', 'round-clock', 'method-result', 'fighter-stats', 'judges-score', 'result-feed'],
     livePromptLexicon: ['round winner', 'knockdown', 'takedown', 'submission', 'stoppage', 'decision'],
     customPanels: ['bout-pick-card', 'method-round-props', 'between-fight-trivia', 'fight-bingo-grid']
+  }),
+  'sailgp-companion': profile({
+    serverLabel: 'SailGP Companion Server',
+    serverSkin: 'foiling-race-waterline',
+    shellId: 'sailgp-companion-shell',
+    layoutMode: 'fleet-race-companion',
+    bracketStyle: 'fleet-race-leaderboard',
+    visualTone: 'high-speed foiling catamarans, water spray, wind map overlays, national team color accents, clean telemetry dashboard',
+    palette: ['deep-water-blue', 'wake-white', 'wind-cyan', 'buoy-orange', 'carbon-black'],
+    apiAdapters: ['event-schedule', 'race-results', 'season-standings', 'team-rosters', 'wind-conditions', 'telemetry-or-manual-evidence'],
+    livePromptLexicon: ['start winner', 'first mark', 'lead change', 'penalty turn', 'foil drop', 'gate split', 'race winner'],
+    customPanels: ['fleet-race-leaderboard', 'wind-shift-map', 'foil-time-props', 'event-final-watch-room']
   }),
   'creator-reality-brackets': profile({
     serverLabel: 'Creator Show Server',

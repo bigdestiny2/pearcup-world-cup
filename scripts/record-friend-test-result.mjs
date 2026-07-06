@@ -10,6 +10,12 @@ const errors = []
 if (!args.publishResult) errors.push('missing --publish-result <pearcup-publish-result.json>')
 const publishResultPath = args.publishResult ? resolve(args.publishResult) : ''
 const publishResult = publishResultPath && existsSync(publishResultPath) ? readJson(publishResultPath, 'publish result') : null
+const testedSurface = normalizeSurface(args.surface)
+const publicLink = args.publicLink || (publishResult && publishResult.publishedUrl) || ''
+const pearReleaseResultPath = args.pearReleaseResult ? resolve(args.pearReleaseResult) : ''
+const pearReleaseResult = pearReleaseResultPath && existsSync(pearReleaseResultPath)
+  ? readJson(pearReleaseResultPath, 'Pear runtime release result')
+  : null
 const resultPath = args.out
   ? resolve(args.out)
   : publishResultPath
@@ -18,6 +24,7 @@ const resultPath = args.out
 if (publishResultPath && !publishResult) errors.push(`publish result does not exist or is unreadable: ${publishResultPath}`)
 
 if (publishResult) validatePublishResult(publishResult, publishResultPath)
+validateFriendSurface()
 const passed = args.friendOpened && args.reachedGames && args.joinedP2p && args.startedPenaltyClash
 if (!passed && !args.failed) {
   errors.push('recording a passed friend test requires --friend-opened --reached-games --joined-p2p --started-penalty-clash, or use --failed with --notes')
@@ -53,6 +60,10 @@ const result = {
   sourceDirty: publishResult.sourceDirty,
   publishedUrl: publishResult.publishedUrl || '',
   driveKey: publishResult.driveKey || '',
+  testedSurface,
+  publicLink,
+  pearReleaseResult: pearReleaseResultPath,
+  pearUrl: pearReleaseResult && pearReleaseResult.pearUrl || '',
   bundleSha256: publishResult.bundleSha256 || '',
   approvedPublishCommand: publishResult.approvedPublishCommand || '',
   postPublishSmokeCommand: publishResult.postPublishSmokeCommand || '',
@@ -62,12 +73,23 @@ const result = {
     exactBundlePearRuntimePreflight: publishResult.evidence && publishResult.evidence.exactBundlePearRuntimePreflight === true,
     postPublishSmokePassed: publishResult.evidence && publishResult.evidence.postPublishSmokePassed === true
   },
-  remoteFriendChecklist: publishResult.friendTest && Array.isArray(publishResult.friendTest.requires)
-    ? [...publishResult.friendTest.requires]
+  pearReleaseEvidence: pearReleaseResult
+    ? {
+        release: pearReleaseResult.release,
+        length: pearReleaseResult.length,
+        seedAnnounced: pearReleaseResult.evidence && pearReleaseResult.evidence.seedAnnounced === true,
+        publicPearRunSmokePassed: pearReleaseResult.evidence && pearReleaseResult.evidence.publicPearRunSmokePassed === true
+      }
+    : null,
+  remoteFriendChecklist: friendChecklistForSurface()
+    ? friendChecklistForSurface()
     : [],
   friend: args.friend || 'friend',
   evidence: {
     expectedBundleSha256: args.sha || '',
+    testedSurface,
+    publicLink,
+    friendOpenedFinalPublicLink: args.friendOpened,
     friendOpenedFinalPearBrowserLink: args.friendOpened,
     friendReachedGamesWithoutFallbackOrBootError: args.reachedGames,
     hostAndFriendCompletedLiveP2PJoin: args.joinedP2p,
@@ -75,7 +97,7 @@ const result = {
     observedRoomCode: args.roomCode || '',
     notes: args.notes || ''
   },
-  remaining: passed ? [] : ['repeat remote friend PearBrowser test after fixing noted issue']
+  remaining: passed ? [] : [`repeat remote friend ${surfaceLabel(testedSurface)} test after fixing noted issue`]
 }
 
 writeFileSync(resultPath, JSON.stringify(result, null, 2) + '\n')
@@ -151,6 +173,62 @@ function validatePublishResult (result, resultPath) {
   if (releaseReceipt) validateSourceReleaseReceiptBinding(result, resultPath, releaseReceipt, releaseReceiptPath)
 }
 
+function validateFriendSurface () {
+  if (!testedSurface) errors.push('--surface must be one of hyper, pearbrowser, or pear')
+  if (publicLink) {
+    if (testedSurface === 'pear' && !String(publicLink).startsWith('pear://')) {
+      errors.push('--public-link must be a pear:// URL when --surface pear is used')
+    }
+    if ((testedSurface === 'hyper' || testedSurface === 'pearbrowser') && !String(publicLink).startsWith('hyper://')) {
+      errors.push('--public-link must be a hyper:// URL when --surface hyper is used')
+    }
+  } else if (testedSurface) {
+    errors.push('recording a friend test requires a final public link')
+  }
+  if (testedSurface === 'pear') {
+    if (!pearReleaseResultPath) errors.push('--surface pear requires --pear-release-result <pearcup-pear-release-result.json>')
+    else if (!pearReleaseResult) errors.push(`Pear runtime release result does not exist or is unreadable: ${pearReleaseResultPath}`)
+    else validatePearReleaseResult(pearReleaseResult)
+  }
+}
+
+function validatePearReleaseResult (result) {
+  if (result.app !== 'PearCup') errors.push('Pear runtime release result app must be PearCup')
+  if (result.status !== 'pear-runtime-released-and-smoked') errors.push('Pear runtime release result status must be pear-runtime-released-and-smoked')
+  if (!String(result.pearUrl || '').startsWith('pear://')) errors.push('Pear runtime release result must include a pear:// URL')
+  if (publicLink && result.pearUrl !== publicLink) errors.push('Pear runtime release result pearUrl must match --public-link')
+  if (publishResult && String(result.sourceGitHead || '').toLowerCase() !== String(publishResult.sourceGitHead || '').toLowerCase()) {
+    errors.push('Pear runtime release result sourceGitHead must match the publish result sourceGitHead')
+  }
+  if (result.sourceDirty !== false) errors.push('Pear runtime release result must come from a clean source')
+  const evidence = result.evidence || {}
+  if (evidence.releasePassed !== true) errors.push('Pear runtime release result must prove release passed')
+  if (evidence.seedAnnounced !== true) errors.push('Pear runtime release result must prove seed was announced')
+  if (evidence.publicPearRunSmokePassed !== true) errors.push('Pear runtime release result must prove the public pear:// run smoke passed')
+}
+
+function friendChecklistForSurface () {
+  if (testedSurface === 'pear' && pearReleaseResult && pearReleaseResult.friendTest && Array.isArray(pearReleaseResult.friendTest.requires)) {
+    return [...pearReleaseResult.friendTest.requires]
+  }
+  if (publishResult.friendTest && Array.isArray(publishResult.friendTest.requires)) {
+    return [...publishResult.friendTest.requires]
+  }
+  return []
+}
+
+function normalizeSurface (value) {
+  const surface = String(value || 'hyper').toLowerCase()
+  if (surface === 'pearbrowser') return 'hyper'
+  if (surface === 'hyper' || surface === 'pear') return surface
+  return ''
+}
+
+function surfaceLabel (surface) {
+  if (surface === 'pear') return 'Pear runtime'
+  return 'PearBrowser'
+}
+
 function validateSourceReleaseReceiptBinding (result, resultPath, receipt, receiptPath) {
   if (receipt.app !== 'PearCup') errors.push('source release receipt app must be PearCup')
   if (String(receipt.bundleSha256 || '').toLowerCase() !== String(result.bundleSha256 || '').toLowerCase()) {
@@ -203,6 +281,9 @@ function readJson (filePath, label) {
 function parseArgs (argv) {
   const parsed = {
     failed: false,
+    surface: 'hyper',
+    publicLink: '',
+    pearReleaseResult: '',
     friendOpened: false,
     reachedGames: false,
     joinedP2p: false,
@@ -219,6 +300,12 @@ function parseArgs (argv) {
     const arg = argv[i]
     if (arg === '--publish-result') parsed.publishResult = argv[++i]
     else if (arg.startsWith('--publish-result=')) parsed.publishResult = arg.slice('--publish-result='.length)
+    else if (arg === '--surface') parsed.surface = argv[++i]
+    else if (arg.startsWith('--surface=')) parsed.surface = arg.slice('--surface='.length)
+    else if (arg === '--public-link') parsed.publicLink = argv[++i]
+    else if (arg.startsWith('--public-link=')) parsed.publicLink = arg.slice('--public-link='.length)
+    else if (arg === '--pear-release-result') parsed.pearReleaseResult = argv[++i]
+    else if (arg.startsWith('--pear-release-result=')) parsed.pearReleaseResult = arg.slice('--pear-release-result='.length)
     else if (arg === '--out') parsed.out = argv[++i]
     else if (arg.startsWith('--out=')) parsed.out = arg.slice('--out='.length)
     else if (arg === '--friend') parsed.friend = argv[++i]
