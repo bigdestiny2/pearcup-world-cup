@@ -17,6 +17,7 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)]
 boot()
 
 async function boot () {
+  applyLobbyTheme()
   bindSplash()
   bindWalletActions()
   bindSettings()
@@ -58,7 +59,8 @@ function loadPrefs () {
   const langs = ['EN', 'PT', 'ES', 'FR']
   return {
     language: langs.includes(saved.language) ? saved.language : 'EN',
-    settlementMode: saved.settlementMode === 'real' ? 'real' : 'demo'
+    settlementMode: saved.settlementMode === 'real' ? 'real' : 'demo',
+    lobbyTheme: saved.lobbyTheme === 'dark' ? 'dark' : 'light'
   }
 }
 
@@ -67,8 +69,13 @@ function savePrefs () {
     const stored = loadStored()
     stored.language = state.prefs.language
     stored.settlementMode = state.prefs.settlementMode
+    stored.lobbyTheme = state.prefs.lobbyTheme
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
   } catch {}
+}
+
+function applyLobbyTheme () {
+  document.documentElement.dataset.lobbyTheme = state.prefs.lobbyTheme
 }
 
 function loadStored () {
@@ -150,11 +157,12 @@ function bindWalletActions () {
   })
   $('#fundWalletBtn').addEventListener('click', () => {
     state.wallet.balance += 100
-    state.wallet.ledger.unshift({ label: 'Funded from lobby', amount: 100, kind: 'credit' })
+    state.wallet.ledger.unshift({ label: 'Deposit via Tether WDK', amount: 100, kind: 'credit' })
     state.wallet.ledger = state.wallet.ledger.slice(0, 8)
     saveWallet()
     renderWallet()
     renderActiveCompetitions()
+    syncOpenFit()
   })
   $('#collectPayoutBtn').addEventListener('click', () => {
     const amount = state.wallet.pendingPayout || 0
@@ -165,6 +173,17 @@ function bindWalletActions () {
     state.wallet.pendingPayout = 0
     saveWallet()
     renderWallet()
+    syncOpenFit()
+  })
+  $('#withdrawWalletBtn').addEventListener('click', () => {
+    const amount = state.wallet.balance
+    if (amount <= 0) return
+    state.wallet.balance = 0
+    state.wallet.ledger.unshift({ label: 'Withdraw to payout address', amount, kind: 'debit' })
+    state.wallet.ledger = state.wallet.ledger.slice(0, 8)
+    saveWallet()
+    renderWallet()
+    syncOpenFit()
   })
 }
 
@@ -259,6 +278,19 @@ function renderWallet () {
     ? `${fmtMoney(w.pendingPayout)} to collect`
     : 'No payouts'
   $('#collectPayoutBtn').disabled = w.pendingPayout <= 0
+  const withdraw = $('#withdrawWalletBtn')
+  if (withdraw) withdraw.disabled = w.balance <= 0
+  const ledger = $('#walletLedger')
+  if (ledger) {
+    const rows = (w.ledger || []).slice(0, 6)
+    ledger.innerHTML = rows.length
+      ? rows.map(entry => `
+          <div class="ledger-row">
+            <span class="ledger-label">${escapeHtml(entry.label)}</span>
+            <span class="ledger-amount ${entry.kind === 'debit' ? 'is-debit' : 'is-credit'}">${entry.kind === 'debit' ? '−' : '+'}${escapeHtml(String(entry.amount))}</span>
+          </div>`).join('')
+      : '<p class="ledger-empty">No transactions yet.</p>'
+  }
 }
 
 function renderActiveCompetitions () {
@@ -306,6 +338,9 @@ function renderSettings () {
   $$('#settingsMoney [data-money]').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.money === state.prefs.settlementMode)
   })
+  $$('#settingsTheme [data-theme]').forEach(btn => {
+    btn.classList.toggle('is-active', btn.dataset.theme === state.prefs.lobbyTheme)
+  })
 }
 
 function bindSettings () {
@@ -337,6 +372,15 @@ function bindSettings () {
       // Real-money is gated on KYC/region verification (Tether WDK) — stay demo.
       state.prefs.settlementMode = btn.dataset.money === 'real' ? 'demo' : btn.dataset.money
       savePrefs(); renderSettings()
+    })
+  }
+  const theme = $('#settingsTheme')
+  if (theme) {
+    theme.addEventListener('click', event => {
+      const btn = event.target.closest('[data-theme]')
+      if (!btn) return
+      state.prefs.lobbyTheme = btn.dataset.theme
+      savePrefs(); applyLobbyTheme(); renderSettings()
     })
   }
 }

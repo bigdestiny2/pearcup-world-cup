@@ -363,6 +363,79 @@ button:focus-visible, input:focus-visible {
   color: var(--muted);
 }
 
+.settings-theme {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-theme button {
+  flex: 1;
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.settings-theme button.is-active { border-color: var(--green-deep); background: var(--green-deep); color: #fff; }
+
+.wallet-rail-note {
+  margin-top: 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.wallet-ledger {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ledger-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 12.5px;
+}
+
+.ledger-label { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ledger-amount { font-weight: 800; }
+.ledger-amount.is-credit { color: var(--green-deep); }
+.ledger-amount.is-debit { color: var(--pink-deep); }
+.ledger-empty { font-size: 12px; color: var(--muted); }
+
+/* Dark appearance for the lobby (theme picker). Fits keep their own themes. */
+[data-lobby-theme="dark"] {
+  color-scheme: dark;
+  --ink: #f3eef7;
+  --muted: #a99cb5;
+  --soft: #1b1622;
+  --surface: #221b2b;
+  --surface-2: #2a2234;
+  --surface-3: #322840;
+  --line: #3a2f47;
+  --line-strong: #4d3f5e;
+  --shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+  --shadow-strong: 0 26px 60px rgba(0, 0, 0, 0.5);
+}
+
+[data-lobby-theme="dark"] body {
+  background:
+    radial-gradient(900px 500px at 90% -5%, #2a1830, transparent 60%),
+    radial-gradient(700px 500px at -5% 105%, #142726, transparent 60%),
+    #16111d;
+}
+
+[data-lobby-theme="dark"] body::before { opacity: 0.4; }
+
 .wallet-balance {
   margin-top: 4px;
   font-size: 28px;

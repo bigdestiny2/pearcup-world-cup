@@ -39,9 +39,12 @@
               <div class="wallet-balance" id="walletBalance">—</div>
               <div class="wallet-payout" id="walletPayout">No payouts</div>
               <div class="wallet-actions">
-                <button class="primary-button" type="button" id="fundWalletBtn">Fund +100</button>
+                <button class="primary-button" type="button" id="fundWalletBtn">Deposit +100</button>
                 <button class="secondary-button" type="button" id="collectPayoutBtn">Collect</button>
+                <button class="secondary-button" type="button" id="withdrawWalletBtn">Withdraw</button>
               </div>
+              <p class="wallet-rail-note">Deposits &amp; withdrawals settle via <strong>Tether WDK</strong> · demo rails</p>
+              <div class="wallet-ledger" id="walletLedger" aria-label="Recent transactions"></div>
             </section>
             <section class="active-panel" id="activePanel" aria-labelledby="activeTitle">
               <p class="eyebrow" id="activeTitle">Active competitions</p>
@@ -66,6 +69,11 @@
                 <button type="button" data-money="real" title="Requires identity verification">Real money 🔒</button>
               </div>
               <p class="settings-note">Real-money pools need KYC + region checks via Tether WDK. Demo credits until then.</p>
+              <p class="field-label">Appearance</p>
+              <div class="settings-theme" id="settingsTheme">
+                <button type="button" data-theme="light">Light</button>
+                <button type="button" data-theme="dark">Dark</button>
+              </div>
             </section>
           </aside>
 
