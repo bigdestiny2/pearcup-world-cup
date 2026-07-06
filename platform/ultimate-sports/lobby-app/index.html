@@ -47,6 +47,26 @@
               <p class="eyebrow" id="activeTitle">Active competitions</p>
               <div class="active-list" id="activeList"></div>
             </section>
+            <section class="settings-panel" id="settingsPanel" aria-labelledby="settingsTitle">
+              <p class="eyebrow" id="settingsTitle">Settings</p>
+              <label class="field-label" for="settingsName">Display name</label>
+              <input id="settingsName" class="settings-input" maxlength="18" autocomplete="nickname" placeholder="your handle">
+              <p class="field-label">Country</p>
+              <div class="settings-countries" id="settingsCountries"></div>
+              <label class="field-label" for="settingsLanguage">Commentary language</label>
+              <select id="settingsLanguage" class="settings-input">
+                <option value="EN">English</option>
+                <option value="PT">Português</option>
+                <option value="ES">Español</option>
+                <option value="FR">Français</option>
+              </select>
+              <p class="field-label">Wallet mode</p>
+              <div class="settings-money" id="settingsMoney">
+                <button type="button" data-money="demo">Demo credits</button>
+                <button type="button" data-money="real" title="Requires identity verification">Real money 🔒</button>
+              </div>
+              <p class="settings-note">Real-money pools need KYC + region checks via Tether WDK. Demo credits until then.</p>
+            </section>
           </aside>
 
           <section class="hero-panel" id="heroPanel" aria-label="Featured live server">

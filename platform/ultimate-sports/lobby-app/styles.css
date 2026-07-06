@@ -287,12 +287,80 @@ button:focus-visible, input:focus-visible {
 }
 
 .wallet-panel,
-.active-panel {
+.active-panel,
+.settings-panel {
   padding: 18px;
   border-radius: var(--radius);
   background: var(--surface);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
+}
+
+.settings-panel .field-label {
+  display: block;
+  margin: 14px 0 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.settings-input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+}
+
+.settings-countries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.country-chip {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  font-size: 20px;
+  cursor: pointer;
+  transition: transform .12s, border-color .12s;
+}
+
+.country-chip:hover { transform: translateY(-1px); }
+.country-chip.is-active { border-color: var(--green-deep); box-shadow: 0 0 0 2px var(--green-deep) inset; }
+
+.settings-money {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-money button {
+  flex: 1;
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.settings-money button.is-active { border-color: var(--green-deep); background: var(--green-deep); color: #fff; }
+.settings-money button[data-money="real"] { opacity: .7; }
+
+.settings-note {
+  margin-top: 10px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted);
 }
 
 .wallet-balance {

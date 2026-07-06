@@ -7,7 +7,8 @@ const state = {
   filter: 'all',
   featured: null,
   profile: loadProfile(),
-  wallet: loadWallet()
+  wallet: loadWallet(),
+  prefs: loadPrefs()
 }
 
 const $ = (selector, root = document) => root.querySelector(selector)
@@ -18,6 +19,7 @@ boot()
 async function boot () {
   bindSplash()
   bindWalletActions()
+  bindSettings()
   try {
     const response = await fetch('./data/servers.json', { cache: 'no-store' })
     if (!response.ok) throw new Error(`servers fetch failed: ${response.status}`)
@@ -27,6 +29,7 @@ async function boot () {
     renderWallet()
     renderActiveCompetitions()
     renderProfile()
+    renderSettings()
   } catch (error) {
     renderError(error)
   }
@@ -48,6 +51,24 @@ function loadWallet () {
     pendingPayout: saved.wallet && typeof saved.wallet.pendingPayout === 'number' ? saved.wallet.pendingPayout : 120,
     ledger: saved.wallet && Array.isArray(saved.wallet.ledger) ? saved.wallet.ledger : [{ label: 'Welcome bonus', amount: 500, kind: 'credit' }]
   }
+}
+
+function loadPrefs () {
+  const saved = loadStored()
+  const langs = ['EN', 'PT', 'ES', 'FR']
+  return {
+    language: langs.includes(saved.language) ? saved.language : 'EN',
+    settlementMode: saved.settlementMode === 'real' ? 'real' : 'demo'
+  }
+}
+
+function savePrefs () {
+  try {
+    const stored = loadStored()
+    stored.language = state.prefs.language
+    stored.settlementMode = state.prefs.settlementMode
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
+  } catch {}
 }
 
 function loadStored () {
@@ -268,6 +289,63 @@ function renderProfile () {
   $('#profileChip').innerHTML = avatarSvg(team, p.username) + `
     <span>${escapeHtml(p.username)}</span>
   `
+}
+
+function renderSettings () {
+  const nameInput = $('#settingsName')
+  if (nameInput && document.activeElement !== nameInput) nameInput.value = state.profile.username
+  const countries = $('#settingsCountries')
+  if (countries) {
+    countries.innerHTML = Object.entries(kawaiiTeams).map(([id, team]) => `
+      <button type="button" class="country-chip${id === state.profile.team ? ' is-active' : ''}" data-country="${escapeAttr(id)}" aria-pressed="${id === state.profile.team}" title="${escapeAttr(team.name)}">
+        <span class="country-flag">${team.flag}</span>
+      </button>`).join('')
+  }
+  const lang = $('#settingsLanguage')
+  if (lang) lang.value = state.prefs.language
+  $$('#settingsMoney [data-money]').forEach(btn => {
+    btn.classList.toggle('is-active', btn.dataset.money === state.prefs.settlementMode)
+  })
+}
+
+function bindSettings () {
+  const nameInput = $('#settingsName')
+  if (nameInput) {
+    nameInput.addEventListener('input', () => {
+      state.profile.username = nameInput.value.trim() || 'captain'
+      saveProfile(); renderProfile(); syncOpenFit()
+    })
+  }
+  const countries = $('#settingsCountries')
+  if (countries) {
+    countries.addEventListener('click', event => {
+      const btn = event.target.closest('[data-country]')
+      if (!btn) return
+      state.profile.team = btn.dataset.country
+      saveProfile(); renderProfile(); renderSettings(); syncOpenFit()
+    })
+  }
+  const lang = $('#settingsLanguage')
+  if (lang) {
+    lang.addEventListener('change', () => { state.prefs.language = lang.value; savePrefs() })
+  }
+  const money = $('#settingsMoney')
+  if (money) {
+    money.addEventListener('click', event => {
+      const btn = event.target.closest('[data-money]')
+      if (!btn) return
+      // Real-money is gated on KYC/region verification (Tether WDK) — stay demo.
+      state.prefs.settlementMode = btn.dataset.money === 'real' ? 'demo' : btn.dataset.money
+      savePrefs(); renderSettings()
+    })
+  }
+}
+
+// Push identity changes into a fit that is currently open, so the open fit
+// reflects the new profile live (via the Phase 1A host bridge).
+function syncOpenFit () {
+  const loader = $('#appLoader')
+  if (loader && !loader.classList.contains('is-hidden')) injectHostState($('#appFrame'))
 }
 
 function avatarSvg (team, name) {
