@@ -532,10 +532,16 @@ function avatarPortrait (name, team) {
   const teamSpecific = AVATAR_PORTRAITS[`${name}-${team.id}`]
   if (teamSpecific) return teamSpecific
   // The current user's own avatar must follow their chosen team. Named characters
-  // (friends/AI) keep their fixed portrait; the user falls through to the
-  // team-coloured generated kit so switching country visibly changes the avatar.
+  // (friends/AI) keep their fixed portrait; the user ignores any name-only pin and
+  // draws from the illustrated avatar pool (hashed by team) so switching country
+  // shows a distinct, polished avatar — never the fallback line-art SVG.
   const selfName = (state && state.username) || 'captain'
-  if (String(name) === String(selfName)) return null
+  if (String(name) === String(selfName)) {
+    // Index by grid position so every run of 18 countries is unique and no two
+    // adjacent countries ever share an avatar (collisions land 18+ apart).
+    const idx = teams.findIndex(t => t && t.id === team.id)
+    return `avatars/${AVATAR_POOL[(idx >= 0 ? idx : hashString(team.id)) % AVATAR_POOL.length]}.png`
+  }
   return AVATAR_PORTRAITS[String(name).toLowerCase()] || pooledPortrait(name, team)
 }
 
