@@ -529,9 +529,14 @@ function pooledPortrait (name, team) {
 
 function avatarPortrait (name, team) {
   if (!team || !team.id) return AVATAR_PORTRAITS[String(name).toLowerCase()] || null
-  return AVATAR_PORTRAITS[`${name}-${team.id}`] ||
-    AVATAR_PORTRAITS[String(name).toLowerCase()] ||
-    pooledPortrait(name, team)
+  const teamSpecific = AVATAR_PORTRAITS[`${name}-${team.id}`]
+  if (teamSpecific) return teamSpecific
+  // The current user's own avatar must follow their chosen team. Named characters
+  // (friends/AI) keep their fixed portrait; the user falls through to the
+  // team-coloured generated kit so switching country visibly changes the avatar.
+  const selfName = (state && state.username) || 'captain'
+  if (String(name) === String(selfName)) return null
+  return AVATAR_PORTRAITS[String(name).toLowerCase()] || pooledPortrait(name, team)
 }
 
 // Pick a jersey base color that stays visible on light backgrounds:
