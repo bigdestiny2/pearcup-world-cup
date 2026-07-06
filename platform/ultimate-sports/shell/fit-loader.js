@@ -24,7 +24,10 @@
     })
   }
 
-  if (cfg.background && root.document && root.document.body) {
+  // This script runs in <head>, so document.body may not exist yet — defer the
+  // body-level theming (dark background / fit-dark class) until the body is ready.
+  function applyBackground () {
+    if (!cfg.background || !root.document || !root.document.body) return
     root.document.body.classList.add('fit-dark')
     root.document.body.style.background = cfg.background
   }
@@ -47,9 +50,14 @@
     header.appendChild(btn)
   }
 
-  if (root.document.readyState === 'loading') {
-    root.document.addEventListener('DOMContentLoaded', addCloseButton)
-  } else {
+  function onReady () {
+    try { applyBackground() } catch (e) {}
     try { addCloseButton() } catch (e) {}
+  }
+
+  if (root.document.readyState === 'loading') {
+    root.document.addEventListener('DOMContentLoaded', onReady)
+  } else {
+    onReady()
   }
 })(window)

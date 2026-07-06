@@ -263,8 +263,15 @@ let bracketMatchIds = [
 // Ultimate Sports fit injection: a fit config loaded before this script can
 // override the default World Cup data/theme. Only override arrays that were
 // actually supplied so a partial fit config stays safe.
+// Template kind decides the STRUCTURE the bracket surface renders. Tree kinds
+// (single-elimination / group-plus-knockout / series-playoff / round-robin)
+// use the knockout board; 'fight-card' renders independent bouts; 'awards-card'
+// renders category pick cards. Defaults to the World Cup knockout tree.
+let templateKind = 'single-elimination'
+
 if (typeof window !== 'undefined' && window.ULTIMATE_FIT_CONFIG) {
   const cfg = window.ULTIMATE_FIT_CONFIG
+  if (cfg.templateKind) templateKind = cfg.templateKind
   if (cfg.teams) teams = cfg.teams
   if (cfg.pools) pools = cfg.pools
   if (cfg.round32Matches) round32Matches = cfg.round32Matches
@@ -2207,7 +2214,49 @@ function renderBracketDemoStats (selectedPool) {
   })
 }
 
+// A fight card is a set of INDEPENDENT bouts (main event, co-main, prelims) —
+// no advancement tree and no connectors. The fit's `round32Matches` already
+// carry the real bouts (slots = the two fighters, `time` = the card position),
+// so each bout renders as a standalone match card and reuses the pick machinery.
+function boutLabel (position) {
+  const map = { Main: 'Main event', 'Co-main': 'Co-main event', Card: 'Preliminary card' }
+  return map[position] || position || 'Bout'
+}
+
+function renderFightCardBoard () {
+  const board = $('#bracketBoard')
+  if (!board) return
+  board.classList.add('is-fight-card')
+  board.innerHTML = round32Matches.map(raw => {
+    // Normalize through makeMatch so score/sample defaults exist (renderTeamRow
+    // reads match.sample) — the raw fit bout only carries id/time/status/slots.
+    const bout = makeMatch(raw.id, raw.time, raw.status, raw.slots, raw.score, raw.sample)
+    return `
+      <article class="fight-bout match-card" data-match-card="${bout.id}">
+        <div class="match-meta">
+          <span class="fight-bout-slot">${escapeHtml(boutLabel(bout.time))}</span>
+          <span class="match-status">${escapeHtml(bout.status || 'Open')}</span>
+        </div>
+        ${renderTeamRow(bout, bout.slots[0], 0)}
+        ${renderTeamRow(bout, bout.slots[1], 1)}
+      </article>
+    `
+  }).join('')
+
+  $$('#bracketBoard [data-pick]').forEach(button => {
+    button.addEventListener('click', () => {
+      // Each bout is independent — pick a winner, no downstream to clear.
+      state.picks[button.dataset.match] = button.dataset.pick
+      persist()
+      renderBracket()
+    })
+  })
+}
+
 function renderBracketBoard () {
+  if (templateKind === 'fight-card') return renderFightCardBoard()
+  const board = $('#bracketBoard')
+  if (board) board.classList.remove('is-fight-card')
   const placements = {
     round32: index => ({ column: 1, row: index + 2, span: 1 }),
     round16: index => ({ column: 2, row: 2 + (index * 2), span: 2 }),
@@ -2254,6 +2303,8 @@ async function renderBracket () {
   const wdk = integrationRuntime.readiness.tetherWdk
   const entered = !!state.enteredPools[selectedPool.tier]
   $('#bracketTierLabel').textContent = `$${selectedPool.tier} pool${entered ? ' · entered' : ''}`
+  const bracketTitleEl = $('#bracketTitle')
+  if (bracketTitleEl && templateKind === 'fight-card') bracketTitleEl.textContent = 'Pick the fight card'
   renderPoolSelect()
   const remaining = remainingPicks()
   const pr = $('#picksRemaining')
@@ -4284,6 +4335,7 @@ function applyKickResult (result) {
 }
 
 function remainingPicks () {
+  if (templateKind === 'fight-card') return round32Matches.filter(bout => !state.picks[bout.id]).length
   return bracketMatchIds.filter(id => !state.picks[id]).length
 }
 

@@ -136,6 +136,7 @@
     title: 'Combat Sport Fight Cards',
     subtitle: 'Ultimate Sports',
     category: 'combat-sports',
+    templateKind: 'fight-card',
     entrantShape: 'player',
     defaultTeam: 'silva',
     background: '#121214',

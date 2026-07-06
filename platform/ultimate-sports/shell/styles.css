@@ -1599,6 +1599,30 @@ h2 {
   box-shadow: var(--shadow);
 }
 
+/* Fight-card template: independent bouts in a responsive grid, no knockout tree. */
+.bracket-board.is-fight-card {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-rows: none;
+  align-items: start;
+  column-gap: 16px;
+  row-gap: 16px;
+  overflow-x: visible;
+}
+
+.bracket-board.is-fight-card .fight-bout {
+  width: 100%;
+}
+
+.fight-bout-slot {
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--pink-deep);
+}
+
 .bracket-lines {
   position: absolute;
   inset: 0;
