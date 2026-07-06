@@ -263,6 +263,9 @@ body {
   font-size: 12px;
 }
 .friend-row .f-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-faint); flex: none; }
+.friend-row .f-dot.on { background: var(--lcd-dim); box-shadow: 0 0 6px var(--lcd); animation: fpulse 2.2s infinite; }
+.friend-row .f-key { transition: color .15s; }
+@keyframes fpulse { 0%, 90%, 100% { opacity: 1; } 95% { opacity: .5; } }
 .friend-row .f-name { font-weight: 700; }
 .friend-row .f-key { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
 .friend-row .f-del { border: 0; background: none; color: var(--ink-faint); font-size: 13px; cursor: pointer; padding: 0 2px; }

@@ -32,6 +32,10 @@ const CATEGORY_ICONS = {
   local: '◇'
 }
 
+const PRESENCE_TOPIC = 'ultimate-sports:presence:v1'
+const PRESENCE_HEARTBEAT_MS = 4000
+const PRESENCE_STALE_MS = 12000
+
 const state = {
   servers: [],
   filter: 'all',
@@ -41,7 +45,8 @@ const state = {
   prefs: loadPrefs(),
   identity: loadIdentity(),
   friends: loadFriends(),
-  privateRooms: loadPrivateRooms()
+  privateRooms: loadPrivateRooms(),
+  presence: { channel: null, online: new Map(), heartbeat: null, sweeper: null }
 }
 
 const $ = (selector, root = document) => root.querySelector(selector)
@@ -58,6 +63,7 @@ async function boot () {
   bindRoomModal()
   renderIdentity()
   renderFriends()
+  initPresence()
   renderWallet()
   renderSettings()
   renderActiveCompetitions()
@@ -329,17 +335,90 @@ function bindFriends () {
   })
 }
 
+function isFriendOnline (key) {
+  const peer = state.presence.online.get(key)
+  return !!peer && (Date.now() - peer.last) < PRESENCE_STALE_MS
+}
+
 function renderFriends () {
   const list = $('#friendList')
   list.innerHTML = state.friends.length
-    ? state.friends.map(friend => `
+    ? state.friends.map(friend => {
+        const online = isFriendOnline(friend.key)
+        return `
         <div class="friend-row">
-          <span class="f-dot" title="Presence needs the Pear runtime swarm"></span>
+          <span class="f-dot${online ? ' on' : ''}" title="${online ? 'online' : 'offline'}"></span>
           <span class="f-name">${escapeHtml(friend.name)}</span>
-          <span class="f-key">${escapeHtml(shortKey(friend.key))}</span>
+          <span class="f-key">${online ? 'online' : escapeHtml(shortKey(friend.key))}</span>
           <button class="f-del" type="button" data-del-friend="${escapeAttr(friend.key)}" aria-label="Remove ${escapeAttr(friend.name)}">×</button>
-        </div>`).join('')
+        </div>`
+      }).join('')
     : '<p class="friend-empty">No friends yet — swap peer IDs to connect.</p>'
+}
+
+/* ==================== swarm presence ====================
+   Announce our identity on a shared presence topic and listen for friends
+   doing the same, so the friends list shows real online/offline status.
+   Transport is PearCupPeerNet: hyperswarm under the Pear runtime, PearBrowser
+   swarm.v1 for a published drive, BroadcastChannel between local windows.
+   (A global topic is fine for the demo; pairwise topics per friendship are the
+   privacy-preserving upgrade.) */
+
+function initPresence () {
+  const Net = window.PearCupPeerNet
+  if (!Net || typeof Net.createChannel !== 'function') {
+    $('#statusNet').innerHTML = '<span class="ok" style="color:var(--ink-faint)">○</span> peer net unavailable'
+    return
+  }
+  try {
+    state.presence.channel = Net.createChannel(PRESENCE_TOPIC)
+    state.presence.channel.onMessage(onPresenceMessage)
+  } catch (error) {
+    return
+  }
+  announcePresence()
+  state.presence.heartbeat = setInterval(announcePresence, PRESENCE_HEARTBEAT_MS)
+  state.presence.sweeper = setInterval(sweepPresence, PRESENCE_HEARTBEAT_MS)
+  window.addEventListener('beforeunload', () => {
+    try { state.presence.channel.send({ type: 'us:bye', key: state.identity.key }) } catch {}
+  })
+  const backend = (state.presence.channel && state.presence.channel.backend) || 'peer net'
+  $('#statusNet').innerHTML = `<span class="ok">◉</span> presence · ${escapeHtml(backend)}`
+}
+
+function announcePresence () {
+  if (!state.presence.channel) return
+  try {
+    state.presence.channel.send({ type: 'us:hello', key: state.identity.key, name: state.profile.username })
+  } catch {}
+}
+
+function onPresenceMessage (msg) {
+  if (!msg || typeof msg !== 'object') return
+  if (msg.type === 'us:bye' && msg.key) {
+    if (state.presence.online.delete(msg.key)) refreshPresenceViews()
+    return
+  }
+  if (msg.type !== 'us:hello' || !msg.key || msg.key === state.identity.key) return
+  const known = state.presence.online.has(msg.key)
+  state.presence.online.set(msg.key, { name: msg.name || 'peer', last: Date.now() })
+  // A hello from someone we don't know yet is a peer online; re-render if it is a
+  // friend (or if this is a newly-seen peer, to keep the count fresh).
+  if (!known || state.friends.some(f => f.key === msg.key)) refreshPresenceViews()
+}
+
+function sweepPresence () {
+  const cut = Date.now() - PRESENCE_STALE_MS
+  let changed = false
+  for (const [key, peer] of state.presence.online) {
+    if (peer.last < cut) { state.presence.online.delete(key); changed = true }
+  }
+  if (changed) refreshPresenceViews()
+}
+
+function refreshPresenceViews () {
+  renderFriends()
+  renderStatus()
 }
 
 /* ==================== private rooms ==================== */
@@ -490,7 +569,10 @@ function renderStatus () {
   const liveCount = state.servers.filter(server => server.isLive).length
   $('#lobbyStatus').textContent = `${state.servers.length} servers · ${liveCount} live`
   $('#statusServers').textContent = `${state.servers.length} servers · ${liveCount} live`
-  $('#peersLabel').textContent = `${state.friends.length + 1} peers known`
+  const friendsOnline = state.friends.filter(f => isFriendOnline(f.key)).length
+  $('#peersLabel').textContent = state.friends.length
+    ? `${friendsOnline}/${state.friends.length} friends online`
+    : `${state.presence.online.size + 1} peers`
 }
 
 function renderTicker () {
