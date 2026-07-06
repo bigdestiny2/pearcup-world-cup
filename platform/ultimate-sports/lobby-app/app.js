@@ -44,6 +44,8 @@ const state = {
   wallet: loadWallet(),
   prefs: loadPrefs(),
   identity: loadIdentity(),
+  signer: null,
+  crypto: false,
   friends: loadFriends(),
   privateRooms: loadPrivateRooms(),
   presence: { channel: null, online: new Map(), heartbeat: null, sweeper: null }
@@ -61,6 +63,7 @@ async function boot () {
   bindSettings()
   bindFriends()
   bindRoomModal()
+  await ensureSigner()
   renderIdentity()
   renderFriends()
   initPresence()
@@ -136,19 +139,49 @@ function savePrefs () {
   saveStored({ language: state.prefs.language, settlementMode: state.prefs.settlementMode })
 }
 
-// Local peer identity: a 32-byte key generated once and kept in the shared
-// store. This is the add-friend handle; swarm-backed presence (hyperswarm)
-// attaches to it when the client runs inside the Pear runtime.
+// Peer identity: an Ed25519 signing keypair. The public key (64 hex) is the
+// shareable peer ID and the add-friend handle; the private key stays local and
+// signs room invites + join proofs. ensureSigner() (async, in boot) finalizes
+// it; loadIdentity() just surfaces any stored public key for first paint.
 function loadIdentity () {
   const saved = loadStored()
-  if (saved.identity && typeof saved.identity.key === 'string' && /^[0-9a-f]{64}$/.test(saved.identity.key)) {
-    return saved.identity
+  if (saved.identity && /^[0-9a-f]{64}$/.test(saved.identity.key || '')) {
+    return { key: saved.identity.key, created: saved.identity.created || 0 }
   }
-  const bytes = new Uint8Array(32)
-  crypto.getRandomValues(bytes)
-  const identity = { key: [...bytes].map(b => b.toString(16).padStart(2, '0')).join(''), created: Date.now() }
-  saveStored({ identity })
-  return identity
+  return { key: null, created: 0 }
+}
+
+async function ensureSigner () {
+  state.crypto = false
+  state.signer = null
+  const stored = loadStored().identity || {}
+  const hasCrypto = !!window.UltimateID && await window.UltimateID.supported()
+
+  if (hasCrypto) {
+    state.crypto = true
+    if (stored.jwk && /^[0-9a-f]{64}$/.test(stored.key || '')) {
+      try {
+        state.signer = await window.UltimateID.importPrivate(stored.jwk)
+        state.identity = { key: stored.key, created: stored.created }
+        return
+      } catch { /* stored key unusable — mint a fresh one below */ }
+    }
+    const kp = await window.UltimateID.generate()
+    state.identity = { key: kp.pub, created: Date.now() }
+    state.signer = kp.privKey
+    saveStored({ identity: { key: kp.pub, jwk: kp.jwk, created: state.identity.created } })
+    return
+  }
+
+  // No WebCrypto Ed25519 → allowlist-only (unsigned) mode; keep/mint a plain id.
+  if (/^[0-9a-f]{64}$/.test(stored.key || '')) {
+    state.identity = { key: stored.key, created: stored.created || 0 }
+  } else {
+    const bytes = new Uint8Array(32)
+    crypto.getRandomValues(bytes)
+    state.identity = { key: [...bytes].map(b => b.toString(16).padStart(2, '0')).join(''), created: Date.now() }
+    saveStored({ identity: { key: state.identity.key, created: state.identity.created } })
+  }
 }
 
 function loadFriends () {
@@ -278,9 +311,11 @@ function shortKey (key) {
 }
 
 function renderIdentity () {
-  $('#myPeerId').textContent = state.identity.key
-  $('#myPeerId').title = state.identity.key
-  $('#statusIdentity').textContent = `${state.profile.username} · ${shortKey(state.identity.key)}`
+  $('#myPeerId').textContent = state.identity.key || '…'
+  $('#myPeerId').title = state.identity.key || ''
+  const idNote = $('#idCrypto')
+  if (idNote) idNote.textContent = state.crypto ? '🔑 Ed25519 signing key' : '○ unsigned (allowlist only)'
+  $('#statusIdentity').textContent = `${state.profile.username} · ${shortKey(state.identity.key || '')}`
 }
 
 function bindFriends () {
@@ -429,6 +464,48 @@ function roomCode () {
   return [...bytes].map(b => (b % 36).toString(36)).join('').toUpperCase()
 }
 
+/* ---- cryptographic access control ----
+   A room is owned by the creator's key. The host signs an invite per member
+   (a capability over roomCode|memberKey). To be admitted a peer must either be
+   the owner, or present a host-signed invite for their own key (+ prove key
+   ownership with a fresh signature). Without WebCrypto, this degrades to a plain
+   allowlist check. */
+
+function inviteMessage (code, memberKey) { return `us-invite:v1|${code}|${memberKey}` }
+function proofMessage (code, nonce) { return `us-join:v1|${code}|${nonce}` }
+
+async function verifyRoomAccess (room, joinerKey, opts = {}) {
+  if (!room || !joinerKey) return { ok: false, reason: 'invalid request' }
+  if (joinerKey === room.owner) return { ok: true, role: 'owner' }
+  if (!room.crypto) {
+    return (room.members || []).includes(joinerKey)
+      ? { ok: true, role: 'member', proven: false }
+      : { ok: false, reason: 'not on the allowlist' }
+  }
+  const invite = opts.invite || (room.invites && room.invites[joinerKey])
+  if (!invite) return { ok: false, reason: 'no invite for your key' }
+  const inviteOk = await window.UltimateID.verify(room.owner, inviteMessage(room.code, joinerKey), invite)
+  if (!inviteOk) return { ok: false, reason: 'invite signature invalid' }
+  if (opts.proof && opts.challenge) {
+    const proofOk = await window.UltimateID.verify(joinerKey, proofMessage(room.code, opts.challenge), opts.proof)
+    return proofOk ? { ok: true, role: 'member', proven: true } : { ok: false, reason: 'ownership proof failed' }
+  }
+  return { ok: true, role: 'member', proven: false }
+}
+
+// Shareable "room ticket" — the host hands this to invited friends. It carries
+// the signed invites; a friend's client redeems it only if it holds an invite
+// for their key.
+function encodeTicket (room) {
+  const payload = { name: room.name, fitId: room.fitId, code: room.code, owner: room.owner, invites: room.invites || {}, crypto: !!room.crypto, members: room.members || [] }
+  return 'us-room:v1:' + btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
+}
+function decodeTicket (text) {
+  const raw = String(text || '').trim()
+  if (!raw.startsWith('us-room:v1:')) return null
+  try { return JSON.parse(decodeURIComponent(escape(atob(raw.slice('us-room:v1:'.length))))) } catch { return null }
+}
+
 function openRoomModal () {
   const select = $('#roomFitSelect')
   select.innerHTML = state.servers.map(server =>
@@ -452,26 +529,37 @@ function bindRoomModal () {
   $('#roomModal').addEventListener('click', event => {
     if (event.target === $('#roomModal')) $('#roomModal').classList.add('is-hidden')
   })
-  $('#roomCreateBtn').addEventListener('click', () => {
+  $('#roomCreateBtn').addEventListener('click', async () => {
     const fitId = $('#roomFitSelect').value
     if (!fitId) return
     const server = state.servers.find(s => s.fitId === fitId)
     const name = ($('#roomNameInput').value || '').trim() || `${(server && server.title) || fitId} room`
     const members = $$('#roomFriendPick input:checked').map(input => input.value)
-    state.privateRooms.unshift({
+    const code = roomCode()
+    const room = {
       id: `room-${Date.now().toString(36)}`,
       name,
       fitId,
-      code: roomCode(),
+      code,
+      owner: state.identity.key,
       members,
+      invites: {},
+      crypto: state.crypto,
       created: Date.now()
-    })
+    }
+    // Host signs a capability invite for each member key.
+    if (state.crypto && state.signer) {
+      for (const memberKey of members) {
+        try { room.invites[memberKey] = await window.UltimateID.sign(state.signer, inviteMessage(code, memberKey)) } catch { /* skip unsignable */ }
+      }
+    }
+    state.privateRooms.unshift(room)
     savePrivateRooms()
     renderPrivateRooms()
     $('#roomModal').classList.add('is-hidden')
   })
 
-  $('#privateRows').addEventListener('click', event => {
+  $('#privateRows').addEventListener('click', async event => {
     const del = event.target.closest('[data-del-room]')
     if (del) {
       state.privateRooms = state.privateRooms.filter(room => room.id !== del.dataset.delRoom)
@@ -479,21 +567,74 @@ function bindRoomModal () {
       renderPrivateRooms()
       return
     }
+    const copy = event.target.closest('[data-copy-room]')
+    if (copy) {
+      const room = state.privateRooms.find(r => r.id === copy.dataset.copyRoom)
+      if (room) {
+        try { await navigator.clipboard.writeText(encodeTicket(room)); flashRoomNote(`Invite copied — send it to your members`) } catch { flashRoomNote('Could not copy invite') }
+      }
+      return
+    }
     const row = event.target.closest('[data-room-id]')
     if (!row) return
     const room = state.privateRooms.find(r => r.id === row.dataset.roomId)
     if (room) loadPrivateRoom(room)
   })
+
+  const redeemForm = $('#redeemForm')
+  if (redeemForm) redeemForm.addEventListener('submit', redeemTicket)
 }
 
-function loadPrivateRoom (room) {
+async function loadPrivateRoom (room) {
+  // Gate the join on this identity's access to the room.
+  const access = await verifyRoomAccess(room, state.identity.key)
+  if (!access.ok) {
+    flashRoomNote(`Access denied — ${access.reason}`)
+    return
+  }
   const server = state.servers.find(s => s.fitId === room.fitId)
+  // Members carry their host-signed capability + a fresh ownership proof so the
+  // host/peers can verify them on the swarm handshake (owners need neither).
+  let cap = ''
+  if (access.role === 'member' && room.crypto && state.signer && room.invites && room.invites[state.identity.key]) {
+    try {
+      const nonce = roomCode()
+      const proof = await window.UltimateID.sign(state.signer, proofMessage(room.code, nonce))
+      cap = `&host=${encodeURIComponent(room.owner)}&cap=${encodeURIComponent(room.invites[state.identity.key])}&px=${encodeURIComponent(proof)}&pn=${encodeURIComponent(nonce)}`
+    } catch { /* proof optional */ }
+  }
   loadApp({
     title: `${room.name} · ${(server && server.title) || room.fitId}`,
-    // ?join=<code> drops everyone with this code into the same P2P room via the
+    // ?join=<code> drops members with the code into the same P2P room via the
     // shell's friend-invite deep link; ?fit themes it as the chosen server.
-    appUrl: `/shell/index.html?fit=${encodeURIComponent(room.fitId)}&join=${encodeURIComponent(room.code)}`
+    appUrl: `/shell/index.html?fit=${encodeURIComponent(room.fitId)}&join=${encodeURIComponent(room.code)}&owner=${encodeURIComponent(access.role)}${cap}`
   })
+}
+
+async function redeemTicket (event) {
+  event.preventDefault()
+  const input = $('#redeemInput')
+  const room = decodeTicket(input.value)
+  if (!room) { flashRoomNote('That is not a valid room invite'); return }
+  if (room.owner === state.identity.key) { flashRoomNote("That's your own room"); return }
+  const access = await verifyRoomAccess(room, state.identity.key)
+  if (!access.ok) { flashRoomNote(`Access denied — ${access.reason}`); return }
+  if (!state.privateRooms.some(r => r.code === room.code && r.owner === room.owner)) {
+    state.privateRooms.unshift({ id: `room-${Date.now().toString(36)}`, ...room, mine: false, created: Date.now() })
+    savePrivateRooms()
+    renderPrivateRooms()
+  }
+  input.value = ''
+  flashRoomNote(`Joined "${room.name}" — verified invite`)
+}
+
+function flashRoomNote (text) {
+  const note = $('#roomNote')
+  if (!note) return
+  note.textContent = text
+  note.classList.add('show')
+  clearTimeout(flashRoomNote._t)
+  flashRoomNote._t = setTimeout(() => note.classList.remove('show'), 3200)
 }
 
 function renderPrivateRooms () {
@@ -503,14 +644,20 @@ function renderPrivateRooms () {
   empty.classList.toggle('is-hidden', state.privateRooms.length > 0)
   rows.innerHTML = state.privateRooms.map(room => {
     const server = state.servers.find(s => s.fitId === room.fitId)
+    const isOwner = room.owner === state.identity.key
+    const memberCount = (room.members ? room.members.length : 0) + 1
+    const lock = room.crypto ? '🔒' : '○'
     return `
       <tr data-room-id="${escapeAttr(room.id)}">
-        <td><span class="st priv"><span class="d"></span>Private</span></td>
+        <td><span class="st priv"><span class="d"></span>${lock} ${isOwner ? 'Owner' : 'Member'}</span></td>
         <td class="srv">${escapeHtml(room.name)}</td>
         <td class="hide"><span class="kind">${escapeHtml((server && server.title) || room.fitId)}</span></td>
-        <td class="dim">${room.members.length + 1} peer${room.members.length === 0 ? '' : 's'}</td>
+        <td class="dim">${memberCount} member${memberCount === 1 ? '' : 's'}</td>
         <td class="num"><span class="kind">${escapeHtml(room.code)}</span></td>
-        <td class="num"><button class="f-del" type="button" data-del-room="${escapeAttr(room.id)}" aria-label="Delete room">×</button></td>
+        <td class="num">
+          ${isOwner ? `<button class="linkbtn" type="button" data-copy-room="${escapeAttr(room.id)}">invite</button>` : ''}
+          <button class="f-del" type="button" data-del-room="${escapeAttr(room.id)}" aria-label="Delete room">×</button>
+        </td>
       </tr>`
   }).join('')
 }

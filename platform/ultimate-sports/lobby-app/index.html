@@ -71,6 +71,7 @@
                     <code class="id-key tnum" id="myPeerId">—</code>
                     <button class="wbtn" id="copyPeerId" type="button">Copy</button>
                   </div>
+                  <p class="id-crypto" id="idCrypto">—</p>
                 </div>
                 <div class="friend-list" id="friendList"></div>
                 <form class="friend-add" id="friendAddForm">
@@ -146,6 +147,13 @@
                 </table>
               </div>
               <p class="empty-note" id="privateEmpty">No private rooms yet — create one and invite friends by peer ID.</p>
+              <div class="redeem-bar">
+                <form class="redeem-form" id="redeemForm">
+                  <input id="redeemInput" placeholder="paste a room invite (us-room:v1:…)" autocomplete="off" spellcheck="false">
+                  <button class="wbtn" type="submit">Redeem</button>
+                </form>
+                <p class="room-note" id="roomNote" role="status" aria-live="polite"></p>
+              </div>
             </div>
           </section>
         </div>
@@ -187,6 +195,7 @@
     </div>
 
     <script src="../shell/peer-net.js"></script>
+    <script src="./crypto-identity.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>
