@@ -269,11 +269,13 @@ let bracketMatchIds = [
 // renders category pick cards. Defaults to the World Cup knockout tree.
 let templateKind = 'single-elimination'
 let awardsCategories = []
+let groupStages = []
 
 if (typeof window !== 'undefined' && window.ULTIMATE_FIT_CONFIG) {
   const cfg = window.ULTIMATE_FIT_CONFIG
   if (cfg.templateKind) templateKind = cfg.templateKind
   if (cfg.categories) awardsCategories = cfg.categories
+  if (cfg.groups) groupStages = cfg.groups
   if (cfg.teams) teams = cfg.teams
   if (cfg.pools) pools = cfg.pools
   if (cfg.round32Matches) round32Matches = cfg.round32Matches
@@ -400,6 +402,17 @@ function normalizeBracketPicks (picks = {}) {
     for (const bout of round32Matches) {
       const value = source[bout.id]
       if (value && bout.slots.includes(value)) kept[bout.id] = value
+    }
+    return kept
+  }
+  if (templateKind === 'group-plus-knockout' && groupStages.length) {
+    const kept = {}
+    for (const group of groupStages) {
+      for (const place of ['1', '2']) {
+        const key = groupPickKey(group.id, place)
+        const value = source[key]
+        if (value && (group.teams || []).includes(value)) kept[key] = value
+      }
     }
     return kept
   }
@@ -2309,11 +2322,50 @@ function renderAwardsBoard () {
   })
 }
 
+// Group-plus-knockout: predict each group's winner and runner-up. Two picks per
+// group, keyed `<groupId>-1` (winner) and `<groupId>-2` (runner-up).
+function groupPickKey (groupId, place) { return `${groupId}-${place}` }
+
+function renderGroupsBoard () {
+  const board = $('#bracketBoard')
+  if (!board) return
+  board.classList.remove('is-fight-card', 'is-awards-card')
+  board.classList.add('is-groups')
+  board.innerHTML = groupStages.map(group => {
+    const places = [['1', '1st · Winner'], ['2', '2nd · Runner-up']].map(([place, label]) => {
+      const key = groupPickKey(group.id, place)
+      const options = (group.teams || []).map(teamId => {
+        const team = teamById(teamId)
+        const picked = getPick(key) === teamId
+        return `
+          <button class="group-pick team-row${picked ? ' is-picked' : ''}" type="button" data-match="${escapeHtml(key)}" data-pick="${escapeHtml(teamId)}" aria-pressed="${picked}">
+            <span class="team-flag">${team.flag}</span><span class="team-title">${escapeHtml(team.name)}</span>
+          </button>`
+      }).join('')
+      return `<div class="group-place"><span class="group-place-label">${label}</span><div class="group-place-options">${options}</div></div>`
+    }).join('')
+    return `
+      <article class="group-card match-card" data-match-card="${escapeHtml(group.id)}">
+        <div class="match-meta"><span class="fight-bout-slot">${escapeHtml(group.name)}</span></div>
+        ${places}
+      </article>`
+  }).join('')
+
+  $$('#bracketBoard [data-pick]').forEach(button => {
+    button.addEventListener('click', () => {
+      state.picks[button.dataset.match] = button.dataset.pick
+      persist()
+      renderBracket()
+    })
+  })
+}
+
 function renderBracketBoard () {
   if (templateKind === 'fight-card') return renderFightCardBoard()
   if (templateKind === 'awards-card') return renderAwardsBoard()
+  if (templateKind === 'group-plus-knockout' && groupStages.length) return renderGroupsBoard()
   const board = $('#bracketBoard')
-  if (board) board.classList.remove('is-fight-card', 'is-awards-card')
+  if (board) board.classList.remove('is-fight-card', 'is-awards-card', 'is-groups')
   const placements = {
     round32: index => ({ column: 1, row: index + 2, span: 1 }),
     round16: index => ({ column: 2, row: 2 + (index * 2), span: 2 }),
@@ -2363,6 +2415,7 @@ async function renderBracket () {
   const bracketTitleEl = $('#bracketTitle')
   if (bracketTitleEl && templateKind === 'fight-card') bracketTitleEl.textContent = 'Pick the fight card'
   if (bracketTitleEl && templateKind === 'awards-card') bracketTitleEl.textContent = 'Make your award picks'
+  if (bracketTitleEl && templateKind === 'group-plus-knockout' && groupStages.length) bracketTitleEl.textContent = 'Predict the group stage'
   renderPoolSelect()
   const remaining = remainingPicks()
   const pr = $('#picksRemaining')
@@ -4395,6 +4448,10 @@ function applyKickResult (result) {
 function remainingPicks () {
   if (templateKind === 'fight-card') return round32Matches.filter(bout => !state.picks[bout.id]).length
   if (templateKind === 'awards-card') return awardsCategories.filter(category => !state.picks[category.id]).length
+  if (templateKind === 'group-plus-knockout' && groupStages.length) {
+    return groupStages.reduce((total, group) =>
+      total + (state.picks[groupPickKey(group.id, '1')] ? 0 : 1) + (state.picks[groupPickKey(group.id, '2')] ? 0 : 1), 0)
+  }
   return bracketMatchIds.filter(id => !state.picks[id]).length
 }
 

@@ -1655,6 +1655,36 @@ h2 {
 .nominee-name { font-weight: 800; font-size: 14px; color: var(--ink); }
 .nominee-detail { font-size: 12px; color: var(--muted); }
 
+/* Group-plus-knockout template: predict each group's winner and runner-up. */
+.bracket-board.is-groups {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-rows: none;
+  align-items: start;
+  column-gap: 16px;
+  row-gap: 16px;
+  overflow-x: visible;
+}
+
+.bracket-board.is-groups .group-card { width: 100%; }
+
+.group-place { margin-top: 10px; }
+.group-place-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.group-place-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
 .bracket-lines {
   position: absolute;
   inset: 0;
