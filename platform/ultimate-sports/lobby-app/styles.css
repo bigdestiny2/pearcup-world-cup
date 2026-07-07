@@ -356,8 +356,16 @@ body {
 .lv tbody tr.sel { background: var(--sel); color: #fff; }
 .lv tbody tr.sel .dim, .lv tbody tr.sel .kind, .lv tbody tr.sel .st { color: rgba(255, 255, 255, 0.85); }
 .lv td { padding: 8px 12px; white-space: nowrap; }
-.lv td.srv { font-weight: 700; }
-.lv td.srv .fl { margin-right: 7px; }
+.lv td.srv { font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.lv td.srv .fl { margin-right: 0; }
+.lv td.srv .srv-cover {
+  width: 44px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 3px;
+  background: var(--field-line);
+  flex: none;
+}
 .st { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-dim); }
 .st .d { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-faint); flex: none; }
 .st.live .d { background: var(--live); box-shadow: 0 0 6px var(--live); }

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-fit-id="creator-reality-brackets" data-asset-type="lobby-icon" data-palette="studio-black, spotlight-gold, creator-pink, paper-white" data-theme-primary="#d946ef">
+  <defs>
+    <style>
+      :root {
+        --fit-palette-0: #d946ef; /* studio-black */
+        --fit-palette-1: #22c55e; /* spotlight-gold */
+        --fit-palette-2: #a21caf; /* creator-pink */
+        --fit-palette-3: #d946ef; /* paper-white */
+      }
+    </style>
+    <linearGradient id="lobbyGrad-creator-reality-brackets" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="var(--fit-palette-0, #d946ef)" stop-opacity="0.95"/>
+      <stop offset="55%" stop-color="var(--fit-palette-2, #a21caf)" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="var(--fit-palette-1, #22c55e)" stop-opacity="0.88"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#lobbyGrad-creator-reality-brackets)"/>
+  <circle cx="384" cy="128" r="96" fill="#ffffff" opacity="0.10"/>
+  <circle cx="128" cy="384" r="72" fill="#ffffff" opacity="0.08"/>
+  <text x="256" y="340" font-size="220" text-anchor="middle" font-family="Arial, sans-serif" dominant-baseline="middle">⭐</text>
+</svg>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 600" width="1800" height="600" data-fit-id="champions-league-knockout" data-asset-type="pool-card-accent" data-palette="midnight, electric-cyan, silver, pitch-green" data-theme-primary="#0ea5e9">
+  <defs>
+    <style>
+      :root {
+        --fit-palette-0: #0ea5e9; /* midnight */
+        --fit-palette-1: #f59e0b; /* electric-cyan */
+        --fit-palette-2: #0369a1; /* silver */
+        --fit-palette-3: #0ea5e9; /* pitch-green */
+      }
+    </style>
+    <linearGradient id="accentGrad-champions-league-knockout" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="var(--fit-palette-0, #0ea5e9)" stop-opacity="0.95"/>
+      <stop offset="50%" stop-color="var(--fit-palette-2, #0369a1)" stop-opacity="0.90"/>
+      <stop offset="100%" stop-color="var(--fit-palette-1, #f59e0b)" stop-opacity="0.85"/>
+    </linearGradient>
+    <clipPath id="accentClip-champions-league-knockout">
+      <rect width="1800" height="600" rx="48"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#accentClip-champions-league-knockout)">
+    <rect width="1800" height="600" fill="url(#accentGrad-champions-league-knockout)"/>
+    <circle cx="1600" cy="100" r="240" fill="#ffffff" opacity="0.08"/>
+    <circle cx="160" cy="520" r="180" fill="#ffffff" opacity="0.06"/>
+    <rect x="1400" y="120" width="120" height="120" rx="24" fill="#ffffff" opacity="0.14"/>
+    <rect x="1580" y="360" width="80" height="80" rx="16" fill="#ffffff" opacity="0.12"/>
+  </g>
+</svg>

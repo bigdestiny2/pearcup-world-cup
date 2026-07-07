@@ -44,6 +44,8 @@ function createLobbyAppServer (input = {}) {
       filePath = path.join(shellDir, pathname.slice('/shell/'.length))
     } else if (pathname.startsWith('/mma/')) {
       filePath = path.join(mmaDir, pathname.slice('/mma/'.length))
+    } else if (pathname.startsWith('/generated-assets/')) {
+      filePath = path.join(generatedDir, pathname.slice('/generated-assets/'.length))
     } else if (pathname.startsWith('/generated/')) {
       filePath = path.join(generatedDir, pathname.slice('/generated/'.length))
     } else {

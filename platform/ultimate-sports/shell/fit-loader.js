@@ -13,6 +13,41 @@
   root.CURRENT_FIT_ID = fitId
   root.ULTIMATE_FIT_CONFIG = cfg
 
+  // Expose the fit's recommended mini-games and human-readable titles for the
+  // browser shell. Mirrors src/catalog-engine.js so the Games lobby and watch
+  // challenge tray can show fit-appropriate games.
+  const RECOMMENDED_MINI_GAMES = {
+    'world-cup': ['penalty-clash', 'free-kick-duel', 'next-event', 'scoreline-lock', 'watch-party-streak', 'reaction-challenge'],
+    'euros-copa-america': ['penalty-clash', 'next-event', 'scoreline-lock', 'player-prop-duel', 'watch-party-streak', 'reaction-challenge'],
+    'champions-league-knockout': ['penalty-clash', 'free-kick-duel', 'next-event', 'momentum-duel', 'watch-party-streak', 'reaction-challenge'],
+    'march-madness': ['next-event', 'scoreline-lock', 'trivia-duel', 'peer-mini-fantasy', 'player-prop-duel', 'watch-party-streak', 'reaction-challenge', 'buzzer-beater-duel'],
+    'pro-playoffs': ['next-event', 'scoreline-lock', 'player-prop-duel', 'peer-mini-fantasy', 'watch-party-streak', 'reaction-challenge', 'momentum-duel', 'buzzer-beater-duel', 'home-run-derby'],
+    'tennis-grand-slams': ['next-event', 'scoreline-lock', 'player-prop-duel', 'reaction-challenge', 'watch-party-streak', 'ace-serve-duel'],
+    'esports-major': ['next-event', 'momentum-duel', 'trivia-duel', 'reaction-challenge', 'watch-party-streak', 'prediction-duel'],
+    'mma-boxing-fight-card': ['player-prop-duel', 'next-event', 'trivia-duel', 'reaction-challenge', 'watch-party-streak', 'momentum-duel', 'prediction-duel'],
+    'sailgp-companion': ['next-event', 'momentum-duel', 'player-prop-duel', 'trivia-duel', 'reaction-challenge', 'watch-party-streak', 'peer-mini-fantasy', 'prediction-duel'],
+    'creator-reality-brackets': ['trivia-duel', 'reaction-challenge', 'watch-party-streak', 'prediction-duel'],
+    'awards-prediction-pools': ['trivia-duel', 'watch-party-streak', 'reaction-challenge', 'prediction-duel'],
+    'local-leagues': ['penalty-clash', 'free-kick-duel', 'trivia-duel', 'next-event', 'peer-mini-fantasy', 'watch-party-streak', 'reaction-challenge', 'momentum-duel', 'player-prop-duel', 'prediction-duel']
+  }
+  root.ULTIMATE_MINI_GAME_TITLES = {
+    'penalty-clash': 'Penalty Clash',
+    'trivia-duel': 'Trivia Duel',
+    'prediction-duel': 'Prediction Duel',
+    'free-kick-duel': 'Free-kick Duel',
+    'next-event': 'Next Event',
+    'scoreline-lock': 'Scoreline Lock',
+    'player-prop-duel': 'Player Prop Duel',
+    'momentum-duel': 'Momentum Duel',
+    'watch-party-streak': 'Watch-party Streak',
+    'reaction-challenge': 'Reaction Challenge',
+    'peer-mini-fantasy': 'Peer Mini Fantasy',
+    'buzzer-beater-duel': 'Buzzer Beater Duel',
+    'ace-serve-duel': 'Ace Serve Duel',
+    'home-run-derby': 'Home Run Derby'
+  }
+  cfg.recommendedMiniGames = RECOMMENDED_MINI_GAMES[fitId] || RECOMMENDED_MINI_GAMES['world-cup']
+
   if (cfg.title) {
     root.document.title = cfg.title + (cfg.subtitle ? ' — ' + cfg.subtitle : ' — Ultimate Sports')
   }

@@ -8,7 +8,7 @@
   // advancement — the awards-card renderer consumes `categories`.
   const categories = [
     {
-      id: 'cat-picture', title: 'Best Picture', nominees: [
+      id: 'cat-picture', title: 'Best Picture', weight: 3, nominees: [
         { id: 'oppen', name: 'Oppenheimer', detail: 'Universal' },
         { id: 'barb', name: 'Barbie', detail: 'Warner Bros.' },
         { id: 'poor', name: 'Poor Things', detail: 'Searchlight' },
@@ -16,7 +16,7 @@
       ]
     },
     {
-      id: 'cat-drama', title: 'Best Drama', nominees: [
+      id: 'cat-drama', title: 'Best Drama', weight: 1, nominees: [
         { id: 'kill', name: 'Killers of the Flower Moon', detail: 'Apple' },
         { id: 'past', name: 'Past Lives', detail: 'A24' },
         { id: 'anat', name: 'Anatomy of a Fall', detail: 'Neon' },
@@ -24,7 +24,7 @@
       ]
     },
     {
-      id: 'cat-record', title: 'Record of the Year', nominees: [
+      id: 'cat-record', title: 'Record of the Year', weight: 2, nominees: [
         { id: 'tayl', name: 'Taylor Swift', detail: '"Anti-Hero"' },
         { id: 'sza', name: 'SZA', detail: '"Kill Bill"' },
         { id: 'mahn', name: 'Mahmood', detail: '"Tuta Gold"' },
@@ -32,7 +32,7 @@
       ]
     },
     {
-      id: 'cat-euro', title: 'Eurovision Winner', nominees: [
+      id: 'cat-euro', title: 'Eurovision Winner', weight: 1, nominees: [
         { id: 'lore', name: 'Loreen', detail: 'Sweden' },
         { id: 'kaar', name: 'Käärijä', detail: 'Finland' },
         { id: 'bilal', name: 'Bilal Hassani', detail: 'France' },
@@ -40,7 +40,7 @@
       ]
     },
     {
-      id: 'cat-song', title: 'Best Original Song', nominees: [
+      id: 'cat-song', title: 'Best Original Song', weight: 1, nominees: [
         { id: 'wimf', name: '"What Was I Made For?"', detail: 'Barbie' },
         { id: 'dance', name: '"Dance the Night"', detail: 'Barbie' },
         { id: 'wahzhazhe', name: '"Wahzhazhe"', detail: 'Killers of the Flower Moon' },
@@ -48,7 +48,7 @@
       ]
     },
     {
-      id: 'cat-breakthrough', title: 'Breakthrough Artist', nominees: [
+      id: 'cat-breakthrough', title: 'Breakthrough Artist', weight: 1, nominees: [
         { id: 'bilal2', name: 'Bilal Hassani', detail: 'Pop' },
         { id: 'sza2', name: 'SZA', detail: 'R&B' },
         { id: 'kaar2', name: 'Käärijä', detail: 'Rap-metal' },
@@ -142,6 +142,6 @@
     leaders,
     commentary,
     defaultChat,
-    assets: { heroBackdrop: '../generated/fit-heroes/awards-prediction-pools.svg' }
+    assets: root.defaultFitAssets('awards-prediction-pools')
   })
 })(window)

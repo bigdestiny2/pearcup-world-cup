@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 600" width="1800" height="600" data-fit-id="sailgp-companion" data-asset-type="pool-card-accent" data-palette="deep-water-blue, wake-white, wind-cyan, buoy-orange, carbon-black" data-theme-primary="#06b6d4">
+  <defs>
+    <style>
+      :root {
+        --fit-palette-0: #06b6d4; /* deep-water-blue */
+        --fit-palette-1: #f43f5e; /* wake-white */
+        --fit-palette-2: #0e7490; /* wind-cyan */
+        --fit-palette-3: #06b6d4; /* buoy-orange */
+        --fit-palette-4: #f43f5e; /* carbon-black */
+      }
+    </style>
+    <linearGradient id="accentGrad-sailgp-companion" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="var(--fit-palette-0, #06b6d4)" stop-opacity="0.95"/>
+      <stop offset="50%" stop-color="var(--fit-palette-2, #0e7490)" stop-opacity="0.90"/>
+      <stop offset="100%" stop-color="var(--fit-palette-1, #f43f5e)" stop-opacity="0.85"/>
+    </linearGradient>
+    <clipPath id="accentClip-sailgp-companion">
+      <rect width="1800" height="600" rx="48"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#accentClip-sailgp-companion)">
+    <rect width="1800" height="600" fill="url(#accentGrad-sailgp-companion)"/>
+    <circle cx="1600" cy="100" r="240" fill="#ffffff" opacity="0.08"/>
+    <circle cx="160" cy="520" r="180" fill="#ffffff" opacity="0.06"/>
+    <rect x="1400" y="120" width="120" height="120" rx="24" fill="#ffffff" opacity="0.14"/>
+    <rect x="1580" y="360" width="80" height="80" rx="16" fill="#ffffff" opacity="0.12"/>
+  </g>
+</svg>

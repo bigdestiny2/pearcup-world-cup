@@ -27,11 +27,14 @@
     channel: null, code: null,
     self: null, opp: null, role: null,
     kIndex: 0, busy: false,
+    gameType: 'penalty-clash',
+    gameTypeSet: false,
     commit: null,        // {aim, nonce, power} while I'm shooting
     remoteCommit: null,  // hash received while I'm keeping
     myDive: null,
     helloTimer: null,
-    helloAttempts: 0
+    helloAttempts: 0,
+    challenges: new Map()
   }
 
   const $ = sel => document.querySelector(sel)
@@ -60,7 +63,9 @@
     Object.assign(PM, {
       active: false, started: false, over: false, channel: null, code: null,
       self: null, opp: null, role: null, kIndex: 0, busy: false,
-      commit: null, remoteCommit: null, myDive: null, helloTimer: null, helloAttempts: 0
+      gameType: 'penalty-clash', gameTypeSet: false,
+      commit: null, remoteCommit: null, myDive: null, helloTimer: null, helloAttempts: 0,
+      challenges: new Map()
     })
     syncDiagnostics('idle')
   }
@@ -70,10 +75,12 @@
   function roundOf (k) { return Math.floor(k / 2) }
 
   // ---- lifecycle ----
-  function host (code, silent) {
+  function host (code, silent, gameType) {
     reset()
     PM.active = true
     PM.code = code || Net.newRoomCode()
+    PM.gameType = gameType || 'penalty-clash'
+    PM.gameTypeSet = Boolean(gameType)
     PM.self = { peerId: Net.newPeerId(), name: state.username || 'captain', team: state.team || 'br' }
     openChannel()
     syncDiagnostics('hosting')
@@ -82,10 +89,12 @@
     startAnnouncing()
   }
 
-  function join (code) {
+  function join (code, gameType) {
     reset()
     PM.active = true
     PM.code = code
+    PM.gameType = gameType || 'penalty-clash'
+    PM.gameTypeSet = Boolean(gameType)
     PM.self = { peerId: Net.newPeerId(), name: state.username || 'captain', team: state.team || 'br' }
     openChannel()
     syncDiagnostics('joining')
@@ -102,8 +111,29 @@
     const RA = root.PearCupRoomAccess
     return RA && typeof RA.myCredential === 'function' ? RA.myCredential() : null
   }
-  function announce () { send({ t: 'hello', peer: PM.self, cred: roomCredential() }) }
+  function announce (cred) { send({ t: 'hello', peer: PM.self, cred: cred || roomCredential(), gameType: PM.gameType }) }
   function send (msg) { if (PM.channel) PM.channel.send({ ...msg, room: PM.code, sender: PM.self.peerId }) }
+
+  function challengeNonce () {
+    return Net && typeof Net.newNonce === 'function' ? Net.newNonce() : `${Date.now()}-${Math.random()}`
+  }
+
+  function sendChallenge (toPeerId) {
+    if (!PM.active || PM.started || PM.opp || PM.challenges.has(toPeerId)) return
+    const nonce = challengeNonce()
+    PM.challenges.set(toPeerId, nonce)
+    send({ t: 'challenge', nonce, to: toPeerId })
+  }
+
+  async function onChallenge (msg) {
+    if (!PM.active || PM.started || PM.opp) return
+    const RA = root.PearCupRoomAccess
+    if (!RA || typeof RA.signChallenge !== 'function') return
+    const proof = await RA.signChallenge(msg.nonce)
+    if (!proof) return
+    const base = roomCredential() || { key: null }
+    announce({ key: base.key, cap: base.cap, proof, nonce: msg.nonce })
+  }
 
   function startAnnouncing () {
     stopAnnouncing()
@@ -130,7 +160,8 @@
   function onMessage (msg) {
     if (!msg || msg.room !== PM.code || msg.sender === PM.self.peerId) return
     switch (msg.t) {
-      case 'hello': return onHello(msg.peer, msg.cred)
+      case 'hello': return onHello(msg.peer, msg.cred, msg.gameType)
+      case 'challenge': return onChallenge(msg)
       case 'commit': return onCommit(msg)
       case 'dive': return onDive(msg)
       case 'reveal': return onReveal(msg)
@@ -138,22 +169,46 @@
     }
   }
 
-  function onHello (peer, cred) {
+  async function onHello (peer, cred, gameType) {
     if (PM.started || !peer || PM.opp) return
+    if (!PM.gameTypeSet && gameType) PM.gameType = gameType
     const RA = root.PearCupRoomAccess
-    // Private rooms are access-controlled: verify the joiner's capability
-    // (owner key, or a host-signed invite for their key) before admitting them.
-    if (RA && RA.enforced) {
-      Promise.resolve(RA.verify(cred)).then(ok => {
-        if (!ok) {
-          if (!PM.rejectedNote) { PM.rejectedNote = true; try { showToast('Blocked a peer without a valid room invite') } catch (e) {} }
-          return
-        }
-        admitOpponent(peer)
-      }).catch(() => {})
+    // Public rooms admit everyone.
+    if (!RA || !RA.enforced) {
+      admitOpponent(peer)
       return
     }
-    admitOpponent(peer)
+    // Owners are always admitted.
+    if (cred && cred.key === RA.ownerKey) {
+      admitOpponent(peer)
+      return
+    }
+    // Anyone else must show a valid host-signed invite for their key.
+    let capOk = false
+    try { capOk = await RA.verify(cred) } catch (e) { capOk = false }
+    if (!capOk) {
+      if (!PM.rejectedNote) { PM.rejectedNote = true; try { showToast('Blocked a peer without a valid room invite') } catch (e) {} }
+      return
+    }
+    // Members who already carry a self-chosen proof (legacy invites) can join directly.
+    if (cred && cred.proof && cred.nonce) {
+      let legacyOk = false
+      try { legacyOk = await RA.verifyProof(cred, cred.nonce) } catch (e) { legacyOk = false }
+      if (legacyOk) { admitOpponent(peer); return }
+    }
+    // If we issued a challenge, verify the response against the stored nonce.
+    const storedNonce = PM.challenges.get(peer.peerId)
+    if (storedNonce && cred && cred.proof) {
+      let respOk = false
+      try { respOk = await RA.verifyProof(cred, storedNonce) } catch (e) { respOk = false }
+      if (respOk) {
+        PM.challenges.delete(peer.peerId)
+        admitOpponent(peer)
+        return
+      }
+    }
+    // Valid invite but no (or no valid) proof yet — issue a fresh challenge.
+    sendChallenge(peer.peerId)
   }
 
   function admitOpponent (peer) {
@@ -172,7 +227,7 @@
     // Both players on default names would read "captain vs captain" — disambiguate the
     // opponent (they also get a distinct pool avatar from the new name).
     if ((PM.opp.name || '').toLowerCase() === (PM.self.name || '').toLowerCase()) PM.opp.name = 'Rival'
-    state.match = { opponent: { name: PM.opp.name, team: PM.opp.team }, stake: 0, peer: true }
+    state.match = { opponent: { name: PM.opp.name, team: PM.opp.team }, stake: 0, peer: true, gameType: PM.gameType }
     state.shootout = { round: 0, mode: 'shoot', you: 0, opp: 0, youDots: [], oppDots: [], phase: 'aim', busy: false, lastResult: null, peer: true }
     closeModal()
     showToast(`Connected to ${PM.opp.name} — best of five!`)
@@ -199,6 +254,7 @@
   // ---- render / turn setup ----
   function render () {
     if (!PM.active || !PM.started) return
+    if (PM.gameType !== 'penalty-clash') return
     ensureShootoutDom()
     const arena = document.querySelector('#games .game-arena')
     if (arena) arena.classList.remove('is-lobby')
@@ -407,8 +463,9 @@
   const esc = s => (typeof escapeHtml === 'function' ? escapeHtml(s) : String(s))
   function renderInvite () {
     const link = inviteLink(PM.code)
+    const title = (root.ULTIMATE_MINI_GAME_TITLES && root.ULTIMATE_MINI_GAME_TITLES[PM.gameType]) || 'Penalty Clash'
     const el = modal(`
-      <p class="eyebrow">Penalty Clash · Friends</p>
+      <p class="eyebrow">${esc(title)} · Friends</p>
       <h2 class="peer-title">Invite a friend</h2>
       <p class="peer-sub">Open the link in another window/tab now, or send it to a friend on this device. Cross-device runs on the Pear swarm.</p>
       <div class="peer-code">${PM.code}</div>
@@ -425,8 +482,9 @@
     }
   }
   function renderConnecting (code) {
+    const title = (root.ULTIMATE_MINI_GAME_TITLES && root.ULTIMATE_MINI_GAME_TITLES[PM.gameType]) || 'Penalty Clash'
     const el = modal(`
-      <p class="eyebrow">Penalty Clash · Friends</p>
+      <p class="eyebrow">${esc(title)} · Friends</p>
       <h2 class="peer-title">Joining ${esc(code)}…</h2>
       <p class="peer-sub">Connecting to the room. Keep your friend's invite window open.</p>
       <p class="peer-wait" id="peerWaitLine"><i></i> Handshaking…</p>
@@ -441,9 +499,10 @@
       if (cancel) cancel.textContent = 'Back to lobby'
     }, 30000)
   }
-  function promptJoin () {
+  function promptJoin (gameType) {
+    const title = (root.ULTIMATE_MINI_GAME_TITLES && root.ULTIMATE_MINI_GAME_TITLES[gameType]) || 'Penalty Clash'
     const el = modal(`
-      <p class="eyebrow">Penalty Clash · Friends</p>
+      <p class="eyebrow">${esc(title)} · Friends</p>
       <h2 class="peer-title">Join a friend</h2>
       <p class="peer-sub">Enter the room code your friend shared.</p>
       <input class="peer-input" id="peerJoinCode" placeholder="e.g. k7m2ph" autocomplete="off">
@@ -454,7 +513,7 @@
     el.querySelector('#peerCancel').onclick = closeModal
     el.querySelector('#peerJoinGo').onclick = () => {
       const code = (el.querySelector('#peerJoinCode').value || '').trim().toLowerCase()
-      if (code) join(code)
+      if (code) join(code, gameType)
     }
   }
 

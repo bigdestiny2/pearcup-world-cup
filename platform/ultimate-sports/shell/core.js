@@ -1,6 +1,33 @@
 (function attachPearCupCore (root) {
   const resolverVersion = 'penalty-clash-v1'
 
+  // In the browser the shell loads engines.bundle.js before this file, so
+  // root.UltimateEngines is already present. In Node tests we load the same
+  // engines directly from src/ so the shell can delete its cloned demo logic
+  // and always delegate to one source of truth.
+  const canRequireLocal = typeof module !== 'undefined' && module.exports && typeof require !== 'undefined'
+  let cachedNodeEngines = null
+  function loadNodeEngines () {
+    if (!canRequireLocal || cachedNodeEngines) return cachedNodeEngines
+    try {
+      cachedNodeEngines = {
+        constants: require('../src/constants.js'),
+        util: require('../src/util.js'),
+        eventLog: require('../src/event-log.js'),
+        scoring: require('../src/scoring-engine.js'),
+        prediction: require('../src/prediction-engine.js'),
+        pool: require('../src/pool-engine.js'),
+        competition: require('../src/competition-engine.js')
+      }
+    } catch (err) {
+      cachedNodeEngines = null
+    }
+    return cachedNodeEngines
+  }
+  function getEngines () {
+    return (root && root.UltimateEngines) || loadNodeEngines()
+  }
+
   function canonicalJson (value) {
     if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`
     if (value && typeof value === 'object') {
@@ -56,6 +83,93 @@
     if (id.includes('quarter') || id.startsWith('qf')) return 4
     if (id.includes('round16') || id.startsWith('r16')) return 2
     return 1
+  }
+
+  function roundOf (matchId) {
+    const weight = bracketMatchWeight(matchId)
+    if (weight >= 16) return 5
+    if (weight >= 8) return 4
+    if (weight >= 4) return 3
+    if (weight >= 2) return 2
+    return 1
+  }
+
+  function resultSnapshotFromOfficialResults (officialResults) {
+    const winners = officialBracketWinners(officialResults)
+    const results = {}
+    for (const [matchId, winnerEntrantId] of Object.entries(winners)) {
+      if (matchId == null || winnerEntrantId == null) continue
+      results[matchId] = { winnerEntrantId, roundNumber: roundOf(matchId) }
+    }
+    return { snapshotId: deterministicHash(results), results }
+  }
+
+  function bracketPoolForEngine (rulesVersion) {
+    const engines = getEngines()
+    return engines.pool.createPool({
+      competitionId: 'pearcup-bracket',
+      variant: 'classic-bracket',
+      payoutPolicy: 'demo',
+      rulesVersion: rulesVersion || 'bracket-pool-v1'
+    })
+  }
+
+  function deriveBracketPoolWinnersViaEngines ({ submissions, officialResults }) {
+    const engines = getEngines()
+    const resultSnapshot = resultSnapshotFromOfficialResults(officialResults)
+    const totalMatches = Object.keys(resultSnapshot.results).length
+    const rulesVersion = (submissions[0] && submissions[0].rulesVersion) || 'bracket-pool-v1'
+    const pool = bracketPoolForEngine(rulesVersion)
+    const entries = submissions.map(submission => engines.prediction.createPredictionEntry({
+      poolId: pool.poolId,
+      userId: submission.userId,
+      entryId: submission.entryId || submission.submissionId,
+      entryType: 'bracket',
+      picks: submission.picks,
+      submittedAt: submission.submittedAt,
+      lockedAt: submission.submittedAt,
+      status: 'locked'
+    }))
+    const resolution = engines.pool.resolvePoolWinners({ pool, entries, resultSnapshot })
+    const rowByEntryId = new Map(resolution.leaderboard.map(row => [row.entryId, row]))
+    const scoreboard = submissions.map(submission => {
+      const entryId = submission.entryId || submission.submissionId
+      const row = rowByEntryId.get(entryId) || {
+        userId: submission.userId,
+        score: 0,
+        correctCount: 0,
+        perfect: false
+      }
+      return {
+        submissionId: submission.submissionId || null,
+        userId: row.userId || submission.userId || null,
+        entryId: submission.entryId || null,
+        paymentId: submission.paymentId || null,
+        picksHash: submission.picksHash || null,
+        score: row.score,
+        correctCount: row.correctCount,
+        totalMatches,
+        perfect: row.perfect
+      }
+    })
+    const perfectRows = scoreboard.filter(row => row.perfect)
+    const maxScore = scoreboard.reduce((max, row) => Math.max(max, row.score), 0)
+    const winnerRows = perfectRows.length
+      ? perfectRows
+      : totalMatches > 0 && maxScore > 0
+        ? scoreboard.filter(row => row.score === maxScore)
+        : []
+    const winnerUserIds = [...new Set(winnerRows.map(row => row.userId).filter(Boolean))]
+    return {
+      winnerUserIds,
+      scoreboard,
+      totalMatches,
+      resolvedBy: winnerRows.length === 0
+        ? 'no-qualified-bracket'
+        : perfectRows.length
+          ? 'perfect-bracket'
+          : 'fallback-score'
+    }
   }
 
   function officialBracketWinners (officialResults = {}) {
@@ -117,26 +231,27 @@
     const picks = submission && submission.picks && typeof submission.picks === 'object' ? submission.picks : {}
     const winners = officialBracketWinners(officialResults)
     const matchIds = Object.keys(winners).filter(matchId => winners[matchId] != null)
-    let score = 0
-    let correctCount = 0
+
+    // Always score through the Ultimate Sports engine (bundle in browser, src/ in Node).
+    const engines = getEngines()
+    const results = {}
     for (const matchId of matchIds) {
-      const picked = picks[matchId]
-      const actual = winners[matchId]
-      if (picked != null && String(picked) === String(actual)) {
-        correctCount++
-        score += bracketMatchWeight(matchId)
-      }
+      results[matchId] = { winnerEntrantId: winners[matchId], roundNumber: roundOf(matchId) }
     }
+    const engineResult = engines.scoring.scoreClassicBracket({
+      entry: { picks },
+      resultSnapshot: { results }
+    })
     return {
       submissionId: submission && submission.submissionId || null,
       userId: submission && submission.userId || null,
       entryId: submission && submission.entryId || null,
       paymentId: submission && submission.paymentId || null,
       picksHash: submission && submission.picksHash || deterministicHash(picks),
-      score,
-      correctCount,
+      score: engineResult.score,
+      correctCount: engineResult.correctCount,
       totalMatches: matchIds.length,
-      perfect: matchIds.length > 0 && correctCount === matchIds.length
+      perfect: engineResult.perfect
     }
   }
 
@@ -150,26 +265,9 @@
             (eligible.size === 0 || eligible.has(submission.userId))
         })
       : []
-    const scoreboard = submissions.map(submission => scoreBracketSubmission({ submission, officialResults }))
-    const totalMatches = scoreboard.reduce((max, row) => Math.max(max, row.totalMatches), 0)
-    const perfectRows = scoreboard.filter(row => row.perfect)
-    const maxScore = scoreboard.reduce((max, row) => Math.max(max, row.score), 0)
-    const winnerRows = perfectRows.length
-      ? perfectRows
-      : totalMatches > 0 && maxScore > 0
-        ? scoreboard.filter(row => row.score === maxScore)
-        : []
-    const winnerUserIds = [...new Set(winnerRows.map(row => row.userId).filter(Boolean))]
-    return {
-      winnerUserIds,
-      scoreboard,
-      totalMatches,
-      resolvedBy: winnerRows.length === 0
-        ? 'no-qualified-bracket'
-        : perfectRows.length
-          ? 'perfect-bracket'
-          : 'fallback-score'
-    }
+
+    // Resolve through the Ultimate Sports engine (bundle in browser, src/ in Node).
+    return deriveBracketPoolWinnersViaEngines({ submissions, officialResults })
   }
 
   function participantUserIdsForRoundResult (roundResult) {

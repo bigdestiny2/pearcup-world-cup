@@ -27,15 +27,19 @@
     { id: 'teixeira', name: 'G. Teixeira', flag: '🇧🇷', colors: [blue, '#1e3a8a', '#dbeafe'] }
   ]
 
+  const methodProps = ['KO/TKO', 'Submission', 'Decision', 'Draw/No Contest']
+  const roundPropsMain = ['Round 1', 'Round 2', 'Round 3', 'Round 4', 'Round 5', 'Decision']
+  const roundPropsCard = ['Round 1', 'Round 2', 'Round 3', 'Decision']
+
   const round32Matches = [
-    { id: 'r32-1', time: 'Main', status: 'Open', slots: ['silva', 'jones'], score: [null, null] },
-    { id: 'r32-2', time: 'Co-main', status: 'Open', slots: ['nunes', 'shevchenko'], score: [null, null] },
-    { id: 'r32-3', time: 'Card', status: 'Open', slots: ['oliveira', 'dariush'], score: [null, null] },
-    { id: 'r32-4', time: 'Card', status: 'Open', slots: ['sterling', 'omalley'], score: [null, null] },
-    { id: 'r32-5', time: 'Card', status: 'Open', slots: ['volkanovski', 'makhachev'], score: [null, null] },
-    { id: 'r32-6', time: 'Card', status: 'Open', slots: ['pereira', 'adesanya'], score: [null, null] },
-    { id: 'r32-7', time: 'Card', status: 'Open', slots: ['edwards', 'usman'], score: [null, null] },
-    { id: 'r32-8', time: 'Card', status: 'Open', slots: ['prochazka', 'teixeira'], score: [null, null] }
+    { id: 'r32-1', time: 'Main', status: 'Open', slots: ['silva', 'jones'], score: [null, null], props: { method: methodProps, round: roundPropsMain } },
+    { id: 'r32-2', time: 'Co-main', status: 'Open', slots: ['nunes', 'shevchenko'], score: [null, null], props: { method: methodProps, round: roundPropsMain } },
+    { id: 'r32-3', time: 'Card', status: 'Open', slots: ['oliveira', 'dariush'], score: [null, null], props: { method: methodProps, round: roundPropsCard } },
+    { id: 'r32-4', time: 'Card', status: 'Open', slots: ['sterling', 'omalley'], score: [null, null], props: { method: methodProps, round: roundPropsCard } },
+    { id: 'r32-5', time: 'Card', status: 'Open', slots: ['volkanovski', 'makhachev'], score: [null, null], props: { method: methodProps, round: roundPropsCard } },
+    { id: 'r32-6', time: 'Card', status: 'Open', slots: ['pereira', 'adesanya'], score: [null, null], props: { method: methodProps, round: roundPropsCard } },
+    { id: 'r32-7', time: 'Card', status: 'Open', slots: ['edwards', 'usman'], score: [null, null], props: { method: methodProps, round: roundPropsCard } },
+    { id: 'r32-8', time: 'Card', status: 'Open', slots: ['prochazka', 'teixeira'], score: [null, null], props: { method: methodProps, round: roundPropsCard } }
   ]
 
   const bracketLinks = [
@@ -172,8 +176,6 @@
     defaultChat,
     gameRounds,
     gameLeaderboardRows,
-    assets: {
-      heroBackdrop: '../generated/mma-card/hero-backdrop/wide.png'
-    }
+    assets: root.defaultFitAssets('mma-boxing-fight-card')
   })
 })(window)

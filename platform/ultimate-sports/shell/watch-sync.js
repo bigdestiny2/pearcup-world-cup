@@ -25,6 +25,7 @@
     incoming: new Map(),
     outgoing: new Map(),
     timers: new Map(),
+    authNonces: new Map(),
     heartbeat: null,
     screenSharer: null
   }
@@ -62,7 +63,11 @@
   }
 
   function send (m) { if (WS.channel) WS.channel.send({ ...m, from: selfId() }) }
-  function ping () { send({ t: 'here', name: selfName(), team: selfTeam() }) }
+  function roomCredential () {
+    const RA = root.PearCupRoomAccess
+    return RA && typeof RA.myCredential === 'function' ? RA.myCredential() : null
+  }
+  function ping () { send({ t: 'here', name: selfName(), team: selfTeam(), cred: roomCredential() }) }
 
   const screenShareListeners = new Set()
   const peerJoinListeners = new Set()
@@ -74,17 +79,69 @@
     screenShareListeners.forEach(fn => { try { fn(m, peer) } catch (e) {} })
   }
 
+  // Issue a fresh, single-use nonce to a peer so they must prove they hold the
+  // private key for the identity their invite names — this defeats replay of a
+  // captured (non-secret) cred.
+  function sendAuthReq (toPeerId) {
+    const RA = root.PearCupRoomAccess
+    if (!RA || !RA.enforced || WS.authNonces.has(toPeerId)) return
+    const nonce = (Net && typeof Net.newNonce === 'function') ? Net.newNonce() : `${Date.now()}-${Math.random()}`
+    WS.authNonces.set(toPeerId, nonce)
+    send({ t: 'auth-req', authNonce: nonce, to: toPeerId })
+  }
+
+  // Answer a verifier's challenge: sign their nonce and re-announce with the proof.
+  async function answerAuthReq (m) {
+    const RA = root.PearCupRoomAccess
+    if (!RA || typeof RA.signChallenge !== 'function') return
+    const proof = await RA.signChallenge(m.authNonce)
+    if (!proof) return
+    const base = roomCredential() || {}
+    send({ t: 'here', name: selfName(), team: selfTeam(), cred: { ...base, proof, nonce: m.authNonce } })
+  }
+
+  async function verifyPeer (m) {
+    const RA = root.PearCupRoomAccess
+    if (!RA || !RA.enforced) return true
+    if (WS.peers.has(m.from)) return true // already proved ownership this session
+    const cred = m && m.cred
+    if (!cred || !cred.key) return false
+    // Structural authorization: the owner, or a valid host-signed invite for this key.
+    let authorized = cred.key === RA.ownerKey
+    if (!authorized) { try { authorized = await RA.verify(cred) } catch (e) { authorized = false } }
+    if (!authorized) return false
+    // Anti-replay: require a proof signed over the nonce WE issued (not a self-chosen one).
+    const stored = WS.authNonces.get(m.from)
+    if (stored && cred.proof) {
+      let ok = false
+      try { ok = await RA.verifyProof(cred, stored) } catch (e) { ok = false }
+      if (ok) { WS.authNonces.delete(m.from); return true }
+    }
+    sendAuthReq(m.from)
+    return false
+  }
+
+  function acceptPeer (m) {
+    const isNew = !WS.peers.has(m.from)
+    if (isNew) { WS.peers.set(m.from, peerFromMessage(m)); ping() } // reply so they learn me
+    else WS.peers.set(m.from, peerFromMessage(m))
+    if (isNew) peerJoinListeners.forEach(fn => { try { fn(m.from, peerFromMessage(m)) } catch (e) {} })
+    updatePresence()
+  }
+
   function onMsg (m) {
     if (!m || m.from === selfId()) return
     switch (m.t) {
       case 'here': {
-        const isNew = !WS.peers.has(m.from)
-        if (isNew) { WS.peers.set(m.from, peerFromMessage(m)); ping() } // reply so they learn me
-        else WS.peers.set(m.from, peerFromMessage(m))
-        if (isNew) peerJoinListeners.forEach(fn => { try { fn(m.from, peerFromMessage(m)) } catch (e) {} })
-        updatePresence(); break
+        Promise.resolve(verifyPeer(m)).then(ok => {
+          if (ok) acceptPeer(m)
+        }).catch(() => {})
+        break
       }
-      case 'bye': WS.peers.delete(m.from); clearPeerChallenges(m.from); updatePresence(); break
+      case 'auth-req':
+        if (m.to === selfId()) answerAuthReq(m)
+        break
+      case 'bye': WS.peers.delete(m.from); WS.authNonces.delete(m.from); clearPeerChallenges(m.from); updatePresence(); break
       case 'chat': receiveChat(m); break
       case 'react': floatReaction(m.emoji); break
       case 'challenge':

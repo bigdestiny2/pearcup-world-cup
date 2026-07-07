@@ -68,10 +68,7 @@ function taglineForFit (fitId) {
 }
 
 function coverForFit (fitId) {
-  if (fitId === 'mma-boxing-fight-card') {
-    return '../generated/mma-card/server-card-cover/desktop-cover.png'
-  }
-  return '../generated/fit-covers/' + fitId + '.svg'
+  return '/generated-assets/' + fitId + '/server-card-cover/cover.jpg'
 }
 
 function appUrlForFit (fitId) {

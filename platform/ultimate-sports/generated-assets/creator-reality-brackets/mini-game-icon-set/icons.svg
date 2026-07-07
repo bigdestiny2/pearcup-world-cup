@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" data-fit-id="creator-reality-brackets" data-asset-type="mini-game-icon-set" data-palette="studio-black, spotlight-gold, creator-pink, paper-white" data-theme-primary="#d946ef">
+  <defs>
+    <style>
+      :root {
+        --fit-palette-0: #d946ef; /* studio-black */
+        --fit-palette-1: #22c55e; /* spotlight-gold */
+        --fit-palette-2: #a21caf; /* creator-pink */
+        --fit-palette-3: #d946ef; /* paper-white */
+      }
+    </style>
+    <linearGradient id="iconSetGrad-creator-reality-brackets" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="var(--fit-palette-0, #d946ef)" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="var(--fit-palette-2, #a21caf)" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="160" fill="url(#iconSetGrad-creator-reality-brackets)"/>
+  <g fill="none" stroke-width="48" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="288" cy="288" r="96" stroke="var(--fit-palette-0, #d946ef)" opacity="0.95"/>
+    <rect x="672" y="192" width="192" height="192" rx="48" stroke="var(--fit-palette-2, #a21caf)" opacity="0.95"/>
+    <path d="M192 736 L288 640 L384 736 L288 832 Z" stroke="var(--fit-palette-1, #22c55e)" opacity="0.95"/>
+    <path d="M672 672 L864 864 M864 672 L672 864" stroke="var(--fit-palette-0, #d946ef)" opacity="0.95"/>
+  </g>
+</svg>

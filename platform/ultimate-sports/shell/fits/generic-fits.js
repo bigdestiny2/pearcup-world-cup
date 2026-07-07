@@ -29,7 +29,13 @@
   // Euros / Copa America
   const euros_copa_america_data = (function () {
     const teams = [{"id":"fr","name":"France","flag":"🇫🇷","colors":["#1d3d8f","#ffffff","#d84a3a"]},{"id":"de","name":"Germany","flag":"🇩🇪","colors":["#000000","#dd0000","#ffce00"]},{"id":"es","name":"Spain","flag":"🇪🇸","colors":["#c60b1e","#ffc400","#75131a"]},{"id":"eng","name":"England","flag":"🏴","colors":["#ffffff","#d41f35","#1c3764"]},{"id":"pt","name":"Portugal","flag":"🇵🇹","colors":["#d71920","#006b3f","#f6c343"]},{"id":"it","name":"Italy","flag":"🇮🇹","colors":["#009246","#ffffff","#ce2b37"]},{"id":"nl","name":"Netherlands","flag":"🇳🇱","colors":["#ae1c28","#ffffff","#21468b"]},{"id":"ar","name":"Argentina","flag":"🇦🇷","colors":["#75aadb","#ffffff","#f6b33f"]},{"id":"br","name":"Brazil","flag":"🇧🇷","colors":["#139b49","#ffd447","#1b55a5"]},{"id":"mx","name":"Mexico","flag":"🇲🇽","colors":["#0c8c57","#ffffff","#d43f3a"]},{"id":"co","name":"Colombia","flag":"🇨🇴","colors":["#fcd116","#003893","#ce1126"]},{"id":"us","name":"United States","flag":"🇺🇸","colors":["#ffffff","#b31942","#0a3161"]},{"id":"ca","name":"Canada","flag":"🇨🇦","colors":["#ff0000","#ffffff","#8a1538"]},{"id":"uy","name":"Uruguay","flag":"🇺🇾","colors":["#ffffff","#0038a8","#000000"]},{"id":"ec","name":"Ecuador","flag":"🇪🇨","colors":["#f9d33a","#1f5aa6","#d13d32"]},{"id":"cl","name":"Chile","flag":"🇨🇱","colors":["#ffffff","#d52b1e","#0039a6"]}]
-    const round32Matches = [{"id":"r32-1","time":"Round of 16","status":"Open","slots":["fr","de"],"score":[null,null]},{"id":"r32-2","time":"Round of 16","status":"Open","slots":["es","eng"],"score":[null,null]},{"id":"r32-3","time":"Round of 16","status":"Open","slots":["pt","it"],"score":[null,null]},{"id":"r32-4","time":"Round of 16","status":"Open","slots":["nl","ar"],"score":[null,null]},{"id":"r32-5","time":"Round of 16","status":"Open","slots":["br","mx"],"score":[null,null]},{"id":"r32-6","time":"Round of 16","status":"Open","slots":["co","us"],"score":[null,null]},{"id":"r32-7","time":"Round of 16","status":"Open","slots":["ca","uy"],"score":[null,null]},{"id":"r32-8","time":"Round of 16","status":"Open","slots":["ec","cl"],"score":[null,null]}]
+    const groups = [
+      { id: 'grp-A', name: 'Group A', teams: ['fr', 'de', 'it', 'cl'] },
+      { id: 'grp-B', name: 'Group B', teams: ['es', 'eng', 'nl', 'ec'] },
+      { id: 'grp-C', name: 'Group C', teams: ['pt', 'ar', 'mx', 'ca'] },
+      { id: 'grp-D', name: 'Group D', teams: ['br', 'co', 'us', 'uy'] }
+    ]
+    const round32Matches = [{"id":"r32-1","time":"Round of 16","status":"Open","slots":[null,null],"score":[null,null]},{"id":"r32-2","time":"Round of 16","status":"Open","slots":[null,null],"score":[null,null]},{"id":"r32-3","time":"Round of 16","status":"Open","slots":[null,null],"score":[null,null]},{"id":"r32-4","time":"Round of 16","status":"Open","slots":[null,null],"score":[null,null]},{"id":"r32-5","time":"Round of 16","status":"Open","slots":[null,null],"score":[null,null]},{"id":"r32-6","time":"Round of 16","status":"Open","slots":[null,null],"score":[null,null]},{"id":"r32-7","time":"Round of 16","status":"Open","slots":[null,null],"score":[null,null]},{"id":"r32-8","time":"Round of 16","status":"Open","slots":[null,null],"score":[null,null]}]
     const bracketLinks = [{"from":["r32-1","r32-2"],"to":"r16-1"},{"from":["r32-3","r32-4"],"to":"r16-2"},{"from":["r32-5","r32-6"],"to":"r16-3"},{"from":["r32-7","r32-8"],"to":"r16-4"},{"from":["r16-1","r16-2"],"to":"qf-1"},{"from":["r16-3","r16-4"],"to":"qf-2"},{"from":["qf-1","qf-2"],"to":"sf-1"},{"from":["sf-1"],"to":"final-1"}]
     const bracketMatchIds = ["r32-1","r32-2","r32-3","r32-4","r32-5","r32-6","r32-7","r32-8","r16-1","r16-2","r16-3","r16-4","qf-1","qf-2","sf-1","final-1"]
     const homeFixtures = [{"status":"Today","title":"France vs Germany","detail":"Round of 16 match room","live":true},{"status":"Today","title":"Spain vs England","detail":"Round of 16 match room","live":false},{"status":"Today","title":"Portugal vs Italy","detail":"Round of 16 match room","live":false}]
@@ -38,7 +44,7 @@
     const gameRounds = [{"shooter":"captain","shooterTeam":"fr","keeper":"vera","keeperTeam":"de","aim":"right-high","dive":"right-high","power":3,"curve":1,"releaseTick":42,"keeperTick":43},{"shooter":"vera","shooterTeam":"de","keeper":"captain","keeperTeam":"fr","aim":"left-low","dive":"center-low","power":4,"curve":-1,"releaseTick":39,"keeperTick":41},{"shooter":"captain","shooterTeam":"fr","keeper":"milo","keeperTeam":"pt","aim":"center-high","dive":"left-high","power":4,"curve":2,"releaseTick":45,"keeperTick":44}]
     const commentary = {"EN":[["Today","France vs Germany is the next Round of 16 room. Picks are open until kickoff."],["Next","Spain vs England follows later today."],["Bracket","Pool impact is live, but the fallback feed will not invent results before they happen."]],"PT":[["Today","France vs Germany e a proxima sala. Palpites abertos ate o inicio."],["Next","Spain vs England vem depois."],["Bracket","O impacto do bolao esta ativo, mas o fallback nao inventa resultados."]],"ES":[["Today","France vs Germany es la proxima sala. Picks abiertos hasta el inicio."],["Next","Spain vs England sigue mas tarde."],["Bracket","El impacto del pool esta activo, pero el fallback no inventa resultados."]],"FR":[["Today","France vs Germany est la prochaine salle. Picks ouverts jusqu au coup d envoi."],["Next","Spain vs England suit ensuite."],["Bracket","L impact du pool est actif, mais le fallback ne fabrique pas de resultats."]]}
     const defaultChat = [{"user":"lina","text":"France/Germany room is up. No fake result until the feed lands.","time":"Today"},{"user":"vera","text":"Spain/England pool is next on my list.","time":"Next"},{"user":"ash","text":"Bracket is still Round of 16.","time":"R16"}]
-    return { teams, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat }
+    return { teams, groups, round32Matches, bracketLinks, bracketMatchIds, homeFixtures, leaders, gameLeaderboardRows, gameRounds, commentary, defaultChat }
   })()
 
   // Champions League Knockout
@@ -181,6 +187,8 @@
       id: 'euros-copa-america',
       title: 'Euros / Copa America',
       category: 'soccer',
+      entrantShape: 'team',
+      templateKind: 'group-plus-knockout',
       defaultTeam: 'fr',
       theme: makeTheme('#3b82f6', '#ef4444', '#1d4ed8', '#1e293b', '#eff6ff', '#ffffff'),
       data: euros_copa_america_data
@@ -189,6 +197,8 @@
       id: 'champions-league-knockout',
       title: 'Champions League Knockout',
       category: 'soccer',
+      entrantShape: 'team',
+      templateKind: 'single-elimination',
       defaultTeam: 'rm',
       theme: makeTheme('#0ea5e9', '#f59e0b', '#0369a1', '#0f172a', '#f0f9ff', '#ffffff'),
       data: champions_league_knockout_data
@@ -197,6 +207,8 @@
       id: 'march-madness',
       title: 'March Madness',
       category: 'basketball',
+      entrantShape: 'team',
+      templateKind: 'single-elimination',
       defaultTeam: 'uconn',
       theme: makeTheme('#f97316', '#3b82f6', '#c2410c', '#2a1510', '#fff7ed', '#ffffff'),
       data: march_madness_data
@@ -205,6 +217,8 @@
       id: 'pro-playoffs',
       title: 'NBA / NHL / MLB Playoffs',
       category: 'pro-sports',
+      entrantShape: 'team',
+      templateKind: 'single-elimination',
       defaultTeam: 'lal',
       theme: makeTheme('#8b5cf6', '#f43f5e', '#6d28d9', '#1a1025', '#f5f3ff', '#ffffff'),
       data: pro_playoffs_data
@@ -213,6 +227,8 @@
       id: 'tennis-grand-slams',
       title: 'Tennis Grand Slams',
       category: 'tennis',
+      entrantShape: 'player',
+      templateKind: 'single-elimination',
       defaultTeam: 'alcaraz',
       theme: makeTheme('#10b981', '#f59e0b', '#047857', '#0f2c22', '#ecfdf5', '#ffffff'),
       data: tennis_grand_slams_data
@@ -221,6 +237,8 @@
       id: 'esports-major',
       title: 'Esports Major',
       category: 'esports',
+      entrantShape: 'team',
+      templateKind: 'single-elimination',
       defaultTeam: 't1',
       theme: makeTheme('#ec4899', '#6366f1', '#be185d', '#1e1b4b', '#fdf2f8', '#ffffff'),
       data: esports_major_data
@@ -229,6 +247,8 @@
       id: 'sailgp-companion',
       title: 'SailGP Companion',
       category: 'sailing',
+      entrantShape: 'team',
+      templateKind: 'single-elimination',
       defaultTeam: 'aus',
       theme: makeTheme('#06b6d4', '#f43f5e', '#0e7490', '#082f49', '#ecfeff', '#ffffff'),
       data: sailgp_companion_data
@@ -237,6 +257,8 @@
       id: 'creator-reality-brackets',
       title: 'Reality / Creator Tournaments',
       category: 'creator',
+      entrantShape: 'creator',
+      templateKind: 'single-elimination',
       defaultTeam: 'alpha',
       theme: makeTheme('#d946ef', '#22c55e', '#a21caf', '#2a0a2e', '#fdf4ff', '#ffffff'),
       data: creator_reality_brackets_data
@@ -245,6 +267,8 @@
       id: 'awards-prediction-pools',
       title: 'Oscars / Grammys / Eurovision',
       category: 'awards',
+      entrantShape: 'nominee',
+      templateKind: 'awards-card',
       defaultTeam: 'oppen',
       theme: makeTheme('#f59e0b', '#ec4899', '#b45309', '#2a1a08', '#fffbeb', '#ffffff'),
       data: awards_prediction_pools_data
@@ -253,6 +277,8 @@
       id: 'local-leagues',
       title: 'School / Office / Pub / Rec Sports',
       category: 'local',
+      entrantShape: 'team',
+      templateKind: 'single-elimination',
       defaultTeam: 'phoenix',
       theme: makeTheme('#22c55e', '#3b82f6', '#15803d', '#0f291e', '#f0fdf4', '#ffffff'),
       data: local_leagues_data
@@ -265,10 +291,12 @@
       title: fit.title,
       subtitle: 'Ultimate Sports',
       category: fit.category,
-      entrantShape: 'team',
+      entrantShape: fit.entrantShape,
+      templateKind: fit.templateKind,
       defaultTeam: fit.defaultTeam,
       theme: fit.theme,
       teams: fit.data.teams,
+      groups: fit.data.groups,
       pools: [{ tier: 10, entrants: 92, closes: '12h', max: 256, prize: '$920', heat: 'Open', rail: 'USDT demo' }, { tier: 25, entrants: 58, closes: '9h', max: 160, prize: '$1,450', heat: 'Hot', rail: 'USDT demo' }, { tier: 50, entrants: 32, closes: '7h', max: 96, prize: '$1,600', heat: 'Sharp', rail: 'USDT demo' }, { tier: 100, entrants: 16, closes: '5h', max: 64, prize: '$1,600', heat: 'Elite', rail: 'USDT demo' }],
       round32Matches: fit.data.round32Matches,
       bracketLinks: fit.data.bracketLinks,
@@ -280,7 +308,7 @@
       defaultChat: fit.data.defaultChat,
       gameRounds: fit.data.gameRounds,
       gameLeaderboardRows: fit.data.gameLeaderboardRows,
-      assets: { heroBackdrop: '../generated/fit-heroes/' + fit.id + '.svg' },
+      assets: root.defaultFitAssets(fit.id),
     })
   })
 })(window)

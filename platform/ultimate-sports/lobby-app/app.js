@@ -693,7 +693,11 @@ function renderServerTable () {
     return `
       <tr data-server-id="${escapeAttr(server.serverId)}" class="${server.serverId === state.selectedServerId ? 'sel' : ''}">
         <td><span class="st ${status}"><span class="d"></span>${server.isLive ? 'Live' : 'Open'}</span></td>
-        <td class="srv"><span class="fl" aria-hidden="true">${CATEGORY_ICONS[server.category] || '◈'}</span>${escapeHtml(server.title)}</td>
+        <td class="srv">
+          <img class="srv-cover" src="${escapeAttr(server.coverUrl)}" alt="" loading="lazy">
+          <span class="fl" aria-hidden="true">${CATEGORY_ICONS[server.category] || '◈'}</span>
+          ${escapeHtml(server.title)}
+        </td>
         <td class="hide dim">${escapeHtml(categoryName(server.category))}</td>
         <td><span class="kind">${escapeHtml(FIT_FORMATS[server.fitId] || '—')}</span></td>
         <td class="num dim">${escapeHtml(String(server.recommendedVariantCount))}</td>
@@ -732,6 +736,33 @@ function renderTicker () {
 
 /* ==================== settings ==================== */
 
+function realMoneyReadiness () {
+  const RT = window.PearCupRuntimeSettings
+  if (!RT || typeof RT.loadRuntimeSettings !== 'function' || typeof RT.validateRuntimeSettings !== 'function') {
+    return { ok: false, missing: ['Runtime settings loader is not available.'] }
+  }
+  const settings = RT.loadRuntimeSettings()
+  const validation = RT.validateRuntimeSettings(settings, { requireLive: true })
+  const missing = [
+    ...validation.errors.map(issue => issue.label),
+    ...validation.warnings.map(issue => issue.label)
+  ]
+  return { ok: validation.ok, missing }
+}
+
+function renderRealMoneyGate (readiness) {
+  const gate = $('#realMoneyGate')
+  if (!gate) return
+  const list = readiness && readiness.missing && readiness.missing.length
+    ? readiness.missing.map(label => `<li>${escapeHtml(label)}</li>`).join('')
+    : '<li>Real money is not enabled.</li>'
+  gate.innerHTML = `
+    <p class="gate-title">Real money is locked — complete the remaining readiness items:</p>
+    <ul class="gate-list">${list}</ul>
+  `
+  gate.hidden = false
+}
+
 function renderSettings () {
   const nameInput = $('#settingsName')
   if (nameInput && document.activeElement !== nameInput) nameInput.value = state.profile.username
@@ -744,6 +775,17 @@ function renderSettings () {
   }
   const lang = $('#settingsLanguage')
   if (lang) lang.value = state.prefs.language
+
+  const readiness = realMoneyReadiness()
+  const realBtn = $('#settingsMoney [data-money="real"]')
+  if (realBtn) {
+    realBtn.disabled = !readiness.ok
+    realBtn.title = readiness.ok ? 'Real-money mode is ready' : 'Real-money mode is locked'
+  }
+  if (state.prefs.settlementMode === 'real' && !readiness.ok) {
+    state.prefs.settlementMode = 'demo'
+    savePrefs()
+  }
   $$('#settingsMoney [data-money]').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.money === state.prefs.settlementMode)
   })
@@ -768,11 +810,18 @@ function bindSettings () {
   $('#settingsMoney').addEventListener('click', event => {
     const btn = event.target.closest('[data-money]')
     if (!btn) return
-    // Real-money is gated on KYC/region verification + operator WDK/QVAC config.
-    // Selecting it reveals the requirements and stays on demo.
-    const gate = $('#realMoneyGate')
-    if (gate) gate.hidden = btn.dataset.money !== 'real'
-    state.prefs.settlementMode = 'demo'
+    const mode = btn.dataset.money
+    if (mode === 'real') {
+      const readiness = realMoneyReadiness()
+      if (!readiness.ok) {
+        state.prefs.settlementMode = 'demo'
+        renderRealMoneyGate(readiness)
+        savePrefs(); renderSettings()
+        return
+      }
+    }
+    $('#realMoneyGate').hidden = true
+    state.prefs.settlementMode = mode
     savePrefs(); renderSettings()
   })
 }

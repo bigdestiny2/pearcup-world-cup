@@ -8,6 +8,7 @@ const { writeUltimateSportsAppSnapshot } = require('./export-app-snapshot')
 const { platform } = require('../src')
 const manifest = require('../platform.manifest.json')
 
+const SNAPSHOT_RELATIVE_PATH = path.join('data', 'ultimate-sports-snapshot.json')
 const DEFAULT_PORT = 4197
 const DEMO_VERSION = 'ultimate-sports-live-demo-v1'
 const DEMO_USER_ID = 'demo-host'
@@ -35,8 +36,13 @@ function createUltimateSportsAppServer (input = {}) {
   const rootDir = input.rootDir || path.resolve(__dirname, '..')
   const appRoot = input.appRoot || path.join(rootDir, 'app')
   const refreshSnapshot = input.refreshSnapshot !== false
+  // Allow callers (e.g. the preview-journey smoke) to serve a snapshot from a
+  // scratch path so tests never rewrite the git-tracked app/data snapshot.
+  const snapshotFile = input.snapshotFile
+    ? path.resolve(input.snapshotFile)
+    : path.join(appRoot, SNAPSHOT_RELATIVE_PATH)
   const demoSession = input.demoSession || createDemoSession({ userId: input.userId || DEMO_USER_ID })
-  if (refreshSnapshot) writeUltimateSportsAppSnapshot({ rootDir })
+  if (refreshSnapshot) writeUltimateSportsAppSnapshot({ rootDir, outFile: snapshotFile })
 
   return createServer(async (req, res) => {
     try {
@@ -48,11 +54,16 @@ function createUltimateSportsAppServer (input = {}) {
 
       const relativePath = pathname === '/' ? 'index.html' : decodeURIComponent(pathname.slice(1))
       const normalizedPath = path.normalize(relativePath).replace(/^(\.\.[/\\])+/, '')
-      const filePath = path.resolve(path.join(appRoot, normalizedPath))
 
-      if (!filePath.startsWith(appRoot)) {
-        writeText(res, 403, 'Forbidden')
-        return
+      let filePath
+      if (normalizedPath === SNAPSHOT_RELATIVE_PATH) {
+        filePath = snapshotFile
+      } else {
+        filePath = path.resolve(path.join(appRoot, normalizedPath))
+        if (!filePath.startsWith(appRoot)) {
+          writeText(res, 403, 'Forbidden')
+          return
+        }
       }
 
       const fileStat = await stat(filePath)

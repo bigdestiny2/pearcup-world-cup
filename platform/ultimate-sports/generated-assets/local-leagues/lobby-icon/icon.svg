@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" data-fit-id="local-leagues" data-asset-type="lobby-icon" data-palette="chalkboard, rec-green, paper-white, signal-orange" data-theme-primary="#22c55e">
+  <defs>
+    <style>
+      :root {
+        --fit-palette-0: #22c55e; /* chalkboard */
+        --fit-palette-1: #3b82f6; /* rec-green */
+        --fit-palette-2: #15803d; /* paper-white */
+        --fit-palette-3: #22c55e; /* signal-orange */
+      }
+    </style>
+    <linearGradient id="lobbyGrad-local-leagues" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="var(--fit-palette-0, #22c55e)" stop-opacity="0.95"/>
+      <stop offset="55%" stop-color="var(--fit-palette-2, #15803d)" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="var(--fit-palette-1, #3b82f6)" stop-opacity="0.88"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#lobbyGrad-local-leagues)"/>
+  <circle cx="384" cy="128" r="96" fill="#ffffff" opacity="0.10"/>
+  <circle cx="128" cy="384" r="72" fill="#ffffff" opacity="0.08"/>
+  <text x="256" y="340" font-size="220" text-anchor="middle" font-family="Arial, sans-serif" dominant-baseline="middle">⚽</text>
+</svg>

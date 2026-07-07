@@ -20,7 +20,7 @@
   const HEARTBEAT_MS = 4000
   const STALE_MS = 12000
 
-  const L = { channel: null, self: null, peers: new Map(), heartbeat: null, sweeper: null }
+  const L = { channel: null, self: null, peers: new Map(), authNonces: new Map(), heartbeat: null, sweeper: null }
   const $ = s => document.querySelector(s)
   const esc = s => (typeof escapeHtml === 'function' ? escapeHtml(s) : String(s))
 
@@ -56,21 +56,71 @@
   }
 
   function send (m) { if (L.channel) L.channel.send({ ...m, from: selfId() }) }
+  function roomCredential () {
+    const RA = root.PearCupRoomAccess
+    return RA && typeof RA.myCredential === 'function' ? RA.myCredential() : null
+  }
   function announce () {
     ensureSelf()
-    send({ t: 'here', name: L.self.name, team: L.self.team, ts: nowStamp() })
+    send({ t: 'here', name: L.self.name, team: L.self.team, ts: nowStamp(), cred: roomCredential() })
   }
   // Wall-clock stamp — fine in the browser/Pear renderer.
   function nowStamp () { return (new Date()).getTime() }
+
+  function sendAuthReq (toPeerId) {
+    const RA = root.PearCupRoomAccess
+    if (!RA || !RA.enforced || L.authNonces.has(toPeerId)) return
+    const nonce = (Net && typeof Net.newNonce === 'function') ? Net.newNonce() : `${Date.now()}-${Math.random()}`
+    L.authNonces.set(toPeerId, nonce)
+    send({ t: 'auth-req', authNonce: nonce, to: toPeerId })
+  }
+
+  async function answerAuthReq (m) {
+    const RA = root.PearCupRoomAccess
+    if (!RA || typeof RA.signChallenge !== 'function') return
+    const proof = await RA.signChallenge(m.authNonce)
+    if (!proof) return
+    ensureSelf()
+    const base = roomCredential() || {}
+    send({ t: 'here', name: L.self.name, team: L.self.team, ts: nowStamp(), cred: { ...base, proof, nonce: m.authNonce } })
+  }
+
+  async function verifyPeer (m) {
+    const RA = root.PearCupRoomAccess
+    if (!RA || !RA.enforced) return true
+    if (L.peers.has(m.from)) return true // already proved ownership this session
+    const cred = m && m.cred
+    if (!cred || !cred.key) return false
+    let authorized = cred.key === RA.ownerKey
+    if (!authorized) { try { authorized = await RA.verify(cred) } catch (e) { authorized = false } }
+    if (!authorized) return false
+    const stored = L.authNonces.get(m.from)
+    if (stored && cred.proof) {
+      let ok = false
+      try { ok = await RA.verifyProof(cred, stored) } catch (e) { ok = false }
+      if (ok) { L.authNonces.delete(m.from); return true }
+    }
+    sendAuthReq(m.from)
+    return false
+  }
+
+  function acceptPeer (m) {
+    L.peers.set(m.from, { peerId: m.from, name: m.name || 'guest', team: m.team || 'br', last: nowStamp() })
+    renderList()
+  }
 
   function onMsg (m) {
     if (!m || m.from === selfId()) return
     switch (m.t) {
       case 'here':
-        L.peers.set(m.from, { peerId: m.from, name: m.name || 'guest', team: m.team || 'br', last: nowStamp() })
-        renderList(); break
+        Promise.resolve(verifyPeer(m)).then(ok => {
+          if (ok) acceptPeer(m)
+        }).catch(() => {})
+        break
+      case 'auth-req':
+        if (m.to === selfId()) answerAuthReq(m); break
       case 'gone':
-        L.peers.delete(m.from); renderList(); break
+        L.peers.delete(m.from); L.authNonces.delete(m.from); renderList(); break
       case 'challenge':
         if (m.to === selfId()) acceptChallenge(m); break
     }

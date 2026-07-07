@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 600" width="1800" height="600" data-fit-id="pro-playoffs" data-asset-type="pool-card-accent" data-palette="scoreboard-black, ice-white, court-blue, basepath-clay" data-theme-primary="#8b5cf6">
+  <defs>
+    <style>
+      :root {
+        --fit-palette-0: #8b5cf6; /* scoreboard-black */
+        --fit-palette-1: #f43f5e; /* ice-white */
+        --fit-palette-2: #6d28d9; /* court-blue */
+        --fit-palette-3: #8b5cf6; /* basepath-clay */
+      }
+    </style>
+    <linearGradient id="accentGrad-pro-playoffs" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="var(--fit-palette-0, #8b5cf6)" stop-opacity="0.95"/>
+      <stop offset="50%" stop-color="var(--fit-palette-2, #6d28d9)" stop-opacity="0.90"/>
+      <stop offset="100%" stop-color="var(--fit-palette-1, #f43f5e)" stop-opacity="0.85"/>
+    </linearGradient>
+    <clipPath id="accentClip-pro-playoffs">
+      <rect width="1800" height="600" rx="48"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#accentClip-pro-playoffs)">
+    <rect width="1800" height="600" fill="url(#accentGrad-pro-playoffs)"/>
+    <circle cx="1600" cy="100" r="240" fill="#ffffff" opacity="0.08"/>
+    <circle cx="160" cy="520" r="180" fill="#ffffff" opacity="0.06"/>
+    <rect x="1400" y="120" width="120" height="120" rx="24" fill="#ffffff" opacity="0.14"/>
+    <rect x="1580" y="360" width="80" height="80" rx="16" fill="#ffffff" opacity="0.12"/>
+  </g>
+</svg>

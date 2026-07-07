@@ -291,6 +291,22 @@ if (typeof window !== 'undefined' && window.ULTIMATE_FIT_CONFIG) {
   if (cfg.gameLeaderboardRows) gameLeaderboardRows = cfg.gameLeaderboardRows
 }
 
+// Fit-aware mini-game list. fit-loader.js enriches ULTIMATE_FIT_CONFIG with
+// recommendedMiniGames and exposes ULTIMATE_MINI_GAME_TITLES.
+let fitMiniGames = ['penalty-clash']
+let miniGameTitles = {}
+let selectedMiniGame = 'penalty-clash'
+if (typeof window !== 'undefined' && window.ULTIMATE_FIT_CONFIG) {
+  const cfg = window.ULTIMATE_FIT_CONFIG
+  fitMiniGames = cfg.recommendedMiniGames || fitMiniGames
+  miniGameTitles = window.ULTIMATE_MINI_GAME_TITLES || miniGameTitles
+  selectedMiniGame = fitMiniGames[0] || 'penalty-clash'
+}
+
+function selectedMiniGameTitle () {
+  return miniGameTitles[selectedMiniGame] || selectedMiniGame
+}
+
 const state = loadState()
 
 // ==================== Ultimate Sports host spine ====================
@@ -402,6 +418,10 @@ function normalizeBracketPicks (picks = {}) {
     for (const bout of round32Matches) {
       const value = source[bout.id]
       if (value && bout.slots.includes(value)) kept[bout.id] = value
+      if (bout.props) {
+        if (bout.props.method && bout.props.method.includes(source[`${bout.id}-method`])) kept[`${bout.id}-method`] = source[`${bout.id}-method`]
+        if (bout.props.round && bout.props.round.includes(source[`${bout.id}-round`])) kept[`${bout.id}-round`] = source[`${bout.id}-round`]
+      }
     }
     return kept
   }
@@ -413,6 +433,11 @@ function normalizeBracketPicks (picks = {}) {
         const value = source[key]
         if (value && (group.teams || []).includes(value)) kept[key] = value
       }
+    }
+    // Bracket slots are derived from group picks so they stay in sync on reload.
+    for (const entry of GROUP_ADVANCE_MAP) {
+      const groupPick = kept[groupPickKey(entry.groupId, entry.place)]
+      if (groupPick) kept[bracketSlotKey(entry.matchId, entry.slot)] = groupPick
     }
     return kept
   }
@@ -1201,6 +1226,11 @@ function renderProfile () {
 function renderHomeHero () {
   const snap = livePanelSnapshot()
   const st = snap.st
+  const cfg = window.ULTIMATE_FIT_CONFIG || {}
+  const backdrop = $('#heroBackdrop')
+  if (backdrop && cfg.assets && cfg.assets.heroBackdrop) {
+    backdrop.style.backgroundImage = `url('${escapeHtml(cfg.assets.heroBackdrop)}')`
+  }
   const flag = t => t && t.flag && t.flag !== '⚽'
     ? t.flag
     : (t && t.crest ? `<img class="score-crest" src="${escapeHtml(t.crest)}" alt="" onerror="this.replaceWith(document.createTextNode('⚽'))">` : '⚽')
@@ -1285,14 +1315,32 @@ function renderHomeDashboard () {
   bindViewButtons($('#home'))
 }
 
+// Parse a fit homeFixture title like "Brazil vs South Korea" into team objects.
+function fixtureTeams (fixture) {
+  const title = (fixture && fixture.title) || ''
+  const parts = title.split(/\s+vs\s+/i)
+  if (parts.length !== 2) return null
+  const find = name => teams.find(t => t.name.toLowerCase() === name.toLowerCase().trim())
+  const home = find(parts[0])
+  const away = find(parts[1])
+  if (!home || !away) return null
+  return {
+    home: { name: home.name, flag: home.flag, goals: 0, teamId: home.id },
+    away: { name: away.name, flag: away.flag, goals: 0, teamId: away.id }
+  }
+}
+
 // Snapshot of whatever the live/sim feed currently holds, for the Home dashboard.
+// Falls back to the fit's configured live homeFixture so every sport shows its own match.
 function livePanelSnapshot () {
   let st = null
   try { st = feedState() } catch { st = null }
   const live = isLiveApi()
-  const home = st ? st.home : { name: 'Spain', flag: '🇪🇸', goals: 0, teamId: 'es' }
-  const away = st ? st.away : { name: 'Austria', flag: '🇦🇹', goals: 0, teamId: 'at' }
-  const status = st ? matchStateLabel(st).txt : 'Kicks off 15:00 ET'
+  const liveFixture = homeFixtures.find(f => f.live)
+  const fallback = liveFixture ? fixtureTeams(liveFixture) : null
+  const home = st ? st.home : (fallback ? fallback.home : { name: 'Spain', flag: '🇪🇸', goals: 0, teamId: 'es' })
+  const away = st ? st.away : (fallback ? fallback.away : { name: 'Austria', flag: '🇦🇹', goals: 0, teamId: 'at' })
+  const status = st ? matchStateLabel(st).txt : (liveFixture ? liveFixture.status : 'Kicks off 15:00 ET')
   const events = (state.feedEvents || [])
   return { st, live, home, away, status, events }
 }
@@ -2256,6 +2304,21 @@ function boutLabel (position) {
   return map[position] || position || 'Bout'
 }
 
+function renderPropRow (bout, prop, options) {
+  const matchKey = `${bout.id}-${prop}`
+  const picked = getPick(matchKey)
+  return `
+    <div class="prop-row team-row" data-prop-row="${escapeHtml(matchKey)}">
+      <span class="prop-label">${escapeHtml(prop === 'method' ? 'Method' : 'Round')}</span>
+      <span class="prop-options">
+        ${options.map(option => {
+          const isPicked = picked === option
+          return `<button class="prop-option${isPicked ? ' is-picked' : ''}" type="button" data-match="${escapeHtml(matchKey)}" data-pick="${escapeHtml(option)}" aria-pressed="${isPicked}">${escapeHtml(option)}</button>`
+        }).join('')}
+      </span>
+    </div>`
+}
+
 function renderFightCardBoard () {
   const board = $('#bracketBoard')
   if (!board) return
@@ -2264,6 +2327,7 @@ function renderFightCardBoard () {
     // Normalize through makeMatch so score/sample defaults exist (renderTeamRow
     // reads match.sample) — the raw fit bout only carries id/time/status/slots.
     const bout = makeMatch(raw.id, raw.time, raw.status, raw.slots, raw.score, raw.sample)
+    const props = raw.props || {}
     return `
       <article class="fight-bout match-card" data-match-card="${bout.id}">
         <div class="match-meta">
@@ -2272,6 +2336,8 @@ function renderFightCardBoard () {
         </div>
         ${renderTeamRow(bout, bout.slots[0], 0)}
         ${renderTeamRow(bout, bout.slots[1], 1)}
+        ${props.method ? renderPropRow(bout, 'method', props.method) : ''}
+        ${props.round ? renderPropRow(bout, 'round', props.round) : ''}
       </article>
     `
   }).join('')
@@ -2296,7 +2362,7 @@ function renderAwardsBoard () {
   board.innerHTML = awardsCategories.map(category => `
     <article class="awards-category match-card" data-match-card="${escapeHtml(category.id)}">
       <div class="match-meta">
-        <span class="fight-bout-slot">${escapeHtml(category.title)}</span>
+        <span class="fight-bout-slot">${escapeHtml(category.title)}<span class="award-weight">×${Number(category.weight || 1)}</span></span>
         <span class="match-status">${getPick(category.id) ? 'Picked' : 'Open'}</span>
       </div>
       <div class="awards-nominees">
@@ -2326,6 +2392,37 @@ function renderAwardsBoard () {
 // group, keyed `<groupId>-1` (winner) and `<groupId>-2` (runner-up).
 function groupPickKey (groupId, place) { return `${groupId}-${place}` }
 
+// Deterministic seeding: group winner/runner-up auto-advance into the knockout
+// bracket slots so group stage picks feed the bracket without extra UI.
+const GROUP_ADVANCE_MAP = [
+  { groupId: 'grp-A', place: '1', matchId: 'r32-1', slot: 0 },
+  { groupId: 'grp-A', place: '2', matchId: 'r32-2', slot: 1 },
+  { groupId: 'grp-B', place: '1', matchId: 'r32-2', slot: 0 },
+  { groupId: 'grp-B', place: '2', matchId: 'r32-1', slot: 1 },
+  { groupId: 'grp-C', place: '1', matchId: 'r32-3', slot: 0 },
+  { groupId: 'grp-C', place: '2', matchId: 'r32-4', slot: 1 },
+  { groupId: 'grp-D', place: '1', matchId: 'r32-4', slot: 0 },
+  { groupId: 'grp-D', place: '2', matchId: 'r32-3', slot: 1 }
+]
+
+function bracketSlotKey (matchId, slot) { return `${matchId}-slot-${slot}` }
+
+function advancementForGroupPlace (groupId, place) {
+  return GROUP_ADVANCE_MAP.find(entry => entry.groupId === groupId && entry.place === place) || null
+}
+
+function clearGroupAdvancement (groupId, place) {
+  const entry = advancementForGroupPlace(groupId, place)
+  if (!entry) return
+  delete state.picks[bracketSlotKey(entry.matchId, entry.slot)]
+}
+
+function applyGroupAdvancement (groupId, place, teamId) {
+  const entry = advancementForGroupPlace(groupId, place)
+  if (!entry) return
+  state.picks[bracketSlotKey(entry.matchId, entry.slot)] = teamId
+}
+
 function renderGroupsBoard () {
   const board = $('#bracketBoard')
   if (!board) return
@@ -2353,7 +2450,11 @@ function renderGroupsBoard () {
 
   $$('#bracketBoard [data-pick]').forEach(button => {
     button.addEventListener('click', () => {
+      const groupId = button.dataset.match.split('-').slice(0, 2).join('-')
+      const place = button.dataset.match.split('-').slice(2).join('-')
+      clearGroupAdvancement(groupId, place)
       state.picks[button.dataset.match] = button.dataset.pick
+      applyGroupAdvancement(groupId, place, button.dataset.pick)
       persist()
       renderBracket()
     })
@@ -3256,10 +3357,15 @@ function renderWatch () {
     </div>
     <div class="watch-challenge-panel">
       <div class="watch-challenge-head">
-        <p class="eyebrow">Penalty Clash</p>
+        <p class="eyebrow">Mini-games</p>
         <strong>Challenge watchers</strong>
       </div>
-      <div class="watch-challenge-list" id="watchChallengeList"></div>
+      <div class="watch-challenge-list" id="watchChallengeList">
+        ${fitMiniGames.map(gt => `
+          <button class="secondary-button compact-action watch-challenge-game" data-game-type="${escapeHtml(gt)}" type="button">
+            ${escapeHtml(miniGameTitles[gt] || gt)}
+          </button>`).join('')}
+      </div>
     </div>`
 
   $('#languageTabs').innerHTML = WATCH_LANGS.map(language => `
@@ -3274,6 +3380,19 @@ function renderWatch () {
       persist()
       $$('#languageTabs button').forEach(b => b.classList.toggle('is-active', b === button))
       renderCommentaryFeed()
+    })
+  })
+
+  $$('#watchChallengeList .watch-challenge-game').forEach(button => {
+    button.addEventListener('click', () => {
+      const gt = button.dataset.gameType
+      if (gt !== 'penalty-clash') {
+        showToast(`${miniGameTitles[gt] || gt} is coming soon — picking a winner with commit/reveal is next.`)
+        return
+      }
+      selectedMiniGame = gt
+      if (window.PearCupPeerMatch) window.PearCupPeerMatch.host(undefined, undefined, selectedMiniGame)
+      setView('games')
     })
   })
 
@@ -4094,7 +4213,7 @@ function tryJoinFriendInvite (attempt = 0) {
   if (peerMatch && typeof peerMatch.join === 'function') {
     document.documentElement.dataset.pearcupJoinState = 'joining'
     setView('games')
-    peerMatch.join(code)
+    peerMatch.join(code, selectedMiniGame)
     return true
   }
   if (attempt < 6) {
@@ -4125,13 +4244,31 @@ function completeProfileOnboarding () {
 function renderGameLobby () {
   const el = $('#gameLobby')
   if (!el) return
+  // Restore the penalty stage and panels when returning to the lobby.
+  const stage = $('#penaltyStage')
+  if (stage) { stage.hidden = false; stage.classList.remove('is-placeholder') }
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = false
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = false
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = false
+  const title = selectedMiniGameTitle()
+  const gameTypeLabel = escapeHtml(title)
   el.innerHTML = `
+    <div class="mini-game-tabs" id="miniGameTabs" style="display:flex;gap:8px;overflow:auto;padding:4px 0 12px;">
+      ${fitMiniGames.map((gt, i) => `
+        <button class="${gt === selectedMiniGame ? 'primary-button' : 'secondary-button'} compact-action mini-game-tab" data-game-type="${escapeHtml(gt)}" type="button">
+          ${escapeHtml(miniGameTitles[gt] || gt)}
+        </button>`).join('')}
+    </div>
+
     <div class="lobby-hero">
       <img class="lobby-mascot" src="assets/mascot.png" alt="">
       <div class="lobby-hero-copy">
-        <p class="eyebrow">Penalty Clash · Lobby</p>
+        <p class="eyebrow">${gameTypeLabel} · Lobby</p>
         <h2 class="lobby-title">Find a match</h2>
-        <p class="lobby-sub">Best-of-five Penalty Clash — you take 5 penalties and keep their 5. Outscore them for the win.</p>
+        <p class="lobby-sub">Best-of-five ${gameTypeLabel} — you take 5 penalties and keep their 5. Outscore them for the win.</p>
       </div>
       <button class="lobby-quick" id="quickMatchBtn" type="button">⚡ Practice vs AI</button>
     </div>
@@ -4139,7 +4276,7 @@ function renderGameLobby () {
     <div class="lobby-friend">
       <div class="lobby-friend-copy">
         <strong>Play a real friend</strong>
-        <span>Peer-to-peer over the room topic — you both take penalties, live.</span>
+        <span>Peer-to-peer over the room topic — you both play live.</span>
         <span class="p2p-backend-pill" id="p2pBackendBadge">P2P starting</span>
       </div>
       <div class="lobby-friend-actions">
@@ -4168,10 +4305,14 @@ function renderGameLobby () {
   const quick = $('#quickMatchBtn')
   if (quick) quick.addEventListener('click', () => startMatch(practice(LOBBY_PLAYERS[Math.floor(Math.random() * LOBBY_PLAYERS.length)])))
   $$('#gameLobby .lobby-challenge').forEach(btn => btn.addEventListener('click', () => showStakeConfirm(LOBBY_PLAYERS[Number(btn.dataset.lobby)])))
+  $$('#gameLobby .mini-game-tab').forEach(btn => btn.addEventListener('click', () => {
+    selectedMiniGame = btn.dataset.gameType
+    renderGameLobby()
+  }))
   const invite = $('#inviteFriendBtn')
-  if (invite) invite.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.host())
+  if (invite) invite.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.host(undefined, undefined, selectedMiniGame))
   const joinFriend = $('#joinFriendBtn')
-  if (joinFriend) joinFriend.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.promptJoin())
+  if (joinFriend) joinFriend.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.promptJoin(selectedMiniGame))
   renderPeerBackendBadge()
   // Live matchmaking: announce on the lobby topic + render online peers.
   if (window.PearCupLobby) { window.PearCupLobby.join(); window.PearCupLobby.renderList() }
@@ -4188,7 +4329,7 @@ function showStakeConfirm (player) {
   ov.setAttribute('aria-modal', 'true')
   ov.innerHTML = `
     <div class="peer-modal-card">
-      <p class="eyebrow">Penalty Clash · Challenge</p>
+      <p class="eyebrow">${escapeHtml(selectedMiniGameTitle())} · Challenge</p>
       <h2 class="peer-title">${escapeHtml(player.name)} puts up ${fmtMoney(stake)}</h2>
       <p class="peer-sub">Match the stake and the winner takes ${fmtMoney(stake * 2)} — a draw refunds both. Or warm up for free.</p>
       <div class="peer-actions">
@@ -4209,6 +4350,10 @@ function showStakeConfirm (player) {
 }
 
 function startMatch (player, joined) {
+  if (selectedMiniGame !== 'penalty-clash') {
+    showToast(`${selectedMiniGameTitle()} is coming soon — picking a winner with commit/reveal is next.`)
+    return
+  }
   const stake = player.stake || 0
   if (stake > 0 && !debitWallet(stake, `Penalty match stake vs ${player.name}`)) {
     showToast(`Need ${fmtMoney(stake)} to stake — fund your wallet`)
@@ -4255,6 +4400,31 @@ function restartShootout ({ blockActiveStake = false, message = 'New penalty sho
   return true
 }
 
+function renderPeerMiniGamePlaceholder (gameType) {
+  const title = miniGameTitles[gameType] || gameType
+  const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) scoreboard.innerHTML = ''
+  const stage = $('#penaltyStage')
+  if (stage) {
+    stage.classList.add('is-placeholder')
+    stage.innerHTML = `
+      <div class="mini-game-placeholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:260px;text-align:center;gap:12px;">
+        <p class="eyebrow">${escapeHtml(title)}</p>
+        <strong style="font-size:22px;">Coming soon</strong>
+        <p class="live-copy">You and ${escapeHtml(opponent.name)} are paired for <strong>${escapeHtml(title)}</strong>.<br>The commit/reveal flow is next on the roadmap.</p>
+      </div>`
+  }
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+}
+
 async function renderGames () {
   const so = ensureShootout()
   ensureShootoutDom()
@@ -4262,6 +4432,11 @@ async function renderGames () {
   if (state.match && state.match.peer && window.PearCupPeerMatch) {
     const arena0 = document.querySelector('#games .game-arena')
     if (arena0) arena0.classList.remove('is-lobby')
+    const peerGameType = state.match.gameType || 'penalty-clash'
+    if (peerGameType !== 'penalty-clash') {
+      renderPeerMiniGamePlaceholder(peerGameType)
+      return null
+    }
     if (so.phase !== 'over') window.PearCupPeerMatch.render()
     return null
   }
@@ -4272,6 +4447,14 @@ async function renderGames () {
     return null
   }
   if (arena) arena.classList.remove('is-lobby')
+  const stage2 = $('#penaltyStage')
+  if (stage2) { stage2.hidden = false; stage2.classList.remove('is-placeholder') }
+  const hud2 = $('#shootoutHud')
+  if (hud2) hud2.hidden = false
+  const lower2 = $('#games .game-lower')
+  if (lower2) lower2.hidden = false
+  const audit2 = $('#games .audit-accordion')
+  if (audit2) audit2.hidden = false
   if (so.phase === 'over') { renderShootoutHud(); if (so.lastResult) applyKickResult(so.lastResult); return so.lastResult }
   startAimPhase()
   if (so.lastResult) applyKickResult(so.lastResult)
@@ -4446,11 +4629,21 @@ function applyKickResult (result) {
 }
 
 function remainingPicks () {
-  if (templateKind === 'fight-card') return round32Matches.filter(bout => !state.picks[bout.id]).length
+  if (templateKind === 'fight-card') {
+    return round32Matches.reduce((total, bout) => {
+      const winnerPicked = state.picks[bout.id]
+      const methodPicked = state.picks[`${bout.id}-method`]
+      const roundPicked = state.picks[`${bout.id}-round`]
+      return total + (winnerPicked && methodPicked && roundPicked ? 0 : 1)
+    }, 0)
+  }
   if (templateKind === 'awards-card') return awardsCategories.filter(category => !state.picks[category.id]).length
   if (templateKind === 'group-plus-knockout' && groupStages.length) {
-    return groupStages.reduce((total, group) =>
+    const groupRemaining = groupStages.reduce((total, group) =>
       total + (state.picks[groupPickKey(group.id, '1')] ? 0 : 1) + (state.picks[groupPickKey(group.id, '2')] ? 0 : 1), 0)
+    const bracketRemaining = GROUP_ADVANCE_MAP.reduce((total, entry) =>
+      total + (state.picks[bracketSlotKey(entry.matchId, entry.slot)] ? 0 : 1), 0)
+    return groupRemaining + bracketRemaining
   }
   return bracketMatchIds.filter(id => !state.picks[id]).length
 }

@@ -4,6 +4,7 @@
 const fs = require('node:fs')
 const http = require('node:http')
 const https = require('node:https')
+const os = require('node:os')
 const path = require('node:path')
 const { createUltimateSportsAppServer } = require('./serve-app')
 const { writeUltimateSportsAppSnapshot } = require('./export-app-snapshot')
@@ -19,12 +20,17 @@ async function runUltimateSportsPreviewJourneySmoke (input = {}) {
   const timeoutMs = Number.isInteger(input.timeoutMs) ? input.timeoutMs : DEFAULT_TIMEOUT_MS
   const checks = []
   let server = null
+  let snapshotDir = null
   let baseUrl = input.url ? normalizeBaseUrl(input.url) : null
 
   try {
     if (!baseUrl) {
-      writeUltimateSportsAppSnapshot({ rootDir, generatedAt })
-      server = createUltimateSportsAppServer({ rootDir, refreshSnapshot: false })
+      // Generate the preview snapshot into a scratch dir and serve it from
+      // there so the smoke never rewrites the git-tracked app/data snapshot.
+      snapshotDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ultimate-preview-snapshot-'))
+      const snapshotFile = path.join(snapshotDir, 'ultimate-sports-snapshot.json')
+      writeUltimateSportsAppSnapshot({ rootDir, generatedAt, outFile: snapshotFile })
+      server = createUltimateSportsAppServer({ rootDir, refreshSnapshot: false, snapshotFile })
       baseUrl = await listenOnEphemeralPort(server)
     }
 
@@ -48,6 +54,7 @@ async function runUltimateSportsPreviewJourneySmoke (input = {}) {
     return report
   } finally {
     if (server) await closeServer(server)
+    if (snapshotDir) fs.rmSync(snapshotDir, { recursive: true, force: true })
   }
 }
 

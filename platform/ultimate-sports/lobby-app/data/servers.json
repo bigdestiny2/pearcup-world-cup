@@ -11,7 +11,7 @@
     "isLive": true,
     "isFeatured": true,
     "tagline": "Global group-stage and knockout bracket pools.",
-    "coverUrl": "../generated/fit-covers/world-cup.svg",
+    "coverUrl": "/generated-assets/world-cup/server-card-cover/cover.jpg",
     "appUrl": "/shell/index.html?fit=world-cup"
   },
   {
@@ -26,7 +26,7 @@
     "isLive": true,
     "isFeatured": false,
     "tagline": "Regional international cup watch parties.",
-    "coverUrl": "../generated/fit-covers/euros-copa-america.svg",
+    "coverUrl": "/generated-assets/euros-copa-america/server-card-cover/cover.jpg",
     "appUrl": "/shell/index.html?fit=euros-copa-america"
   },
   {
@@ -41,7 +41,7 @@
     "isLive": false,
     "isFeatured": false,
     "tagline": "Premium club knockout duels.",
-    "coverUrl": "../generated/fit-covers/champions-league-knockout.svg",
+    "coverUrl": "/generated-assets/champions-league-knockout/server-card-cover/cover.jpg",
     "appUrl": "/shell/index.html?fit=champions-league-knockout"
   },
   {
@@ -56,7 +56,7 @@
     "isLive": true,
     "isFeatured": false,
     "tagline": "Large bracket night with upset bounties.",
-    "coverUrl": "../generated/fit-covers/march-madness.svg",
+    "coverUrl": "/generated-assets/march-madness/server-card-cover/cover.jpg",
     "appUrl": "/shell/index.html?fit=march-madness"
   },
   {
@@ -71,7 +71,7 @@
     "isLive": false,
     "isFeatured": false,
     "tagline": "NBA, NHL, MLB series playoffs.",
-    "coverUrl": "../generated/fit-covers/pro-playoffs.svg",
+    "coverUrl": "/generated-assets/pro-playoffs/server-card-cover/cover.jpg",
     "appUrl": "/shell/index.html?fit=pro-playoffs"
   },
   {
@@ -86,7 +86,7 @@
     "isLive": false,
     "isFeatured": false,
     "tagline": "Grand slam draw and set-score games.",
-    "coverUrl": "../generated/fit-covers/tennis-grand-slams.svg",
+    "coverUrl": "/generated-assets/tennis-grand-slams/server-card-cover/cover.jpg",
     "appUrl": "/shell/index.html?fit=tennis-grand-slams"
   },
   {
@@ -101,7 +101,7 @@
     "isLive": false,
     "isFeatured": false,
     "tagline": "Map, objective, and clutch esports games.",
-    "coverUrl": "../generated/fit-covers/esports-major.svg",
+    "coverUrl": "/generated-assets/esports-major/server-card-cover/cover.jpg",
     "appUrl": "/shell/index.html?fit=esports-major"
   },
   {
@@ -116,7 +116,7 @@
     "isLive": true,
     "isFeatured": false,
     "tagline": "Fight-night cards, methods, and rounds.",
-    "coverUrl": "../generated/mma-card/server-card-cover/desktop-cover.png",
+    "coverUrl": "/generated-assets/mma-boxing-fight-card/server-card-cover/cover.jpg",
     "appUrl": "/shell/index.html?fit=mma-boxing-fight-card"
   },
   {
@@ -131,7 +131,7 @@
     "isLive": true,
     "isFeatured": false,
     "tagline": "Fleet-race companion and foiling props.",
-    "coverUrl": "../generated/fit-covers/sailgp-companion.svg",
+    "coverUrl": "/generated-assets/sailgp-companion/server-card-cover/cover.jpg",
     "appUrl": "/shell/index.html?fit=sailgp-companion"
   },
   {
@@ -146,7 +146,7 @@
     "isLive": false,
     "isFeatured": false,
     "tagline": "Creator and reality show brackets.",
-    "coverUrl": "../generated/fit-covers/creator-reality-brackets.svg",
+    "coverUrl": "/generated-assets/creator-reality-brackets/server-card-cover/cover.jpg",
     "appUrl": "/shell/index.html?fit=creator-reality-brackets"
   },
   {
@@ -161,7 +161,7 @@
     "isLive": false,
     "isFeatured": false,
     "tagline": "Oscars, Grammys, and ceremony-night cards.",
-    "coverUrl": "../generated/fit-covers/awards-prediction-pools.svg",
+    "coverUrl": "/generated-assets/awards-prediction-pools/server-card-cover/cover.jpg",
     "appUrl": "/shell/index.html?fit=awards-prediction-pools"
   },
   {
@@ -176,7 +176,7 @@
     "isLive": false,
     "isFeatured": false,
     "tagline": "School, office, pub, and rec sports.",
-    "coverUrl": "../generated/fit-covers/local-leagues.svg",
+    "coverUrl": "/generated-assets/local-leagues/server-card-cover/cover.jpg",
     "appUrl": "/shell/index.html?fit=local-leagues"
   }
 ]
