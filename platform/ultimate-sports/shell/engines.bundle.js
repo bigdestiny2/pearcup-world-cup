@@ -631,6 +631,105 @@ modules['src/scoring-engine.js'] = function (require, module, exports) {
     return String(value == null ? '' : value).trim().toLowerCase().replace(/[_\s]+/g, '-')
   }
   
+  function normalizePropValue (value) {
+    return String(value == null ? '' : value).trim().toLowerCase()
+  }
+  
+  // Fight-card / player-prop scoring: each bout contributes a winner pick plus
+  // optional method and round props. Props are keyed `<fixtureId>-<prop>` so the
+  // same flat pick object the shell stores can be scored directly.
+  function scorePlayerPropEntry ({ entry, resultSnapshot, config = {} } = {}) {
+    const picks = entry && entry.picks && typeof entry.picks === 'object' ? entry.picks : {}
+    const results = resultSnapshot && resultSnapshot.results && typeof resultSnapshot.results === 'object'
+      ? resultSnapshot.results
+      : {}
+    const propPoints = config.propPoints || { method: 1, round: 1 }
+    const winnerPoints = config.winnerPoints != null ? config.winnerPoints : 1
+  
+    const detail = []
+    for (const fixtureId of Object.keys(results).sort()) {
+      const result = results[fixtureId] || {}
+      const actualWinner = result.winnerEntrantId || result.winnerId || result.winner
+      const winnerPicked = picks[fixtureId]
+      const winnerCorrect = Boolean(winnerPicked && actualWinner && winnerPicked === actualWinner)
+      detail.push({
+        fixtureId,
+        prop: 'winner',
+        picked: winnerPicked,
+        actual: actualWinner,
+        correct: winnerCorrect,
+        weight: winnerPoints,
+        points: winnerCorrect ? winnerPoints : 0
+      })
+  
+      for (const prop of Object.keys(propPoints)) {
+        const pickKey = `${fixtureId}-${prop}`
+        const picked = picks[pickKey]
+        const actual = result[prop]
+        const weight = Number(propPoints[prop]) || 1
+        const correct = actual != null && picked != null && normalizePropValue(picked) === normalizePropValue(actual)
+        detail.push({
+          fixtureId,
+          prop,
+          picked,
+          actual,
+          correct,
+          weight,
+          points: correct ? weight : 0
+        })
+      }
+    }
+  
+    return {
+      entryId: entry && entry.entryId,
+      userId: entry && entry.userId,
+      score: detail.reduce((sum, row) => sum + row.points, 0),
+      possibleScore: detail.reduce((sum, row) => sum + row.weight, 0),
+      correctCount: detail.filter(row => row.correct).length,
+      scoredCount: detail.length,
+      perfect: detail.length > 0 && detail.every(row => row.correct),
+      detail
+    }
+  }
+  
+  // Awards-card scoring: each category is an independent pick and categories carry
+  // a `weight` (e.g. Best Picture = 3, minor = 1). The result snapshot is keyed by
+  // category id and the pick object maps category id → nominee id.
+  function scoreAwardsCard ({ entry, resultSnapshot, categories = [] } = {}) {
+    const picks = entry && entry.picks && typeof entry.picks === 'object' ? entry.picks : {}
+    const results = resultSnapshot && resultSnapshot.results && typeof resultSnapshot.results === 'object'
+      ? resultSnapshot.results
+      : {}
+    const categoryById = new Map((categories || []).map(category => [category.id, category]))
+  
+    const detail = Object.keys(results).sort().map(categoryId => {
+      const actual = results[categoryId]
+      const picked = picks[categoryId]
+      const category = categoryById.get(categoryId) || {}
+      const weight = Number(category.weight) || 1
+      const correct = actual != null && picked != null && picked === actual
+      return {
+        categoryId,
+        picked,
+        actual,
+        weight,
+        correct,
+        points: correct ? weight : 0
+      }
+    })
+  
+    return {
+      entryId: entry && entry.entryId,
+      userId: entry && entry.userId,
+      score: detail.reduce((sum, row) => sum + row.points, 0),
+      possibleScore: detail.reduce((sum, row) => sum + row.weight, 0),
+      correctCount: detail.filter(row => row.correct).length,
+      scoredCount: detail.length,
+      perfect: detail.length > 0 && detail.every(row => row.correct),
+      detail
+    }
+  }
+  
   module.exports = {
     scoreClassicBracket,
     scoreConfidenceCard,
@@ -638,6 +737,8 @@ modules['src/scoring-engine.js'] = function (require, module, exports) {
     scoreUpsetBountyBracket,
     scoreHeadToHeadDuel,
     scoreSideQuestEntry,
+    scorePlayerPropEntry,
+    scoreAwardsCard,
     normalizeSideQuestSelections,
     sideQuestFixtureMatches,
     scoreForEntrantInResult,
@@ -791,7 +892,9 @@ modules['src/pool-engine.js'] = function (require, module, exports) {
     scoreHeadToHeadDuel,
     scoreSideQuestEntry,
     scoreSurvivorEntry,
-    scoreUpsetBountyBracket
+    scoreUpsetBountyBracket,
+    scorePlayerPropEntry,
+    scoreAwardsCard
   } = require('src/scoring-engine.js')
   const { assertNonEmptyString, cloneJson, stableId } = require('src/util.js')
   
@@ -826,7 +929,29 @@ modules['src/pool-engine.js'] = function (require, module, exports) {
   
   function scoreEntryForPool ({ pool, entry, resultSnapshot } = {}) {
     const variant = pool && pool.rules && pool.rules.variant
-    if (variant === 'confidence' || variant === 'group-stage-card') {
+    if (variant === 'player-prop') {
+      return scorePlayerPropEntry({
+        entry,
+        resultSnapshot,
+        config: pool.rules && pool.rules.config
+      })
+    }
+    if (variant === 'group-stage-card') {
+      // group-stage-card is the pick-card variant used for awards-card categories
+      // (and similar flat key→value pick sheets). Flat object picks go through the
+      // awards-card scorer; array-shaped confidence picks still use the confidence
+      // scorer for soccer-style group cards.
+      if (Array.isArray(entry && entry.picks)) {
+        return scoreConfidenceCard({ entry, resultSnapshot })
+      }
+      return scoreAwardsCard({
+        entry,
+        resultSnapshot,
+        categories: (pool.rules && pool.rules.config && pool.rules.config.categories) ||
+          (pool.metadata && pool.metadata.categories)
+      })
+    }
+    if (variant === 'confidence') {
       return scoreConfidenceCard({ entry, resultSnapshot })
     }
     if (variant === 'survivor') {

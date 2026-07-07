@@ -1,0 +1,26 @@
+{
+  "app": "Ultimate Sports",
+  "version": "0.4.0",
+  "pearUrl": "pear://bmxaxnjmh965rcq1upj5uj5j3ummbug9p7cihcmg6w3gm9pikayo",
+  "appKeyHex": "0adf87892be7fdb231d29b53b9a769ccd6b0ccdf6f595e3166f53265fdb55601",
+  "releasedAt": "2026-07-07T15:05:54.635Z",
+  "releaseLength": 9312,
+  "seededAt": "2026-07-07T13:16:47.130Z",
+  "hiverelay": {
+    "registryPath": "/Users/localllm/.hiverelay/storage/app-registry.json",
+    "seededPath": "/Users/localllm/.hiverelay/storage/seeded-apps.json",
+    "relayPublicKey": "8798f573c5428707dc1c3478e67aad8c5e4d258962663061836f7a125ab63dec",
+    "relayApi": "http://127.0.0.1:9100",
+    "registered": true,
+    "seeded": true,
+    "anchored": true,
+    "anchoredAt": "2026-07-07T15:05:54.635Z",
+    "anchoredLength": 9312
+  },
+  "pearbrowserCatalogue": "pearbrowser-catalogue.json",
+  "commands": {
+    "run": "pear run pear://bmxaxnjmh965rcq1upj5uj5j3ummbug9p7cihcmg6w3gm9pikayo",
+    "seed": "pear seed --no-tty --no-ask --stats-interval 30000 pear://bmxaxnjmh965rcq1upj5uj5j3ummbug9p7cihcmg6w3gm9pikayo"
+  },
+  "latestReleaseNotes": "Added low-lift live-market mini-games, pool variant UI/scoring, template-kind depth (fight-card props, awards weighting, group-to-knockout, new kinds), UI i18n wiring, lazy asset loader, empty/loading state CSS, and theme palettes across all fits."
+}

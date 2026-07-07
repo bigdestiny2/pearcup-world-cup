@@ -30,4 +30,5 @@
   }
 
   applyGroupStage('euros-copa-america')
+  applyGroupStage('esports-major')
 })(window)

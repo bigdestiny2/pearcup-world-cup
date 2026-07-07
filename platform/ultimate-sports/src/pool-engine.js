@@ -8,7 +8,9 @@ const {
   scoreHeadToHeadDuel,
   scoreSideQuestEntry,
   scoreSurvivorEntry,
-  scoreUpsetBountyBracket
+  scoreUpsetBountyBracket,
+  scorePlayerPropEntry,
+  scoreAwardsCard
 } = require('./scoring-engine')
 const { assertNonEmptyString, cloneJson, stableId } = require('./util')
 
@@ -43,7 +45,29 @@ function createPool (input = {}) {
 
 function scoreEntryForPool ({ pool, entry, resultSnapshot } = {}) {
   const variant = pool && pool.rules && pool.rules.variant
-  if (variant === 'confidence' || variant === 'group-stage-card') {
+  if (variant === 'player-prop') {
+    return scorePlayerPropEntry({
+      entry,
+      resultSnapshot,
+      config: pool.rules && pool.rules.config
+    })
+  }
+  if (variant === 'group-stage-card') {
+    // group-stage-card is the pick-card variant used for awards-card categories
+    // (and similar flat key→value pick sheets). Flat object picks go through the
+    // awards-card scorer; array-shaped confidence picks still use the confidence
+    // scorer for soccer-style group cards.
+    if (Array.isArray(entry && entry.picks)) {
+      return scoreConfidenceCard({ entry, resultSnapshot })
+    }
+    return scoreAwardsCard({
+      entry,
+      resultSnapshot,
+      categories: (pool.rules && pool.rules.config && pool.rules.config.categories) ||
+        (pool.metadata && pool.metadata.categories)
+    })
+  }
+  if (variant === 'confidence') {
     return scoreConfidenceCard({ entry, resultSnapshot })
   }
   if (variant === 'survivor') {

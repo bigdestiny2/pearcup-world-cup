@@ -37,12 +37,11 @@
   function proofMessage (c, n) { return `us-join:v1|${c}|${n}` }
 
   // The credential this client attaches to its P2P hello.
-  // If the URL already carries a self-chosen proof (legacy invites) we include it
-  // for backwards compatibility; otherwise the verifier issues a fresh nonce.
+  // The verifier issues a fresh nonce; the joiner answers with signChallenge().
+  // Self-chosen nonces are no longer accepted (zero replay protection).
   function myCredential () {
     if (!enforced) return null
     if (myKey && myKey === ownerKey) return { key: myKey, owner: true }
-    if (myProof && myNonce) return { key: myKey, cap: myCap, proof: myProof, nonce: myNonce }
     return { key: myKey, cap: myCap }
   }
 
@@ -62,16 +61,14 @@
   }
 
   // Verify a peer credential against a specific owner + code (pure — testable).
+  // Only structural authorization is checked here (owner key or valid invite).
+  // Anti-replay proof must be verified separately via verifyProof() with a
+  // verifier-issued nonce; self-chosen nonces are never accepted.
   async function verifyAgainst (cred, owner, roomCode) {
     if (!cred || !cred.key) return false
     if (cred.key === owner) return true
     if (!cred.cap || !root.UltimateID) return false
-    const inviteOk = await root.UltimateID.verify(owner, inviteMessage(roomCode, cred.key), cred.cap)
-    if (!inviteOk) return false
-    if (cred.proof && cred.nonce) {
-      return root.UltimateID.verify(cred.key, proofMessage(roomCode, cred.nonce), cred.proof)
-    }
-    return true
+    return root.UltimateID.verify(owner, inviteMessage(roomCode, cred.key), cred.cap)
   }
 
   // Verify a peer for THIS room. Unenforced rooms admit everyone.

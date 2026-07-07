@@ -19,6 +19,7 @@
   const LOBBY_TOPIC = 'pearcup:v1:lobby'
   const HEARTBEAT_MS = 4000
   const STALE_MS = 12000
+  const AUTH_NONCE_TTL_MS = 60000
 
   const L = { channel: null, self: null, peers: new Map(), authNonces: new Map(), heartbeat: null, sweeper: null }
   const $ = s => document.querySelector(s)
@@ -67,11 +68,17 @@
   // Wall-clock stamp — fine in the browser/Pear renderer.
   function nowStamp () { return (new Date()).getTime() }
 
+  function isAuthNonceExpired (entry) {
+    return !entry || (Date.now() - (entry.at || 0)) > AUTH_NONCE_TTL_MS
+  }
+
   function sendAuthReq (toPeerId) {
     const RA = root.PearCupRoomAccess
-    if (!RA || !RA.enforced || L.authNonces.has(toPeerId)) return
+    if (!RA || !RA.enforced) return
+    const existing = L.authNonces.get(toPeerId)
+    if (existing && !isAuthNonceExpired(existing)) return
     const nonce = (Net && typeof Net.newNonce === 'function') ? Net.newNonce() : `${Date.now()}-${Math.random()}`
-    L.authNonces.set(toPeerId, nonce)
+    L.authNonces.set(toPeerId, { nonce, at: Date.now() })
     send({ t: 'auth-req', authNonce: nonce, to: toPeerId })
   }
 
@@ -95,11 +102,12 @@
     if (!authorized) { try { authorized = await RA.verify(cred) } catch (e) { authorized = false } }
     if (!authorized) return false
     const stored = L.authNonces.get(m.from)
-    if (stored && cred.proof) {
+    if (stored && !isAuthNonceExpired(stored) && cred.proof) {
       let ok = false
-      try { ok = await RA.verifyProof(cred, stored) } catch (e) { ok = false }
+      try { ok = await RA.verifyProof(cred, stored.nonce) } catch (e) { ok = false }
       if (ok) { L.authNonces.delete(m.from); return true }
     }
+    if (stored && isAuthNonceExpired(stored)) L.authNonces.delete(m.from)
     sendAuthReq(m.from)
     return false
   }

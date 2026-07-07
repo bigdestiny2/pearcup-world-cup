@@ -114,6 +114,17 @@
     })
   }
 
+  function poolForEngine ({ variant = 'classic-bracket', rulesVersion, config = {} } = {}) {
+    const engines = getEngines()
+    return engines.pool.createPool({
+      competitionId: 'pearcup-pool',
+      variant,
+      payoutPolicy: 'demo',
+      rulesVersion: rulesVersion || `${variant}-v1`,
+      config
+    })
+  }
+
   function deriveBracketPoolWinnersViaEngines ({ submissions, officialResults }) {
     const engines = getEngines()
     const resultSnapshot = resultSnapshotFromOfficialResults(officialResults)
@@ -169,6 +180,97 @@
         : perfectRows.length
           ? 'perfect-bracket'
           : 'fallback-score'
+    }
+  }
+
+  function derivePoolWinnersViaEngines ({ submissions, officialResults, resultSnapshot: resultSnapshotInput, variant = 'classic-bracket', config = {} } = {}) {
+    if (variant === 'classic-bracket' && !resultSnapshotInput) {
+      return deriveBracketPoolWinnersViaEngines({ submissions, officialResults })
+    }
+    const engines = getEngines()
+    const resultSnapshot = resultSnapshotInput || resultSnapshotFromOfficialResults(officialResults)
+    const totalMatches = Object.keys(resultSnapshot.results || resultSnapshot.cardResults || {}).length
+    const rulesVersion = (submissions[0] && submissions[0].rulesVersion) || `${variant}-v1`
+    const pool = poolForEngine({ variant, rulesVersion, config })
+    const entryTypeForVariant = (variant) => {
+      if (variant === 'classic-bracket' || variant === 'upset-bounty' || variant === 'head-to-head-duel') return 'bracket'
+      if (variant === 'confidence' || variant === 'group-stage-card' || variant === 'player-prop') return 'card'
+      if (variant === 'survivor') return 'survivor'
+      if (variant === 'side-quest') return 'card'
+      return 'bracket'
+    }
+    const entries = submissions.map(submission => engines.prediction.createPredictionEntry({
+      poolId: pool.poolId,
+      userId: submission.userId,
+      entryId: submission.entryId || submission.submissionId,
+      entryType: entryTypeForVariant(variant),
+      picks: submission.picks,
+      submittedAt: submission.submittedAt,
+      lockedAt: submission.submittedAt,
+      status: 'locked'
+    }))
+    const resolution = engines.pool.resolvePoolWinners({ pool, entries, resultSnapshot })
+    const rowByEntryId = new Map((resolution.leaderboard || []).map(row => [row.entryId, row]))
+    const scoreboard = submissions.map(submission => {
+      const entryId = submission.entryId || submission.submissionId
+      const row = rowByEntryId.get(entryId) || {
+        userId: submission.userId,
+        score: 0,
+        correctCount: 0,
+        perfect: false
+      }
+      return {
+        submissionId: submission.submissionId || null,
+        userId: row.userId || submission.userId || null,
+        entryId: submission.entryId || null,
+        paymentId: submission.paymentId || null,
+        picksHash: submission.picksHash || null,
+        score: row.score,
+        correctCount: row.correctCount,
+        totalMatches,
+        perfect: row.perfect
+      }
+    })
+    const perfectRows = scoreboard.filter(row => row.perfect)
+    const maxScore = scoreboard.reduce((max, row) => Math.max(max, row.score), 0)
+    const winnerRows = perfectRows.length
+      ? perfectRows
+      : totalMatches > 0 && maxScore > 0
+        ? scoreboard.filter(row => row.score === maxScore)
+        : []
+    const winnerUserIds = [...new Set(winnerRows.map(row => row.userId).filter(Boolean))]
+    return {
+      winnerUserIds,
+      scoreboard,
+      totalMatches,
+      variant,
+      tied: winnerRows.length > 1,
+      resolvedBy: winnerRows.length === 0
+        ? 'no-qualified-entry'
+        : perfectRows.length
+          ? 'perfect-entry'
+          : 'fallback-score'
+    }
+  }
+
+  function scoreVariantSubmission ({ submission, officialResults, resultSnapshot, variant = 'classic-bracket', config = {} } = {}) {
+    const result = derivePoolWinnersViaEngines({
+      submissions: [submission],
+      officialResults,
+      resultSnapshot,
+      variant,
+      config
+    })
+    return result.scoreboard[0] || {
+      submissionId: submission && submission.submissionId || null,
+      userId: submission && submission.userId || null,
+      entryId: submission && submission.entryId || null,
+      paymentId: submission && submission.paymentId || null,
+      picksHash: submission && submission.picksHash || null,
+      score: 0,
+      correctCount: 0,
+      totalMatches: 0,
+      perfect: false
     }
   }
 
@@ -1073,6 +1175,8 @@
     createBracketSubmission,
     scoreBracketSubmission,
     deriveBracketPoolWinners,
+    derivePoolWinnersViaEngines,
+    scoreVariantSubmission,
     winnerUserIdForRoundResult,
     participantUserIdsForRoundResult,
     createPenaltyClashRound,

@@ -218,7 +218,7 @@
       title: 'NBA / NHL / MLB Playoffs',
       category: 'pro-sports',
       entrantShape: 'team',
-      templateKind: 'single-elimination',
+      templateKind: 'series-playoff',
       defaultTeam: 'lal',
       theme: makeTheme('#8b5cf6', '#f43f5e', '#6d28d9', '#1a1025', '#f5f3ff', '#ffffff'),
       data: pro_playoffs_data
@@ -238,7 +238,7 @@
       title: 'Esports Major',
       category: 'esports',
       entrantShape: 'team',
-      templateKind: 'single-elimination',
+      templateKind: 'group-plus-knockout',
       defaultTeam: 't1',
       theme: makeTheme('#ec4899', '#6366f1', '#be185d', '#1e1b4b', '#fdf2f8', '#ffffff'),
       data: esports_major_data
@@ -248,7 +248,7 @@
       title: 'SailGP Companion',
       category: 'sailing',
       entrantShape: 'team',
-      templateKind: 'single-elimination',
+      templateKind: 'series-playoff',
       defaultTeam: 'aus',
       theme: makeTheme('#06b6d4', '#f43f5e', '#0e7490', '#082f49', '#ecfeff', '#ffffff'),
       data: sailgp_companion_data
@@ -258,7 +258,7 @@
       title: 'Reality / Creator Tournaments',
       category: 'creator',
       entrantShape: 'creator',
-      templateKind: 'single-elimination',
+      templateKind: 'creator-custom',
       defaultTeam: 'alpha',
       theme: makeTheme('#d946ef', '#22c55e', '#a21caf', '#2a0a2e', '#fdf4ff', '#ffffff'),
       data: creator_reality_brackets_data
@@ -278,7 +278,7 @@
       title: 'School / Office / Pub / Rec Sports',
       category: 'local',
       entrantShape: 'team',
-      templateKind: 'single-elimination',
+      templateKind: 'round-robin',
       defaultTeam: 'phoenix',
       theme: makeTheme('#22c55e', '#3b82f6', '#15803d', '#0f291e', '#f0fdf4', '#ffffff'),
       data: local_leagues_data

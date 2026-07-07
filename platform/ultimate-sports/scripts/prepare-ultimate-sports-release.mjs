@@ -36,13 +36,18 @@ async function main () {
   await run('Build engine bundle', () => runBuildEngines(args))
   await run('Run per-fit smoke matrix', () => runFitSmoke(args))
 
+  const pearUrl = args.pearUrl || readExistingPearUrl()
+  if ((args.stage || args.release) && !pearUrl) {
+    throw new Error('No --pear-url provided and no existing publish receipt found')
+  }
+
   let stageResult = null
   let releaseResult = null
   if (args.stage) {
-    stageResult = await run('Stage Pear drive', () => runPear('stage', args.pearName || 'ultimate-sports-dev', ROOT))
+    stageResult = await run('Stage Pear drive', () => runPear('stage', pearUrl, ROOT))
   }
   if (args.release) {
-    releaseResult = await run('Release Pear drive', () => runPear('release', args.pearName || 'ultimate-sports-dev', ROOT))
+    releaseResult = await run('Release Pear drive', () => runPear('release', pearUrl, ROOT))
   }
 
   const manifest = readPlatformManifest()
@@ -58,6 +63,32 @@ async function main () {
     manifest,
     pear: {
       name: args.pearName || 'ultimate-sports-dev',
+      staged: Boolean(stageResult),
+      released: Boolean(releaseResult),
+      stageResult,
+      releaseResult
+    }
+  }
+
+  writeReceipt({ out, args, steps, stageResult, releaseResult })
+}
+
+function writeReceipt ({ out, args, steps, stageResult = null, releaseResult = null }) {
+  const manifest = readPlatformManifest()
+  const git = readGitState()
+  const pearUrl = args.pearUrl || readExistingPearUrl()
+  const receipt = {
+    reportVersion: REPORT_VERSION,
+    generatedAt: new Date().toISOString(),
+    app: 'Ultimate Sports',
+    sourceGitHead: git.head,
+    sourceGitBranch: git.branch,
+    sourceDirty: git.dirty,
+    steps,
+    manifest,
+    pear: {
+      name: args.pearName || 'ultimate-sports-dev',
+      url: pearUrl,
       staged: Boolean(stageResult),
       released: Boolean(releaseResult),
       stageResult,
@@ -134,6 +165,16 @@ function readPlatformManifest () {
   }
 }
 
+function readExistingPearUrl () {
+  const path = join(ROOT, 'generated-reports', 'ultimate-sports-publish-receipt.json')
+  try {
+    const receipt = JSON.parse(readFileSync(path, 'utf8'))
+    return receipt.pearUrl || null
+  } catch {
+    return null
+  }
+}
+
 function readGitState () {
   const head = gitOutput(['rev-parse', 'HEAD'])
   const branch = gitOutput(['rev-parse', '--abbrev-ref', 'HEAD'])
@@ -151,13 +192,14 @@ function mkTmpDir () {
 }
 
 function parseArgs (argv) {
-  const args = { out: null, stage: false, release: false, pearName: null, skipTests: false, skipBuild: false, skipSmoke: false }
+  const args = { out: null, stage: false, release: false, pearName: null, pearUrl: null, skipTests: false, skipBuild: false, skipSmoke: false }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a === '--out' && argv[i + 1]) args.out = resolve(argv[++i])
     else if (a === '--stage') args.stage = true
     else if (a === '--release') args.release = true
     else if (a === '--pear-name' && argv[i + 1]) args.pearName = argv[++i]
+    else if (a === '--pear-url' && argv[i + 1]) args.pearUrl = argv[++i]
     else if (a === '--skip-tests') args.skipTests = true
     else if (a === '--skip-build') args.skipBuild = true
     else if (a === '--skip-smoke') args.skipSmoke = true

@@ -31,14 +31,16 @@ test('public room admits everyone', async () => {
   assert.equal(await RA.verify({ key: 'any' }), true)
 })
 
-test('owner is admitted without capability', async () => {
+test('owner is authorized structurally but still answers challenge-response', async () => {
   const owner = 'aabbccdd'.repeat(8)
   const RA = loadRoomAccess(`?host=${owner}&join=ROOM1`, { 'pearcup-prototype': JSON.stringify({ identity: { key: owner } }) }, () => true)
   assert.equal(RA.enforced, true)
+  // Structural authorization passes for the owner key, but admission must still
+  // verify a proof signed over a verifier-issued nonce (done in peer-match).
   assert.equal(await RA.verify({ key: owner }), true)
 })
 
-test('member with valid invite and proof is admitted', async () => {
+test('member with valid invite is authorized structurally', async () => {
   const owner = 'aabbccdd'.repeat(8)
   const member = '11223344'.repeat(8)
   const cap = 'valid-cap'
@@ -46,11 +48,12 @@ test('member with valid invite and proof is admitted', async () => {
   const nonce = 'nonce-1'
   const verify = (key, message, sig) => {
     if (key === owner && message === `us-invite:v1|ROOM1|${member}` && sig === cap) return true
-    if (key === member && message === `us-join:v1|ROOM1|${nonce}` && sig === proof) return true
     return false
   }
-  const RA = loadRoomAccess(`?host=${owner}&join=ROOM1&cap=${cap}&px=${proof}&pn=${nonce}`, { 'pearcup-prototype': JSON.stringify({ identity: { key: member } }) }, verify)
+  const RA = loadRoomAccess(`?host=${owner}&join=ROOM1&cap=${cap}`, { 'pearcup-prototype': JSON.stringify({ identity: { key: member } }) }, verify)
   assert.equal(RA.enforced, true)
+  // verify() only checks structural authorization (valid invite). The anti-replay
+  // proof must be checked separately with verifyProof() using a verifier-issued nonce.
   assert.equal(await RA.verify({ key: member, cap, proof, nonce }), true)
 })
 
@@ -77,7 +80,7 @@ test('verifyAgainst validates invite signature', async () => {
   assert.equal(verifiedInvite, `us-invite:v1|ROOM1|${member}`)
 })
 
-test('verifyAgainst requires proof when supplied', async () => {
+test('verifyAgainst ignores self-chosen proof and only checks structural auth', async () => {
   const owner = 'aabbccdd'.repeat(8)
   const member = '11223344'.repeat(8)
   const cap = 'valid-cap'
@@ -85,14 +88,13 @@ test('verifyAgainst requires proof when supplied', async () => {
   const nonce = 'nonce-1'
   const verify = (key, message, sig) => {
     if (key === owner && sig === cap) return true
-    if (key === member && sig === proof) return true
     return false
   }
   const RA = loadRoomAccess(`?host=${owner}&join=ROOM1`, {}, verify)
-  // Proof present and valid.
+  // Valid invite passes regardless of proof/nonce (structural auth only).
   assert.equal(await RA.verifyAgainst({ key: member, cap, proof, nonce }, owner, 'ROOM1'), true)
-  // Proof present but invalid signature.
-  assert.equal(await RA.verifyAgainst({ key: member, cap, proof: 'bad', nonce }, owner, 'ROOM1'), false)
+  // Self-chosen proof does not make a bad invite valid.
+  assert.equal(await RA.verifyAgainst({ key: member, cap: 'bad', proof, nonce }, owner, 'ROOM1'), false)
 })
 
 test('signChallenge signs the verifier-issued nonce with the stored identity', async () => {
@@ -150,7 +152,7 @@ test('verifyProof checks proof against a specific nonce', async () => {
   assert.equal(await RA.verifyProof(null, nonce), false)
 })
 
-test('challenge-response flow: fresh nonce verifies independently of legacy proof', async () => {
+test('challenge-response flow: only verifier-issued nonce proofs are accepted', async () => {
   const owner = 'aabbccdd'.repeat(8)
   const member = '11223344'.repeat(8)
   const cap = 'valid-cap'
@@ -165,10 +167,40 @@ test('challenge-response flow: fresh nonce verifies independently of legacy proo
     return false
   }
   const RA = loadRoomAccess(`?host=${owner}&join=ROOM1`, {}, verify)
-  // Legacy self-chosen proof still verifies through verify().
+  // verify() only checks structural authorization; a self-chosen legacy proof is
+  // NOT treated as admission evidence.
   assert.equal(await RA.verify({ key: member, cap, proof: legacyProof, nonce: legacyNonce }), true)
   // Verifier-issued nonce verifies directly with verifyProof().
   assert.equal(await RA.verifyProof({ key: member, proof: freshProof }, freshNonce), true)
   // Wrong nonce for fresh proof fails.
   assert.equal(await RA.verifyProof({ key: member, proof: freshProof }, legacyNonce), false)
+  // Legacy self-chosen nonce is rejected by verifyProof (wrong nonce).
+  assert.equal(await RA.verifyProof({ key: member, proof: legacyProof }, freshNonce), false)
+})
+
+test('captured credential replayed under a new peer id is rejected', async () => {
+  const owner = 'aabbccdd'.repeat(8)
+  const member = '11223344'.repeat(8)
+  const cap = 'valid-cap'
+  const memberProof = 'member-proof'
+  const hostNonce = 'host-nonce'
+  const freshNonce = 'fresh-nonce'
+  const verify = (key, message, sig) => {
+    if (key === owner && message === `us-invite:v1|ROOM1|${member}` && sig === cap) return true
+    if (key === member && message === `us-join:v1|ROOM1|${hostNonce}` && sig === memberProof) return true
+    return false
+  }
+  const RA = loadRoomAccess(`?host=${owner}&join=ROOM1`, {}, verify)
+
+  // Simulate peer-match admission: structural auth passes for the member.
+  assert.equal(await RA.verify({ key: member, cap }), true)
+  // Host issues a fresh nonce; member answers with a proof over that nonce.
+  assert.equal(await RA.verifyProof({ key: member, proof: memberProof }, hostNonce), true)
+
+  // Attacker captures the member's exact credential and replays it under a new
+  // peer id. Structural auth still passes (same key + valid invite cap), but the
+  // captured proof was signed over the host's previous nonce, not the fresh nonce
+  // issued to the new connection — so replay is rejected.
+  assert.equal(await RA.verify({ key: member, cap }), true)
+  assert.equal(await RA.verifyProof({ key: member, proof: memberProof }, freshNonce), false)
 })

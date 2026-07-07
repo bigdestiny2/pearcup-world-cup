@@ -17,6 +17,7 @@
   if (!Net) { markModule('missing-peer-net'); console.warn('PearCupPeerNet missing — watch sync disabled'); return }
 
   const CHALLENGE_TIMEOUT_MS = 45000
+  const AUTH_NONCE_TTL_MS = 60000
   const WS = {
     channel: null,
     topic: null,
@@ -82,11 +83,17 @@
   // Issue a fresh, single-use nonce to a peer so they must prove they hold the
   // private key for the identity their invite names — this defeats replay of a
   // captured (non-secret) cred.
+  function isAuthNonceExpired (entry) {
+    return !entry || (Date.now() - (entry.at || 0)) > AUTH_NONCE_TTL_MS
+  }
+
   function sendAuthReq (toPeerId) {
     const RA = root.PearCupRoomAccess
-    if (!RA || !RA.enforced || WS.authNonces.has(toPeerId)) return
+    if (!RA || !RA.enforced) return
+    const existing = WS.authNonces.get(toPeerId)
+    if (existing && !isAuthNonceExpired(existing)) return
     const nonce = (Net && typeof Net.newNonce === 'function') ? Net.newNonce() : `${Date.now()}-${Math.random()}`
-    WS.authNonces.set(toPeerId, nonce)
+    WS.authNonces.set(toPeerId, { nonce, at: Date.now() })
     send({ t: 'auth-req', authNonce: nonce, to: toPeerId })
   }
 
@@ -111,12 +118,14 @@
     if (!authorized) { try { authorized = await RA.verify(cred) } catch (e) { authorized = false } }
     if (!authorized) return false
     // Anti-replay: require a proof signed over the nonce WE issued (not a self-chosen one).
+    // Expired nonces are discarded so a silent peer can be re-challenged.
     const stored = WS.authNonces.get(m.from)
-    if (stored && cred.proof) {
+    if (stored && !isAuthNonceExpired(stored) && cred.proof) {
       let ok = false
-      try { ok = await RA.verifyProof(cred, stored) } catch (e) { ok = false }
+      try { ok = await RA.verifyProof(cred, stored.nonce) } catch (e) { ok = false }
       if (ok) { WS.authNonces.delete(m.from); return true }
     }
+    if (stored && isAuthNonceExpired(stored)) WS.authNonces.delete(m.from)
     sendAuthReq(m.from)
     return false
   }

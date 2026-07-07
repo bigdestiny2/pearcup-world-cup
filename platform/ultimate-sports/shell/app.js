@@ -97,10 +97,10 @@ let bracketRenderSequence = 0
 let gameRenderSequence = 0
 
 let pools = [
-  { tier: 10, entrants: 124, closes: '12h', max: 256, prize: '$1,240', heat: 'Open', rail: 'USDT demo' },
-  { tier: 25, entrants: 82, closes: '9h', max: 160, prize: '$2,050', heat: 'Hot', rail: 'USDT demo' },
-  { tier: 50, entrants: 38, closes: '7h', max: 96, prize: '$1,900', heat: 'Sharp', rail: 'USDT demo' },
-  { tier: 100, entrants: 19, closes: '5h', max: 64, prize: '$1,900', heat: 'Elite', rail: 'USDT demo' }
+  { tier: 10, entrants: 124, closes: '12h', max: 256, prize: '$1,240', heat: 'Open', rail: 'USDT demo', variant: 'confidence' },
+  { tier: 25, entrants: 82, closes: '9h', max: 160, prize: '$2,050', heat: 'Hot', rail: 'USDT demo', variant: 'classic-bracket' },
+  { tier: 50, entrants: 38, closes: '7h', max: 96, prize: '$1,900', heat: 'Sharp', rail: 'USDT demo', variant: 'survivor' },
+  { tier: 100, entrants: 19, closes: '5h', max: 64, prize: '$1,900', heat: 'Elite', rail: 'USDT demo', variant: 'upset-bounty' }
 ]
 
 let round32Matches = [
@@ -291,16 +291,63 @@ if (typeof window !== 'undefined' && window.ULTIMATE_FIT_CONFIG) {
   if (cfg.gameLeaderboardRows) gameLeaderboardRows = cfg.gameLeaderboardRows
 }
 
+// Pool variants: if the fit supplies recommendedVariants, rotate them across the
+// pool list; otherwise fall back to the default breadth set. Existing pool tiers,
+// prizes, and caps are preserved.
+const PoolVariantHelpers = (typeof window !== 'undefined' && window.PearCupPoolVariantHelpers) || null
+if (PoolVariantHelpers) {
+  const cfg = (typeof window !== 'undefined' && window.ULTIMATE_FIT_CONFIG) || {}
+  pools = PoolVariantHelpers.assignPoolVariants(pools, cfg.recommendedVariants)
+}
+
 // Fit-aware mini-game list. fit-loader.js enriches ULTIMATE_FIT_CONFIG with
 // recommendedMiniGames and exposes ULTIMATE_MINI_GAME_TITLES.
 let fitMiniGames = ['penalty-clash']
 let miniGameTitles = {}
+let fitPredictionOptions = ['Option A', 'Option B', 'Option C', 'Option D']
+let fitTriviaQuestions = []
 let selectedMiniGame = 'penalty-clash'
 if (typeof window !== 'undefined' && window.ULTIMATE_FIT_CONFIG) {
   const cfg = window.ULTIMATE_FIT_CONFIG
   fitMiniGames = cfg.recommendedMiniGames || fitMiniGames
   miniGameTitles = window.ULTIMATE_MINI_GAME_TITLES || miniGameTitles
+  fitPredictionOptions = cfg.predictionOptions || fitPredictionOptions
+  fitTriviaQuestions = cfg.triviaQuestions || fitTriviaQuestions
   selectedMiniGame = fitMiniGames[0] || 'penalty-clash'
+}
+
+// Reaction Challenge transient render state (not persisted — a live P2P session
+// can't survive a reload and the AI timer loop is recreated per match).
+let reactionChallengeUnsub = null
+let reactionChallengeSnapshot = null
+
+// Live Market Game transient render state (next-event / scoreline-lock / streak).
+let liveMarketUnsub = null
+let liveMarketSnapshot = null
+
+// Games that have a playable shell implementation (peer + AI). The Games surface
+// and watch challenge tray filter the fit's recommendedMiniGames by this set so
+// unimplemented catalog games show "coming soon" instead of a broken match.
+const SHELL_IMPLEMENTED_MINI_GAMES = new Set([
+  'penalty-clash',
+  'prediction-duel',
+  'trivia-duel',
+  'free-kick-duel',
+  'buzzer-beater-duel',
+  'ace-serve-duel',
+  'home-run-derby',
+  'reaction-challenge',
+  'next-event',
+  'scoreline-lock',
+  'watch-party-streak'
+])
+
+function playableMiniGames () {
+  return fitMiniGames.filter(gt => SHELL_IMPLEMENTED_MINI_GAMES.has(gt))
+}
+
+function isPlayableMiniGame (gameType) {
+  return SHELL_IMPLEMENTED_MINI_GAMES.has(gameType)
 }
 
 function selectedMiniGameTitle () {
@@ -352,15 +399,21 @@ if (typeof history !== 'undefined' && 'scrollRestoration' in history) history.sc
 
 const $ = (selector, root = document) => root.querySelector(selector)
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)]
+const uiT = (key) => (window.ULTIMATE_UI_T ? window.ULTIMATE_UI_T(key) : key)
 
 function loadState () {
   const fitDefaultTeam = (typeof window !== 'undefined' && window.ULTIMATE_FIT_CONFIG && window.ULTIMATE_FIT_CONFIG.defaultTeam) || 'br'
+  const selectedPool = pools.find(pool => pool.tier === 25) || pools[0] || { variant: 'classic-bracket' }
   const fallback = {
     view: 'onboarding',
     username: 'captain',
     team: fitDefaultTeam,
     selectedTier: 25,
+    selectedPoolVariant: selectedPool.variant || 'classic-bracket',
     picks: {},
+    variantPicks: {},
+    survivorRound: 1,
+    survivorUsedTeams: [],
     language: 'EN',
     liveTab: 'overview',
     gameRound: 0,
@@ -389,12 +442,23 @@ function loadState () {
       chat: saved.chat || defaultChat,
       payoutAddresses: { ...fallback.payoutAddresses, ...(saved.payoutAddresses || {}) },
       wallet: { ...fallback.wallet, ...(saved.wallet || {}) },
-      enteredPools: saved.enteredPools || {},
+      enteredPools: PoolVariantHelpers
+        ? PoolVariantHelpers.normalizeEnteredPools(saved.enteredPools || {})
+        : (saved.enteredPools || {}),
+      variantPicks: saved.variantPicks || {},
+      survivorRound: saved.survivorRound || 1,
+      survivorUsedTeams: saved.survivorUsedTeams || [],
       liveConfig: { ...fallback.liveConfig, ...(saved.liveConfig || {}) }
     }
     // A live peer match can't survive a reload (the connection is gone) — start in the lobby.
     if (merged.match && merged.match.peer) merged.match = null
-    merged.picks = normalizeBracketPicks(merged.picks)
+    const activeVariant = merged.selectedPoolVariant || selectedPool.variant || 'classic-bracket'
+    merged.selectedPoolVariant = activeVariant
+    // Restore the active pick surface for the current variant.
+    merged.picks = normalizeVariantPicks(
+      merged.variantPicks[activeVariant] || merged.picks || {},
+      activeVariant
+    )
     return merged
   } catch {
     return fallback
@@ -465,6 +529,76 @@ function normalizeBracketPicks (picks = {}) {
     if (round32Match && !round32Match.slots.includes(teamId)) delete next[id]
   }
   return next
+}
+
+function normalizeVariantPicks (picks, variant) {
+  if (variant === 'side-quest') {
+    // Side-quest keeps any string selections (entrant ids) alive.
+    const kept = {}
+    for (const [key, value] of Object.entries(picks || {})) {
+      if (typeof value === 'string') kept[key] = value
+    }
+    return kept
+  }
+  if (variant === 'survivor') {
+    // Survivor picks are keyed `survivor-rN` and mirrored used-teams are
+    // tracked separately in state.survivorUsedTeams.
+    const kept = {}
+    for (const [key, value] of Object.entries(picks || {})) {
+      if (key.startsWith('survivor-r') && typeof value === 'string') kept[key] = value
+    }
+    return kept
+  }
+  if (variant === 'confidence') {
+    // Confidence keeps bracket winner picks plus per-match confidence values.
+    const next = normalizeBracketPicks(picks)
+    for (const [key, value] of Object.entries(picks || {})) {
+      if (key.endsWith('-confidence')) {
+        const num = Number(value)
+        if (Number.isFinite(num) && num > 0) next[key] = num
+      }
+    }
+    return next
+  }
+  if (variant === 'upset-bounty') {
+    return normalizeBracketPicks(picks)
+  }
+  return normalizeBracketPicks(picks)
+}
+
+function currentPoolVariant () {
+  return state.selectedPoolVariant || 'classic-bracket'
+}
+
+function poolForTier (tier) {
+  return pools.find(pool => pool.tier === tier) || pools[0]
+}
+
+function setPick (key, value) {
+  state.picks[key] = value
+  if (PoolVariantHelpers) PoolVariantHelpers.mirrorActivePicks(state)
+}
+
+function deletePick (key) {
+  delete state.picks[key]
+  if (PoolVariantHelpers) PoolVariantHelpers.mirrorActivePicks(state)
+}
+
+function swapVariantPicks (newVariant) {
+  if (!PoolVariantHelpers) {
+    state.selectedPoolVariant = newVariant
+    return
+  }
+  PoolVariantHelpers.swapActivePicks(state, newVariant)
+}
+
+function resetActivePicks () {
+  state.picks = {}
+  if (state.selectedPoolVariant === 'survivor') {
+    state.survivorRound = 1
+    state.survivorUsedTeams = []
+  }
+  if (PoolVariantHelpers) PoolVariantHelpers.mirrorActivePicks(state)
 }
 
 function persist () {
@@ -954,14 +1088,14 @@ function walletLog (label, amount, kind) {
 function fundWallet (amount) {
   state.wallet.balance += amount
   walletLog('Funded wallet', amount, 'credit')
-  persist(); refreshWallet(); showToast(`Added ${fmtMoney(amount)} to your wallet`)
+  persist(); refreshWallet(); flashWalletChip(); showToast(`Added ${fmtMoney(amount)} to your wallet`)
 }
 function withdrawWallet () {
   const amount = state.wallet.balance
   if (amount <= 0) { showToast('Nothing to withdraw'); return }
   state.wallet.balance = 0
   walletLog('Withdraw to payout address', amount, 'debit')
-  persist(); refreshWallet(); showToast(`Withdrawing ${fmtMoney(amount)} to your address`)
+  persist(); refreshWallet(); flashWalletChip(); showToast(`Withdrawing ${fmtMoney(amount)} to your address`)
 }
 function collectPayouts () {
   const amount = state.wallet.pendingPayout || 0
@@ -969,19 +1103,70 @@ function collectPayouts () {
   state.wallet.balance += amount
   state.wallet.pendingPayout = 0
   walletLog('Collected pool payout', amount, 'credit')
-  persist(); refreshWallet(); showToast(`Collected ${fmtMoney(amount)} in payouts 🎉`)
+  persist(); refreshWallet(); flashWalletChip(); showToast(`Collected ${fmtMoney(amount)} in payouts 🎉`)
 }
 function debitWallet (amount, memo) {
   if (state.wallet.balance < amount) return false
   state.wallet.balance -= amount
   walletLog(memo || 'Entry', amount, 'debit')
-  persist(); refreshWallet(); return true
+  persist(); refreshWallet(); flashWalletChip(); return true
 }
 function refreshWallet () {
   renderWalletChip()
   if ($('#walletManage')) renderWalletManage()
   if (state.view === 'bracket' && $('#bracketPoolSelect')) renderPoolSelect()
 }
+
+function flashWalletChip () {
+  const chip = $('#walletChip')
+  if (!chip) return
+  chip.classList.remove('is-flash')
+  void chip.offsetWidth
+  chip.classList.add('is-flash')
+  setTimeout(() => chip.classList.remove('is-flash'), 500)
+}
+
+function creditWallet (amount, memo) {
+  state.wallet.balance += amount
+  walletLog(memo || 'Payout', amount, 'credit')
+  persist(); refreshWallet(); flashWalletChip()
+}
+
+function postSettlementReceipt (receipt) {
+  if (!receipt || typeof receipt !== 'object') return
+  const stake = (state.match && state.match.stake) || 0
+  const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
+  const selfId = receipt.you || null
+  const winner = receipt.winner === selfId ? 'you' : (receipt.winner ? 'opp' : null)
+  const youScore = selfId && receipt.scores && typeof receipt.scores[selfId] === 'number'
+    ? receipt.scores[selfId]
+    : 0
+  let oppScore = 0
+  if (receipt.scores && typeof receipt.scores === 'object') {
+    const entry = Object.entries(receipt.scores).find(([k]) => k !== selfId)
+    if (entry) oppScore = entry[1]
+  }
+  const title = miniGameTitles[receipt.gameType] || receipt.gameType || 'Mini-game'
+  if (stake > 0) {
+    if (winner === 'you') {
+      creditWallet(stake * 2, `${title} win vs ${opponent.name}`)
+      showToast(`You beat ${opponent.name} and won ${fmtMoney(stake)}`)
+    } else if (winner === null) {
+      creditWallet(stake, `${title} draw vs ${opponent.name}`)
+      showToast(`Draw — your ${fmtMoney(stake)} stake was refunded`)
+    } else {
+      showToast(`${opponent.name} wins — ${fmtMoney(stake)} stake lost`)
+    }
+  } else {
+    showToast(winner === 'you'
+      ? `You win ${youScore}–${oppScore}!`
+      : winner === null
+        ? `Draw ${youScore}–${oppScore}`
+        : `${opponent.name} wins ${oppScore}–${youScore}`)
+  }
+}
+
+if (typeof window !== 'undefined') window.postSettlementReceipt = postSettlementReceipt
 
 function renderWalletChip () {
   const chip = $('#walletChip')
@@ -1597,10 +1782,16 @@ function renderTeams () {
 }
 
 function renderPools () {
+  const grid = $('#poolGrid')
+  if (!grid) return
+  if (!pools.length) {
+    grid.innerHTML = `<div class="empty-state"><strong>${uiT('emptyPools')}</strong></div>`
+    return
+  }
   const sampleTeams = ['es', 'at', 'pt']
   const railMode = serviceModeLabel(integrationRuntime.readiness.tetherWdk)
   const railState = integrationRuntime.canUseRealMoney ? 'Live USDT' : `${railMode} locked`
-  $('#poolGrid').innerHTML = pools.map(pool => `
+  grid.innerHTML = pools.map(pool => `
     <article class="pool-card">
       <div class="pool-top">
         <div>
@@ -2166,19 +2357,27 @@ function renderPoolSelect () {
     const affordable = state.wallet.balance >= pool.tier
     const cta = entered ? '✓ Entered' : selected ? (affordable ? `Enter · $${pool.tier}` : 'Fund to enter') : 'Select'
     const badge = pool.tier >= 100 ? 'pool-elite' : pool.tier >= 50 ? 'pool-gold' : pool.tier >= 25 ? 'pool-silver' : 'pool-bronze'
+    const variantName = PoolVariantHelpers ? PoolVariantHelpers.variantDisplayName(pool.variant) : (pool.variant || 'Classic bracket')
     return `
       <button class="pool-pick${selected ? ' is-selected' : ''}${entered ? ' is-entered' : ''}" type="button" data-pool="${pool.tier}">
         <img class="pool-pick-badge" src="assets/${badge}.png" alt="">
         <span class="pool-pick-heat">${pool.heat}</span>
         <span class="pool-pick-fee">$${pool.tier}</span>
-        <span class="pool-pick-meta">${pool.prize} prize · ${pool.entrants} in</span>
+        <span class="pool-pick-meta">${variantName} · ${pool.prize} prize · ${pool.entrants} in</span>
         <span class="pool-pick-cta${entered ? ' is-entered' : affordable ? '' : ' is-locked'}">${cta}</span>
       </button>`
   }).join('')
   $$('#bracketPoolSelect .pool-pick').forEach(btn => {
     btn.addEventListener('click', () => {
       const tier = Number(btn.dataset.pool)
-      if (state.selectedTier !== tier) { state.selectedTier = tier; persist(); renderBracket(); return }
+      const pool = poolForTier(tier)
+      if (state.selectedTier !== tier) {
+        swapVariantPicks(pool.variant || 'classic-bracket')
+        state.selectedTier = tier
+        persist()
+        renderBracket()
+        return
+      }
       enterSelectedPool()
     })
   })
@@ -2186,16 +2385,19 @@ function renderPoolSelect () {
 
 function enterSelectedPool () {
   const tier = state.selectedTier
-  if (state.enteredPools[tier]) { showToast(`You're already in the $${tier} bracket`); return }
-  if (!debitWallet(tier, `$${tier} bracket entry`)) {
+  if (state.enteredPools[tier]) { showToast(`You're already in the $${tier} pool`); return }
+  if (!debitWallet(tier, `$${tier} pool entry`)) {
     showToast('Not enough balance — fund your wallet first')
     setView('onboarding')
     return
   }
-  state.enteredPools[tier] = true
+  state.enteredPools[tier] = {
+    variant: currentPoolVariant(),
+    enteredAt: new Date().toISOString()
+  }
   persist()
   renderBracket()
-  showToast(`Entered the $${tier} bracket · ${fmtMoney(tier)} escrowed via WDK`)
+  showToast(`Entered the $${tier} ${PoolVariantHelpers ? PoolVariantHelpers.variantDisplayName(currentPoolVariant()) : 'pool'} · ${fmtMoney(tier)} escrowed via WDK`)
 }
 
 function renderBracketEntrants (settlement) {
@@ -2216,7 +2418,7 @@ function renderBracketEntrants (settlement) {
           ${avatarSvg(person.username, teamById(person.teamId), true)}
           <em>${escapeHtml(person.you ? 'You' : person.username)}</em>
         </span>`).join('')
-    : '<p class="live-copy">No entries yet — be the first to enter this bracket.</p>'
+    : `<div class="empty-state"><strong>${uiT('emptyLeaderboard')}</strong></div>`
 }
 
 function settlementStackAvailable () {
@@ -2239,10 +2441,115 @@ function demoBracketEntrants () {
   ]
 }
 
+function deriveDemoOfficialResults () {
+  const winners = {}
+  for (const match of round32Matches) {
+    if (!match.score || match.score[0] == null || match.score[1] == null) continue
+    const [a, b] = match.score
+    if (a > b) winners[match.id] = match.slots[0]
+    else if (b > a) winners[match.id] = match.slots[1]
+    else if (match.status && match.status.toLowerCase().includes('pen')) {
+      // For penalty results, infer the winner from the status text if possible.
+      const text = match.status
+      const parts = text.match(/\d+/g)
+      if (parts && parts.length >= 2) {
+        const penA = Number(parts[0]); const penB = Number(parts[1])
+        if (penA > penB) winners[match.id] = match.slots[0]
+        else if (penB > penA) winners[match.id] = match.slots[1]
+      }
+    }
+  }
+  return winners
+}
+
+function demoVariantScoreboard (selectedPool) {
+  if (!PearCupCore || typeof PearCupCore.scoreVariantSubmission !== 'function') return null
+  const variant = currentPoolVariant()
+  const officialResults = deriveDemoOfficialResults()
+  const matchIds = Object.keys(officialResults)
+  if (matchIds.length === 0) return null
+  const picks = PoolVariantHelpers
+    ? PoolVariantHelpers.buildSubmissionPicks(variant, state.picks, bracketMatchIds)
+    : state.picks
+  const resultSnapshot = buildVariantResultSnapshot(variant, officialResults)
+  return PearCupCore.scoreVariantSubmission({
+    submission: {
+      userId: state.username || 'captain',
+      entryId: `demo-${selectedPool.tier}`,
+      picks
+    },
+    officialResults: variant === 'classic-bracket' || variant === 'upset-bounty' ? officialResults : null,
+    resultSnapshot,
+    variant
+  })
+}
+
+function buildVariantResultSnapshot (variant, officialResults) {
+  if (variant === 'confidence') {
+    const cardResults = {}
+    for (const [matchId, winner] of Object.entries(officialResults)) cardResults[matchId] = winner
+    return { cardResults }
+  }
+  if (variant === 'survivor') {
+    const results = {}
+    for (const [matchId, winner] of Object.entries(officialResults)) {
+      results[matchId] = { winnerEntrantId: winner }
+    }
+    return { results }
+  }
+  if (variant === 'side-quest') {
+    const results = {}
+    for (const [matchId, winner] of Object.entries(officialResults)) {
+      results[matchId] = { winnerEntrantId: winner, roundNumber: bracketRoundForMatchId(matchId) }
+    }
+    return { results }
+  }
+  if (variant === 'upset-bounty') {
+    const results = {}
+    for (const [matchId, winner] of Object.entries(officialResults)) {
+      const roundNumber = bracketRoundForMatchId(matchId)
+      const underdog = seedForTeamId(winner, teams) > 16 ? winner : null
+      results[matchId] = {
+        winnerEntrantId: winner,
+        roundNumber,
+        underdogEntrantId: underdog,
+        upsetBonus: underdog ? 2 : 0
+      }
+    }
+    return { results }
+  }
+  // classic-bracket and head-to-head-duel use the engine's classic bracket scorer.
+  const results = {}
+  for (const [matchId, winner] of Object.entries(officialResults)) {
+    results[matchId] = { winnerEntrantId: winner, roundNumber: bracketRoundForMatchId(matchId) }
+  }
+  return { results }
+}
+
+function bracketRoundForMatchId (matchId) {
+  const id = String(matchId || '').toLowerCase()
+  if (id.startsWith('r32')) return 1
+  if (id.startsWith('r16')) return 2
+  if (id.startsWith('qf')) return 3
+  if (id.startsWith('sf')) return 4
+  if (id.includes('final')) return 5
+  return 1
+}
+
+function seedForTeamId (teamId) {
+  const index = teams.findIndex(team => team && team.id === teamId)
+  return index < 0 ? null : index + 1
+}
+
 function renderBracketDemoStats (selectedPool) {
   const entered = !!state.enteredPools[selectedPool.tier]
   const remaining = remainingPicks()
   const status = integrationRuntime.readiness.settlement
+  const variantName = PoolVariantHelpers ? PoolVariantHelpers.variantDisplayName(currentPoolVariant()) : 'Classic bracket'
+  const demoScore = demoVariantScoreboard(selectedPool)
+  const scoreHtml = demoScore
+    ? `<div><span>Demo score</span><strong>${demoScore.score}${demoScore.totalMatches ? `/${demoScore.totalMatches}` : ''}</strong></div>`
+    : ''
   if ($('#bracketStats')) $('#bracketStats').innerHTML = `
     <article class="settlement-rail-card">
       <div class="rail-header"><p class="eyebrow">Pool</p><strong>${selectedPool.prize}</strong></div>
@@ -2250,7 +2557,9 @@ function renderBracketDemoStats (selectedPool) {
         <div><span>Entrants</span><strong>${selectedPool.entrants}/${selectedPool.max}</strong></div>
         <div><span>Your entry</span><strong>${entered ? 'Entered' : 'Open'}</strong></div>
         <div><span>Picks</span><strong>${remaining > 0 ? `${remaining} left` : 'Complete'}</strong></div>
+        ${scoreHtml}
       </div>
+      <p class="live-copy">Variant: ${escapeHtml(variantName)} · demo entries are ready for tonight; real payouts stay locked until the worker settlement stack is explicitly enabled.</p>
     </article>
     <article class="settlement-rail-card">
       <div class="rail-header"><p class="eyebrow">Settlement</p><strong>${status.label}</strong></div>
@@ -2259,7 +2568,7 @@ function renderBracketDemoStats (selectedPool) {
 
   if ($('#bracketEntriesPanel')) $('#bracketEntriesPanel').innerHTML = `
     <article class="settlement-rail-card entry-ledger-card">
-      <div class="rail-header"><p class="eyebrow">Entries</p><strong>Pick'em pool</strong></div>
+      <div class="rail-header"><p class="eyebrow">Entries</p><strong>${escapeHtml(variantName)} pool</strong></div>
       <div class="entry-ledger">
         ${demoBracketEntrants().map(row => {
           const team = teamById(row.entrant.teamId)
@@ -2282,6 +2591,7 @@ function renderBracketDemoStats (selectedPool) {
     <article class="settlement-rail-card">
       <div class="rail-header"><p class="eyebrow">Audit</p><strong>P2P game mode ready</strong></div>
       <div class="hash-list compact-hash">
+        <div><span>Variant</span><code>${escapeHtml(variantName)}</code></div>
         <div><span>Prize gate</span><code>${status.status}</code></div>
         <div><span>Payouts</span><code>disabled</code></div>
         <div><span>P2P modules</span><code>${document.documentElement.dataset.pearcupP2pModules || 'checking'}</code></div>
@@ -2345,11 +2655,22 @@ function renderFightCardBoard () {
   $$('#bracketBoard [data-pick]').forEach(button => {
     button.addEventListener('click', () => {
       // Each bout is independent — pick a winner, no downstream to clear.
-      state.picks[button.dataset.match] = button.dataset.pick
+      setPick(button.dataset.match, button.dataset.pick)
       persist()
       renderBracket()
     })
   })
+}
+
+function defaultSideQuestCategories () {
+  // When the fit does not supply categories, side-quest falls back to a small
+  // set of entrant-race picks over the bracket field.
+  const options = teams.slice(0, 16).map(team => ({ id: team.id, name: `${team.flag} ${team.name}` }))
+  return [
+    { id: 'sidequest-top-scorer', title: 'Top scorer race', nominees: options },
+    { id: 'sidequest-dark-horse', title: 'Dark horse', nominees: options },
+    { id: 'sidequest-finalist', title: 'Reaches the final', nominees: options }
+  ]
 }
 
 // An awards card is a set of INDEPENDENT categories; each is a "pick one
@@ -2381,7 +2702,7 @@ function renderAwardsBoard () {
   $$('#bracketBoard [data-pick]').forEach(button => {
     button.addEventListener('click', () => {
       // Each category is independent — pick one nominee.
-      state.picks[button.dataset.match] = button.dataset.pick
+      setPick(button.dataset.match, button.dataset.pick)
       persist()
       renderBracket()
     })
@@ -2394,6 +2715,7 @@ function groupPickKey (groupId, place) { return `${groupId}-${place}` }
 
 // Deterministic seeding: group winner/runner-up auto-advance into the knockout
 // bracket slots so group stage picks feed the bracket without extra UI.
+// Supports up to 8 groups (A–H) feeding a Round of 16 knockout tree.
 const GROUP_ADVANCE_MAP = [
   { groupId: 'grp-A', place: '1', matchId: 'r32-1', slot: 0 },
   { groupId: 'grp-A', place: '2', matchId: 'r32-2', slot: 1 },
@@ -2402,7 +2724,15 @@ const GROUP_ADVANCE_MAP = [
   { groupId: 'grp-C', place: '1', matchId: 'r32-3', slot: 0 },
   { groupId: 'grp-C', place: '2', matchId: 'r32-4', slot: 1 },
   { groupId: 'grp-D', place: '1', matchId: 'r32-4', slot: 0 },
-  { groupId: 'grp-D', place: '2', matchId: 'r32-3', slot: 1 }
+  { groupId: 'grp-D', place: '2', matchId: 'r32-3', slot: 1 },
+  { groupId: 'grp-E', place: '1', matchId: 'r32-5', slot: 0 },
+  { groupId: 'grp-E', place: '2', matchId: 'r32-6', slot: 1 },
+  { groupId: 'grp-F', place: '1', matchId: 'r32-6', slot: 0 },
+  { groupId: 'grp-F', place: '2', matchId: 'r32-5', slot: 1 },
+  { groupId: 'grp-G', place: '1', matchId: 'r32-7', slot: 0 },
+  { groupId: 'grp-G', place: '2', matchId: 'r32-8', slot: 1 },
+  { groupId: 'grp-H', place: '1', matchId: 'r32-8', slot: 0 },
+  { groupId: 'grp-H', place: '2', matchId: 'r32-7', slot: 1 }
 ]
 
 function bracketSlotKey (matchId, slot) { return `${matchId}-slot-${slot}` }
@@ -2414,13 +2744,67 @@ function advancementForGroupPlace (groupId, place) {
 function clearGroupAdvancement (groupId, place) {
   const entry = advancementForGroupPlace(groupId, place)
   if (!entry) return
-  delete state.picks[bracketSlotKey(entry.matchId, entry.slot)]
+  deletePick(bracketSlotKey(entry.matchId, entry.slot))
 }
 
 function applyGroupAdvancement (groupId, place, teamId) {
   const entry = advancementForGroupPlace(groupId, place)
   if (!entry) return
-  state.picks[bracketSlotKey(entry.matchId, entry.slot)] = teamId
+  setPick(bracketSlotKey(entry.matchId, entry.slot), teamId)
+}
+
+function groupAdvancementForSlot (matchId, slot) {
+  return GROUP_ADVANCE_MAP.find(entry => entry.matchId === matchId && entry.slot === slot) || null
+}
+
+function groupSlotPlaceholder (matchId, slot) {
+  const entry = groupAdvancementForSlot(matchId, slot)
+  if (!entry) return 'TBD'
+  const placeLabel = entry.place === '1' ? '1st' : '2nd'
+  const groupLetter = entry.groupId.replace('grp-', '')
+  return `${placeLabel} · Grp ${groupLetter}`
+}
+
+function renderGroupKnockoutSlot (matchId, slot) {
+  const teamId = state.picks[bracketSlotKey(matchId, slot)]
+  const team = teamId ? teamById(teamId) : null
+  const picked = team && getPick(matchId) === team.id
+  if (!team) {
+    return `
+      <button class="team-row" type="button" disabled>
+        <span class="team-flag" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6Z" fill="#717982"/></svg>
+        </span>
+        <span class="team-title">${escapeHtml(groupSlotPlaceholder(matchId, slot))}</span>
+        <span class="score"></span>
+      </button>`
+  }
+  return `
+    <button class="team-row ${picked ? 'is-picked' : ''}" type="button" data-match="${escapeHtml(matchId)}" data-pick="${escapeHtml(team.id)}" aria-pressed="${picked}">
+      <span class="team-flag">${team.flag}</span>
+      <span class="team-title">${escapeHtml(team.name)}</span>
+      <span class="score"></span>
+    </button>`
+}
+
+function renderGroupKnockoutBracket () {
+  const knockoutMatches = round32Matches.filter(match => match.id && match.id.startsWith('r32-'))
+  if (!knockoutMatches.length) return ''
+  return `
+    <div class="group-knockout-header">Knockout bracket</div>
+    <div class="group-knockout-grid">
+      ${knockoutMatches.map(match => `
+        <article class="match-card knockout-match" data-match-card="${escapeHtml(match.id)}">
+          <div class="match-meta">
+            <span>${escapeHtml(match.time || 'Round of 16')}</span>
+            <span class="match-status">${escapeHtml(match.status || 'Open')}</span>
+          </div>
+          ${renderGroupKnockoutSlot(match.id, 0)}
+          ${renderGroupKnockoutSlot(match.id, 1)}
+        </article>
+      `).join('')}
+    </div>
+  `
 }
 
 function renderGroupsBoard () {
@@ -2428,7 +2812,7 @@ function renderGroupsBoard () {
   if (!board) return
   board.classList.remove('is-fight-card', 'is-awards-card')
   board.classList.add('is-groups')
-  board.innerHTML = groupStages.map(group => {
+  const groupCards = groupStages.map(group => {
     const places = [['1', '1st · Winner'], ['2', '2nd · Runner-up']].map(([place, label]) => {
       const key = groupPickKey(group.id, place)
       const options = (group.teams || []).map(teamId => {
@@ -2448,13 +2832,23 @@ function renderGroupsBoard () {
       </article>`
   }).join('')
 
-  $$('#bracketBoard [data-pick]').forEach(button => {
+  board.innerHTML = `<div class="groups-grid">${groupCards}</div>${renderGroupKnockoutBracket()}`
+
+  $$('#bracketBoard .group-card [data-pick]').forEach(button => {
     button.addEventListener('click', () => {
       const groupId = button.dataset.match.split('-').slice(0, 2).join('-')
       const place = button.dataset.match.split('-').slice(2).join('-')
       clearGroupAdvancement(groupId, place)
-      state.picks[button.dataset.match] = button.dataset.pick
+      setPick(button.dataset.match, button.dataset.pick)
       applyGroupAdvancement(groupId, place, button.dataset.pick)
+      persist()
+      renderBracket()
+    })
+  })
+
+  $$('#bracketBoard .knockout-match [data-pick]').forEach(button => {
+    button.addEventListener('click', () => {
+      setPick(button.dataset.match, button.dataset.pick)
       persist()
       renderBracket()
     })
@@ -2465,6 +2859,90 @@ function renderBracketBoard () {
   if (templateKind === 'fight-card') return renderFightCardBoard()
   if (templateKind === 'awards-card') return renderAwardsBoard()
   if (templateKind === 'group-plus-knockout' && groupStages.length) return renderGroupsBoard()
+  if (templateKind === 'round-robin') return renderRoundRobinBoard()
+  if (templateKind === 'series-playoff') return renderSeriesPlayoffBoard()
+  if (templateKind === 'creator-custom') return renderCreatorCustomBoard()
+  const variant = currentPoolVariant()
+  if (variant === 'side-quest') return renderSideQuestBoard()
+  if (variant === 'survivor') return renderSurvivorBoard()
+  if (variant === 'confidence') return renderConfidenceBoard()
+  renderClassicOrUpsetBoard(variant === 'upset-bounty')
+}
+
+// Round-robin template kind: a simple standings table where each team is a row.
+function renderRoundRobinBoard () {
+  const board = $('#bracketBoard')
+  if (!board) return
+  board.classList.remove('is-fight-card', 'is-awards-card', 'is-groups')
+  board.classList.add('is-round-robin')
+  board.innerHTML = `
+    <table class="round-robin-table">
+      <thead>
+        <tr>
+          <th>Team</th>
+          <th>P</th>
+          <th>W</th>
+          <th>D</th>
+          <th>L</th>
+          <th>Pts</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${teams.map((team, index) => `
+          <tr>
+            <td><span class="team-flag">${team.flag}</span> ${escapeHtml(team.name)}</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+            <td>0</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `
+}
+
+// Series-playoff template kind: best-of-7 series cards. Reuse the bracket data
+// structure but render each matchup as an independent series pick.
+function renderSeriesPlayoffBoard () {
+  const board = $('#bracketBoard')
+  if (!board) return
+  board.classList.remove('is-fight-card', 'is-awards-card', 'is-groups', 'is-round-robin')
+  board.innerHTML = `
+    <div class="series-playoff-grid">
+      ${round32Matches.map(raw => {
+        const match = makeMatch(raw.id, raw.time, raw.status, raw.slots, raw.score, raw.sample)
+        return `
+          <article class="match-card series-match" data-match-card="${match.id}">
+            <div class="match-meta">
+              <span>${escapeHtml(match.time || 'Series')}</span>
+              <span class="match-status">${escapeHtml(match.status || 'Open')}</span>
+            </div>
+            ${renderTeamRow(match, match.slots[0], 0)}
+            ${renderTeamRow(match, match.slots[1], 1)}
+          </article>
+        `
+      }).join('')}
+    </div>
+  `
+  $$('#bracketBoard [data-pick]').forEach(button => {
+    button.addEventListener('click', () => {
+      setPick(button.dataset.match, button.dataset.pick)
+      persist()
+      renderBracket()
+    })
+  })
+}
+
+// Creator-custom template kind: host-entered results; the shell surface is the
+// same bracket picker, but the result authority is the host instead of a feed.
+function renderCreatorCustomBoard () {
+  const variant = currentPoolVariant()
+  renderClassicOrUpsetBoard(variant === 'upset-bounty')
+}
+
+function renderClassicOrUpsetBoard (showUpsetBadges) {
   const board = $('#bracketBoard')
   if (board) board.classList.remove('is-fight-card', 'is-awards-card', 'is-groups')
   const placements = {
@@ -2483,10 +2961,11 @@ function renderBracketBoard () {
     ${round.matches.map((match, index) => {
       const place = placements[round.key](index)
       return `
-        <article class="match-card bracket-match" data-round="${round.key}" data-match-card="${match.id}" style="grid-column:${place.column};grid-row:${place.row} / span ${place.span}">
+        <article class="match-card bracket-match${showUpsetBadges ? ' is-upset-bounty' : ''}" data-round="${round.key}" data-match-card="${match.id}" style="grid-column:${place.column};grid-row:${place.row} / span ${place.span}">
           <div class="match-meta">
             <span>${match.time}</span>
             <span class="match-status">${match.status}</span>
+            ${showUpsetBadges ? `<span class="upset-badge" title="Seed gap bonus">${upsetBadgeForMatch(match)}</span>` : ''}
           </div>
           ${renderTeamRow(match, match.slots[0], 0)}
           ${renderTeamRow(match, match.slots[1], 1)}
@@ -2498,7 +2977,7 @@ function renderBracketBoard () {
 
   $$('#bracketBoard [data-pick]').forEach(button => {
     button.addEventListener('click', () => {
-      state.picks[button.dataset.match] = button.dataset.pick
+      setPick(button.dataset.match, button.dataset.pick)
       clearDownstream(button.dataset.match)
       persist()
       renderBracket()
@@ -2507,16 +2986,230 @@ function renderBracketBoard () {
   scheduleBracketConnectors()
 }
 
+function upsetBadgeForMatch (match) {
+  const seedA = seedForTeamId(match.slots[0])
+  const seedB = seedForTeamId(match.slots[1])
+  if (seedA == null || seedB == null) return ''
+  const gap = Math.abs(seedA - seedB)
+  return gap >= 8 ? `+${gap}` : ''
+}
+
+function renderConfidenceBoard () {
+  const board = $('#bracketBoard')
+  if (board) board.classList.remove('is-fight-card', 'is-awards-card', 'is-groups')
+  const rounds = buildRounds()
+  const maxConfidence = bracketMatchIds.length
+  const usedConfidence = new Set()
+  for (const id of bracketMatchIds) {
+    const c = state.picks[`${id}-confidence`]
+    if (c) usedConfidence.add(Number(c))
+  }
+
+  $('#bracketBoard').innerHTML = `
+    <div class="confidence-instructions">
+      <p class="live-copy">Assign each winner a unique confidence 1–${maxConfidence}. Higher = more sure.</p>
+      ${confidenceValidationErrors().map(e => `<p class="validation-error">${escapeHtml(e)}</p>`).join('')}
+    </div>
+    ${rounds.map((round, roundIndex) => `
+      <section class="confidence-round">
+        <p class="round-title">${round.label}</p>
+        <div class="confidence-round-matches">
+          ${round.matches.map(match => `
+            <article class="match-card bracket-match" data-match-card="${match.id}">
+              <div class="match-meta">
+                <span>${match.time}</span>
+                <span class="match-status">${match.status}</span>
+              </div>
+              ${renderTeamRow(match, match.slots[0], 0)}
+              ${renderTeamRow(match, match.slots[1], 1)}
+              <div class="confidence-row">
+                <label for="conf-${match.id}">Confidence</label>
+                <select id="conf-${match.id}" class="confidence-select" data-confidence="${match.id}">
+                  <option value="">—</option>
+                  ${Array.from({ length: maxConfidence }, (_, i) => {
+                    const n = i + 1
+                    const selected = Number(state.picks[`${match.id}-confidence`]) === n
+                    const disabled = !selected && usedConfidence.has(n)
+                    return `<option value="${n}"${selected ? ' selected' : ''}${disabled ? ' disabled' : ''}>${n}</option>`
+                  }).join('')}
+                </select>
+              </div>
+            </article>
+          `).join('')}
+        </div>
+      </section>
+    `).join('')}
+  `
+
+  $$('#bracketBoard [data-pick]').forEach(button => {
+    button.addEventListener('click', () => {
+      setPick(button.dataset.match, button.dataset.pick)
+      clearDownstream(button.dataset.match)
+      persist()
+      renderBracket()
+    })
+  })
+  $$('#bracketBoard .confidence-select').forEach(select => {
+    select.addEventListener('change', () => {
+      const matchId = select.dataset.confidence
+      const value = select.value
+      if (value) setPick(`${matchId}-confidence`, Number(value))
+      else deletePick(`${matchId}-confidence`)
+      persist()
+      renderBracket()
+    })
+  })
+}
+
+function confidenceValidationErrors () {
+  const picks = []
+  for (const id of bracketMatchIds) {
+    const outcome = state.picks[id]
+    const confidence = state.picks[`${id}-confidence`]
+    if (outcome && confidence) picks.push({ confidence: Number(confidence) })
+  }
+  if (!PoolVariantHelpers) return []
+  const validation = PoolVariantHelpers.validateConfidencePicks(picks)
+  return validation.errors
+}
+
+function renderSurvivorBoard () {
+  const board = $('#bracketBoard')
+  if (board) board.classList.remove('is-fight-card', 'is-awards-card', 'is-groups')
+  const round = state.survivorRound || 1
+  const roundName = PoolVariantHelpers ? PoolVariantHelpers.survivorRoundName(round) : `Round ${round}`
+  const rounds = buildRounds()
+  const roundKeyMap = { 1: 'round32', 2: 'round16', 3: 'quarter', 4: 'semi', 5: 'final' }
+  const currentRound = rounds.find(r => r.key === roundKeyMap[round]) || rounds[0]
+  const used = new Set(state.survivorUsedTeams || [])
+  const alreadyPicked = state.picks[`survivor-r${round}`]
+
+  $('#bracketBoard').innerHTML = `
+    <div class="survivor-instructions">
+      <p class="live-copy">Survivor: pick exactly one team for ${roundName}. You cannot reuse a team.</p>
+      ${alreadyPicked ? `<p class="live-copy">Locked ${roundName}: ${teamById(alreadyPicked).flag} ${escapeHtml(teamById(alreadyPicked).name)} · <button type="button" class="text-btn" id="advanceSurvivorRound">Advance</button></p>` : ''}
+    </div>
+    <section class="survivor-round">
+      <p class="round-title">${roundName}</p>
+      <div class="survivor-round-matches">
+        ${currentRound.matches.map(match => `
+          <article class="match-card bracket-match" data-match-card="${match.id}">
+            <div class="match-meta">
+              <span>${match.time}</span>
+              <span class="match-status">${match.status}</span>
+            </div>
+            ${renderSurvivorTeamRow(match, match.slots[0], 0, used, alreadyPicked)}
+            ${renderSurvivorTeamRow(match, match.slots[1], 1, used, alreadyPicked)}
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `
+
+  $$('#bracketBoard [data-survivor-pick]').forEach(button => {
+    button.addEventListener('click', () => {
+      if (state.picks[`survivor-r${round}`]) return
+      const teamId = button.dataset.survivorPick
+      setPick(`survivor-r${round}`, teamId)
+      if (!state.survivorUsedTeams) state.survivorUsedTeams = []
+      state.survivorUsedTeams.push(teamId)
+      if (round < 5) state.survivorRound = round + 1
+      persist()
+      renderBracket()
+    })
+  })
+  const advanceBtn = $('#advanceSurvivorRound')
+  if (advanceBtn) advanceBtn.addEventListener('click', () => {
+    if (round < 5) state.survivorRound = round + 1
+    persist()
+    renderBracket()
+  })
+}
+
+function renderSurvivorTeamRow (match, teamId, index, used, alreadyPicked) {
+  const team = teamId ? teamById(teamId) : null
+  if (!team) {
+    return `
+      <button class="team-row" type="button" disabled>
+        <span class="team-flag" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6Z" fill="#717982"/></svg>
+        </span>
+        <span class="team-title">A determ.</span>
+        <span class="score"></span>
+      </button>
+    `
+  }
+  const disabled = used.has(team.id) || alreadyPicked
+  return `
+    <button class="team-row ${used.has(team.id) ? 'is-used' : ''}" type="button" data-survivor-pick="${team.id}" ${disabled ? 'disabled' : ''}>
+      <span class="team-flag">${team.flag}</span>
+      <span class="team-title">${escapeHtml(team.name)}</span>
+      <span class="pick-side">
+        ${used.has(team.id) ? '<span class="pick-chip">Used</span>' : ''}
+        <span class="score">${match.score[index] === null ? '' : match.score[index]}</span>
+      </span>
+    </button>
+  `
+}
+
+function renderSideQuestBoard () {
+  const board = $('#bracketBoard')
+  if (!board) return
+  board.classList.remove('is-fight-card', 'is-groups')
+  board.classList.add('is-awards-card')
+  const categories = awardsCategories.length ? awardsCategories : defaultSideQuestCategories()
+  board.innerHTML = categories.map(category => `
+    <article class="awards-category match-card" data-match-card="${escapeHtml(category.id)}">
+      <div class="match-meta">
+        <span class="fight-bout-slot">${escapeHtml(category.title)}</span>
+        <span class="match-status">${getPick(category.id) ? 'Picked' : 'Open'}</span>
+      </div>
+      <div class="awards-nominees">
+        ${(category.nominees || []).map(nominee => {
+          const picked = getPick(category.id) === nominee.id
+          return `
+            <button class="nominee-row team-row${picked ? ' is-picked' : ''}" type="button" data-match="${escapeHtml(category.id)}" data-pick="${escapeHtml(nominee.id)}" aria-pressed="${picked}">
+              <span class="nominee-name">${escapeHtml(nominee.name)}</span>
+              ${nominee.detail ? `<span class="nominee-detail">${escapeHtml(nominee.detail)}</span>` : ''}
+            </button>`
+        }).join('')}
+      </div>
+    </article>
+  `).join('')
+
+  $$('#bracketBoard [data-pick]').forEach(button => {
+    button.addEventListener('click', () => {
+      setPick(button.dataset.match, button.dataset.pick)
+      persist()
+      renderBracket()
+    })
+  })
+}
+
 async function renderBracket () {
   const renderId = ++bracketRenderSequence
   const selectedPool = pools.find(pool => pool.tier === state.selectedTier) || pools[1]
   const wdk = integrationRuntime.readiness.tetherWdk
   const entered = !!state.enteredPools[selectedPool.tier]
-  $('#bracketTierLabel').textContent = `$${selectedPool.tier} pool${entered ? ' · entered' : ''}`
+  const variantName = PoolVariantHelpers ? PoolVariantHelpers.variantDisplayName(currentPoolVariant()) : 'Classic bracket'
+  $('#bracketTierLabel').textContent = `$${selectedPool.tier} ${variantName}${entered ? ' · entered' : ''}`
   const bracketTitleEl = $('#bracketTitle')
   if (bracketTitleEl && templateKind === 'fight-card') bracketTitleEl.textContent = 'Pick the fight card'
   if (bracketTitleEl && templateKind === 'awards-card') bracketTitleEl.textContent = 'Make your award picks'
   if (bracketTitleEl && templateKind === 'group-plus-knockout' && groupStages.length) bracketTitleEl.textContent = 'Predict the group stage'
+  if (bracketTitleEl && templateKind === 'round-robin') bracketTitleEl.textContent = 'Predict the standings'
+  if (bracketTitleEl && templateKind === 'series-playoff') bracketTitleEl.textContent = 'Pick the series'
+  if (bracketTitleEl && templateKind === 'creator-custom') bracketTitleEl.textContent = 'Host bracket'
+  if (bracketTitleEl && (templateKind === 'single-elimination' || templateKind === 'creator-custom' || templateKind === 'series-playoff')) {
+    const titles = {
+      'classic-bracket': 'Fill your bracket',
+      'confidence': 'Confidence card',
+      'survivor': 'Survivor picks',
+      'upset-bounty': 'Upset bounty bracket',
+      'side-quest': 'Side quest picks'
+    }
+    bracketTitleEl.textContent = titles[currentPoolVariant()] || 'Fill your bracket'
+  }
   renderPoolSelect()
   const remaining = remainingPicks()
   const pr = $('#picksRemaining')
@@ -2684,7 +3377,7 @@ function clearDownstream (matchId) {
       .filter(link => link.from.includes(id))
       .forEach(link => queue.push(link.to))
   }
-  for (const id of seen) delete state.picks[id]
+  for (const id of seen) deletePick(id)
 }
 
 function watchParticipants () {
@@ -3362,8 +4055,8 @@ function renderWatch () {
       </div>
       <div class="watch-challenge-list" id="watchChallengeList">
         ${fitMiniGames.map(gt => `
-          <button class="secondary-button compact-action watch-challenge-game" data-game-type="${escapeHtml(gt)}" type="button">
-            ${escapeHtml(miniGameTitles[gt] || gt)}
+          <button class="secondary-button compact-action watch-challenge-game ${isPlayableMiniGame(gt) ? '' : 'is-coming-soon'}" data-game-type="${escapeHtml(gt)}" type="button">
+            ${escapeHtml(miniGameTitles[gt] || gt)}${isPlayableMiniGame(gt) ? '' : ' · soon'}
           </button>`).join('')}
       </div>
     </div>`
@@ -3386,12 +4079,12 @@ function renderWatch () {
   $$('#watchChallengeList .watch-challenge-game').forEach(button => {
     button.addEventListener('click', () => {
       const gt = button.dataset.gameType
-      if (gt !== 'penalty-clash') {
+      if (!isPlayableMiniGame(gt)) {
         showToast(`${miniGameTitles[gt] || gt} is coming soon — picking a winner with commit/reveal is next.`)
         return
       }
       selectedMiniGame = gt
-      if (window.PearCupPeerMatch) window.PearCupPeerMatch.host(undefined, undefined, selectedMiniGame)
+      hostPeerGame(selectedMiniGame)
       setView('games')
     })
   })
@@ -3406,7 +4099,7 @@ function renderWatch () {
       <p>${escapeHtml(message.text)}</p>
     </div>
   `).join('')
-    : '<p class="chat-empty">Quiet in here — say something to the room! 💬</p>'
+    : `<div class="empty-state"><strong>${uiT('emptyChat')}</strong></div>`
 
   $('#voiceToggle').classList.toggle('is-live', state.voice)
 
@@ -3683,9 +4376,22 @@ function overBarY () {
   return 4
 }
 
+// Tennis serve zones for the Ace Serve Duel mini-game.
+function aceZonePosition (zone) {
+  if (zone === 'wide-left') return { x: 25, y: 30 }
+  if (zone === 'body') return { x: 50, y: 30 }
+  if (zone === 'wide-right') return { x: 75, y: 30 }
+  if (zone === 'fault') return { x: 50, y: 92 }
+  return zonePosition(zone)
+}
+
 // ---------------- Interactive Penalty Shootout ----------------
 const SHOOTOUT_TOTAL = 5
 const AIM_ZONES = ['left-high', 'center-high', 'right-high', 'left-low', 'center-low', 'right-low']
+const BB_ZONES = ['left', 'center', 'right']
+const AS_ZONES = ['fault', 'wide-left', 'body', 'wide-right']
+const HR_PITCH_TYPES = ['fastball', 'curve', 'slider']
+const HR_TIMINGS = ['good', 'late', 'early']
 const KEEPER_ROSTER = [
   { name: 'vera', team: 'no' },
   { name: 'milo', team: 'mx' },
@@ -3887,6 +4593,14 @@ function ensureShootoutDom () {
     actions.insertBefore(lobby, actions.firstChild)
   }
   const grid = $('#aimGrid')
+  const powerDock = $('#powerDock')
+  if (grid) grid.hidden = false
+  if (powerDock) powerDock.hidden = false
+  if (stage) {
+    const oldPanel = stage.querySelector('.fk-panel')
+    if (oldPanel) oldPanel.remove()
+  }
+  if (actions) actions.hidden = false
   if (grid && !grid.dataset.bound) {
     grid.dataset.bound = '1'
     grid.addEventListener('click', event => {
@@ -4142,7 +4856,15 @@ function endShootout () {
 }
 
 function renderGameLeaderboard () {
-  $('#gameLeaderboard').innerHTML = `
+  const el = $('#gameLeaderboard')
+  if (!el) return
+  if (!gameLeaderboardRows.length) {
+    el.innerHTML = `
+      <div class="rail-header"><p class="eyebrow">Games</p><strong>${integrationRuntime.readiness.settlement.realMoneyEnabled ? 'Trusted results' : 'Demo results'}</strong></div>
+      <div class="empty-state"><strong>${uiT('emptyLeaderboard')}</strong></div>`
+    return
+  }
+  el.innerHTML = `
     <div class="rail-header">
       <p class="eyebrow">Games</p>
       <strong>${integrationRuntime.readiness.settlement.realMoneyEnabled ? 'Trusted results' : 'Demo results'}</strong>
@@ -4199,10 +4921,96 @@ function pendingFriendJoinCode () {
   }
 }
 
+function pendingFriendJoinGameType () {
+  try {
+    return (new URLSearchParams(location.search).get('game') || '').trim().toLowerCase()
+  } catch (e) {
+    return ''
+  }
+}
+
+function reactionChallengeActiveCode () {
+  const rc = window.ReactionChallenge
+  if (!rc) return null
+  const snap = rc._testHelpers && rc._testHelpers.getState ? rc._testHelpers.getState() : null
+  return snap && snap.active ? snap.code : null
+}
+
+function isLiveMarketGame (gameType) {
+  return gameType === 'next-event' || gameType === 'scoreline-lock' || gameType === 'watch-party-streak'
+}
+
+function hostPeerGame (gameType) {
+  if (gameType === 'reaction-challenge' && window.ReactionChallenge) {
+    const code = window.ReactionChallenge.host(undefined, { name: state.username || 'captain' })
+    startReactionChallengePeer(code)
+    return
+  }
+  if (isLiveMarketGame(gameType) && window.LiveMarketGame) {
+    const code = window.LiveMarketGame.host(undefined, { gameType, name: state.username || 'captain' })
+    startLiveMarketPeer(code, gameType)
+    return
+  }
+  if (window.PearCupPeerMatch && typeof window.PearCupPeerMatch.host === 'function') {
+    window.PearCupPeerMatch.host(undefined, undefined, gameType)
+  }
+}
+
+function promptJoinPeerGame (gameType) {
+  if (gameType === 'reaction-challenge' && window.ReactionChallenge) {
+    const raw = window.prompt('Enter the room code your friend shared:') || ''
+    const code = raw.trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32)
+    if (code) {
+      selectedMiniGame = 'reaction-challenge'
+      startReactionChallengePeerJoin(code)
+    }
+    return
+  }
+  if (isLiveMarketGame(gameType) && window.LiveMarketGame) {
+    const raw = window.prompt('Enter the room code your friend shared:') || ''
+    const code = raw.trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32)
+    if (code) {
+      selectedMiniGame = gameType
+      startLiveMarketPeerJoin(code, gameType)
+    }
+    return
+  }
+  if (window.PearCupPeerMatch && typeof window.PearCupPeerMatch.promptJoin === 'function') {
+    window.PearCupPeerMatch.promptJoin(gameType)
+  }
+}
+
 function tryJoinFriendInvite (attempt = 0) {
   const code = pendingFriendJoinCode()
+  const gameType = pendingFriendJoinGameType() || selectedMiniGame
   if (!code) return false
   document.documentElement.dataset.pearcupPendingJoin = code
+  if (gameType === 'reaction-challenge' && window.ReactionChallenge) {
+    if (reactionChallengeActiveCode() === code) {
+      document.documentElement.dataset.pearcupJoinState = 'started'
+      setView('games')
+      return true
+    }
+    selectedMiniGame = 'reaction-challenge'
+    document.documentElement.dataset.pearcupJoinState = 'joining'
+    setView('games')
+    startReactionChallengePeerJoin(code)
+    return true
+  }
+  if (isLiveMarketGame(gameType) && window.LiveMarketGame) {
+    const lm = window.LiveMarketGame
+    const snap = lm._testHelpers && lm._testHelpers.getState ? lm._testHelpers.getState() : null
+    if (snap && snap.active && snap.code === code) {
+      document.documentElement.dataset.pearcupJoinState = snap.started ? 'started' : 'joining'
+      setView('games')
+      return true
+    }
+    selectedMiniGame = gameType
+    document.documentElement.dataset.pearcupJoinState = 'joining'
+    setView('games')
+    startLiveMarketPeerJoin(code, gameType)
+    return true
+  }
   const peerMatch = window.PearCupPeerMatch
   const matchState = peerMatch && peerMatch._state
   if (matchState && matchState.active && matchState.code === code) {
@@ -4213,7 +5021,7 @@ function tryJoinFriendInvite (attempt = 0) {
   if (peerMatch && typeof peerMatch.join === 'function') {
     document.documentElement.dataset.pearcupJoinState = 'joining'
     setView('games')
-    peerMatch.join(code, selectedMiniGame)
+    peerMatch.join(code, gameType)
     return true
   }
   if (attempt < 6) {
@@ -4241,6 +5049,21 @@ function completeProfileOnboarding () {
   showToast(`${state.username} joined as ${teamById(state.team).name}`)
 }
 
+function miniGameDescription (gameType) {
+  if (gameType === 'penalty-clash') return 'Best-of-five Penalty Clash — you take 5 penalties and keep their 5. Outscore them for the win.'
+  if (gameType === 'prediction-duel') return 'Predict the outcome — commit your pick, then reveal after your opponent locks in.'
+  if (gameType === 'trivia-duel') return 'Answer fast — correct picks score, ties broken by speed.'
+  if (gameType === 'free-kick-duel') return 'Bend it around the wall — out-think the keeper from set pieces.'
+  if (gameType === 'buzzer-beater-duel') return 'Beat the buzzer — shoot from downtown and read your defender.'
+  if (gameType === 'ace-serve-duel') return 'Serve for aces — place it, power it, spin it past the returner.'
+  if (gameType === 'home-run-derby') return 'Read the pitch, time your swing, and launch it — 3 cuts to out-slug your rival.'
+  if (gameType === 'reaction-challenge') return 'Fastest tap wins — wait for the moment, then beat your opponent to the buzzer.'
+  if (gameType === 'next-event') return 'Predict the next live event before it happens — closest call wins.'
+  if (gameType === 'scoreline-lock') return 'Lock the final scoreline before kickoff. Exact beats result-class.'
+  if (gameType === 'watch-party-streak') return 'Yes-or-no live prompts — keep the streak alive the longest.'
+  return `${escapeHtml(miniGameTitles[gameType] || gameType)} is coming soon.`
+}
+
 function renderGameLobby () {
   const el = $('#gameLobby')
   if (!el) return
@@ -4255,11 +5078,13 @@ function renderGameLobby () {
   if (audit) audit.hidden = false
   const title = selectedMiniGameTitle()
   const gameTypeLabel = escapeHtml(title)
+  const playable = playableMiniGames()
+  if (!playable.includes(selectedMiniGame)) selectedMiniGame = playable[0] || 'penalty-clash'
   el.innerHTML = `
     <div class="mini-game-tabs" id="miniGameTabs" style="display:flex;gap:8px;overflow:auto;padding:4px 0 12px;">
       ${fitMiniGames.map((gt, i) => `
-        <button class="${gt === selectedMiniGame ? 'primary-button' : 'secondary-button'} compact-action mini-game-tab" data-game-type="${escapeHtml(gt)}" type="button">
-          ${escapeHtml(miniGameTitles[gt] || gt)}
+        <button class="${gt === selectedMiniGame ? 'primary-button' : 'secondary-button'} compact-action mini-game-tab ${isPlayableMiniGame(gt) ? '' : 'is-coming-soon'}" data-game-type="${escapeHtml(gt)}" type="button" ${isPlayableMiniGame(gt) ? '' : 'disabled'}>
+          ${escapeHtml(miniGameTitles[gt] || gt)}${isPlayableMiniGame(gt) ? '' : ' · soon'}
         </button>`).join('')}
     </div>
 
@@ -4268,7 +5093,7 @@ function renderGameLobby () {
       <div class="lobby-hero-copy">
         <p class="eyebrow">${gameTypeLabel} · Lobby</p>
         <h2 class="lobby-title">Find a match</h2>
-        <p class="lobby-sub">Best-of-five ${gameTypeLabel} — you take 5 penalties and keep their 5. Outscore them for the win.</p>
+        <p class="lobby-sub">${miniGameDescription(selectedMiniGame)}</p>
       </div>
       <button class="lobby-quick" id="quickMatchBtn" type="button">⚡ Practice vs AI</button>
     </div>
@@ -4310,9 +5135,9 @@ function renderGameLobby () {
     renderGameLobby()
   }))
   const invite = $('#inviteFriendBtn')
-  if (invite) invite.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.host(undefined, undefined, selectedMiniGame))
+  if (invite) invite.addEventListener('click', () => hostPeerGame(selectedMiniGame))
   const joinFriend = $('#joinFriendBtn')
-  if (joinFriend) joinFriend.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.promptJoin(selectedMiniGame))
+  if (joinFriend) joinFriend.addEventListener('click', () => promptJoinPeerGame(selectedMiniGame))
   renderPeerBackendBadge()
   // Live matchmaking: announce on the lobby topic + render online peers.
   if (window.PearCupLobby) { window.PearCupLobby.join(); window.PearCupLobby.renderList() }
@@ -4350,14 +5175,128 @@ function showStakeConfirm (player) {
 }
 
 function startMatch (player, joined) {
-  if (selectedMiniGame !== 'penalty-clash') {
+  if (!isPlayableMiniGame(selectedMiniGame)) {
     showToast(`${selectedMiniGameTitle()} is coming soon — picking a winner with commit/reveal is next.`)
     return
   }
   const stake = player.stake || 0
-  if (stake > 0 && !debitWallet(stake, `Penalty match stake vs ${player.name}`)) {
+  if (stake > 0 && !debitWallet(stake, `${selectedMiniGameTitle()} stake vs ${player.name}`)) {
     showToast(`Need ${fmtMoney(stake)} to stake — fund your wallet`)
     setView('onboarding')
+    return
+  }
+  if (selectedMiniGame === 'prediction-duel') {
+    state.match = { opponent: { name: player.name, team: player.team, record: player.record }, stake, gameType: 'prediction-duel' }
+    state.predictionDuel = {
+      round: 0,
+      score: { you: 0, opp: 0 },
+      choices: { you: null, opp: null },
+      correct: null,
+      revealed: false,
+      over: false
+    }
+    persist()
+    showToast(`${joined ? 'Opponent found' : 'Matched'} · ${player.name} — predict the outcome`)
+    renderGames()
+    return
+  }
+  if (selectedMiniGame === 'trivia-duel') {
+    state.match = { opponent: { name: player.name, team: player.team, record: player.record }, stake, gameType: 'trivia-duel' }
+    state.triviaDuel = {
+      round: 0,
+      score: { you: 0, opp: 0 },
+      choices: { you: null, opp: null },
+      correct: null,
+      revealed: false,
+      over: false
+    }
+    persist()
+    showToast(`${joined ? 'Opponent found' : 'Matched'} · ${player.name} — answer fast!`)
+    renderGames()
+    return
+  }
+  if (selectedMiniGame === 'free-kick-duel') {
+    state.match = { opponent: { name: player.name, team: player.team, record: player.record }, stake, gameType: 'free-kick-duel' }
+    state.freeKickDuel = {
+      round: 0,
+      score: { you: 0, opp: 0 },
+      mode: 'shoot',
+      busy: false,
+      phase: 'aim',
+      kickCount: 0,
+      lastResult: null,
+      over: false
+    }
+    persist()
+    showToast(`${joined ? 'Opponent found' : 'Matched'} · ${player.name} — bend it around the wall!`)
+    renderGames()
+    return
+  }
+  if (selectedMiniGame === 'buzzer-beater-duel') {
+    state.match = { opponent: { name: player.name, team: player.team, record: player.record }, stake, gameType: 'buzzer-beater-duel' }
+    state.buzzerBeaterDuel = {
+      round: 0,
+      score: { you: 0, opp: 0 },
+      mode: 'shoot',
+      busy: false,
+      phase: 'aim',
+      shotCount: 0,
+      lastResult: null,
+      over: false
+    }
+    persist()
+    showToast(`${joined ? 'Opponent found' : 'Matched'} · ${player.name} — beat the buzzer!`)
+    renderGames()
+    return
+  }
+  if (selectedMiniGame === 'ace-serve-duel') {
+    state.match = { opponent: { name: player.name, team: player.team, record: player.record }, stake, gameType: 'ace-serve-duel' }
+    state.aceServeDuel = {
+      round: 0,
+      score: { you: 0, opp: 0 },
+      mode: 'serve',
+      busy: false,
+      phase: 'aim',
+      serveCount: 0,
+      lastResult: null,
+      over: false
+    }
+    persist()
+    showToast(`${joined ? 'Opponent found' : 'Matched'} · ${player.name} — serve for aces!`)
+    renderGames()
+    return
+  }
+  if (selectedMiniGame === 'home-run-derby') {
+    state.match = { opponent: { name: player.name, team: player.team, record: player.record }, stake, gameType: 'home-run-derby' }
+    state.homeRunDerby = {
+      round: 0,
+      score: { you: 0, opp: 0 },
+      mode: 'batter',
+      busy: false,
+      phase: 'aim',
+      swingCount: 0,
+      lastResult: null,
+      over: false
+    }
+    persist()
+    showToast(`${joined ? 'Opponent found' : 'Matched'} · ${player.name} — step up to the plate!`)
+    renderGames()
+    return
+  }
+  if (selectedMiniGame === 'reaction-challenge') {
+    state.match = { opponent: { name: player.name, team: player.team, record: player.record }, stake, gameType: 'reaction-challenge' }
+    if (!joined) startReactionChallengeAI(player)
+    persist()
+    showToast(`${joined ? 'Opponent found' : 'Matched'} · ${player.name} — fastest tap wins!`)
+    renderGames()
+    return
+  }
+  if (isLiveMarketGame(selectedMiniGame)) {
+    state.match = { opponent: { name: player.name, team: player.team, record: player.record }, stake, gameType: selectedMiniGame }
+    if (!joined) startLiveMarketAI(player, selectedMiniGame)
+    persist()
+    showToast(`${joined ? 'Opponent found' : 'Matched'} · ${player.name} — ${miniGameTitles[selectedMiniGame] || selectedMiniGame}`)
+    renderGames()
     return
   }
   // Carry the record so the AI keeper difficulty matches the lobby card.
@@ -4371,8 +5310,23 @@ function startMatch (player, joined) {
 }
 
 function leaveMatch () {
-  if (state.match && state.match.peer && window.PearCupPeerMatch) { window.PearCupPeerMatch.leave(); return }
+  if (state.match && state.match.peer) {
+    if (state.match.gameType === 'reaction-challenge' && window.ReactionChallenge) window.ReactionChallenge.leave()
+    else if (isLiveMarketGame(state.match.gameType) && window.LiveMarketGame) window.LiveMarketGame.leave()
+    else if (window.PearCupPeerMatch) window.PearCupPeerMatch.leave()
+    return
+  }
+  clearReactionChallengeAI()
+  clearLiveMarketAI()
   state.match = null
+  state.reactionChallenge = null
+  state.liveMarketGame = null
+  state.predictionDuel = null
+  state.triviaDuel = null
+  state.freeKickDuel = null
+  state.buzzerBeaterDuel = null
+  state.aceServeDuel = null
+  state.homeRunDerby = null
   ensureShootout(true)
   persist()
   hideOverlay()
@@ -4400,7 +5354,3391 @@ function restartShootout ({ blockActiveStake = false, message = 'New penalty sho
   return true
 }
 
+function renderPeerPredictionDuel () {
+  const PM = window.PearCupPeerMatch && window.PearCupPeerMatch._state
+  if (!PM) return
+  const title = miniGameTitles['prediction-duel'] || 'Prediction Duel'
+  const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
+  const options = fitPredictionOptions || ['Option A', 'Option B', 'Option C', 'Option D']
+  const round = PM.predictionRound + 1
+  const picked = PM.predictionChoices.you != null
+  const oppPicked = PM.predictionRemoteCommit != null
+  const revealed = PM.predictionRevealed.you
+  const oppRevealed = PM.predictionRevealed.opp
+  const roundResolved = PM.predictionCorrect != null
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) scoreboard.innerHTML = `
+    <div class="game-player-card">
+      ${avatarSvg(state.username || 'captain', teamById(state.team), true)}
+      <div><span>You</span><strong>${escapeHtml(state.username || 'captain')}</strong><em>${teamById(state.team).flag} ${escapeHtml(teamById(state.team).name)}</em></div>
+    </div>
+    <div class="game-score-core">
+      <span class="prediction-round">Round ${Math.min(round, 3)} of 3</span>
+      <strong class="prediction-score">${PM.predictionScore.you} — ${PM.predictionScore.opp}</strong>
+      <em>${PM.predictionOver ? 'Match over' : 'Predict the outcome'}</em>
+    </div>
+    <div class="game-player-card is-away">
+      ${avatarSvg(opponent.name, teamById(opponent.team || state.team), true)}
+      <div><span>Opponent</span><strong>${escapeHtml(opponent.name)}</strong><em>${teamById(opponent.team || state.team).flag} ${escapeHtml(teamById(opponent.team || state.team).name)}</em></div>
+    </div>`
+  const stage = $('#penaltyStage')
+  if (stage) {
+    stage.classList.add('is-placeholder')
+    let body = ''
+    if (PM.predictionOver) {
+      const win = PM.predictionScore.you > PM.predictionScore.opp
+      const draw = PM.predictionScore.you === PM.predictionScore.opp
+      body = `
+        <div class="prediction-result">
+          <p class="eyebrow">Final score</p>
+          <strong class="prediction-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+          <p class="prediction-result-score">You ${PM.predictionScore.you} — ${PM.predictionScore.opp} ${escapeHtml(opponent.name)}</p>
+          <button class="primary-button inline-action" id="predictionBackToLobby" type="button">Back to lobby</button>
+        </div>`
+    } else if (roundResolved) {
+      const localCorrect = PM.predictionChoices.you === PM.predictionCorrect
+      const oppCorrect = PM.predictionChoices.opp === PM.predictionCorrect
+      body = `
+        <div class="prediction-result">
+          <p class="eyebrow">Round ${Math.min(round, 3)} result</p>
+          <strong class="prediction-result-title">Correct answer: ${escapeHtml(PM.predictionCorrect)}</strong>
+          <p class="prediction-result-score">You ${localCorrect ? '+1' : '0'} — ${oppCorrect ? '+1' : '0'} ${escapeHtml(opponent.name)}</p>
+          <button class="primary-button inline-action" id="predictionNextRound" type="button">Next round</button>
+        </div>`
+    } else if (revealed) {
+      body = `
+        <div class="prediction-waiting">
+          <p class="eyebrow">Locked in</p>
+          <strong>You picked ${escapeHtml(PM.predictionChoices.you)}</strong>
+          <p class="live-copy">Waiting for ${escapeHtml(opponent.name)} to reveal…</p>
+        </div>`
+    } else if (picked && oppPicked) {
+      body = `
+        <div class="prediction-reveal">
+          <p class="eyebrow">Both locked in</p>
+          <strong>Reveal your pick</strong>
+          <p class="live-copy">You picked ${escapeHtml(PM.predictionChoices.you)}. Tap reveal when you're ready.</p>
+          <button class="primary-button inline-action" id="predictionRevealBtn" type="button">Reveal</button>
+        </div>`
+    } else {
+      body = `
+        <div class="prediction-pick">
+          <p class="eyebrow">Round ${round} of 3</p>
+          <strong>${picked ? 'Locked in' : 'Pick an outcome'}</strong>
+          <p class="live-copy">${picked ? `You picked ${escapeHtml(PM.predictionChoices.you)}. Waiting for ${escapeHtml(opponent.name)}…` : 'Choose one option. Your pick is hidden until both players lock in.'}</p>
+          <div class="prediction-grid">
+            ${options.map(opt => `
+              <button class="prediction-option ${PM.predictionChoices.you === opt ? 'is-picked' : ''}" type="button" data-prediction="${escapeHtml(opt)}" ${picked ? 'disabled' : ''}>
+                ${escapeHtml(opt)}
+              </button>`).join('')}
+          </div>
+          ${oppPicked ? '<p class="prediction-status is-ready">Opponent picked</p>' : '<p class="prediction-status">Waiting for opponent…</p>'}
+        </div>`
+    }
+    stage.innerHTML = `<div class="prediction-duel-stage">${body}</div>`
+  }
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+
+  // Bind interactions once.
+  const grid = stage && stage.querySelector('.prediction-grid')
+  if (grid && !grid.dataset.bound) {
+    grid.dataset.bound = '1'
+    grid.addEventListener('click', event => {
+      const btn = event.target.closest('.prediction-option')
+      if (!btn || btn.disabled) return
+      window.PearCupPeerMatch && window.PearCupPeerMatch.predictionPick(btn.dataset.prediction)
+    })
+  }
+  const revealBtn = $('#predictionRevealBtn')
+  if (revealBtn && !revealBtn.dataset.bound) {
+    revealBtn.dataset.bound = '1'
+    revealBtn.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.predictionReveal())
+  }
+  const nextBtn = $('#predictionNextRound')
+  if (nextBtn && !nextBtn.dataset.bound) {
+    nextBtn.dataset.bound = '1'
+    nextBtn.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.predictionNextRound())
+  }
+  const backBtn = $('#predictionBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+}
+
+function predictionDuelEntropy (a, na, b, nb) {
+  const s = `${a}|${na}|${b}|${nb}`
+  return (window.PearCupPeerNet && window.PearCupPeerNet.digest) ? window.PearCupPeerNet.digest(s) : String(hashString(s))
+}
+
+function aiPredictionDuelPick (choice) {
+  const pd = state.predictionDuel
+  if (!pd || pd.over || pd.choices.you != null) return
+  const options = fitPredictionOptions || ['Option A', 'Option B', 'Option C', 'Option D']
+  const localNonce = `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
+  const aiChoice = options[Math.floor(Math.random() * options.length)]
+  const aiNonce = `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`
+  pd.choices.you = choice
+  pd.choices.opp = aiChoice
+  const entropy = predictionDuelEntropy(choice, localNonce, aiChoice, aiNonce)
+  const correctIndex = Math.abs(parseInt(entropy.slice(2), 16)) % options.length
+  pd.correct = options[correctIndex]
+  if (choice === pd.correct) pd.score.you += 1
+  if (aiChoice === pd.correct) pd.score.opp += 1
+  pd.revealed = true
+  if (pd.round + 1 >= 3) {
+    pd.over = true
+    const opp = state.match.opponent
+    const win = pd.score.you > pd.score.opp
+    const draw = pd.score.you === pd.score.opp
+    showToast(win ? `You win ${pd.score.you}–${pd.score.opp}!` : draw ? `Draw ${pd.score.you}–${pd.score.opp}` : `${opp.name} wins ${pd.score.opp}–${pd.score.you}`)
+  }
+  renderGames()
+}
+
+function aiPredictionDuelNextRound () {
+  const pd = state.predictionDuel
+  if (!pd || pd.over) return
+  pd.round += 1
+  pd.choices = { you: null, opp: null }
+  pd.correct = null
+  pd.revealed = false
+  renderGames()
+}
+
+function renderAIPredictionDuel () {
+  const pd = state.predictionDuel
+  if (!pd) return
+  const title = miniGameTitles['prediction-duel'] || 'Prediction Duel'
+  const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
+  const options = fitPredictionOptions || ['Option A', 'Option B', 'Option C', 'Option D']
+  const round = pd.round + 1
+  const picked = pd.choices.you != null
+  const roundResolved = pd.correct != null
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) scoreboard.innerHTML = `
+    <div class="game-player-card">
+      ${avatarSvg(state.username || 'captain', teamById(state.team), true)}
+      <div><span>You</span><strong>${escapeHtml(state.username || 'captain')}</strong><em>${teamById(state.team).flag} ${escapeHtml(teamById(state.team).name)}</em></div>
+    </div>
+    <div class="game-score-core">
+      <span class="prediction-round">Round ${Math.min(round, 3)} of 3</span>
+      <strong class="prediction-score">${pd.score.you} — ${pd.score.opp}</strong>
+      <em>${pd.over ? 'Match over' : 'Predict the outcome'}</em>
+    </div>
+    <div class="game-player-card is-away">
+      ${avatarSvg(opponent.name, teamById(opponent.team || state.team), true)}
+      <div><span>Opponent</span><strong>${escapeHtml(opponent.name)}</strong><em>${teamById(opponent.team || state.team).flag} ${escapeHtml(teamById(opponent.team || state.team).name)}</em></div>
+    </div>`
+  const stage = $('#penaltyStage')
+  if (stage) {
+    stage.classList.add('is-placeholder')
+    let body = ''
+    if (pd.over) {
+      const win = pd.score.you > pd.score.opp
+      const draw = pd.score.you === pd.score.opp
+      body = `
+        <div class="prediction-result">
+          <p class="eyebrow">Final score</p>
+          <strong class="prediction-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+          <p class="prediction-result-score">You ${pd.score.you} — ${pd.score.opp} ${escapeHtml(opponent.name)}</p>
+          <button class="primary-button inline-action" id="predictionAIBackToLobby" type="button">Back to lobby</button>
+        </div>`
+    } else if (roundResolved) {
+      const localCorrect = pd.choices.you === pd.correct
+      const oppCorrect = pd.choices.opp === pd.correct
+      body = `
+        <div class="prediction-result">
+          <p class="eyebrow">Round ${Math.min(round, 3)} result</p>
+          <strong class="prediction-result-title">Correct answer: ${escapeHtml(pd.correct)}</strong>
+          <p class="prediction-result-score">You ${localCorrect ? '+1' : '0'} — ${oppCorrect ? '+1' : '0'} ${escapeHtml(opponent.name)}</p>
+          <button class="primary-button inline-action" id="predictionAINextRound" type="button">Next round</button>
+        </div>`
+    } else {
+      body = `
+        <div class="prediction-pick">
+          <p class="eyebrow">Round ${round} of 3</p>
+          <strong>${picked ? 'Locked in' : 'Pick an outcome'}</strong>
+          <p class="live-copy">${picked ? `You picked ${escapeHtml(pd.choices.you)}. The AI is deciding…` : 'Choose one option. The AI will lock in a random pick.'}</p>
+          <div class="prediction-grid">
+            ${options.map(opt => `
+              <button class="prediction-option ${pd.choices.you === opt ? 'is-picked' : ''}" type="button" data-prediction="${escapeHtml(opt)}" ${picked ? 'disabled' : ''}>
+                ${escapeHtml(opt)}
+              </button>`).join('')}
+          </div>
+        </div>`
+    }
+    stage.innerHTML = `<div class="prediction-duel-stage">${body}</div>`
+  }
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+
+  const grid = stage && stage.querySelector('.prediction-grid')
+  if (grid && !grid.dataset.bound) {
+    grid.dataset.bound = '1'
+    grid.addEventListener('click', event => {
+      const btn = event.target.closest('.prediction-option')
+      if (!btn || btn.disabled) return
+      aiPredictionDuelPick(btn.dataset.prediction)
+    })
+  }
+  const nextBtn = $('#predictionAINextRound')
+  if (nextBtn && !nextBtn.dataset.bound) {
+    nextBtn.dataset.bound = '1'
+    nextBtn.addEventListener('click', aiPredictionDuelNextRound)
+  }
+  const backBtn = $('#predictionAIBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+}
+
+function renderPeerTriviaDuel () {
+  const PM = window.PearCupPeerMatch && window.PearCupPeerMatch._state
+  if (!PM) return
+  const title = miniGameTitles['trivia-duel'] || 'Trivia Duel'
+  const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
+  const questions = fitTriviaQuestions || []
+  const q = questions[PM.triviaRound]
+  const round = PM.triviaRound + 1
+  const picked = PM.triviaAnswers.you != null
+  const oppPicked = PM.triviaRemoteCommit != null
+  const revealed = PM.triviaRevealed.you
+  const oppRevealed = PM.triviaRevealed.opp
+  const roundResolved = revealed && oppRevealed
+  const correct = q ? q.answer : null
+  const options = ['A', 'B', 'C', 'D']
+
+  const optionClass = opt => {
+    if (roundResolved) {
+      if (opt === correct) return 'trivia-option is-correct'
+      if (PM.triviaAnswers.you === opt && opt !== correct) return 'trivia-option is-wrong'
+      return 'trivia-option'
+    }
+    if (PM.triviaAnswers.you === opt) return 'trivia-option is-picked'
+    return 'trivia-option'
+  }
+
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) scoreboard.innerHTML = `
+    <div class="game-player-card">
+      ${avatarSvg(state.username || 'captain', teamById(state.team), true)}
+      <div><span>You</span><strong>${escapeHtml(state.username || 'captain')}</strong><em>${teamById(state.team).flag} ${escapeHtml(teamById(state.team).name)}</em></div>
+    </div>
+    <div class="game-score-core">
+      <span class="trivia-round">Round ${Math.min(round, 3)} of 3</span>
+      <strong class="trivia-score">${PM.triviaScore.you} — ${PM.triviaScore.opp}</strong>
+      <em>${PM.triviaOver ? 'Match over' : 'Answer fast'}</em>
+    </div>
+    <div class="game-player-card is-away">
+      ${avatarSvg(opponent.name, teamById(opponent.team || state.team), true)}
+      <div><span>Opponent</span><strong>${escapeHtml(opponent.name)}</strong><em>${teamById(opponent.team || state.team).flag} ${escapeHtml(teamById(opponent.team || state.team).name)}</em></div>
+    </div>`
+
+  const stage = $('#penaltyStage')
+  if (stage) {
+    stage.classList.add('is-placeholder')
+    let body = ''
+    if (!q) {
+      body = `
+        <div class="trivia-stage">
+          <p class="eyebrow">Trivia</p>
+          <strong>No trivia loaded for this fit</strong>
+          <p class="live-copy">Check back once the question bank is available.</p>
+        </div>`
+    } else if (PM.triviaOver) {
+      const win = PM.triviaScore.you > PM.triviaScore.opp
+      const draw = PM.triviaScore.you === PM.triviaScore.opp
+      body = `
+        <div class="trivia-result">
+          <p class="eyebrow">Final score</p>
+          <strong class="trivia-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+          <p class="trivia-result-score">You ${PM.triviaScore.you} — ${PM.triviaScore.opp} ${escapeHtml(opponent.name)}</p>
+          <button class="primary-button inline-action" id="triviaBackToLobby" type="button">Back to lobby</button>
+        </div>`
+    } else if (roundResolved) {
+      const localCorrect = PM.triviaAnswers.you === correct
+      const oppCorrect = PM.triviaAnswers.opp === correct
+      body = `
+        <div class="trivia-result">
+          <p class="eyebrow">Round ${Math.min(round, 3)} result</p>
+          <strong class="trivia-result-title">Correct answer: ${escapeHtml(correct)}</strong>
+          <p class="trivia-result-score">You ${localCorrect ? '+1' : '0'} — ${oppCorrect ? '+1' : '0'} ${escapeHtml(opponent.name)}</p>
+          <button class="primary-button inline-action" id="triviaNextQuestion" type="button">Next question</button>
+        </div>`
+    } else if (revealed) {
+      body = `
+        <div class="trivia-waiting">
+          <p class="eyebrow">Locked in</p>
+          <strong>You picked ${escapeHtml(PM.triviaAnswers.you)}</strong>
+          <p class="live-copy">Waiting for ${escapeHtml(opponent.name)} to reveal…</p>
+        </div>`
+    } else if (picked && oppPicked) {
+      body = `
+        <div class="trivia-reveal">
+          <p class="eyebrow">Both locked in</p>
+          <strong>Reveal your pick</strong>
+          <p class="live-copy">You picked ${escapeHtml(PM.triviaAnswers.you)}. Tap reveal when you're ready.</p>
+          <button class="primary-button inline-action" id="triviaRevealBtn" type="button">Reveal</button>
+        </div>`
+    } else {
+      body = `
+        <div class="trivia-pick">
+          <p class="eyebrow">Round ${round} of 3</p>
+          <strong class="trivia-question">${escapeHtml(q.question)}</strong>
+          <p class="live-copy">${picked ? `You picked ${escapeHtml(PM.triviaAnswers.you)}. Waiting for ${escapeHtml(opponent.name)}…` : 'Choose A, B, C or D. Your pick is hidden until both players lock in.'}</p>
+          <div class="trivia-options">
+            ${options.map(opt => `
+              <button class="${optionClass(opt)}" type="button" data-choice="${opt}" ${picked || roundResolved ? 'disabled' : ''}>
+                ${opt}
+              </button>`).join('')}
+          </div>
+          ${oppPicked ? '<p class="trivia-status is-ready">Opponent picked</p>' : '<p class="trivia-status">Waiting for opponent…</p>'}
+        </div>`
+    }
+    stage.innerHTML = `<div class="trivia-stage">${body}</div>`
+  }
+
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+
+  const grid = stage && stage.querySelector('.trivia-options')
+  if (grid && !grid.dataset.bound) {
+    grid.dataset.bound = '1'
+    grid.addEventListener('click', event => {
+      const btn = event.target.closest('.trivia-option')
+      if (!btn || btn.disabled) return
+      window.PearCupPeerMatch && window.PearCupPeerMatch.triviaPick(btn.dataset.choice)
+    })
+  }
+  const revealBtn = $('#triviaRevealBtn')
+  if (revealBtn && !revealBtn.dataset.bound) {
+    revealBtn.dataset.bound = '1'
+    revealBtn.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.triviaReveal())
+  }
+  const nextBtn = $('#triviaNextQuestion')
+  if (nextBtn && !nextBtn.dataset.bound) {
+    nextBtn.dataset.bound = '1'
+    nextBtn.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.triviaNextQuestion())
+  }
+  const backBtn = $('#triviaBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+}
+
+function aiTriviaDuelPick (choice) {
+  const td = state.triviaDuel
+  if (!td || td.over || td.choices.you != null) return
+  const questions = fitTriviaQuestions || []
+  const q = questions[td.round]
+  const options = ['A', 'B', 'C', 'D']
+  const aiChoice = options[Math.floor(Math.random() * options.length)]
+  td.choices.you = choice
+  td.choices.opp = aiChoice
+  td.correct = q ? q.answer : options[0]
+  if (choice === td.correct) td.score.you += 1
+  if (aiChoice === td.correct) td.score.opp += 1
+  td.revealed = true
+  if (td.round + 1 >= 3) {
+    td.over = true
+    const opp = state.match.opponent
+    const win = td.score.you > td.score.opp
+    const draw = td.score.you === td.score.opp
+    showToast(win ? `You win ${td.score.you}–${td.score.opp}!` : draw ? `Draw ${td.score.you}–${td.score.opp}` : `${opp.name} wins ${td.score.opp}–${td.score.you}`)
+  }
+  renderGames()
+}
+
+function aiTriviaDuelNextQuestion () {
+  const td = state.triviaDuel
+  if (!td || td.over) return
+  td.round += 1
+  td.choices = { you: null, opp: null }
+  td.correct = null
+  td.revealed = false
+  renderGames()
+}
+
+function renderAITriviaDuel () {
+  const td = state.triviaDuel
+  if (!td) return
+  const title = miniGameTitles['trivia-duel'] || 'Trivia Duel'
+  const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
+  const questions = fitTriviaQuestions || []
+  const q = questions[td.round]
+  const round = td.round + 1
+  const picked = td.choices.you != null
+  const roundResolved = td.revealed
+  const correct = td.correct
+  const options = ['A', 'B', 'C', 'D']
+
+  const optionClass = opt => {
+    if (roundResolved) {
+      if (opt === correct) return 'trivia-option is-correct'
+      if (td.choices.you === opt && opt !== correct) return 'trivia-option is-wrong'
+      return 'trivia-option'
+    }
+    if (td.choices.you === opt) return 'trivia-option is-picked'
+    return 'trivia-option'
+  }
+
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) scoreboard.innerHTML = `
+    <div class="game-player-card">
+      ${avatarSvg(state.username || 'captain', teamById(state.team), true)}
+      <div><span>You</span><strong>${escapeHtml(state.username || 'captain')}</strong><em>${teamById(state.team).flag} ${escapeHtml(teamById(state.team).name)}</em></div>
+    </div>
+    <div class="game-score-core">
+      <span class="trivia-round">Round ${Math.min(round, 3)} of 3</span>
+      <strong class="trivia-score">${td.score.you} — ${td.score.opp}</strong>
+      <em>${td.over ? 'Match over' : 'Answer fast'}</em>
+    </div>
+    <div class="game-player-card is-away">
+      ${avatarSvg(opponent.name, teamById(opponent.team || state.team), true)}
+      <div><span>Opponent</span><strong>${escapeHtml(opponent.name)}</strong><em>${teamById(opponent.team || state.team).flag} ${escapeHtml(teamById(opponent.team || state.team).name)}</em></div>
+    </div>`
+
+  const stage = $('#penaltyStage')
+  if (stage) {
+    stage.classList.add('is-placeholder')
+    let body = ''
+    if (!q) {
+      body = `
+        <div class="trivia-stage">
+          <p class="eyebrow">Trivia</p>
+          <strong>No trivia loaded for this fit</strong>
+          <p class="live-copy">Check back once the question bank is available.</p>
+        </div>`
+    } else if (td.over) {
+      const win = td.score.you > td.score.opp
+      const draw = td.score.you === td.score.opp
+      body = `
+        <div class="trivia-result">
+          <p class="eyebrow">Final score</p>
+          <strong class="trivia-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+          <p class="trivia-result-score">You ${td.score.you} — ${td.score.opp} ${escapeHtml(opponent.name)}</p>
+          <button class="primary-button inline-action" id="triviaAIBackToLobby" type="button">Back to lobby</button>
+        </div>`
+    } else if (roundResolved) {
+      const localCorrect = td.choices.you === correct
+      const oppCorrect = td.choices.opp === correct
+      body = `
+        <div class="trivia-result">
+          <p class="eyebrow">Round ${Math.min(round, 3)} result</p>
+          <strong class="trivia-result-title">Correct answer: ${escapeHtml(correct)}</strong>
+          <p class="trivia-result-score">You ${localCorrect ? '+1' : '0'} — ${oppCorrect ? '+1' : '0'} ${escapeHtml(opponent.name)}</p>
+          <button class="primary-button inline-action" id="triviaAINextQuestion" type="button">Next question</button>
+        </div>`
+    } else {
+      body = `
+        <div class="trivia-pick">
+          <p class="eyebrow">Round ${round} of 3</p>
+          <strong class="trivia-question">${escapeHtml(q.question)}</strong>
+          <p class="live-copy">${picked ? `You picked ${escapeHtml(td.choices.you)}. The AI is deciding…` : 'Choose A, B, C or D. The AI will lock in a random pick.'}</p>
+          <div class="trivia-options">
+            ${options.map(opt => `
+              <button class="${optionClass(opt)}" type="button" data-choice="${opt}" ${picked ? 'disabled' : ''}>
+                ${opt}
+              </button>`).join('')}
+          </div>
+        </div>`
+    }
+    stage.innerHTML = `<div class="trivia-stage">${body}</div>`
+  }
+
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+
+  const grid = stage && stage.querySelector('.trivia-options')
+  if (grid && !grid.dataset.bound) {
+    grid.dataset.bound = '1'
+    grid.addEventListener('click', event => {
+      const btn = event.target.closest('.trivia-option')
+      if (!btn || btn.disabled) return
+      aiTriviaDuelPick(btn.dataset.choice)
+    })
+  }
+  const nextBtn = $('#triviaAINextQuestion')
+  if (nextBtn && !nextBtn.dataset.bound) {
+    nextBtn.dataset.bound = '1'
+    nextBtn.addEventListener('click', aiTriviaDuelNextQuestion)
+  }
+  const backBtn = $('#triviaAIBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+}
+
+function renderPeerFreeKickDuel () {
+  const PM = window.PearCupPeerMatch && window.PearCupPeerMatch._state
+  if (!PM) return
+  const title = miniGameTitles['free-kick-duel'] || 'Free-kick Duel'
+  const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
+  const round = PM.fkRound + 1
+  const iShoot = iAmShooterPeer()
+  const committed = PM.fkCommit != null
+  const remoteCommitted = PM.fkRemoteCommit != null
+  const revealed = PM.fkRevealed.you
+  const remoteRevealed = PM.fkRevealed.opp
+  const bothRevealed = revealed && remoteRevealed
+  const resolved = PM.fkResolved
+
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+
+  const me = { name: PM.self.name, team: PM.self.team }
+  const opp = { name: PM.opp.name, team: PM.opp.team }
+  const shooterP = iShoot ? me : opp
+  const keeperP = iShoot ? opp : me
+  const sTeam = teamById(shooterP.team)
+  const kTeam = teamById(keeperP.team)
+
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) {
+    scoreboard.innerHTML = `
+      <div class="game-player-card">
+        ${avatarSvg(shooterP.name, sTeam, true)}
+        <div><span>Shooter</span><strong>${escapeHtml(shooterP.name)}</strong><em>${sTeam.flag} ${escapeHtml(sTeam.name)}</em></div>
+      </div>
+      <div class="game-score-core">
+        <span class="fk-round">Round ${Math.min(round, 3)} of 3</span>
+        <strong class="fk-score">${PM.fkScore.you} — ${PM.fkScore.opp}</strong>
+        <em>${PM.fkOver ? 'Match over' : (iShoot ? 'Your shot' : `${escapeHtml(opp.name)} shoots`)}</em>
+      </div>
+      <div class="game-player-card is-away">
+        ${avatarSvg(keeperP.name, kTeam, true)}
+        <div><span>Keeper</span><strong>${escapeHtml(keeperP.name)}</strong><em>${kTeam.flag} ${escapeHtml(kTeam.name)}</em></div>
+      </div>`
+  }
+
+  const stage = $('#penaltyStage')
+  if (!stage) return
+  stage.classList.remove('is-placeholder')
+  stage.hidden = false
+
+  // Re-use the existing pitch actors.
+  const shooterEl = $('#gameShooter')
+  const keeperEl = $('#gameKeeper')
+  const ballEl = $('#gameBall')
+  if (shooterEl) { shooterEl.innerHTML = avatarSvg(shooterP.name, sTeam); shooterEl.style.left = '50%'; shooterEl.classList.remove('lean-left', 'lean-right', 'lean-center') }
+  if (keeperEl) { keeperEl.innerHTML = avatarSvg(keeperP.name, kTeam); keeperEl.style.left = '50%'; keeperEl.classList.remove('dive-left', 'dive-right', 'dive-mid') }
+  if (ballEl) { ballEl.classList.remove('is-kicking', 'fk-curved-left', 'fk-curved-right'); ballEl.style.left = '50%'; ballEl.style.top = '80%'; ballEl.style.transform = '' }
+
+  // Hide the default penalty controls; the free-kick UI is rendered inside the stage.
+  const aimGrid = $('#aimGrid')
+  const powerDock = $('#powerDock')
+  if (aimGrid) aimGrid.hidden = true
+  if (powerDock) powerDock.hidden = true
+
+  // Build the stage UI.
+  let body = ''
+  if (PM.fkOver) {
+    const win = PM.fkScore.you > PM.fkScore.opp
+    const draw = PM.fkScore.you === PM.fkScore.opp
+    body = `
+      <div class="fk-result">
+        <p class="eyebrow">Final score</p>
+        <strong class="fk-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+        <p class="fk-result-score">You ${PM.fkScore.you} — ${PM.fkScore.opp} ${escapeHtml(opponent.name)}</p>
+        <button class="primary-button inline-action" id="fkPeerBackToLobby" type="button">Back to lobby</button>
+      </div>`
+  } else if (bothRevealed && resolved) {
+    const label = resolved.goal ? 'GOAL!' : resolved.wallBlocks ? 'BLOCKED BY THE WALL!' : resolved.saved ? 'SAVED!' : 'WIDE!'
+    const good = iShoot ? resolved.goal : !resolved.goal
+    body = `
+      <div class="fk-result">
+        <p class="eyebrow">Round ${Math.min(round, 3)} result</p>
+        <strong class="fk-result-title ${good ? 'is-goal' : 'is-stop'}">${label}</strong>
+        <p class="fk-result-score">${resolved.goal ? '+3' : resolved.onFrame && !resolved.wallBlocks ? '+1' : '+0'} ${iShoot ? 'you' : escapeHtml(opponent.name)}</p>
+        <button class="primary-button inline-action" id="fkPeerNextRound" type="button">Next kick</button>
+      </div>`
+    animateFreeKick(resolved.aim, resolved.dive, resolved.power, resolved.curve, resolved.wall)
+  } else if (revealed && !remoteRevealed) {
+    body = `
+      <div class="fk-waiting">
+        <p class="eyebrow">Locked in</p>
+        <strong>${iShoot ? 'Struck!' : 'Dive called!'}</strong>
+        <p class="live-copy">Waiting for ${escapeHtml(opponent.name)} to reveal…</p>
+      </div>`
+  } else if (committed && remoteCommitted && !revealed) {
+    body = `
+      <div class="fk-reveal">
+        <p class="eyebrow">Both locked in</p>
+        <strong>Reveal your ${iShoot ? 'shot' : 'dive'}</strong>
+        <p class="live-copy">The wall and keeper are set — reveal when you're ready.</p>
+        <button class="primary-button inline-action" id="fkPeerRevealBtn" type="button">Reveal</button>
+      </div>`
+  } else if (iShoot) {
+    if (!committed) {
+      body = `
+        <div class="fk-shoot">
+          <p class="eyebrow">Round ${round} · Your shot</p>
+          <strong>Pick a corner, set power, bend it</strong>
+          <div class="fk-aim-grid" id="fkPeerAimGrid" aria-label="Pick where to shoot">
+            ${AIM_ZONES.map(zone => `<button class="aim-zone ${state.fkPeerAim === zone ? 'is-selected' : ''}" type="button" data-zone="${zone}" aria-label="Aim ${zone.replace('-', ' ')}"><span></span></button>`).join('')}
+          </div>
+          <div class="fk-power-wrap">
+            <span class="fk-power-label">Power — sweet spot keeps it on frame</span>
+            <div class="power-track" id="fkPeerPowerTrack"><i class="power-fill is-live" id="fkPeerPowerFill"></i><b class="power-sweet"></b></div>
+          </div>
+          <div class="curve-selector" id="fkPeerCurve" role="group" aria-label="Curve">
+            <button class="secondary-button compact-action ${state.fkPeerCurve === -1 ? 'is-active' : ''}" type="button" data-curve="-1">Curve left</button>
+            <button class="secondary-button compact-action ${state.fkPeerCurve === 0 ? 'is-active' : ''}" type="button" data-curve="0">Straight</button>
+            <button class="secondary-button compact-action ${state.fkPeerCurve === 1 ? 'is-active' : ''}" type="button" data-curve="1">Curve right</button>
+          </div>
+          <button class="primary-button inline-action" id="fkPeerShootBtn" type="button">Shoot</button>
+        </div>`
+    } else {
+      body = `
+        <div class="fk-waiting">
+          <p class="eyebrow">Committed</p>
+          <strong>Shot locked in</strong>
+          <p class="live-copy">Waiting for ${escapeHtml(opponent.name)} to set wall &amp; dive…</p>
+        </div>`
+    }
+  } else {
+    if (remoteCommitted && !committed) {
+      body = `
+        <div class="fk-keep">
+          <p class="eyebrow">Round ${round} · You're the keeper</p>
+          <strong>Pick your dive and wall position</strong>
+          <div class="fk-aim-grid" id="fkPeerDiveGrid" aria-label="Pick your dive">
+            ${AIM_ZONES.map(zone => `<button class="aim-zone ${state.fkPeerDive === zone ? 'is-selected' : ''}" type="button" data-zone="${zone}" aria-label="Dive ${zone.replace('-', ' ')}"><span></span></button>`).join('')}
+          </div>
+          <div class="wall-selector" id="fkPeerWall" role="group" aria-label="Wall position">
+            <button class="secondary-button compact-action ${state.fkPeerWall === 'left' ? 'is-active' : ''}" type="button" data-wall="left">Wall left</button>
+            <button class="secondary-button compact-action ${state.fkPeerWall === 'center' ? 'is-active' : ''}" type="button" data-wall="center">Wall center</button>
+            <button class="secondary-button compact-action ${state.fkPeerWall === 'right' ? 'is-active' : ''}" type="button" data-wall="right">Wall right</button>
+          </div>
+          <button class="primary-button inline-action" id="fkPeerDiveBtn" type="button">Dive</button>
+        </div>`
+    } else {
+      body = `
+        <div class="fk-waiting">
+          <p class="eyebrow">Get ready</p>
+          <strong>${escapeHtml(opponent.name)} is lining up…</strong>
+          <p class="live-copy">Wait for the strike, then pick your wall and dive.</p>
+        </div>`
+    }
+  }
+
+  // Only replace the injected panel, not the whole stage, so the ball/keeper elements stay in place.
+  let panel = stage.querySelector('.fk-panel')
+  if (!panel) {
+    panel = document.createElement('div')
+    panel.className = 'fk-panel'
+    stage.appendChild(panel)
+  }
+  panel.innerHTML = body
+
+  // Bind interactions.
+  const aimGridEl = $('#fkPeerAimGrid')
+  if (aimGridEl && !aimGridEl.dataset.bound) {
+    aimGridEl.dataset.bound = '1'
+    aimGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.aim-zone')
+      if (!btn) return
+      state.fkPeerAim = btn.dataset.zone
+      renderPeerFreeKickDuel()
+    })
+  }
+  const diveGridEl = $('#fkPeerDiveGrid')
+  if (diveGridEl && !diveGridEl.dataset.bound) {
+    diveGridEl.dataset.bound = '1'
+    diveGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.aim-zone')
+      if (!btn) return
+      state.fkPeerDive = btn.dataset.zone
+      renderPeerFreeKickDuel()
+    })
+  }
+  const curveEl = $('#fkPeerCurve')
+  if (curveEl && !curveEl.dataset.bound) {
+    curveEl.dataset.bound = '1'
+    curveEl.addEventListener('click', event => {
+      const btn = event.target.closest('[data-curve]')
+      if (!btn) return
+      state.fkPeerCurve = Number(btn.dataset.curve)
+      renderPeerFreeKickDuel()
+    })
+  }
+  const wallEl = $('#fkPeerWall')
+  if (wallEl && !wallEl.dataset.bound) {
+    wallEl.dataset.bound = '1'
+    wallEl.addEventListener('click', event => {
+      const btn = event.target.closest('[data-wall]')
+      if (!btn) return
+      state.fkPeerWall = btn.dataset.wall
+      renderPeerFreeKickDuel()
+    })
+  }
+  const shootBtn = $('#fkPeerShootBtn')
+  if (shootBtn && !shootBtn.dataset.bound) {
+    shootBtn.dataset.bound = '1'
+    shootBtn.addEventListener('click', () => {
+      const aim = state.fkPeerAim || 'center-high'
+      const power = readFkPowerPct('fkPeerPowerFill', 'fkPeerPowerTrack')
+      const curve = state.fkPeerCurve != null ? state.fkPeerCurve : 0
+      window.PearCupPeerMatch && window.PearCupPeerMatch.freeKickPick(aim, power, curve)
+    })
+  }
+  const diveBtn = $('#fkPeerDiveBtn')
+  if (diveBtn && !diveBtn.dataset.bound) {
+    diveBtn.dataset.bound = '1'
+    diveBtn.addEventListener('click', () => {
+      const dive = state.fkPeerDive || 'center-high'
+      const wall = state.fkPeerWall || 'center'
+      window.PearCupPeerMatch && window.PearCupPeerMatch.freeKickDive(dive, wall)
+    })
+  }
+  const revealBtn = $('#fkPeerRevealBtn')
+  if (revealBtn && !revealBtn.dataset.bound) {
+    revealBtn.dataset.bound = '1'
+    revealBtn.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.freeKickReveal())
+  }
+  const nextBtn = $('#fkPeerNextRound')
+  if (nextBtn && !nextBtn.dataset.bound) {
+    nextBtn.dataset.bound = '1'
+    nextBtn.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.freeKickNextRound())
+  }
+  const backBtn = $('#fkPeerBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+  const actions = $('#games .game-actions')
+  if (actions) actions.hidden = true
+}
+
+function iAmShooterPeer () {
+  const PM = window.PearCupPeerMatch && window.PearCupPeerMatch._state
+  if (!PM) return true
+  return (PM.kIndex % 2 === 0 ? 'A' : 'B') === PM.role
+}
+
+function readFkPowerPct (fillId, trackId) {
+  const fill = $(`#${fillId}`)
+  const track = $(`#${trackId}`)
+  if (!fill || !track) return 60
+  const w = fill.getBoundingClientRect().width
+  const t = track.getBoundingClientRect().width || 1
+  return Math.max(4, Math.min(100, Math.round((w / t) * 100)))
+}
+
+function animateFreeKick (aim, dive, power, curve, wall) {
+  const stage = $('#penaltyStage')
+  const keeperEl = $('#gameKeeper')
+  const ballEl = $('#gameBall')
+  if (!stage || !ballEl) return
+  const aimPos = zonePosition(aim)
+  const divePos = zonePosition(dive)
+  if (keeperEl) {
+    keeperEl.style.left = `${divePos.x}%`
+    keeperEl.classList.add(divePos.x < 50 ? 'dive-left' : divePos.x > 50 ? 'dive-right' : 'dive-mid')
+  }
+  const onFrame = aim !== 'wall' && aim !== 'wide' && power >= 30 && power <= 95
+  const wallBlocks = wall && wall === aimZoneToWallApp(aim) && Math.abs(curve) < 3
+  const saved = dive === aim && Math.abs(curve) < 7
+  const goal = onFrame && !wallBlocks && !saved
+  let bx = aimPos.x
+  let by = aimPos.y
+  if (!goal) {
+    if (!onFrame) by = overBarY()
+    else if (wallBlocks) { bx = 50; by = 55 }
+    else if (saved) { bx = divePos.x; by = Math.min(aimPos.y, divePos.y) }
+  }
+  ballEl.classList.add('is-kicking')
+  if (curve < 0) ballEl.classList.add('fk-curved-left')
+  if (curve > 0) ballEl.classList.add('fk-curved-right')
+  requestAnimationFrame(() => {
+    ballEl.style.left = `${bx}%`
+    ballEl.style.top = `${by}%`
+  })
+}
+
+function aimZoneToWallApp (aim) {
+  if (!aim) return 'center'
+  if (aim.indexOf('left') !== -1) return 'left'
+  if (aim.indexOf('right') !== -1) return 'right'
+  return 'center'
+}
+
+function resolveAIFreeKick (aim, dive, power, curve, wall) {
+  const fkd = state.freeKickDuel
+  if (!fkd) return null
+  const onFrame = aim !== 'wall' && aim !== 'wide' && power >= 30 && power <= 95
+  const wallBlocks = wall && wall === aimZoneToWallApp(aim) && Math.abs(curve) < 3
+  const saved = dive === aim && Math.abs(curve) < 7
+  const goal = onFrame && !wallBlocks && !saved
+  let points = 0
+  if (goal) points = 3
+  else if (onFrame && !wallBlocks) points = 1
+  const shooter = fkd.mode === 'shoot'
+  if (shooter) fkd.score.you += points
+  else fkd.score.opp += points
+  fkd.kickCount += 1
+  fkd.lastResult = { aim, dive, power, curve, wall, onFrame, wallBlocks, saved, goal, points }
+  fkd.phase = 'result'
+  if (fkd.kickCount >= 6) {
+    fkd.over = true
+    const opp = state.match.opponent
+    const win = fkd.score.you > fkd.score.opp
+    const draw = fkd.score.you === fkd.score.opp
+    showToast(win ? `You win ${fkd.score.you}–${fkd.score.opp}!` : draw ? `Draw ${fkd.score.you}–${fkd.score.opp}` : `${opp.name} wins ${fkd.score.opp}–${fkd.score.you}`)
+  }
+  return fkd.lastResult
+}
+
+function aiFreeKickKeeperPick (aim) {
+  const pick = currentOpponent()
+  const diff = opponentDifficulty(pick)
+  const wallOptions = ['left', 'center', 'right']
+  const wall = wallOptions[Math.floor(Math.random() * wallOptions.length)]
+  const dive = aiKeeperDive(aim, diff)
+  return { dive, wall }
+}
+
+function aiFreeKickShooterPick () {
+  const pick = currentOpponent()
+  const diff = opponentDifficulty(pick)
+  const aim = AIM_ZONES[Math.floor(Math.random() * AIM_ZONES.length)]
+  const power = Math.round(45 + diff * 45)
+  const curveOptions = [-1, 0, 1]
+  const curve = curveOptions[Math.floor(Math.random() * curveOptions.length)]
+  return { aim, power, curve }
+}
+
+function animateBuzzerBeater (aim, defenderRead, power) {
+  const stage = $('#penaltyStage')
+  const keeperEl = $('#gameKeeper')
+  const ballEl = $('#gameBall')
+  if (!stage || !ballEl) return
+  const aimPos = zonePosition(aim)
+  const defenderPos = zonePosition(defenderRead)
+  if (keeperEl) {
+    keeperEl.style.left = `${defenderPos.x}%`
+    keeperEl.classList.add(defenderPos.x < 50 ? 'dive-left' : defenderPos.x > 50 ? 'dive-right' : 'dive-mid')
+  }
+  const onTarget = aim !== 'miss' && power >= 35 && power <= 95
+  const blocked = defenderRead === aim
+  const basket = onTarget && !blocked
+  let bx = aimPos.x
+  let by = aimPos.y
+  if (!basket) {
+    if (!onTarget) by = overBarY()
+    else if (blocked) { bx = defenderPos.x; by = Math.min(aimPos.y, defenderPos.y) }
+  }
+  ballEl.classList.add('is-kicking')
+  ballEl.classList.add('bb-shot')
+  requestAnimationFrame(() => {
+    ballEl.style.left = `${bx}%`
+    ballEl.style.top = `${by}%`
+  })
+}
+
+function resolveAIBuzzerBeater (aim, defenderRead, power) {
+  const bbd = state.buzzerBeaterDuel
+  if (!bbd) return null
+  const onTarget = aim !== 'miss' && power >= 35 && power <= 95
+  const blocked = defenderRead === aim
+  const basket = onTarget && !blocked
+  let points = 0
+  if (basket) points = 2
+  else if (onTarget) points = 1
+  const shooter = bbd.mode === 'shoot'
+  if (shooter) bbd.score.you += points
+  else bbd.score.opp += points
+  bbd.shotCount += 1
+  bbd.lastResult = { aim, defenderRead, power, onTarget, blocked, basket, points }
+  bbd.phase = 'result'
+  if (bbd.shotCount >= 6) {
+    bbd.over = true
+    const opp = state.match.opponent
+    const win = bbd.score.you > bbd.score.opp
+    const draw = bbd.score.you === bbd.score.opp
+    showToast(win ? `You win ${bbd.score.you}–${bbd.score.opp}!` : draw ? `Draw ${bbd.score.you}–${bbd.score.opp}` : `${opp.name} wins ${bbd.score.opp}–${bbd.score.you}`)
+  }
+  return bbd.lastResult
+}
+
+function aiBuzzerDefenderPick (aim) {
+  const pick = currentOpponent()
+  const diff = opponentDifficulty(pick)
+  if (Math.random() < diff) return { defenderRead: aim }
+  const options = BB_ZONES.filter(zone => zone !== aim)
+  return { defenderRead: options[Math.floor(Math.random() * options.length)] }
+}
+
+function aiBuzzerShooterPick () {
+  const pick = currentOpponent()
+  const diff = opponentDifficulty(pick)
+  const aim = BB_ZONES[Math.floor(Math.random() * BB_ZONES.length)]
+  const power = Math.round(45 + diff * 45)
+  return { aim, power }
+}
+
+function resolveAIAceServe (placement, returnerRead, power, spin) {
+  const asd = state.aceServeDuel
+  if (!asd) return null
+  const inBounds = placement !== 'fault' && power >= 40 && power <= 100
+  const ace = inBounds && placement !== returnerRead && Math.abs(spin) >= 1 && power >= 60
+  let points = 0
+  if (ace) points = 2
+  else if (inBounds) points = 1
+  const server = asd.mode === 'serve'
+  if (server) asd.score.you += points
+  else asd.score.opp += points
+  asd.serveCount += 1
+  asd.lastResult = { placement, returnerRead, power, spin, inBounds, ace, points }
+  asd.phase = 'result'
+  if (asd.serveCount >= 6) {
+    asd.over = true
+    const opp = state.match.opponent
+    const win = asd.score.you > asd.score.opp
+    const draw = asd.score.you === asd.score.opp
+    showToast(win ? `You win ${asd.score.you}–${asd.score.opp}!` : draw ? `Draw ${asd.score.you}–${asd.score.opp}` : `${opp.name} wins ${asd.score.opp}–${asd.score.you}`)
+  }
+  return asd.lastResult
+}
+
+function aiAceReturnerPick (placement) {
+  const pick = currentOpponent()
+  const diff = opponentDifficulty(pick)
+  if (Math.random() < diff) return { returnerRead: placement }
+  const options = AS_ZONES.filter(zone => zone !== 'fault' && zone !== placement)
+  return { returnerRead: options[Math.floor(Math.random() * options.length)] }
+}
+
+function aiAceServerPick () {
+  const pick = currentOpponent()
+  const diff = opponentDifficulty(pick)
+  const placement = AS_ZONES[Math.floor(Math.random() * AS_ZONES.length)]
+  const power = Math.round(55 + diff * 40)
+  const spinOptions = [-1, 0, 1]
+  const spin = spinOptions[Math.floor(Math.random() * spinOptions.length)]
+  return { placement, power, spin }
+}
+
+function animateAceServe (placement, returnerRead, power, spin) {
+  const stage = $('#penaltyStage')
+  const keeperEl = $('#gameKeeper')
+  const ballEl = $('#gameBall')
+  if (!stage || !ballEl) return
+  const servePos = aceZonePosition(placement)
+  const returnerPos = aceZonePosition(returnerRead)
+  if (keeperEl) {
+    keeperEl.style.left = `${returnerPos.x}%`
+    keeperEl.classList.add(returnerPos.x < 50 ? 'dive-left' : returnerPos.x > 50 ? 'dive-right' : 'dive-mid')
+  }
+  const inBounds = placement !== 'fault' && power >= 40 && power <= 100
+  const ace = inBounds && placement !== returnerRead && Math.abs(spin) >= 1 && power >= 60
+  let bx = servePos.x
+  let by = servePos.y
+  if (!inBounds) {
+    bx = servePos.x
+    by = 92
+  } else if (!ace) {
+    bx = returnerPos.x
+    by = Math.min(servePos.y, returnerPos.y)
+  }
+  ballEl.classList.add('is-kicking')
+  ballEl.classList.add('as-serve')
+  requestAnimationFrame(() => {
+    ballEl.style.left = `${bx}%`
+    ballEl.style.top = `${by}%`
+  })
+}
+
+function renderAIFreeKickDuel () {
+  const fkd = state.freeKickDuel
+  if (!fkd) return
+  const title = miniGameTitles['free-kick-duel'] || 'Free-kick Duel'
+  const opponent = (state.match && state.match.opponent) || { name: 'Rival' }
+  const round = fkd.round + 1
+  const iShoot = fkd.mode === 'shoot'
+  const resolved = fkd.lastResult
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+
+  const you = { name: state.username || 'captain', team: state.team }
+  const opp = { name: opponent.name, team: opponent.team }
+  const shooterP = iShoot ? you : opp
+  const keeperP = iShoot ? opp : you
+  const sTeam = teamById(shooterP.team)
+  const kTeam = teamById(keeperP.team)
+
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) {
+    scoreboard.innerHTML = `
+      <div class="game-player-card">
+        ${avatarSvg(shooterP.name, sTeam, true)}
+        <div><span>Shooter</span><strong>${escapeHtml(shooterP.name)}</strong><em>${sTeam.flag} ${escapeHtml(sTeam.name)}</em></div>
+      </div>
+      <div class="game-score-core">
+        <span class="fk-round">Round ${Math.min(round, 3)} of 3</span>
+        <strong class="fk-score">${fkd.score.you} — ${fkd.score.opp}</strong>
+        <em>${fkd.over ? 'Match over' : (iShoot ? 'Your shot' : `${escapeHtml(opponent.name)} shoots`)}</em>
+      </div>
+      <div class="game-player-card is-away">
+        ${avatarSvg(keeperP.name, kTeam, true)}
+        <div><span>Keeper</span><strong>${escapeHtml(keeperP.name)}</strong><em>${kTeam.flag} ${escapeHtml(kTeam.name)}</em></div>
+      </div>`
+  }
+
+  const stage = $('#penaltyStage')
+  if (!stage) return
+  stage.classList.remove('is-placeholder')
+  stage.hidden = false
+
+  const shooterEl = $('#gameShooter')
+  const keeperEl = $('#gameKeeper')
+  const ballEl = $('#gameBall')
+  if (shooterEl) { shooterEl.innerHTML = avatarSvg(shooterP.name, sTeam); shooterEl.style.left = '50%'; shooterEl.classList.remove('lean-left', 'lean-right', 'lean-center') }
+  if (keeperEl) { keeperEl.innerHTML = avatarSvg(keeperP.name, kTeam); keeperEl.style.left = '50%'; keeperEl.classList.remove('dive-left', 'dive-right', 'dive-mid') }
+  if (ballEl) { ballEl.classList.remove('is-kicking', 'fk-curved-left', 'fk-curved-right'); ballEl.style.left = '50%'; ballEl.style.top = '80%'; ballEl.style.transform = '' }
+
+  const aimGrid = $('#aimGrid')
+  const powerDock = $('#powerDock')
+  if (aimGrid) aimGrid.hidden = true
+  if (powerDock) powerDock.hidden = true
+
+  let body = ''
+  if (fkd.over) {
+    const win = fkd.score.you > fkd.score.opp
+    const draw = fkd.score.you === fkd.score.opp
+    body = `
+      <div class="fk-result">
+        <p class="eyebrow">Final score</p>
+        <strong class="fk-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+        <p class="fk-result-score">You ${fkd.score.you} — ${fkd.score.opp} ${escapeHtml(opponent.name)}</p>
+        <button class="primary-button inline-action" id="fkAIBackToLobby" type="button">Back to lobby</button>
+      </div>`
+  } else if (fkd.phase === 'result' && resolved) {
+    const label = resolved.goal ? 'GOAL!' : resolved.wallBlocks ? 'BLOCKED BY THE WALL!' : resolved.saved ? 'SAVED!' : 'WIDE!'
+    const good = iShoot ? resolved.goal : !resolved.goal
+    body = `
+      <div class="fk-result">
+        <p class="eyebrow">Round ${Math.min(round, 3)} result</p>
+        <strong class="fk-result-title ${good ? 'is-goal' : 'is-stop'}">${label}</strong>
+        <p class="fk-result-score">${resolved.goal ? '+3' : resolved.onFrame && !resolved.wallBlocks ? '+1' : '+0'} ${iShoot ? 'you' : escapeHtml(opponent.name)}</p>
+        <button class="primary-button inline-action" id="fkAINextRound" type="button">Next kick</button>
+      </div>`
+    animateFreeKick(resolved.aim, resolved.dive, resolved.power, resolved.curve, resolved.wall)
+  } else if (iShoot) {
+    body = `
+      <div class="fk-shoot">
+        <p class="eyebrow">Round ${round} · Your shot</p>
+        <strong>Pick a corner, set power, bend it</strong>
+        <div class="fk-aim-grid" id="fkAIAimGrid" aria-label="Pick where to shoot">
+          ${AIM_ZONES.map(zone => `<button class="aim-zone ${state.fkAIAim === zone ? 'is-selected' : ''}" type="button" data-zone="${zone}" aria-label="Aim ${zone.replace('-', ' ')}"><span></span></button>`).join('')}
+        </div>
+        <div class="fk-power-wrap">
+          <span class="fk-power-label">Power — sweet spot keeps it on frame</span>
+          <div class="power-track" id="fkAIPowerTrack"><i class="power-fill is-live" id="fkAIPowerFill"></i><b class="power-sweet"></b></div>
+        </div>
+        <div class="curve-selector" id="fkAICurve" role="group" aria-label="Curve">
+          <button class="secondary-button compact-action ${state.fkAICurve === -1 ? 'is-active' : ''}" type="button" data-curve="-1">Curve left</button>
+          <button class="secondary-button compact-action ${state.fkAICurve === 0 ? 'is-active' : ''}" type="button" data-curve="0">Straight</button>
+          <button class="secondary-button compact-action ${state.fkAICurve === 1 ? 'is-active' : ''}" type="button" data-curve="1">Curve right</button>
+        </div>
+        <button class="primary-button inline-action" id="fkAIShootBtn" type="button">Shoot</button>
+      </div>`
+  } else {
+    body = `
+      <div class="fk-keep">
+        <p class="eyebrow">Round ${round} · You're the keeper</p>
+        <strong>Pick your dive and wall position</strong>
+        <div class="fk-aim-grid" id="fkAIDiveGrid" aria-label="Pick your dive">
+          ${AIM_ZONES.map(zone => `<button class="aim-zone ${state.fkAIDive === zone ? 'is-selected' : ''}" type="button" data-zone="${zone}" aria-label="Dive ${zone.replace('-', ' ')}"><span></span></button>`).join('')}
+        </div>
+        <div class="wall-selector" id="fkAIWall" role="group" aria-label="Wall position">
+          <button class="secondary-button compact-action ${state.fkAIWall === 'left' ? 'is-active' : ''}" type="button" data-wall="left">Wall left</button>
+          <button class="secondary-button compact-action ${state.fkAIWall === 'center' ? 'is-active' : ''}" type="button" data-wall="center">Wall center</button>
+          <button class="secondary-button compact-action ${state.fkAIWall === 'right' ? 'is-active' : ''}" type="button" data-wall="right">Wall right</button>
+        </div>
+        <button class="primary-button inline-action" id="fkAIDiveBtn" type="button">Dive</button>
+      </div>`
+  }
+
+  let panel = stage.querySelector('.fk-panel')
+  if (!panel) {
+    panel = document.createElement('div')
+    panel.className = 'fk-panel'
+    stage.appendChild(panel)
+  }
+  panel.innerHTML = body
+
+  const aimGridEl = $('#fkAIAimGrid')
+  if (aimGridEl && !aimGridEl.dataset.bound) {
+    aimGridEl.dataset.bound = '1'
+    aimGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.aim-zone')
+      if (!btn) return
+      state.fkAIAim = btn.dataset.zone
+      renderAIFreeKickDuel()
+    })
+  }
+  const diveGridEl = $('#fkAIDiveGrid')
+  if (diveGridEl && !diveGridEl.dataset.bound) {
+    diveGridEl.dataset.bound = '1'
+    diveGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.aim-zone')
+      if (!btn) return
+      state.fkAIDive = btn.dataset.zone
+      renderAIFreeKickDuel()
+    })
+  }
+  const curveEl = $('#fkAICurve')
+  if (curveEl && !curveEl.dataset.bound) {
+    curveEl.dataset.bound = '1'
+    curveEl.addEventListener('click', event => {
+      const btn = event.target.closest('[data-curve]')
+      if (!btn) return
+      state.fkAICurve = Number(btn.dataset.curve)
+      renderAIFreeKickDuel()
+    })
+  }
+  const wallEl = $('#fkAIWall')
+  if (wallEl && !wallEl.dataset.bound) {
+    wallEl.dataset.bound = '1'
+    wallEl.addEventListener('click', event => {
+      const btn = event.target.closest('[data-wall]')
+      if (!btn) return
+      state.fkAIWall = btn.dataset.wall
+      renderAIFreeKickDuel()
+    })
+  }
+  const shootBtn = $('#fkAIShootBtn')
+  if (shootBtn && !shootBtn.dataset.bound) {
+    shootBtn.dataset.bound = '1'
+    shootBtn.addEventListener('click', () => {
+      if (fkd.busy || fkd.phase !== 'aim') return
+      fkd.busy = true
+      const aim = state.fkAIAim || 'center-high'
+      const power = readFkPowerPct('fkAIPowerFill', 'fkAIPowerTrack')
+      const curve = state.fkAICurve != null ? state.fkAICurve : 0
+      const { dive, wall } = aiFreeKickKeeperPick(aim)
+      resolveAIFreeKick(aim, dive, power, curve, wall)
+      renderAIFreeKickDuel()
+    })
+  }
+  const diveBtn = $('#fkAIDiveBtn')
+  if (diveBtn && !diveBtn.dataset.bound) {
+    diveBtn.dataset.bound = '1'
+    diveBtn.addEventListener('click', () => {
+      if (fkd.busy || fkd.phase !== 'aim') return
+      fkd.busy = true
+      const { aim, power, curve } = aiFreeKickShooterPick()
+      const dive = state.fkAIDive || 'center-high'
+      const wall = state.fkAIWall || 'center'
+      resolveAIFreeKick(aim, dive, power, curve, wall)
+      renderAIFreeKickDuel()
+    })
+  }
+  const nextBtn = $('#fkAINextRound')
+  if (nextBtn && !nextBtn.dataset.bound) {
+    nextBtn.dataset.bound = '1'
+    nextBtn.addEventListener('click', () => {
+      if (fkd.over) return
+      fkd.mode = fkd.mode === 'shoot' ? 'keep' : 'shoot'
+      if (fkd.mode === 'shoot') fkd.round += 1
+      fkd.phase = 'aim'
+      fkd.lastResult = null
+      fkd.busy = false
+      state.fkAIAim = null
+      state.fkAICurve = 0
+      state.fkAIDive = null
+      state.fkAIWall = 'center'
+      renderAIFreeKickDuel()
+    })
+  }
+  const backBtn = $('#fkAIBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+  const actions = $('#games .game-actions')
+  if (actions) actions.hidden = true
+}
+
+function renderPeerBuzzerBeaterDuel () {
+  const PM = window.PearCupPeerMatch && window.PearCupPeerMatch._state
+  if (!PM) return
+  const title = miniGameTitles['buzzer-beater-duel'] || 'Buzzer Beater Duel'
+  const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
+  const round = PM.bbRound + 1
+  const iShoot = iAmShooterPeer()
+  const committed = PM.bbCommit != null
+  const remoteCommitted = PM.bbRemoteCommit != null
+  const revealed = PM.bbRevealed.you
+  const remoteRevealed = PM.bbRevealed.opp
+  const bothRevealed = revealed && remoteRevealed
+  const resolved = PM.bbResolved
+
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+
+  const me = { name: PM.self.name, team: PM.self.team }
+  const opp = { name: PM.opp.name, team: PM.opp.team }
+  const shooterP = iShoot ? me : opp
+  const defenderP = iShoot ? opp : me
+  const sTeam = teamById(shooterP.team)
+  const dTeam = teamById(defenderP.team)
+
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) {
+    scoreboard.innerHTML = `
+      <div class="game-player-card">
+        ${avatarSvg(shooterP.name, sTeam, true)}
+        <div><span>Shooter</span><strong>${escapeHtml(shooterP.name)}</strong><em>${sTeam.flag} ${escapeHtml(sTeam.name)}</em></div>
+      </div>
+      <div class="game-score-core">
+        <span class="bb-round">Round ${Math.min(round, 3)} of 3</span>
+        <strong class="bb-score">${PM.bbScore.you} — ${PM.bbScore.opp}</strong>
+        <em>${PM.bbOver ? 'Match over' : (iShoot ? 'Your shot' : `${escapeHtml(opp.name)} shoots`)}</em>
+      </div>
+      <div class="game-player-card is-away">
+        ${avatarSvg(defenderP.name, dTeam, true)}
+        <div><span>Defender</span><strong>${escapeHtml(defenderP.name)}</strong><em>${dTeam.flag} ${escapeHtml(dTeam.name)}</em></div>
+      </div>`
+  }
+
+  const stage = $('#penaltyStage')
+  if (!stage) return
+  stage.classList.remove('is-placeholder')
+  stage.hidden = false
+
+  const shooterEl = $('#gameShooter')
+  const keeperEl = $('#gameKeeper')
+  const ballEl = $('#gameBall')
+  if (shooterEl) { shooterEl.innerHTML = avatarSvg(shooterP.name, sTeam); shooterEl.style.left = '50%'; shooterEl.classList.remove('lean-left', 'lean-right', 'lean-center') }
+  if (keeperEl) { keeperEl.innerHTML = avatarSvg(defenderP.name, dTeam); keeperEl.style.left = '50%'; keeperEl.classList.remove('dive-left', 'dive-right', 'dive-mid') }
+  if (ballEl) { ballEl.classList.remove('is-kicking', 'bb-shot'); ballEl.style.left = '50%'; ballEl.style.top = '80%'; ballEl.style.transform = '' }
+
+  const aimGrid = $('#aimGrid')
+  const powerDock = $('#powerDock')
+  if (aimGrid) aimGrid.hidden = true
+  if (powerDock) powerDock.hidden = true
+
+  let body = ''
+  if (PM.bbOver) {
+    const win = PM.bbScore.you > PM.bbScore.opp
+    const draw = PM.bbScore.you === PM.bbScore.opp
+    body = `
+      <div class="bb-result">
+        <p class="eyebrow">Final score</p>
+        <strong class="bb-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+        <p class="bb-result-score">You ${PM.bbScore.you} — ${PM.bbScore.opp} ${escapeHtml(opponent.name)}</p>
+        <button class="primary-button inline-action" id="bbPeerBackToLobby" type="button">Back to lobby</button>
+      </div>`
+  } else if (bothRevealed && resolved) {
+    const label = resolved.basket ? 'BASKET!' : resolved.blocked ? 'BLOCKED!' : 'OFF THE RIM!'
+    const good = iShoot ? resolved.basket : !resolved.basket
+    body = `
+      <div class="bb-result">
+        <p class="eyebrow">Round ${Math.min(round, 3)} result</p>
+        <strong class="bb-result-title ${good ? 'is-goal' : 'is-stop'}">${label}</strong>
+        <p class="bb-result-score">${resolved.basket ? '+2' : resolved.onTarget ? '+1' : '+0'} ${iShoot ? 'you' : escapeHtml(opponent.name)}</p>
+        <button class="primary-button inline-action" id="bbPeerNextRound" type="button">Next shot</button>
+      </div>`
+    animateBuzzerBeater(resolved.aim, resolved.defenderRead, resolved.power)
+  } else if (revealed && !remoteRevealed) {
+    body = `
+      <div class="bb-waiting">
+        <p class="eyebrow">Locked in</p>
+        <strong>${iShoot ? 'Shot!' : 'Read called!'}</strong>
+        <p class="live-copy">Waiting for ${escapeHtml(opponent.name)} to reveal…</p>
+      </div>`
+  } else if (committed && remoteCommitted && !revealed) {
+    body = `
+      <div class="bb-reveal">
+        <p class="eyebrow">Both locked in</p>
+        <strong>Reveal your ${iShoot ? 'shot' : 'read'}</strong>
+        <p class="live-copy">The defender has picked a zone — reveal when you're ready.</p>
+        <button class="primary-button inline-action" id="bbPeerRevealBtn" type="button">Reveal</button>
+      </div>`
+  } else if (iShoot) {
+    if (!committed) {
+      body = `
+        <div class="bb-shoot">
+          <p class="eyebrow">Round ${round} · Your shot</p>
+          <strong>Pick a zone and set power</strong>
+          <div class="bb-aim-grid" id="bbPeerAimGrid" aria-label="Pick where to shoot">
+            ${BB_ZONES.map(zone => `<button class="aim-zone ${state.bbPeerAim === zone ? 'is-selected' : ''}" type="button" data-zone="${zone}" aria-label="Aim ${zone}"><span></span></button>`).join('')}
+          </div>
+          <div class="bb-power-wrap">
+            <span class="bb-power-label">Power — sweet spot keeps it on target</span>
+            <div class="power-track" id="bbPeerPowerTrack"><i class="power-fill is-live" id="bbPeerPowerFill"></i><b class="power-sweet"></b></div>
+          </div>
+          <button class="primary-button inline-action" id="bbPeerShootBtn" type="button">Shoot</button>
+        </div>`
+    } else {
+      body = `
+        <div class="bb-waiting">
+          <p class="eyebrow">Committed</p>
+          <strong>Shot locked in</strong>
+          <p class="live-copy">Waiting for ${escapeHtml(opponent.name)} to pick a read…</p>
+        </div>`
+    }
+  } else {
+    if (remoteCommitted && !committed) {
+      body = `
+        <div class="bb-defend">
+          <p class="eyebrow">Round ${round} · You're the defender</p>
+          <strong>Pick your read</strong>
+          <div class="bb-aim-grid" id="bbPeerDefendGrid" aria-label="Pick your read">
+            ${BB_ZONES.map(zone => `<button class="aim-zone ${state.bbPeerDefenderRead === zone ? 'is-selected' : ''}" type="button" data-zone="${zone}" aria-label="Read ${zone}"><span></span></button>`).join('')}
+          </div>
+          <button class="primary-button inline-action" id="bbPeerDefendBtn" type="button">Contest</button>
+        </div>`
+    } else {
+      body = `
+        <div class="bb-waiting">
+          <p class="eyebrow">Get ready</p>
+          <strong>${escapeHtml(opponent.name)} is lining up…</strong>
+          <p class="live-copy">Wait for the shot, then pick your read.</p>
+        </div>`
+    }
+  }
+
+  let panel = stage.querySelector('.bb-panel')
+  if (!panel) {
+    panel = document.createElement('div')
+    panel.className = 'bb-panel'
+    stage.appendChild(panel)
+  }
+  panel.innerHTML = body
+
+  const aimGridEl = $('#bbPeerAimGrid')
+  if (aimGridEl && !aimGridEl.dataset.bound) {
+    aimGridEl.dataset.bound = '1'
+    aimGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.aim-zone')
+      if (!btn) return
+      state.bbPeerAim = btn.dataset.zone
+      renderPeerBuzzerBeaterDuel()
+    })
+  }
+  const defendGridEl = $('#bbPeerDefendGrid')
+  if (defendGridEl && !defendGridEl.dataset.bound) {
+    defendGridEl.dataset.bound = '1'
+    defendGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.aim-zone')
+      if (!btn) return
+      state.bbPeerDefenderRead = btn.dataset.zone
+      renderPeerBuzzerBeaterDuel()
+    })
+  }
+  const shootBtn = $('#bbPeerShootBtn')
+  if (shootBtn && !shootBtn.dataset.bound) {
+    shootBtn.dataset.bound = '1'
+    shootBtn.addEventListener('click', () => {
+      const aim = state.bbPeerAim || 'center'
+      const power = readFkPowerPct('bbPeerPowerFill', 'bbPeerPowerTrack')
+      window.PearCupPeerMatch && window.PearCupPeerMatch.buzzerPick(aim, power)
+    })
+  }
+  const defendBtn = $('#bbPeerDefendBtn')
+  if (defendBtn && !defendBtn.dataset.bound) {
+    defendBtn.dataset.bound = '1'
+    defendBtn.addEventListener('click', () => {
+      const defenderRead = state.bbPeerDefenderRead || 'center'
+      window.PearCupPeerMatch && window.PearCupPeerMatch.buzzerDefend(defenderRead)
+    })
+  }
+  const revealBtn = $('#bbPeerRevealBtn')
+  if (revealBtn && !revealBtn.dataset.bound) {
+    revealBtn.dataset.bound = '1'
+    revealBtn.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.buzzerReveal())
+  }
+  const nextBtn = $('#bbPeerNextRound')
+  if (nextBtn && !nextBtn.dataset.bound) {
+    nextBtn.dataset.bound = '1'
+    nextBtn.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.buzzerNextRound())
+  }
+  const backBtn = $('#bbPeerBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+  const actions = $('#games .game-actions')
+  if (actions) actions.hidden = true
+}
+
+function renderAIBuzzerBeaterDuel () {
+  const bbd = state.buzzerBeaterDuel
+  if (!bbd) return
+  const title = miniGameTitles['buzzer-beater-duel'] || 'Buzzer Beater Duel'
+  const opponent = (state.match && state.match.opponent) || { name: 'Rival' }
+  const round = bbd.round + 1
+  const iShoot = bbd.mode === 'shoot'
+  const resolved = bbd.lastResult
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+
+  const you = { name: state.username || 'captain', team: state.team }
+  const opp = { name: opponent.name, team: opponent.team }
+  const shooterP = iShoot ? you : opp
+  const defenderP = iShoot ? opp : you
+  const sTeam = teamById(shooterP.team)
+  const dTeam = teamById(defenderP.team)
+
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) {
+    scoreboard.innerHTML = `
+      <div class="game-player-card">
+        ${avatarSvg(shooterP.name, sTeam, true)}
+        <div><span>Shooter</span><strong>${escapeHtml(shooterP.name)}</strong><em>${sTeam.flag} ${escapeHtml(sTeam.name)}</em></div>
+      </div>
+      <div class="game-score-core">
+        <span class="bb-round">Round ${Math.min(round, 3)} of 3</span>
+        <strong class="bb-score">${bbd.score.you} — ${bbd.score.opp}</strong>
+        <em>${bbd.over ? 'Match over' : (iShoot ? 'Your shot' : `${escapeHtml(opponent.name)} shoots`)}</em>
+      </div>
+      <div class="game-player-card is-away">
+        ${avatarSvg(defenderP.name, dTeam, true)}
+        <div><span>Defender</span><strong>${escapeHtml(defenderP.name)}</strong><em>${dTeam.flag} ${escapeHtml(dTeam.name)}</em></div>
+      </div>`
+  }
+
+  const stage = $('#penaltyStage')
+  if (!stage) return
+  stage.classList.remove('is-placeholder')
+  stage.hidden = false
+
+  const shooterEl = $('#gameShooter')
+  const keeperEl = $('#gameKeeper')
+  const ballEl = $('#gameBall')
+  if (shooterEl) { shooterEl.innerHTML = avatarSvg(shooterP.name, sTeam); shooterEl.style.left = '50%'; shooterEl.classList.remove('lean-left', 'lean-right', 'lean-center') }
+  if (keeperEl) { keeperEl.innerHTML = avatarSvg(defenderP.name, dTeam); keeperEl.style.left = '50%'; keeperEl.classList.remove('dive-left', 'dive-right', 'dive-mid') }
+  if (ballEl) { ballEl.classList.remove('is-kicking', 'bb-shot'); ballEl.style.left = '50%'; ballEl.style.top = '80%'; ballEl.style.transform = '' }
+
+  const aimGrid = $('#aimGrid')
+  const powerDock = $('#powerDock')
+  if (aimGrid) aimGrid.hidden = true
+  if (powerDock) powerDock.hidden = true
+
+  let body = ''
+  if (bbd.over) {
+    const win = bbd.score.you > bbd.score.opp
+    const draw = bbd.score.you === bbd.score.opp
+    body = `
+      <div class="bb-result">
+        <p class="eyebrow">Final score</p>
+        <strong class="bb-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+        <p class="bb-result-score">You ${bbd.score.you} — ${bbd.score.opp} ${escapeHtml(opponent.name)}</p>
+        <button class="primary-button inline-action" id="bbAIBackToLobby" type="button">Back to lobby</button>
+      </div>`
+  } else if (bbd.phase === 'result' && resolved) {
+    const label = resolved.basket ? 'BASKET!' : resolved.blocked ? 'BLOCKED!' : 'OFF THE RIM!'
+    const good = iShoot ? resolved.basket : !resolved.basket
+    body = `
+      <div class="bb-result">
+        <p class="eyebrow">Round ${Math.min(round, 3)} result</p>
+        <strong class="bb-result-title ${good ? 'is-goal' : 'is-stop'}">${label}</strong>
+        <p class="bb-result-score">${resolved.basket ? '+2' : resolved.onTarget ? '+1' : '+0'} ${iShoot ? 'you' : escapeHtml(opponent.name)}</p>
+        <button class="primary-button inline-action" id="bbAINextRound" type="button">Next shot</button>
+      </div>`
+    animateBuzzerBeater(resolved.aim, resolved.defenderRead, resolved.power)
+  } else if (iShoot) {
+    body = `
+      <div class="bb-shoot">
+        <p class="eyebrow">Round ${round} · Your shot</p>
+        <strong>Pick a zone and set power</strong>
+        <div class="bb-aim-grid" id="bbAIAimGrid" aria-label="Pick where to shoot">
+          ${BB_ZONES.map(zone => `<button class="aim-zone ${state.bbAIAim === zone ? 'is-selected' : ''}" type="button" data-zone="${zone}" aria-label="Aim ${zone}"><span></span></button>`).join('')}
+        </div>
+        <div class="bb-power-wrap">
+          <span class="bb-power-label">Power — sweet spot keeps it on target</span>
+          <div class="power-track" id="bbAIPowerTrack"><i class="power-fill is-live" id="bbAIPowerFill"></i><b class="power-sweet"></b></div>
+        </div>
+        <button class="primary-button inline-action" id="bbAIShootBtn" type="button">Shoot</button>
+      </div>`
+  } else {
+    body = `
+      <div class="bb-defend">
+        <p class="eyebrow">Round ${round} · You're the defender</p>
+        <strong>Pick your read</strong>
+        <div class="bb-aim-grid" id="bbAIDefendGrid" aria-label="Pick your read">
+          ${BB_ZONES.map(zone => `<button class="aim-zone ${state.bbAIDefenderRead === zone ? 'is-selected' : ''}" type="button" data-zone="${zone}" aria-label="Read ${zone}"><span></span></button>`).join('')}
+        </div>
+        <button class="primary-button inline-action" id="bbAIDefendBtn" type="button">Contest</button>
+      </div>`
+  }
+
+  let panel = stage.querySelector('.bb-panel')
+  if (!panel) {
+    panel = document.createElement('div')
+    panel.className = 'bb-panel'
+    stage.appendChild(panel)
+  }
+  panel.innerHTML = body
+
+  const aimGridEl = $('#bbAIAimGrid')
+  if (aimGridEl && !aimGridEl.dataset.bound) {
+    aimGridEl.dataset.bound = '1'
+    aimGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.aim-zone')
+      if (!btn) return
+      state.bbAIAim = btn.dataset.zone
+      renderAIBuzzerBeaterDuel()
+    })
+  }
+  const defendGridEl = $('#bbAIDefendGrid')
+  if (defendGridEl && !defendGridEl.dataset.bound) {
+    defendGridEl.dataset.bound = '1'
+    defendGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.aim-zone')
+      if (!btn) return
+      state.bbAIDefenderRead = btn.dataset.zone
+      renderAIBuzzerBeaterDuel()
+    })
+  }
+  const shootBtn = $('#bbAIShootBtn')
+  if (shootBtn && !shootBtn.dataset.bound) {
+    shootBtn.dataset.bound = '1'
+    shootBtn.addEventListener('click', () => {
+      if (bbd.busy || bbd.phase !== 'aim') return
+      bbd.busy = true
+      const aim = state.bbAIAim || 'center'
+      const power = readFkPowerPct('bbAIPowerFill', 'bbAIPowerTrack')
+      const { defenderRead } = aiBuzzerDefenderPick(aim)
+      resolveAIBuzzerBeater(aim, defenderRead, power)
+      renderAIBuzzerBeaterDuel()
+    })
+  }
+  const defendBtn = $('#bbAIDefendBtn')
+  if (defendBtn && !defendBtn.dataset.bound) {
+    defendBtn.dataset.bound = '1'
+    defendBtn.addEventListener('click', () => {
+      if (bbd.busy || bbd.phase !== 'aim') return
+      bbd.busy = true
+      const { aim, power } = aiBuzzerShooterPick()
+      const defenderRead = state.bbAIDefenderRead || 'center'
+      resolveAIBuzzerBeater(aim, defenderRead, power)
+      renderAIBuzzerBeaterDuel()
+    })
+  }
+  const nextBtn = $('#bbAINextRound')
+  if (nextBtn && !nextBtn.dataset.bound) {
+    nextBtn.dataset.bound = '1'
+    nextBtn.addEventListener('click', () => {
+      if (bbd.over) return
+      bbd.mode = bbd.mode === 'shoot' ? 'keep' : 'shoot'
+      if (bbd.mode === 'shoot') bbd.round += 1
+      bbd.phase = 'aim'
+      bbd.lastResult = null
+      bbd.busy = false
+      state.bbAIAim = null
+      state.bbAIDefenderRead = null
+      renderAIBuzzerBeaterDuel()
+    })
+  }
+  const backBtn = $('#bbAIBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+  const actions = $('#games .game-actions')
+  if (actions) actions.hidden = true
+}
+
+function renderPeerAceServeDuel () {
+  const PM = window.PearCupPeerMatch && window.PearCupPeerMatch._state
+  if (!PM) return
+  const title = miniGameTitles['ace-serve-duel'] || 'Ace Serve Duel'
+  const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
+  const round = PM.asRound + 1
+  const iServe = iAmShooterPeer()
+  const committed = PM.asCommit != null
+  const remoteCommitted = PM.asRemoteCommit != null
+  const revealed = PM.asRevealed.you
+  const remoteRevealed = PM.asRevealed.opp
+  const bothRevealed = revealed && remoteRevealed
+  const resolved = PM.asResolved
+
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+
+  const me = { name: PM.self.name, team: PM.self.team }
+  const opp = { name: PM.opp.name, team: PM.opp.team }
+  const serverP = iServe ? me : opp
+  const returnerP = iServe ? opp : me
+  const sTeam = teamById(serverP.team)
+  const rTeam = teamById(returnerP.team)
+
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) {
+    scoreboard.innerHTML = `
+      <div class="game-player-card">
+        ${avatarSvg(serverP.name, sTeam, true)}
+        <div><span>Server</span><strong>${escapeHtml(serverP.name)}</strong><em>${sTeam.flag} ${escapeHtml(sTeam.name)}</em></div>
+      </div>
+      <div class="game-score-core">
+        <span class="as-round">Round ${Math.min(round, 3)} of 3</span>
+        <strong class="as-score">${PM.asScore.you} — ${PM.asScore.opp}</strong>
+        <em>${PM.asOver ? 'Match over' : (iServe ? 'Your serve' : `${escapeHtml(opp.name)} serves`)}</em>
+      </div>
+      <div class="game-player-card is-away">
+        ${avatarSvg(returnerP.name, rTeam, true)}
+        <div><span>Returner</span><strong>${escapeHtml(returnerP.name)}</strong><em>${rTeam.flag} ${escapeHtml(rTeam.name)}</em></div>
+      </div>`
+  }
+
+  const stage = $('#penaltyStage')
+  if (!stage) return
+  stage.classList.remove('is-placeholder')
+  stage.hidden = false
+
+  const shooterEl = $('#gameShooter')
+  const keeperEl = $('#gameKeeper')
+  const ballEl = $('#gameBall')
+  if (shooterEl) { shooterEl.innerHTML = avatarSvg(serverP.name, sTeam); shooterEl.style.left = '50%'; shooterEl.classList.remove('lean-left', 'lean-right', 'lean-center') }
+  if (keeperEl) { keeperEl.innerHTML = avatarSvg(returnerP.name, rTeam); keeperEl.style.left = '50%'; keeperEl.classList.remove('dive-left', 'dive-right', 'dive-mid') }
+  if (ballEl) { ballEl.classList.remove('is-kicking', 'as-serve'); ballEl.style.left = '50%'; ballEl.style.top = '80%'; ballEl.style.transform = '' }
+
+  const aimGrid = $('#aimGrid')
+  const powerDock = $('#powerDock')
+  if (aimGrid) aimGrid.hidden = true
+  if (powerDock) powerDock.hidden = true
+
+  let body = ''
+  if (PM.asOver) {
+    const win = PM.asScore.you > PM.asScore.opp
+    const draw = PM.asScore.you === PM.asScore.opp
+    body = `
+      <div class="as-result">
+        <p class="eyebrow">Final score</p>
+        <strong class="as-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+        <p class="as-result-score">You ${PM.asScore.you} — ${PM.asScore.opp} ${escapeHtml(opponent.name)}</p>
+        <button class="primary-button inline-action" id="asPeerBackToLobby" type="button">Back to lobby</button>
+      </div>`
+  } else if (bothRevealed && resolved) {
+    const label = resolved.ace ? 'ACE!' : resolved.inBounds ? 'IN PLAY' : 'FAULT!'
+    const good = iServe ? resolved.ace : !resolved.ace
+    body = `
+      <div class="as-result">
+        <p class="eyebrow">Round ${Math.min(round, 3)} result</p>
+        <strong class="as-result-title ${good ? 'is-goal' : 'is-stop'}">${label}</strong>
+        <p class="as-result-score">${resolved.ace ? '+2' : resolved.inBounds ? '+1' : '+0'} ${iServe ? 'you' : escapeHtml(opponent.name)}</p>
+        <button class="primary-button inline-action" id="asPeerNextRound" type="button">Next serve</button>
+      </div>`
+    animateAceServe(resolved.placement, resolved.returnerRead, resolved.power, resolved.spin)
+  } else if (revealed && !remoteRevealed) {
+    body = `
+      <div class="as-waiting">
+        <p class="eyebrow">Locked in</p>
+        <strong>${iServe ? 'Served!' : 'Read called!'}</strong>
+        <p class="live-copy">Waiting for ${escapeHtml(opponent.name)} to reveal…</p>
+      </div>`
+  } else if (committed && remoteCommitted && !revealed) {
+    body = `
+      <div class="as-reveal">
+        <p class="eyebrow">Both locked in</p>
+        <strong>Reveal your ${iServe ? 'serve' : 'read'}</strong>
+        <p class="live-copy">The returner has picked a zone — reveal when you're ready.</p>
+        <button class="primary-button inline-action" id="asPeerRevealBtn" type="button">Reveal</button>
+      </div>`
+  } else if (iServe) {
+    if (!committed) {
+      body = `
+        <div class="as-serve">
+          <p class="eyebrow">Round ${round} · Your serve</p>
+          <strong>Pick placement, power, and spin</strong>
+          <div class="as-aim-grid" id="asPeerAimGrid" aria-label="Pick serve placement">
+            ${AS_ZONES.map(zone => `<button class="aim-zone ${state.asPeerPlacement === zone ? 'is-selected' : ''}" type="button" data-zone="${zone}" aria-label="Serve ${zone}"><span></span></button>`).join('')}
+          </div>
+          <div class="as-power-wrap">
+            <span class="as-power-label">Power — sweet spot is on frame</span>
+            <div class="power-track" id="asPeerPowerTrack"><i class="power-fill is-live" id="asPeerPowerFill"></i><b class="power-sweet"></b></div>
+          </div>
+          <div class="as-spin-selector" id="asPeerSpin" role="group" aria-label="Spin">
+            <button class="secondary-button compact-action ${state.asPeerSpin === -1 ? 'is-active' : ''}" type="button" data-spin="-1">Slice</button>
+            <button class="secondary-button compact-action ${state.asPeerSpin === 0 ? 'is-active' : ''}" type="button" data-spin="0">Flat</button>
+            <button class="secondary-button compact-action ${state.asPeerSpin === 1 ? 'is-active' : ''}" type="button" data-spin="1">Topspin</button>
+          </div>
+          <button class="primary-button inline-action" id="asPeerServeBtn" type="button">Serve</button>
+        </div>`
+    } else {
+      body = `
+        <div class="as-waiting">
+          <p class="eyebrow">Committed</p>
+          <strong>Serve locked in</strong>
+          <p class="live-copy">Waiting for ${escapeHtml(opponent.name)} to pick a read…</p>
+        </div>`
+    }
+  } else {
+    if (remoteCommitted && !committed) {
+      body = `
+        <div class="as-return">
+          <p class="eyebrow">Round ${round} · You're the returner</p>
+          <strong>Pick your read</strong>
+          <div class="as-aim-grid" id="asPeerReturnGrid" aria-label="Pick your read">
+            ${AS_ZONES.map(zone => `<button class="aim-zone ${state.asPeerReturnerRead === zone ? 'is-selected' : ''}" type="button" data-zone="${zone}" aria-label="Read ${zone}"><span></span></button>`).join('')}
+          </div>
+          <button class="primary-button inline-action" id="asPeerReturnBtn" type="button">Call read</button>
+        </div>`
+    } else {
+      body = `
+        <div class="as-waiting">
+          <p class="eyebrow">Get ready</p>
+          <strong>${escapeHtml(opponent.name)} is serving…</strong>
+          <p class="live-copy">Wait for the serve, then pick your read.</p>
+        </div>`
+    }
+  }
+
+  let panel = stage.querySelector('.as-panel')
+  if (!panel) {
+    panel = document.createElement('div')
+    panel.className = 'as-panel'
+    stage.appendChild(panel)
+  }
+  panel.innerHTML = body
+
+  const aimGridEl = $('#asPeerAimGrid')
+  if (aimGridEl && !aimGridEl.dataset.bound) {
+    aimGridEl.dataset.bound = '1'
+    aimGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.aim-zone')
+      if (!btn) return
+      state.asPeerPlacement = btn.dataset.zone
+      renderPeerAceServeDuel()
+    })
+  }
+  const returnGridEl = $('#asPeerReturnGrid')
+  if (returnGridEl && !returnGridEl.dataset.bound) {
+    returnGridEl.dataset.bound = '1'
+    returnGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.aim-zone')
+      if (!btn) return
+      state.asPeerReturnerRead = btn.dataset.zone
+      renderPeerAceServeDuel()
+    })
+  }
+  const spinEl = $('#asPeerSpin')
+  if (spinEl && !spinEl.dataset.bound) {
+    spinEl.dataset.bound = '1'
+    spinEl.addEventListener('click', event => {
+      const btn = event.target.closest('[data-spin]')
+      if (!btn) return
+      state.asPeerSpin = Number(btn.dataset.spin)
+      renderPeerAceServeDuel()
+    })
+  }
+  const serveBtn = $('#asPeerServeBtn')
+  if (serveBtn && !serveBtn.dataset.bound) {
+    serveBtn.dataset.bound = '1'
+    serveBtn.addEventListener('click', () => {
+      const placement = state.asPeerPlacement || 'body'
+      const power = readFkPowerPct('asPeerPowerFill', 'asPeerPowerTrack')
+      const spin = state.asPeerSpin != null ? state.asPeerSpin : 0
+      window.PearCupPeerMatch && window.PearCupPeerMatch.aceServePick(placement, power, spin)
+    })
+  }
+  const returnBtn = $('#asPeerReturnBtn')
+  if (returnBtn && !returnBtn.dataset.bound) {
+    returnBtn.dataset.bound = '1'
+    returnBtn.addEventListener('click', () => {
+      const returnerRead = state.asPeerReturnerRead || 'body'
+      window.PearCupPeerMatch && window.PearCupPeerMatch.aceServeReturn(returnerRead)
+    })
+  }
+  const revealBtn = $('#asPeerRevealBtn')
+  if (revealBtn && !revealBtn.dataset.bound) {
+    revealBtn.dataset.bound = '1'
+    revealBtn.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.aceServeReveal())
+  }
+  const nextBtn = $('#asPeerNextRound')
+  if (nextBtn && !nextBtn.dataset.bound) {
+    nextBtn.dataset.bound = '1'
+    nextBtn.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.aceServeNextRound())
+  }
+  const backBtn = $('#asPeerBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+  const actions = $('#games .game-actions')
+  if (actions) actions.hidden = true
+}
+
+function renderAIAceServeDuel () {
+  const asd = state.aceServeDuel
+  if (!asd) return
+  const title = miniGameTitles['ace-serve-duel'] || 'Ace Serve Duel'
+  const opponent = (state.match && state.match.opponent) || { name: 'Rival' }
+  const round = asd.round + 1
+  const iServe = asd.mode === 'serve'
+  const resolved = asd.lastResult
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+
+  const you = { name: state.username || 'captain', team: state.team }
+  const opp = { name: opponent.name, team: opponent.team }
+  const serverP = iServe ? you : opp
+  const returnerP = iServe ? opp : you
+  const sTeam = teamById(serverP.team)
+  const rTeam = teamById(returnerP.team)
+
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) {
+    scoreboard.innerHTML = `
+      <div class="game-player-card">
+        ${avatarSvg(serverP.name, sTeam, true)}
+        <div><span>Server</span><strong>${escapeHtml(serverP.name)}</strong><em>${sTeam.flag} ${escapeHtml(sTeam.name)}</em></div>
+      </div>
+      <div class="game-score-core">
+        <span class="as-round">Round ${Math.min(round, 3)} of 3</span>
+        <strong class="as-score">${asd.score.you} — ${asd.score.opp}</strong>
+        <em>${asd.over ? 'Match over' : (iServe ? 'Your serve' : `${escapeHtml(opponent.name)} serves`)}</em>
+      </div>
+      <div class="game-player-card is-away">
+        ${avatarSvg(returnerP.name, rTeam, true)}
+        <div><span>Returner</span><strong>${escapeHtml(returnerP.name)}</strong><em>${rTeam.flag} ${escapeHtml(rTeam.name)}</em></div>
+      </div>`
+  }
+
+  const stage = $('#penaltyStage')
+  if (!stage) return
+  stage.classList.remove('is-placeholder')
+  stage.hidden = false
+
+  const shooterEl = $('#gameShooter')
+  const keeperEl = $('#gameKeeper')
+  const ballEl = $('#gameBall')
+  if (shooterEl) { shooterEl.innerHTML = avatarSvg(serverP.name, sTeam); shooterEl.style.left = '50%'; shooterEl.classList.remove('lean-left', 'lean-right', 'lean-center') }
+  if (keeperEl) { keeperEl.innerHTML = avatarSvg(returnerP.name, rTeam); keeperEl.style.left = '50%'; keeperEl.classList.remove('dive-left', 'dive-right', 'dive-mid') }
+  if (ballEl) { ballEl.classList.remove('is-kicking', 'as-serve'); ballEl.style.left = '50%'; ballEl.style.top = '80%'; ballEl.style.transform = '' }
+
+  const aimGrid = $('#aimGrid')
+  const powerDock = $('#powerDock')
+  if (aimGrid) aimGrid.hidden = true
+  if (powerDock) powerDock.hidden = true
+
+  let body = ''
+  if (asd.over) {
+    const win = asd.score.you > asd.score.opp
+    const draw = asd.score.you === asd.score.opp
+    body = `
+      <div class="as-result">
+        <p class="eyebrow">Final score</p>
+        <strong class="as-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+        <p class="as-result-score">You ${asd.score.you} — ${asd.score.opp} ${escapeHtml(opponent.name)}</p>
+        <button class="primary-button inline-action" id="asAIBackToLobby" type="button">Back to lobby</button>
+      </div>`
+  } else if (asd.phase === 'result' && resolved) {
+    const label = resolved.ace ? 'ACE!' : resolved.inBounds ? 'IN PLAY' : 'FAULT!'
+    const good = iServe ? resolved.ace : !resolved.ace
+    body = `
+      <div class="as-result">
+        <p class="eyebrow">Round ${Math.min(round, 3)} result</p>
+        <strong class="as-result-title ${good ? 'is-goal' : 'is-stop'}">${label}</strong>
+        <p class="as-result-score">${resolved.ace ? '+2' : resolved.inBounds ? '+1' : '+0'} ${iServe ? 'you' : escapeHtml(opponent.name)}</p>
+        <button class="primary-button inline-action" id="asAINextRound" type="button">Next serve</button>
+      </div>`
+    animateAceServe(resolved.placement, resolved.returnerRead, resolved.power, resolved.spin)
+  } else if (iServe) {
+    body = `
+      <div class="as-serve">
+        <p class="eyebrow">Round ${round} · Your serve</p>
+        <strong>Pick placement, power, and spin</strong>
+        <div class="as-aim-grid" id="asAIAimGrid" aria-label="Pick serve placement">
+          ${AS_ZONES.map(zone => `<button class="aim-zone ${state.asAIPlacement === zone ? 'is-selected' : ''}" type="button" data-zone="${zone}" aria-label="Serve ${zone}"><span></span></button>`).join('')}
+        </div>
+        <div class="as-power-wrap">
+          <span class="as-power-label">Power — sweet spot is on frame</span>
+          <div class="power-track" id="asAIPowerTrack"><i class="power-fill is-live" id="asAIPowerFill"></i><b class="power-sweet"></b></div>
+        </div>
+        <div class="as-spin-selector" id="asAISpin" role="group" aria-label="Spin">
+          <button class="secondary-button compact-action ${state.asAISpin === -1 ? 'is-active' : ''}" type="button" data-spin="-1">Slice</button>
+          <button class="secondary-button compact-action ${state.asAISpin === 0 ? 'is-active' : ''}" type="button" data-spin="0">Flat</button>
+          <button class="secondary-button compact-action ${state.asAISpin === 1 ? 'is-active' : ''}" type="button" data-spin="1">Topspin</button>
+        </div>
+        <button class="primary-button inline-action" id="asAIServeBtn" type="button">Serve</button>
+      </div>`
+  } else {
+    body = `
+      <div class="as-return">
+        <p class="eyebrow">Round ${round} · You're the returner</p>
+        <strong>Pick your read</strong>
+        <div class="as-aim-grid" id="asAIReturnGrid" aria-label="Pick your read">
+          ${AS_ZONES.map(zone => `<button class="aim-zone ${state.asAIReturnerRead === zone ? 'is-selected' : ''}" type="button" data-zone="${zone}" aria-label="Read ${zone}"><span></span></button>`).join('')}
+        </div>
+        <button class="primary-button inline-action" id="asAIReturnBtn" type="button">Call read</button>
+      </div>`
+  }
+
+  let panel = stage.querySelector('.as-panel')
+  if (!panel) {
+    panel = document.createElement('div')
+    panel.className = 'as-panel'
+    stage.appendChild(panel)
+  }
+  panel.innerHTML = body
+
+  const aimGridEl = $('#asAIAimGrid')
+  if (aimGridEl && !aimGridEl.dataset.bound) {
+    aimGridEl.dataset.bound = '1'
+    aimGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.aim-zone')
+      if (!btn) return
+      state.asAIPlacement = btn.dataset.zone
+      renderAIAceServeDuel()
+    })
+  }
+  const returnGridEl = $('#asAIReturnGrid')
+  if (returnGridEl && !returnGridEl.dataset.bound) {
+    returnGridEl.dataset.bound = '1'
+    returnGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.aim-zone')
+      if (!btn) return
+      state.asAIReturnerRead = btn.dataset.zone
+      renderAIAceServeDuel()
+    })
+  }
+  const spinEl = $('#asAISpin')
+  if (spinEl && !spinEl.dataset.bound) {
+    spinEl.dataset.bound = '1'
+    spinEl.addEventListener('click', event => {
+      const btn = event.target.closest('[data-spin]')
+      if (!btn) return
+      state.asAISpin = Number(btn.dataset.spin)
+      renderAIAceServeDuel()
+    })
+  }
+  const serveBtn = $('#asAIServeBtn')
+  if (serveBtn && !serveBtn.dataset.bound) {
+    serveBtn.dataset.bound = '1'
+    serveBtn.addEventListener('click', () => {
+      if (asd.busy || asd.phase !== 'aim') return
+      asd.busy = true
+      const placement = state.asAIPlacement || 'body'
+      const power = readFkPowerPct('asAIPowerFill', 'asAIPowerTrack')
+      const spin = state.asAISpin != null ? state.asAISpin : 0
+      const { returnerRead } = aiAceReturnerPick(placement)
+      resolveAIAceServe(placement, returnerRead, power, spin)
+      renderAIAceServeDuel()
+    })
+  }
+  const returnBtn = $('#asAIReturnBtn')
+  if (returnBtn && !returnBtn.dataset.bound) {
+    returnBtn.dataset.bound = '1'
+    returnBtn.addEventListener('click', () => {
+      if (asd.busy || asd.phase !== 'aim') return
+      asd.busy = true
+      const { placement, power, spin } = aiAceServerPick()
+      const returnerRead = state.asAIReturnerRead || 'body'
+      resolveAIAceServe(placement, returnerRead, power, spin)
+      renderAIAceServeDuel()
+    })
+  }
+  const nextBtn = $('#asAINextRound')
+  if (nextBtn && !nextBtn.dataset.bound) {
+    nextBtn.dataset.bound = '1'
+    nextBtn.addEventListener('click', () => {
+      if (asd.over) return
+      asd.mode = asd.mode === 'serve' ? 'return' : 'serve'
+      if (asd.mode === 'serve') asd.round += 1
+      asd.phase = 'aim'
+      asd.lastResult = null
+      asd.busy = false
+      state.asAIPlacement = null
+      state.asAISpin = 0
+      state.asAIReturnerRead = null
+      renderAIAceServeDuel()
+    })
+  }
+  const backBtn = $('#asAIBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+  const actions = $('#games .game-actions')
+  if (actions) actions.hidden = true
+}
+
+// ---- Home Run Derby helpers ----
+function iAmPitcherPeer () {
+  const PM = window.PearCupPeerMatch && window.PearCupPeerMatch._state
+  if (!PM) return true
+  return (PM.kIndex % 2 === 0 ? 'A' : 'B') === PM.role
+}
+function iAmBatterPeer () { return !iAmPitcherPeer() }
+
+function animateHomeRun (pitchRead, pitchType, power, timing) {
+  const stage = $('#penaltyStage')
+  const keeperEl = $('#gameKeeper')
+  const ballEl = $('#gameBall')
+  if (!stage || !ballEl) return
+  const readCorrect = pitchRead === pitchType
+  const homeRun = readCorrect && power >= 70 && timing === 'good'
+  const hit = readCorrect && power >= 50
+  if (keeperEl) {
+    keeperEl.style.left = '50%'
+    keeperEl.classList.remove('dive-left', 'dive-right', 'dive-mid')
+  }
+  let bx = 50
+  let by = 80
+  if (homeRun) { bx = 50; by = 5 }
+  else if (hit) { bx = 70; by = 35 }
+  else { bx = 90; by = 60 }
+  ballEl.classList.add('is-kicking')
+  ballEl.classList.add('hr-shot')
+  requestAnimationFrame(() => {
+    ballEl.style.left = `${bx}%`
+    ballEl.style.top = `${by}%`
+  })
+}
+
+function resolveAIHomeRun (pitchRead, pitchType, power, timing) {
+  const hrd = state.homeRunDerby
+  if (!hrd) return null
+  const readCorrect = pitchRead === pitchType
+  const homeRun = readCorrect && power >= 70 && timing === 'good'
+  const hit = readCorrect && power >= 50
+  let points = 0
+  if (homeRun) points = 4
+  else if (hit) points = 1
+  const batter = hrd.mode === 'batter'
+  if (batter) hrd.score.you += points
+  else hrd.score.opp += points
+  hrd.swingCount += 1
+  hrd.lastResult = { pitchRead, pitchType, power, timing, readCorrect, homeRun, hit, points }
+  hrd.phase = 'result'
+  if (hrd.swingCount >= 6) {
+    hrd.over = true
+    const opp = state.match.opponent
+    const win = hrd.score.you > hrd.score.opp
+    const draw = hrd.score.you === hrd.score.opp
+    showToast(win ? `You win ${hrd.score.you}–${hrd.score.opp}!` : draw ? `Draw ${hrd.score.you}–${hrd.score.opp}` : `${opp.name} wins ${hrd.score.opp}–${hrd.score.you}`)
+  }
+  return hrd.lastResult
+}
+
+function aiHomeRunPitcherPick () {
+  return { pitchType: HR_PITCH_TYPES[Math.floor(Math.random() * HR_PITCH_TYPES.length)] }
+}
+
+function aiHomeRunBatterPick (pitchType) {
+  const pick = currentOpponent()
+  const diff = opponentDifficulty(pick)
+  const pitchRead = Math.random() < diff ? pitchType : HR_PITCH_TYPES[Math.floor(Math.random() * HR_PITCH_TYPES.length)]
+  const power = Math.round(45 + diff * 50)
+  const timing = Math.random() < diff ? 'good' : (Math.random() < 0.5 ? 'late' : 'early')
+  return { pitchRead, power, timing }
+}
+
+function renderPeerHomeRunDerby () {
+  const PM = window.PearCupPeerMatch && window.PearCupPeerMatch._state
+  if (!PM) return
+  const title = miniGameTitles['home-run-derby'] || 'Home Run Derby'
+  const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
+  const round = PM.hrRound + 1
+  const iPitch = iAmPitcherPeer()
+  const committed = PM.hrCommit != null
+  const remoteCommitted = PM.hrRemoteCommit != null
+  const revealed = PM.hrRevealed.you
+  const remoteRevealed = PM.hrRevealed.opp
+  const bothRevealed = revealed && remoteRevealed
+  const resolved = PM.hrResolved
+
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+
+  const me = { name: PM.self.name, team: PM.self.team }
+  const opp = { name: PM.opp.name, team: PM.opp.team }
+  const pitcherP = iPitch ? me : opp
+  const batterP = iPitch ? opp : me
+  const pTeam = teamById(pitcherP.team)
+  const bTeam = teamById(batterP.team)
+
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) {
+    scoreboard.innerHTML = `
+      <div class="game-player-card">
+        ${avatarSvg(pitcherP.name, pTeam, true)}
+        <div><span>Pitcher</span><strong>${escapeHtml(pitcherP.name)}</strong><em>${pTeam.flag} ${escapeHtml(pTeam.name)}</em></div>
+      </div>
+      <div class="game-score-core">
+        <span class="hr-round">Round ${Math.min(round, 3)} of 3</span>
+        <strong class="hr-score">${PM.hrScore.you} — ${PM.hrScore.opp}</strong>
+        <em>${PM.hrOver ? 'Match over' : (iPitch ? 'You pitch' : `${escapeHtml(opp.name)} pitches`)}</em>
+      </div>
+      <div class="game-player-card is-away">
+        ${avatarSvg(batterP.name, bTeam, true)}
+        <div><span>Batter</span><strong>${escapeHtml(batterP.name)}</strong><em>${bTeam.flag} ${escapeHtml(bTeam.name)}</em></div>
+      </div>`
+  }
+
+  const stage = $('#penaltyStage')
+  if (!stage) return
+  stage.classList.remove('is-placeholder')
+  stage.hidden = false
+
+  const shooterEl = $('#gameShooter')
+  const keeperEl = $('#gameKeeper')
+  const ballEl = $('#gameBall')
+  if (shooterEl) { shooterEl.innerHTML = avatarSvg(batterP.name, bTeam); shooterEl.style.left = '50%'; shooterEl.classList.remove('lean-left', 'lean-right', 'lean-center') }
+  if (keeperEl) { keeperEl.innerHTML = avatarSvg(pitcherP.name, pTeam); keeperEl.style.left = '50%'; keeperEl.classList.remove('dive-left', 'dive-right', 'dive-mid') }
+  if (ballEl) { ballEl.classList.remove('is-kicking', 'hr-shot'); ballEl.style.left = '50%'; ballEl.style.top = '80%'; ballEl.style.transform = '' }
+
+  const aimGrid = $('#aimGrid')
+  const powerDock = $('#powerDock')
+  if (aimGrid) aimGrid.hidden = true
+  if (powerDock) powerDock.hidden = true
+
+  let body = ''
+  if (PM.hrOver) {
+    const win = PM.hrScore.you > PM.hrScore.opp
+    const draw = PM.hrScore.you === PM.hrScore.opp
+    body = `
+      <div class="hr-result">
+        <p class="eyebrow">Final score</p>
+        <strong class="hr-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+        <p class="hr-result-score">You ${PM.hrScore.you} — ${PM.hrScore.opp} ${escapeHtml(opponent.name)}</p>
+        <button class="primary-button inline-action" id="hrPeerBackToLobby" type="button">Back to lobby</button>
+      </div>`
+  } else if (bothRevealed && resolved) {
+    const label = resolved.homeRun ? 'HOME RUN!' : resolved.hit ? 'BASE HIT!' : 'OUT!'
+    const good = iPitch ? !resolved.homeRun : (resolved.homeRun || resolved.hit)
+    body = `
+      <div class="hr-result">
+        <p class="eyebrow">Round ${Math.min(round, 3)} result</p>
+        <strong class="hr-result-title ${good ? 'is-goal' : 'is-stop'}">${label}</strong>
+        <p class="hr-result-score">${resolved.homeRun ? '+4' : resolved.hit ? '+1' : '+0'} ${iPitch ? escapeHtml(opponent.name) : 'you'}</p>
+        <button class="primary-button inline-action" id="hrPeerNextRound" type="button">Next swing</button>
+      </div>`
+    animateHomeRun(resolved.pitchRead, resolved.pitchType, resolved.power, resolved.timing)
+  } else if (revealed && !remoteRevealed) {
+    body = `
+      <div class="hr-waiting">
+        <p class="eyebrow">Locked in</p>
+        <strong>${iPitch ? 'Pitch thrown!' : 'Swing taken!'}</strong>
+        <p class="live-copy">Waiting for ${escapeHtml(opponent.name)} to reveal…</p>
+      </div>`
+  } else if (committed && remoteCommitted && !revealed) {
+    body = `
+      <div class="hr-reveal">
+        <p class="eyebrow">Both locked in</p>
+        <strong>Reveal your ${iPitch ? 'pitch' : 'swing'}</strong>
+        <p class="live-copy">The ${iPitch ? 'batter' : 'pitcher'} has locked in — reveal when you're ready.</p>
+        <button class="primary-button inline-action" id="hrPeerRevealBtn" type="button">Reveal</button>
+      </div>`
+  } else if (iPitch) {
+    if (!committed) {
+      body = `
+        <div class="hr-pitch">
+          <p class="eyebrow">Round ${round} · You pitch</p>
+          <strong>Pick a pitch type</strong>
+          <div class="hr-pitch-grid" id="hrPeerPitchGrid" aria-label="Pick pitch type">
+            ${HR_PITCH_TYPES.map(type => `<button class="hr-pitch-type ${state.hrPeerPitchType === type ? 'is-selected' : ''}" type="button" data-pitch="${type}" aria-label="Pitch ${type}">${escapeHtml(type)}</button>`).join('')}
+          </div>
+          <button class="primary-button inline-action" id="hrPeerPitchBtn" type="button">Throw</button>
+        </div>`
+    } else {
+      body = `
+        <div class="hr-waiting">
+          <p class="eyebrow">Committed</p>
+          <strong>Pitch locked in</strong>
+          <p class="live-copy">Waiting for ${escapeHtml(opponent.name)} to swing…</p>
+        </div>`
+    }
+  } else {
+    if (remoteCommitted && !committed) {
+      body = `
+        <div class="hr-bat">
+          <p class="eyebrow">Round ${round} · You're batting</p>
+          <strong>Read the pitch, set power, time it</strong>
+          <div class="hr-pitch-grid" id="hrPeerReadGrid" aria-label="Pick pitch read">
+            ${HR_PITCH_TYPES.map(type => `<button class="hr-pitch-type ${state.hrPeerPitchRead === type ? 'is-selected' : ''}" type="button" data-pitch="${type}" aria-label="Read ${type}">${escapeHtml(type)}</button>`).join('')}
+          </div>
+          <div class="hr-power-wrap">
+            <span class="hr-power-label">Power — 70+ and good timing sends it out</span>
+            <div class="power-track" id="hrPeerPowerTrack"><i class="power-fill is-live" id="hrPeerPowerFill"></i><b class="power-sweet"></b></div>
+          </div>
+          <div class="hr-timing-selector" id="hrPeerTiming" role="group" aria-label="Timing">
+            <button class="secondary-button compact-action ${state.hrPeerTiming === 'good' ? 'is-active' : ''}" type="button" data-timing="good">Good</button>
+            <button class="secondary-button compact-action ${state.hrPeerTiming === 'late' ? 'is-active' : ''}" type="button" data-timing="late">Late</button>
+            <button class="secondary-button compact-action ${state.hrPeerTiming === 'early' ? 'is-active' : ''}" type="button" data-timing="early">Early</button>
+          </div>
+          <button class="primary-button inline-action" id="hrPeerSwingBtn" type="button">Swing</button>
+        </div>`
+    } else {
+      body = `
+        <div class="hr-waiting">
+          <p class="eyebrow">Get ready</p>
+          <strong>${escapeHtml(opponent.name)} is choosing a pitch…</strong>
+          <p class="live-copy">Wait for the pitch, then read it and swing.</p>
+        </div>`
+    }
+  }
+
+  let panel = stage.querySelector('.hr-panel')
+  if (!panel) {
+    panel = document.createElement('div')
+    panel.className = 'hr-panel'
+    stage.appendChild(panel)
+  }
+  panel.innerHTML = body
+
+  const pitchGridEl = $('#hrPeerPitchGrid')
+  if (pitchGridEl && !pitchGridEl.dataset.bound) {
+    pitchGridEl.dataset.bound = '1'
+    pitchGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.hr-pitch-type')
+      if (!btn) return
+      state.hrPeerPitchType = btn.dataset.pitch
+      renderPeerHomeRunDerby()
+    })
+  }
+  const readGridEl = $('#hrPeerReadGrid')
+  if (readGridEl && !readGridEl.dataset.bound) {
+    readGridEl.dataset.bound = '1'
+    readGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.hr-pitch-type')
+      if (!btn) return
+      state.hrPeerPitchRead = btn.dataset.pitch
+      renderPeerHomeRunDerby()
+    })
+  }
+  const timingEl = $('#hrPeerTiming')
+  if (timingEl && !timingEl.dataset.bound) {
+    timingEl.dataset.bound = '1'
+    timingEl.addEventListener('click', event => {
+      const btn = event.target.closest('[data-timing]')
+      if (!btn) return
+      state.hrPeerTiming = btn.dataset.timing
+      renderPeerHomeRunDerby()
+    })
+  }
+  const pitchBtn = $('#hrPeerPitchBtn')
+  if (pitchBtn && !pitchBtn.dataset.bound) {
+    pitchBtn.dataset.bound = '1'
+    pitchBtn.addEventListener('click', () => {
+      const pitchType = state.hrPeerPitchType || HR_PITCH_TYPES[0]
+      window.PearCupPeerMatch && window.PearCupPeerMatch.homeRunPitch(pitchType)
+    })
+  }
+  const swingBtn = $('#hrPeerSwingBtn')
+  if (swingBtn && !swingBtn.dataset.bound) {
+    swingBtn.dataset.bound = '1'
+    swingBtn.addEventListener('click', () => {
+      const pitchRead = state.hrPeerPitchRead || HR_PITCH_TYPES[0]
+      const power = readFkPowerPct('hrPeerPowerFill', 'hrPeerPowerTrack')
+      const timing = state.hrPeerTiming || 'good'
+      window.PearCupPeerMatch && window.PearCupPeerMatch.homeRunSwing(pitchRead, power, timing)
+    })
+  }
+  const revealBtn = $('#hrPeerRevealBtn')
+  if (revealBtn && !revealBtn.dataset.bound) {
+    revealBtn.dataset.bound = '1'
+    revealBtn.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.homeRunReveal())
+  }
+  const nextBtn = $('#hrPeerNextRound')
+  if (nextBtn && !nextBtn.dataset.bound) {
+    nextBtn.dataset.bound = '1'
+    nextBtn.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.homeRunNextRound())
+  }
+  const backBtn = $('#hrPeerBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+  const actions = $('#games .game-actions')
+  if (actions) actions.hidden = true
+}
+
+function renderAIHomeRunDerby () {
+  const hrd = state.homeRunDerby
+  if (!hrd) return
+  const title = miniGameTitles['home-run-derby'] || 'Home Run Derby'
+  const opponent = (state.match && state.match.opponent) || { name: 'Rival' }
+  const round = hrd.round + 1
+  const iPitch = hrd.mode === 'pitcher'
+  const resolved = hrd.lastResult
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+
+  const you = { name: state.username || 'captain', team: state.team }
+  const opp = { name: opponent.name, team: opponent.team }
+  const pitcherP = iPitch ? you : opp
+  const batterP = iPitch ? opp : you
+  const pTeam = teamById(pitcherP.team)
+  const bTeam = teamById(batterP.team)
+
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) {
+    scoreboard.innerHTML = `
+      <div class="game-player-card">
+        ${avatarSvg(pitcherP.name, pTeam, true)}
+        <div><span>Pitcher</span><strong>${escapeHtml(pitcherP.name)}</strong><em>${pTeam.flag} ${escapeHtml(pTeam.name)}</em></div>
+      </div>
+      <div class="game-score-core">
+        <span class="hr-round">Round ${Math.min(round, 3)} of 3</span>
+        <strong class="hr-score">${hrd.score.you} — ${hrd.score.opp}</strong>
+        <em>${hrd.over ? 'Match over' : (iPitch ? 'You pitch' : `${escapeHtml(opponent.name)} pitches`)}</em>
+      </div>
+      <div class="game-player-card is-away">
+        ${avatarSvg(batterP.name, bTeam, true)}
+        <div><span>Batter</span><strong>${escapeHtml(batterP.name)}</strong><em>${bTeam.flag} ${escapeHtml(bTeam.name)}</em></div>
+      </div>`
+  }
+
+  const stage = $('#penaltyStage')
+  if (!stage) return
+  stage.classList.remove('is-placeholder')
+  stage.hidden = false
+
+  const shooterEl = $('#gameShooter')
+  const keeperEl = $('#gameKeeper')
+  const ballEl = $('#gameBall')
+  if (shooterEl) { shooterEl.innerHTML = avatarSvg(batterP.name, bTeam); shooterEl.style.left = '50%'; shooterEl.classList.remove('lean-left', 'lean-right', 'lean-center') }
+  if (keeperEl) { keeperEl.innerHTML = avatarSvg(pitcherP.name, pTeam); keeperEl.style.left = '50%'; keeperEl.classList.remove('dive-left', 'dive-right', 'dive-mid') }
+  if (ballEl) { ballEl.classList.remove('is-kicking', 'hr-shot'); ballEl.style.left = '50%'; ballEl.style.top = '80%'; ballEl.style.transform = '' }
+
+  const aimGrid = $('#aimGrid')
+  const powerDock = $('#powerDock')
+  if (aimGrid) aimGrid.hidden = true
+  if (powerDock) powerDock.hidden = true
+
+  let body = ''
+  if (hrd.over) {
+    const win = hrd.score.you > hrd.score.opp
+    const draw = hrd.score.you === hrd.score.opp
+    body = `
+      <div class="hr-result">
+        <p class="eyebrow">Final score</p>
+        <strong class="hr-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+        <p class="hr-result-score">You ${hrd.score.you} — ${hrd.score.opp} ${escapeHtml(opponent.name)}</p>
+        <button class="primary-button inline-action" id="hrAIBackToLobby" type="button">Back to lobby</button>
+      </div>`
+  } else if (hrd.phase === 'result' && resolved) {
+    const label = resolved.homeRun ? 'HOME RUN!' : resolved.hit ? 'BASE HIT!' : 'OUT!'
+    const good = iPitch ? !resolved.homeRun : (resolved.homeRun || resolved.hit)
+    body = `
+      <div class="hr-result">
+        <p class="eyebrow">Round ${Math.min(round, 3)} result</p>
+        <strong class="hr-result-title ${good ? 'is-goal' : 'is-stop'}">${label}</strong>
+        <p class="hr-result-score">${resolved.homeRun ? '+4' : resolved.hit ? '+1' : '+0'} ${iPitch ? escapeHtml(opponent.name) : 'you'}</p>
+        <button class="primary-button inline-action" id="hrAINextRound" type="button">Next swing</button>
+      </div>`
+    animateHomeRun(resolved.pitchRead, resolved.pitchType, resolved.power, resolved.timing)
+  } else if (iPitch) {
+    body = `
+      <div class="hr-pitch">
+        <p class="eyebrow">Round ${round} · You pitch</p>
+        <strong>Pick a pitch type</strong>
+        <div class="hr-pitch-grid" id="hrAIPitchGrid" aria-label="Pick pitch type">
+          ${HR_PITCH_TYPES.map(type => `<button class="hr-pitch-type ${state.hrAIPitchType === type ? 'is-selected' : ''}" type="button" data-pitch="${type}" aria-label="Pitch ${type}">${escapeHtml(type)}</button>`).join('')}
+        </div>
+        <button class="primary-button inline-action" id="hrAIPitchBtn" type="button">Throw</button>
+      </div>`
+  } else {
+    body = `
+      <div class="hr-bat">
+        <p class="eyebrow">Round ${round} · You're batting</p>
+        <strong>Read the pitch, set power, time it</strong>
+        <div class="hr-pitch-grid" id="hrAIReadGrid" aria-label="Pick pitch read">
+          ${HR_PITCH_TYPES.map(type => `<button class="hr-pitch-type ${state.hrAIPitchRead === type ? 'is-selected' : ''}" type="button" data-pitch="${type}" aria-label="Read ${type}">${escapeHtml(type)}</button>`).join('')}
+        </div>
+        <div class="hr-power-wrap">
+          <span class="hr-power-label">Power — 70+ and good timing sends it out</span>
+          <div class="power-track" id="hrAIPowerTrack"><i class="power-fill is-live" id="hrAIPowerFill"></i><b class="power-sweet"></b></div>
+        </div>
+        <div class="hr-timing-selector" id="hrAITiming" role="group" aria-label="Timing">
+          <button class="secondary-button compact-action ${state.hrAITiming === 'good' ? 'is-active' : ''}" type="button" data-timing="good">Good</button>
+          <button class="secondary-button compact-action ${state.hrAITiming === 'late' ? 'is-active' : ''}" type="button" data-timing="late">Late</button>
+          <button class="secondary-button compact-action ${state.hrAITiming === 'early' ? 'is-active' : ''}" type="button" data-timing="early">Early</button>
+        </div>
+        <button class="primary-button inline-action" id="hrAISwingBtn" type="button">Swing</button>
+      </div>`
+  }
+
+  let panel = stage.querySelector('.hr-panel')
+  if (!panel) {
+    panel = document.createElement('div')
+    panel.className = 'hr-panel'
+    stage.appendChild(panel)
+  }
+  panel.innerHTML = body
+
+  const pitchGridEl = $('#hrAIPitchGrid')
+  if (pitchGridEl && !pitchGridEl.dataset.bound) {
+    pitchGridEl.dataset.bound = '1'
+    pitchGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.hr-pitch-type')
+      if (!btn) return
+      state.hrAIPitchType = btn.dataset.pitch
+      renderAIHomeRunDerby()
+    })
+  }
+  const readGridEl = $('#hrAIReadGrid')
+  if (readGridEl && !readGridEl.dataset.bound) {
+    readGridEl.dataset.bound = '1'
+    readGridEl.addEventListener('click', event => {
+      const btn = event.target.closest('.hr-pitch-type')
+      if (!btn) return
+      state.hrAIPitchRead = btn.dataset.pitch
+      renderAIHomeRunDerby()
+    })
+  }
+  const timingEl = $('#hrAITiming')
+  if (timingEl && !timingEl.dataset.bound) {
+    timingEl.dataset.bound = '1'
+    timingEl.addEventListener('click', event => {
+      const btn = event.target.closest('[data-timing]')
+      if (!btn) return
+      state.hrAITiming = btn.dataset.timing
+      renderAIHomeRunDerby()
+    })
+  }
+  const pitchBtn = $('#hrAIPitchBtn')
+  if (pitchBtn && !pitchBtn.dataset.bound) {
+    pitchBtn.dataset.bound = '1'
+    pitchBtn.addEventListener('click', () => {
+      if (hrd.busy || hrd.phase !== 'aim') return
+      hrd.busy = true
+      const pitchType = state.hrAIPitchType || HR_PITCH_TYPES[0]
+      const { pitchRead, power, timing } = aiHomeRunBatterPick(pitchType)
+      resolveAIHomeRun(pitchRead, pitchType, power, timing)
+      renderAIHomeRunDerby()
+    })
+  }
+  const swingBtn = $('#hrAISwingBtn')
+  if (swingBtn && !swingBtn.dataset.bound) {
+    swingBtn.dataset.bound = '1'
+    swingBtn.addEventListener('click', () => {
+      if (hrd.busy || hrd.phase !== 'aim') return
+      hrd.busy = true
+      const pitchRead = state.hrAIPitchRead || HR_PITCH_TYPES[0]
+      const power = readFkPowerPct('hrAIPowerFill', 'hrAIPowerTrack')
+      const timing = state.hrAITiming || 'good'
+      const { pitchType } = aiHomeRunPitcherPick()
+      resolveAIHomeRun(pitchRead, pitchType, power, timing)
+      renderAIHomeRunDerby()
+    })
+  }
+  const nextBtn = $('#hrAINextRound')
+  if (nextBtn && !nextBtn.dataset.bound) {
+    nextBtn.dataset.bound = '1'
+    nextBtn.addEventListener('click', () => {
+      if (hrd.over) return
+      hrd.mode = hrd.mode === 'batter' ? 'pitcher' : 'batter'
+      if (hrd.mode === 'batter') hrd.round += 1
+      hrd.phase = 'aim'
+      hrd.lastResult = null
+      hrd.busy = false
+      state.hrAIPitchRead = null
+      state.hrAIPitchType = null
+      state.hrAITiming = 'good'
+      renderAIHomeRunDerby()
+    })
+  }
+  const backBtn = $('#hrAIBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+  const actions = $('#games .game-actions')
+  if (actions) actions.hidden = true
+}
+
+// ---- Live Market Game integration -------------------------------------------
+
+function liveMarketHelpers () {
+  return window.LiveMarketGame && window.LiveMarketGame._testHelpers
+}
+
+function liveMarketDefaultOptions (gameType) {
+  const cfg = window.ULTIMATE_FIT_CONFIG || {}
+  if (gameType === 'next-event') return cfg.eventOptions || ['goal', 'corner', 'card', 'save']
+  if (gameType === 'scoreline-lock') return cfg.scorelineLabel ? [cfg.scorelineLabel] : ['final score']
+  if (gameType === 'watch-party-streak') return ['yes', 'no']
+  return []
+}
+
+function liveMarketRounds (gameType) {
+  if (gameType === 'watch-party-streak') return 5
+  return 1
+}
+
+function buildLMSchedule (gameType, options, rounds, seed) {
+  const helpers = liveMarketHelpers()
+  if (helpers && helpers.buildSchedule) return helpers.buildSchedule(gameType, options, rounds, seed)
+  const out = []
+  for (let i = 0; i < rounds; i++) {
+    const h = hashString(`${seed}|${gameType}|${i}`)
+    let correct = null
+    if (gameType === 'scoreline-lock') {
+      const home = Math.abs(h) % 5
+      const away = Math.abs(h >> 8) % 5
+      correct = `${home}-${away}`
+    } else if (gameType === 'watch-party-streak') {
+      correct = Math.abs(h) % 2 === 0 ? 'yes' : 'no'
+    } else {
+      const pool = options && options.length ? options : ['goal']
+      correct = pool[Math.abs(h) % pool.length]
+    }
+    out.push({ id: `r${i + 1}`, round: i, correct })
+  }
+  return out
+}
+
+function scoreLMPick (gameType, pick, correct) {
+  const helpers = liveMarketHelpers()
+  if (helpers && helpers.scorePick) return helpers.scorePick(gameType, pick, correct)
+  if (gameType === 'scoreline-lock') {
+    if (pick === correct) return { points: 3, reason: 'exact' }
+    const [home, away] = String(pick).split('-').map(n => parseInt(n, 10))
+    const [cHome, cAway] = String(correct).split('-').map(n => parseInt(n, 10))
+    const resultClass = home > away ? 'home' : home < away ? 'away' : 'draw'
+    const correctClass = cHome > cAway ? 'home' : cHome < cAway ? 'away' : 'draw'
+    if (resultClass === correctClass) return { points: 1, reason: 'result-class' }
+    return { points: 0, reason: 'miss' }
+  }
+  if (pick === correct) return { points: 1, reason: 'correct' }
+  return { points: 0, reason: 'miss' }
+}
+
+function startLiveMarketPeer (code, gameType) {
+  if (liveMarketUnsub) { liveMarketUnsub(); liveMarketUnsub = null }
+  state.match = { peer: true, opponent: null, stake: 0, gameType }
+  if (window.LiveMarketGame) {
+    liveMarketUnsub = window.LiveMarketGame.onState(onLiveMarketState)
+  }
+  persist()
+  renderGames()
+}
+
+function startLiveMarketPeerJoin (code, gameType) {
+  if (liveMarketUnsub) { liveMarketUnsub(); liveMarketUnsub = null }
+  state.match = { peer: true, opponent: null, stake: 0, gameType }
+  if (window.LiveMarketGame) {
+    window.LiveMarketGame.join(code, { gameType })
+    liveMarketUnsub = window.LiveMarketGame.onState(onLiveMarketState)
+  }
+  persist()
+  renderGames()
+}
+
+function onLiveMarketState (snapshot) {
+  liveMarketSnapshot = snapshot
+  if (snapshot.opp && state.match && isLiveMarketGame(state.match.gameType)) {
+    state.match.opponent = { name: snapshot.opp.name || 'Opponent', team: state.team || 'br' }
+  }
+  if (snapshot.over && state.match) {
+    state.match.over = true
+  }
+  if (state.view === 'games') renderGames()
+}
+
+function clearLiveMarketAI () {
+  const lm = state.liveMarketGame
+  if (lm && Array.isArray(lm.timers)) {
+    lm.timers.forEach(t => { try { clearTimeout(t) } catch (e) {} })
+  }
+  state.liveMarketGame = null
+}
+
+function startLiveMarketAI (opponent, gameType) {
+  clearLiveMarketAI()
+  const options = liveMarketDefaultOptions(gameType)
+  const rounds = liveMarketRounds(gameType)
+  const seed = `ai-${hashString(opponent.name)}-${Date.now()}`
+  const schedule = buildLMSchedule(gameType, options, rounds, seed)
+  state.liveMarketGame = {
+    ai: true,
+    gameType,
+    options,
+    schedule,
+    currentRound: 0,
+    scores: { you: 0, opp: 0 },
+    localPicks: {},
+    aiPicks: {},
+    resolved: new Set(),
+    over: false,
+    timers: []
+  }
+}
+
+function scheduleLMAIPick (delay) {
+  const lm = state.liveMarketGame
+  if (!lm || lm.over) return
+  const round = lm.schedule[lm.currentRound]
+  if (!round) return
+  const timer = setTimeout(() => {
+    if (lm.over || lm.resolved.has(round.id) || lm.aiPicks[round.id] != null) return
+    const correct = round.correct
+    let pick = correct
+    if (lm.gameType === 'scoreline-lock') {
+      // Pick a same-class alternative when possible, otherwise exact.
+      const [home, away] = correct.split('-').map(n => parseInt(n, 10))
+      pick = home > away ? `${home + 1}-${away}` : away > home ? `${home}-${away + 1}` : '1-1'
+      if (pick === correct) pick = '0-0'
+    } else if (lm.gameType === 'watch-party-streak') {
+      // AI occasionally disagrees to make streaks interesting.
+      pick = Math.random() < 0.65 ? correct : (correct === 'yes' ? 'no' : 'yes')
+    } else {
+      // next-event: AI usually picks correct, sometimes a neighbor option.
+      const pool = lm.options.length ? lm.options : [correct]
+      pick = Math.random() < 0.6 ? correct : pool[(pool.indexOf(correct) + 1) % pool.length]
+    }
+    lm.aiPicks[round.id] = pick
+    resolveLMAIRound(round)
+  }, delay)
+  lm.timers.push(timer)
+}
+
+function resolveLMAIRound (round) {
+  const lm = state.liveMarketGame
+  if (!lm || lm.over || lm.resolved.has(round.id)) return
+  const local = lm.localPicks[round.id]
+  const ai = lm.aiPicks[round.id]
+  if (local == null || ai == null) return
+  lm.resolved.add(round.id)
+  const localResult = scoreLMPick(lm.gameType, local, round.correct)
+  const aiResult = scoreLMPick(lm.gameType, ai, round.correct)
+  lm.scores.you += localResult.points
+  lm.scores.opp += aiResult.points
+  if (lm.currentRound + 1 >= lm.schedule.length) {
+    lm.over = true
+    const winner = lm.scores.you > lm.scores.opp ? 'you' : lm.scores.opp > lm.scores.you ? 'opp' : null
+    postSettlementReceipt({
+      gameType: lm.gameType,
+      you: 'you',
+      scores: { you: lm.scores.you, opp: lm.scores.opp },
+      winner,
+      settledAt: new Date().toISOString()
+    })
+  } else {
+    lm.currentRound += 1
+  }
+  if (state.view === 'games') renderGames()
+}
+
+function pickLiveMarketAI (value) {
+  const lm = state.liveMarketGame
+  if (!lm || lm.over) return false
+  const round = lm.schedule[lm.currentRound]
+  if (!round || lm.resolved.has(round.id) || lm.localPicks[round.id] != null) return false
+  lm.localPicks[round.id] = value
+  scheduleLMAIPick(500 + Math.floor(Math.random() * 900))
+  if (state.view === 'games') renderGames()
+  return true
+}
+
+function renderPeerLiveMarketGame () {
+  const snap = liveMarketSnapshot
+  const gameType = (state.match && state.match.gameType) || 'next-event'
+  const title = miniGameTitles[gameType] || gameType
+  const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) {
+    scoreboard.innerHTML = `
+      <div class="game-player-card">
+        ${avatarSvg(state.username || 'captain', teamById(state.team), true)}
+        <div><span>You</span><strong>${escapeHtml(state.username || 'captain')}</strong><em>${teamById(state.team).flag} ${escapeHtml(teamById(state.team).name)}</em></div>
+      </div>
+      <div class="game-score-core">
+        <span class="prediction-round">${snap ? `Round ${Math.min(snap.round, snap.totalRounds)} of ${snap.totalRounds}` : 'Waiting'}</span>
+        <strong class="prediction-score">${snap ? snap.scores.you : 0} — ${snap ? snap.scores.opp : 0}</strong>
+        <em>${snap ? snap.statusText : 'Connecting…'}</em>
+      </div>
+      <div class="game-player-card is-away">
+        ${avatarSvg(opponent.name, teamById(opponent.team || state.team), true)}
+        <div><span>Opponent</span><strong>${escapeHtml(opponent.name)}</strong></div>
+      </div>`
+  }
+
+  const stage = $('#penaltyStage')
+  if (stage) {
+    stage.classList.add('is-placeholder')
+    let body = ''
+    if (!snap || !snap.started) {
+      body = `
+        <div class="reaction-stage is-waiting">
+          <p class="eyebrow">${escapeHtml(title)}</p>
+          <strong>Waiting for opponent…</strong>
+          <p class="live-copy">Share the invite code so they can join.</p>
+        </div>`
+    } else if (snap.over) {
+      const win = snap.scores.you > snap.scores.opp
+      const draw = snap.scores.you === snap.scores.opp
+      body = `
+        <div class="reaction-stage is-over">
+          <p class="eyebrow">Final score</p>
+          <strong class="reaction-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+          <p class="reaction-result-score">You ${snap.scores.you} — ${snap.scores.opp} ${escapeHtml(opponent.name)}</p>
+          <button class="primary-button inline-action" id="lmPeerBackToLobby" type="button">Back to lobby</button>
+        </div>`
+    } else {
+      const round = snap.currentRound
+      const roundId = round && round.id
+      const localPicked = roundId != null && snap.localPicks[roundId] != null
+      const remotePicked = roundId != null && snap.remotePicks[roundId] != null
+      const resolved = roundId != null && snap.resolved.includes(roundId)
+      body = `
+        <div class="reaction-stage is-active">
+          <p class="eyebrow">Round ${snap.round} of ${snap.totalRounds}</p>
+          ${renderLiveMarketRoundBody(gameType, round, localPicked, remotePicked, resolved, snap.localPicks[roundId])}
+        </div>`
+    }
+    stage.innerHTML = `<div class="reaction-challenge-stage">${body}</div>`
+  }
+
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+
+  const backBtn = $('#lmPeerBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+  bindLiveMarketRoundControls(gameType, 'lmPeer', false)
+}
+
+function renderAILiveMarketGame () {
+  const lm = state.liveMarketGame
+  if (!lm) return
+  const gameType = lm.gameType
+  const title = miniGameTitles[gameType] || gameType
+  const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) {
+    scoreboard.innerHTML = `
+      <div class="game-player-card">
+        ${avatarSvg(state.username || 'captain', teamById(state.team), true)}
+        <div><span>You</span><strong>${escapeHtml(state.username || 'captain')}</strong><em>${teamById(state.team).flag} ${escapeHtml(teamById(state.team).name)}</em></div>
+      </div>
+      <div class="game-score-core">
+        <span class="prediction-round">Round ${Math.min(lm.currentRound + 1, lm.schedule.length)} of ${lm.schedule.length}</span>
+        <strong class="prediction-score">${lm.scores.you} — ${lm.scores.opp}</strong>
+        <em>${lm.over ? 'Match over' : 'Lock in your pick'}</em>
+      </div>
+      <div class="game-player-card is-away">
+        ${avatarSvg(opponent.name, teamById(opponent.team || state.team), true)}
+        <div><span>Opponent</span><strong>${escapeHtml(opponent.name)}</strong></div>
+      </div>`
+  }
+
+  const stage = $('#penaltyStage')
+  if (stage) {
+    stage.classList.add('is-placeholder')
+    let body = ''
+    if (lm.over) {
+      const win = lm.scores.you > lm.scores.opp
+      const draw = lm.scores.you === lm.scores.opp
+      body = `
+        <div class="reaction-stage is-over">
+          <p class="eyebrow">Final score</p>
+          <strong class="reaction-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+          <p class="reaction-result-score">You ${lm.scores.you} — ${lm.scores.opp} ${escapeHtml(opponent.name)}</p>
+          <button class="primary-button inline-action" id="lmAIBackToLobby" type="button">Back to lobby</button>
+        </div>`
+    } else {
+      const round = lm.schedule[lm.currentRound]
+      const localPicked = lm.localPicks[round.id] != null
+      const aiPicked = lm.aiPicks[round.id] != null
+      const resolved = lm.resolved.has(round.id)
+      body = `
+        <div class="reaction-stage is-active">
+          <p class="eyebrow">Round ${lm.currentRound + 1} of ${lm.schedule.length}</p>
+          ${renderLiveMarketRoundBody(gameType, round, localPicked, aiPicked, resolved, lm.localPicks[round.id])}
+        </div>`
+    }
+    stage.innerHTML = `<div class="reaction-challenge-stage">${body}</div>`
+  }
+
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+
+  const backBtn = $('#lmAIBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+  bindLiveMarketRoundControls(gameType, 'lmAI', true)
+}
+
+function renderLiveMarketRoundBody (gameType, round, localPicked, opponentPicked, resolved, localValue) {
+  if (!round) return '<strong>Get ready…</strong>'
+  if (resolved) {
+    return `<strong>Result: ${escapeHtml(String(round.correct))}</strong><p class="live-copy">${opponentPicked ? 'Opponent locked in.' : ''}</p>`
+  }
+  if (localPicked) {
+    return `<strong>Locked: ${escapeHtml(String(localValue))}</strong><p class="live-copy">${opponentPicked ? 'Both locked — resolving…' : 'Waiting for opponent…'}</p>`
+  }
+  if (gameType === 'scoreline-lock') {
+    return `
+      <strong>Lock the scoreline</strong>
+      <div class="lm-scoreline" style="display:flex;gap:12px;justify-content:center;align-items:center;margin:14px 0;">
+        <input class="peer-input lm-home" id="lmHomeScore" type="number" min="0" max="9" value="0" style="width:70px;text-align:center;">
+        <span>—</span>
+        <input class="peer-input lm-away" id="lmAwayScore" type="number" min="0" max="9" value="0" style="width:70px;text-align:center;">
+      </div>
+      <button class="primary-button" id="lmLockScore" type="button">Lock scoreline</button>`
+  }
+  if (gameType === 'watch-party-streak') {
+    return `
+      <strong>${escapeHtml(String(round.correct).startsWith('Prompt') ? round.correct : 'Will it happen?')}</strong>
+      <div class="lm-binary" style="display:flex;gap:12px;justify-content:center;margin:14px 0;">
+        <button class="secondary-button lm-option" data-value="yes" type="button">Yes</button>
+        <button class="secondary-button lm-option" data-value="no" type="button">No</button>
+      </div>`
+  }
+  // next-event and fallback
+  const options = (window.ULTIMATE_FIT_CONFIG && window.ULTIMATE_FIT_CONFIG.eventOptions) || ['goal', 'corner', 'card', 'save']
+  return `
+    <strong>What happens next?</strong>
+    <div class="lm-options" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin:14px 0;">
+      ${options.map(opt => `<button class="secondary-button lm-option" data-value="${escapeHtml(opt)}" type="button">${escapeHtml(opt)}</button>`).join('')}
+    </div>`
+}
+
+function bindLiveMarketRoundControls (gameType, prefix, isAI) {
+  if (gameType === 'scoreline-lock') {
+    const lockBtn = $(`#${prefix}LockScore`)
+    if (lockBtn && !lockBtn.dataset.bound) {
+      lockBtn.dataset.bound = '1'
+      lockBtn.addEventListener('click', () => {
+        const home = ($(`#${prefix}HomeScore`) && $(`#${prefix}HomeScore`).value) || '0'
+        const away = ($(`#${prefix}AwayScore`) && $(`#${prefix}AwayScore`).value) || '0'
+        const value = `${home}-${away}`
+        if (isAI) pickLiveMarketAI(value)
+        else if (window.LiveMarketGame) window.LiveMarketGame.pick(value)
+      })
+    }
+    return
+  }
+  const buttons = document.querySelectorAll(`.lm-option`)
+  buttons.forEach(btn => {
+    if (btn.dataset.bound) return
+    btn.dataset.bound = '1'
+    btn.addEventListener('click', () => {
+      const value = btn.dataset.value
+      if (isAI) pickLiveMarketAI(value)
+      else if (window.LiveMarketGame) window.LiveMarketGame.pick(value)
+    })
+  })
+}
+
+// ---- Reaction Challenge integration -----------------------------------------
+
+const REACTION_DEFAULT_MOMENTS = ['goal', 'save', 'penalty', 'red-card', 'VAR-overturn']
+const REACTION_WINDOW_MS = 800
+
+function reactionChallengeHelpers () {
+  const rc = window.ReactionChallenge
+  return rc && rc._testHelpers ? rc._testHelpers : null
+}
+
+function reactionChallengeDigest (str) {
+  const Net = window.PearCupPeerNet
+  if (Net && typeof Net.digest === 'function') return Net.digest(str)
+  return String(hashString(str))
+}
+
+function reactionChallengeBuildSeed (peerA, peerB, nonceA, nonceB) {
+  const ids = [peerA, peerB].sort()
+  const nonces = [nonceA || '', nonceB || ''].sort()
+  return reactionChallengeDigest(`reaction-challenge|${ids[0]}|${ids[1]}|${nonces[0]}|${nonces[1]}`)
+}
+
+function reactionChallengeBuildSchedule (seed, kinds, rounds) {
+  const helpers = reactionChallengeHelpers()
+  if (helpers && helpers.buildSchedule) return helpers.buildSchedule(seed, kinds, rounds)
+  const pool = kinds && kinds.length ? kinds : REACTION_DEFAULT_MOMENTS
+  const base = 1500
+  const interval = 2000
+  const out = []
+  let h = seed
+  for (let i = 0; i < rounds; i++) {
+    h = reactionChallengeDigest(`${h}|${i}`)
+    const kind = pool[parseInt(h.slice(0, 4), 16) % pool.length]
+    const appearAt = base + i * interval + (parseInt(h.slice(4, 8), 16) % 500)
+    out.push({ id: `r${i + 1}-${kind}`, round: i, kind, appearAt, windowMs: REACTION_WINDOW_MS })
+  }
+  return out
+}
+
+function reactionChallengeScoreMoment (moment, localTapTs, remoteTapTs) {
+  const helpers = reactionChallengeHelpers()
+  if (helpers && helpers.scoreMoment) return helpers.scoreMoment(moment, localTapTs, remoteTapTs)
+  const localValid = localTapTs != null && localTapTs >= moment.appearAt && localTapTs <= moment.appearAt + moment.windowMs
+  const remoteValid = remoteTapTs != null && remoteTapTs >= moment.appearAt && remoteTapTs <= moment.appearAt + moment.windowMs
+  if (!localValid && !remoteValid) return { winner: null, reason: 'no-valid-tap' }
+  if (localValid && !remoteValid) return { winner: 'you', reason: 'opponent-missed' }
+  if (!localValid && remoteValid) return { winner: 'opp', reason: 'you-missed' }
+  if (localTapTs === remoteTapTs) return { winner: null, reason: 'tie' }
+  return localTapTs < remoteTapTs ? { winner: 'you', reason: 'faster' } : { winner: 'opp', reason: 'faster' }
+}
+
+function reactionChallengeInviteLink (code) {
+  const hyperBase = (() => {
+    try {
+      const baseEl = document.querySelector('base[href]')
+      const candidates = []
+      if (baseEl && baseEl.href) candidates.push(baseEl.href)
+      candidates.push(location.href)
+      for (const href of candidates) {
+        const url = new URL(href, location.href)
+        if (url.protocol === 'hyper:' && url.hostname) return `hyper://${url.hostname}/`
+        const match = url.pathname.match(/\/(?:app|hyper)\/([0-9a-f]{64})(?:\/|$)/i)
+        if (match) return `hyper://${match[1].toLowerCase()}/`
+      }
+    } catch (e) {}
+    return null
+  })()
+  if (hyperBase) return `${hyperBase}?join=${encodeURIComponent(code)}&game=reaction-challenge`
+  try {
+    const url = new URL(location.href)
+    url.search = ''
+    url.hash = ''
+    url.searchParams.set('join', code)
+    url.searchParams.set('game', 'reaction-challenge')
+    return url.toString()
+  } catch (e) {
+    return `?join=${encodeURIComponent(code)}&game=reaction-challenge`
+  }
+}
+
+function showReactionInviteModal (code) {
+  const old = document.getElementById('peerModal')
+  if (old) old.remove()
+  const title = miniGameTitles['reaction-challenge'] || 'Reaction Challenge'
+  const link = reactionChallengeInviteLink(code)
+  const el = document.createElement('div')
+  el.id = 'peerModal'
+  el.className = 'peer-modal'
+  el.setAttribute('role', 'dialog')
+  el.setAttribute('aria-modal', 'true')
+  el.innerHTML = `
+    <div class="peer-modal-card">
+      <p class="eyebrow">${escapeHtml(title)} · Friends</p>
+      <h2 class="peer-title">Invite a friend</h2>
+      <p class="peer-sub">Open the link in another window/tab, or send it to a friend. Cross-device runs on the Pear swarm.</p>
+      <div class="peer-code">${escapeHtml(code)}</div>
+      <div class="peer-link"><code>${escapeHtml(link)}</code></div>
+      <div class="peer-actions">
+        <button class="secondary-button" id="rcInviteCancel" type="button">Cancel</button>
+        <button class="primary-button" id="rcInviteCopy" type="button">Copy invite link</button>
+      </div>
+      <p class="peer-wait"><i></i> Waiting for your friend…</p>
+    </div>`
+  document.body.appendChild(el)
+  const close = () => { document.removeEventListener('keydown', onKey); el.remove() }
+  const onKey = e => { if (e.key === 'Escape') close() }
+  document.addEventListener('keydown', onKey)
+  el.querySelector('#rcInviteCancel').addEventListener('click', () => { close(); leaveMatch() })
+  el.querySelector('#rcInviteCopy').addEventListener('click', () => {
+    if (navigator.clipboard) navigator.clipboard.writeText(link).catch(() => {})
+    showToast('Invite link copied')
+  })
+  requestAnimationFrame(() => el.classList.add('is-open'))
+}
+
+function onReactionState (snapshot) {
+  reactionChallengeSnapshot = snapshot
+  if (snapshot.opp && state.match && state.match.gameType === 'reaction-challenge') {
+    state.match.opponent = { name: snapshot.opp.name || 'Opponent', team: state.team || 'br' }
+  }
+  if (!snapshot.active && state.match && state.match.gameType === 'reaction-challenge' && state.match.peer && !snapshot.over) {
+    showToast('Opponent left the match')
+    state.match = null
+    reactionChallengeSnapshot = null
+    hideOverlay()
+    renderGames()
+    return
+  }
+  if (state.view === 'games') renderGames()
+}
+
+function startReactionChallengePeer (code) {
+  if (reactionChallengeUnsub) { reactionChallengeUnsub(); reactionChallengeUnsub = null }
+  state.match = { peer: true, opponent: null, stake: 0, gameType: 'reaction-challenge' }
+  showReactionInviteModal(code)
+  if (window.ReactionChallenge) {
+    reactionChallengeUnsub = window.ReactionChallenge.onState(onReactionState)
+  }
+  persist()
+  renderGames()
+}
+
+function startReactionChallengePeerJoin (code) {
+  if (reactionChallengeUnsub) { reactionChallengeUnsub(); reactionChallengeUnsub = null }
+  state.match = { peer: true, opponent: null, stake: 0, gameType: 'reaction-challenge' }
+  if (window.ReactionChallenge) {
+    window.ReactionChallenge.join(code)
+    reactionChallengeUnsub = window.ReactionChallenge.onState(onReactionState)
+  }
+  persist()
+  renderGames()
+}
+
+function clearReactionChallengeAI () {
+  const rc = state.reactionChallenge
+  if (rc && Array.isArray(rc.timers)) {
+    rc.timers.forEach(t => { try { clearTimeout(t) } catch (e) {} })
+  }
+  state.reactionChallenge = null
+}
+
+function startReactionChallengeAI (opponent) {
+  clearReactionChallengeAI()
+  const base = Date.now()
+  const selfId = `you-${base.toString(36)}`
+  const oppId = `ai-${hashString(opponent.name)}-${base.toString(36)}`
+  const nonceA = `nonce-a-${base}`
+  const nonceB = `nonce-b-${base}`
+  const seed = reactionChallengeBuildSeed(selfId, oppId, nonceA, nonceB)
+  const moments = window.ULTIMATE_FIT_CONFIG && window.ULTIMATE_FIT_CONFIG.reactionMoments
+    ? window.ULTIMATE_FIT_CONFIG.reactionMoments
+    : REACTION_DEFAULT_MOMENTS
+  const schedule = reactionChallengeBuildSchedule(seed, moments, 5).map(m => ({ ...m, appearAt: base + m.appearAt }))
+  state.reactionChallenge = {
+    ai: true,
+    base,
+    schedule,
+    currentRound: 0,
+    scores: { you: 0, opp: 0 },
+    localTaps: {},
+    aiTaps: {},
+    resolved: new Set(),
+    over: false,
+    timers: []
+  }
+  scheduleReactionChallengeAIRound(0)
+}
+
+function scheduleReactionChallengeAIRound (i) {
+  const rc = state.reactionChallenge
+  if (!rc || rc.over || i >= rc.schedule.length) return
+  rc.currentRound = i
+  const moment = rc.schedule[i]
+  const now = Date.now()
+  const appearDelay = Math.max(0, moment.appearAt - now)
+  const resolveDelay = Math.max(0, moment.appearAt + moment.windowMs - now)
+  const aiDelay = appearDelay + 150 + Math.floor(Math.random() * 400)
+  rc.timers.push(setTimeout(() => { if (state.view === 'games') renderGames() }, appearDelay))
+  rc.timers.push(setTimeout(() => {
+    if (!rc.resolved.has(moment.id) && rc.aiTaps[moment.id] == null) {
+      rc.aiTaps[moment.id] = moment.appearAt + Math.min(aiDelay - appearDelay, moment.windowMs - 10)
+    }
+    resolveReactionChallengeAIMoment(moment)
+  }, resolveDelay))
+}
+
+function resolveReactionChallengeAIMoment (moment) {
+  const rc = state.reactionChallenge
+  if (!rc || rc.resolved.has(moment.id) || rc.over) return
+  rc.resolved.add(moment.id)
+  const result = reactionChallengeScoreMoment(moment, rc.localTaps[moment.id], rc.aiTaps[moment.id])
+  if (result.winner === 'you') rc.scores.you += 1
+  else if (result.winner === 'opp') rc.scores.opp += 1
+  if (moment.round + 1 >= rc.schedule.length) {
+    rc.over = true
+    const winner = rc.scores.you > rc.scores.opp ? 'you' : rc.scores.opp > rc.scores.you ? 'opp' : null
+    postSettlementReceipt({
+      gameType: 'reaction-challenge',
+      you: 'you',
+      scores: { you: rc.scores.you, opp: rc.scores.opp },
+      winner,
+      settledAt: new Date().toISOString()
+    })
+  }
+  if (state.view === 'games') renderGames()
+}
+
+function tapReactionChallengeAI (momentId) {
+  const rc = state.reactionChallenge
+  if (!rc || rc.over) return false
+  const moment = rc.schedule.find(m => m.id === momentId)
+  if (!moment || rc.resolved.has(momentId) || rc.localTaps[momentId] != null) return false
+  const now = Date.now()
+  if (now < moment.appearAt) return false
+  rc.localTaps[momentId] = now
+  if (state.view === 'games') renderGames()
+  return true
+}
+
+function reactionChallengeMomentKindLabel (kind) {
+  const labels = {
+    goal: '⚽ Goal',
+    save: '🧤 Save',
+    penalty: '🥅 Penalty',
+    'red-card': '🟥 Red card',
+    'VAR-overturn': '📺 VAR overturn',
+    buzzer: '⏰ Buzzer',
+    ace: '🎾 Ace',
+    homerun: '⚾ Home run'
+  }
+  return labels[kind] || kind
+}
+
+function renderPeerReactionChallenge () {
+  const snap = reactionChallengeSnapshot
+  const title = miniGameTitles['reaction-challenge'] || 'Reaction Challenge'
+  const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) {
+    scoreboard.innerHTML = `
+      <div class="game-player-card">
+        ${avatarSvg(state.username || 'captain', teamById(state.team), true)}
+        <div><span>You</span><strong>${escapeHtml(state.username || 'captain')}</strong><em>${teamById(state.team).flag} ${escapeHtml(teamById(state.team).name)}</em></div>
+      </div>
+      <div class="game-score-core">
+        <span class="prediction-round">${snap ? `Round ${Math.min(snap.round, snap.totalRounds)} of ${snap.totalRounds}` : 'Waiting'}</span>
+        <strong class="prediction-score">${snap ? snap.scores.you : 0} — ${snap ? snap.scores.opp : 0}</strong>
+        <em>${snap ? snap.statusText : 'Connecting…'}</em>
+      </div>
+      <div class="game-player-card is-away">
+        ${avatarSvg(opponent.name, teamById(opponent.team || state.team), true)}
+        <div><span>Opponent</span><strong>${escapeHtml(opponent.name)}</strong></div>
+      </div>`
+  }
+
+  const stage = $('#penaltyStage')
+  if (stage) {
+    stage.classList.add('is-placeholder')
+    let body = ''
+    if (!snap || !snap.started) {
+      body = `
+        <div class="reaction-stage is-waiting">
+          <p class="eyebrow">${escapeHtml(title)}</p>
+          <strong>Waiting for opponent…</strong>
+          <p class="live-copy">Share the invite code so they can join.</p>
+        </div>`
+    } else if (snap.over) {
+      const win = snap.scores.you > snap.scores.opp
+      const draw = snap.scores.you === snap.scores.opp
+      body = `
+        <div class="reaction-stage is-over">
+          <p class="eyebrow">Final score</p>
+          <strong class="reaction-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+          <p class="reaction-result-score">You ${snap.scores.you} — ${snap.scores.opp} ${escapeHtml(opponent.name)}</p>
+          <button class="primary-button inline-action" id="rcPeerBackToLobby" type="button">Back to lobby</button>
+        </div>`
+    } else {
+      const moment = snap.currentMoment
+      const now = Date.now()
+      const visible = moment && now >= moment.appearAt && !snap.resolved.includes(moment.id)
+      const tapped = moment && snap.localTaps[moment.id] != null
+      body = `
+        <div class="reaction-stage is-active">
+          <p class="eyebrow">Round ${snap.round} of ${snap.totalRounds}</p>
+          <strong class="reaction-moment ${visible ? 'is-visible' : ''}">${moment ? reactionChallengeMomentKindLabel(moment.kind) : 'Get ready…'}</strong>
+          <p class="live-copy">${visible ? (tapped ? 'Locked in — waiting for opponent' : 'Tap the moment first!') : 'Wait for the moment…'}</p>
+          <button class="primary-button reaction-tap-button ${visible && !tapped ? '' : 'is-disabled'}" id="rcPeerTap" type="button" ${visible && !tapped ? '' : 'disabled'}>
+            ${tapped ? 'Locked' : 'TAP!'}
+          </button>
+        </div>`
+    }
+    stage.innerHTML = `<div class="reaction-challenge-stage">${body}</div>`
+  }
+
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+
+  const backBtn = $('#rcPeerBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+  const tapBtn = $('#rcPeerTap')
+  if (tapBtn && !tapBtn.dataset.bound) {
+    tapBtn.dataset.bound = '1'
+    tapBtn.addEventListener('click', () => {
+      const m = reactionChallengeSnapshot && reactionChallengeSnapshot.currentMoment
+      if (m && window.ReactionChallenge) window.ReactionChallenge.tap(m.id)
+    })
+  }
+}
+
+function renderAIReactionChallenge () {
+  const rc = state.reactionChallenge
+  if (!rc) return
+  const title = miniGameTitles['reaction-challenge'] || 'Reaction Challenge'
+  const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
+  const scoreboard = $('#gameScoreboard')
+  if (scoreboard) {
+    scoreboard.innerHTML = `
+      <div class="game-player-card">
+        ${avatarSvg(state.username || 'captain', teamById(state.team), true)}
+        <div><span>You</span><strong>${escapeHtml(state.username || 'captain')}</strong><em>${teamById(state.team).flag} ${escapeHtml(teamById(state.team).name)}</em></div>
+      </div>
+      <div class="game-score-core">
+        <span class="prediction-round">Round ${Math.min(rc.currentRound + 1, rc.schedule.length)} of ${rc.schedule.length}</span>
+        <strong class="prediction-score">${rc.scores.you} — ${rc.scores.opp}</strong>
+        <em>${rc.over ? 'Match over' : 'Fastest tap wins'}</em>
+      </div>
+      <div class="game-player-card is-away">
+        ${avatarSvg(opponent.name, teamById(opponent.team || state.team), true)}
+        <div><span>Opponent</span><strong>${escapeHtml(opponent.name)}</strong></div>
+      </div>`
+  }
+
+  const stage = $('#penaltyStage')
+  const moment = rc.schedule[rc.currentRound]
+  const now = Date.now()
+  const visible = moment && !rc.over && !rc.resolved.has(moment.id) && now >= moment.appearAt
+  const tapped = moment && rc.localTaps[moment.id] != null
+  if (stage) {
+    stage.classList.add('is-placeholder')
+    let body = ''
+    if (rc.over) {
+      const win = rc.scores.you > rc.scores.opp
+      const draw = rc.scores.you === rc.scores.opp
+      body = `
+        <div class="reaction-stage is-over">
+          <p class="eyebrow">Final score</p>
+          <strong class="reaction-result-title">${win ? 'You win! 🎉' : draw ? 'Dead level!' : 'You lost'}</strong>
+          <p class="reaction-result-score">You ${rc.scores.you} — ${rc.scores.opp} ${escapeHtml(opponent.name)}</p>
+          <button class="primary-button inline-action" id="rcAIBackToLobby" type="button">Back to lobby</button>
+        </div>`
+    } else {
+      body = `
+        <div class="reaction-stage is-active">
+          <p class="eyebrow">Round ${rc.currentRound + 1} of ${rc.schedule.length}</p>
+          <strong class="reaction-moment ${visible ? 'is-visible' : ''}">${moment ? reactionChallengeMomentKindLabel(moment.kind) : 'Get ready…'}</strong>
+          <p class="live-copy">${visible ? (tapped ? 'Locked in — AI is reacting' : 'Tap before the AI does!') : 'Wait for the moment…'}</p>
+          <button class="primary-button reaction-tap-button ${visible && !tapped ? '' : 'is-disabled'}" id="rcAITap" type="button" ${visible && !tapped ? '' : 'disabled'}>
+            ${tapped ? 'Locked' : 'TAP!'}
+          </button>
+        </div>`
+    }
+    stage.innerHTML = `<div class="reaction-challenge-stage">${body}</div>`
+  }
+
+  const hud = $('#shootoutHud')
+  if (hud) hud.hidden = true
+  const lower = $('#games .game-lower')
+  if (lower) lower.hidden = true
+  const audit = $('#games .audit-accordion')
+  if (audit) audit.hidden = true
+
+  const backBtn = $('#rcAIBackToLobby')
+  if (backBtn && !backBtn.dataset.bound) {
+    backBtn.dataset.bound = '1'
+    backBtn.addEventListener('click', leaveMatch)
+  }
+  const tapBtn = $('#rcAITap')
+  if (tapBtn && !tapBtn.dataset.bound) {
+    tapBtn.dataset.bound = '1'
+    tapBtn.addEventListener('click', () => {
+      const m = state.reactionChallenge && state.reactionChallenge.schedule[state.reactionChallenge.currentRound]
+      if (m) tapReactionChallengeAI(m.id)
+    })
+  }
+}
+
 function renderPeerMiniGamePlaceholder (gameType) {
+  if (isPlayableMiniGame(gameType)) return
   const title = miniGameTitles[gameType] || gameType
   const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
   const gamesTitle = $('#gamesTitle')
@@ -4429,15 +8767,47 @@ async function renderGames () {
   const so = ensureShootout()
   ensureShootoutDom()
   // A live peer match owns its own turn loop.
-  if (state.match && state.match.peer && window.PearCupPeerMatch) {
+  if (state.match && state.match.peer) {
     const arena0 = document.querySelector('#games .game-arena')
     if (arena0) arena0.classList.remove('is-lobby')
     const peerGameType = state.match.gameType || 'penalty-clash'
+    if (peerGameType === 'reaction-challenge') {
+      renderPeerReactionChallenge()
+      return null
+    }
+    if (peerGameType === 'trivia-duel') {
+      renderPeerTriviaDuel()
+      return null
+    }
+    if (peerGameType === 'prediction-duel') {
+      renderPeerPredictionDuel()
+      return null
+    }
+    if (peerGameType === 'free-kick-duel') {
+      renderPeerFreeKickDuel()
+      return null
+    }
+    if (peerGameType === 'buzzer-beater-duel') {
+      renderPeerBuzzerBeaterDuel()
+      return null
+    }
+    if (peerGameType === 'ace-serve-duel') {
+      renderPeerAceServeDuel()
+      return null
+    }
+    if (peerGameType === 'home-run-derby') {
+      renderPeerHomeRunDerby()
+      return null
+    }
+    if (isLiveMarketGame(peerGameType)) {
+      renderPeerLiveMarketGame()
+      return null
+    }
     if (peerGameType !== 'penalty-clash') {
       renderPeerMiniGamePlaceholder(peerGameType)
       return null
     }
-    if (so.phase !== 'over') window.PearCupPeerMatch.render()
+    if (window.PearCupPeerMatch && so.phase !== 'over') window.PearCupPeerMatch.render()
     return null
   }
   const arena = document.querySelector('#games .game-arena')
@@ -4447,6 +8817,38 @@ async function renderGames () {
     return null
   }
   if (arena) arena.classList.remove('is-lobby')
+  if (state.match.gameType === 'trivia-duel') {
+    renderAITriviaDuel()
+    return null
+  }
+  if (state.match.gameType === 'prediction-duel') {
+    renderAIPredictionDuel()
+    return null
+  }
+  if (state.match.gameType === 'free-kick-duel') {
+    renderAIFreeKickDuel()
+    return null
+  }
+  if (state.match.gameType === 'buzzer-beater-duel') {
+    renderAIBuzzerBeaterDuel()
+    return null
+  }
+  if (state.match.gameType === 'ace-serve-duel') {
+    renderAIAceServeDuel()
+    return null
+  }
+  if (state.match.gameType === 'home-run-derby') {
+    renderAIHomeRunDerby()
+    return null
+  }
+  if (state.match.gameType === 'reaction-challenge') {
+    renderAIReactionChallenge()
+    return null
+  }
+  if (isLiveMarketGame(state.match.gameType)) {
+    renderAILiveMarketGame()
+    return null
+  }
   const stage2 = $('#penaltyStage')
   if (stage2) { stage2.hidden = false; stage2.classList.remove('is-placeholder') }
   const hud2 = $('#shootoutHud')
@@ -4606,29 +9008,56 @@ function applyKickResult (result) {
     </div>
   `
 
-  $('#gameLeaderboard').innerHTML = `
-    <div class="rail-header">
-      <p class="eyebrow">Games</p>
-      <strong>${integrationRuntime.readiness.settlement.realMoneyEnabled ? 'Trusted results' : 'Demo results'}</strong>
-    </div>
-    <div class="leader-list">
-      ${gameLeaderboardRows.map((row, index) => `
-        <div class="game-leader-row">
-          <span class="leader-rank">${index + 1}</span>
-          ${avatarSvg(row.user === 'captain' ? (state.username || 'captain') : row.user, teamById(row.team), true)}
-          <div>
-            <strong>${escapeHtml(row.user === 'captain' ? (state.username || 'captain') : row.user)}</strong>
-            <span>${row.record} record</span>
-          </div>
-          <em>${row.trust}</em>
+  const gl = $('#gameLeaderboard')
+  if (gl) {
+    if (!gameLeaderboardRows.length) {
+      gl.innerHTML = `
+        <div class="rail-header"><p class="eyebrow">Games</p><strong>${integrationRuntime.readiness.settlement.realMoneyEnabled ? 'Trusted results' : 'Demo results'}</strong></div>
+        <div class="empty-state"><strong>${uiT('emptyLeaderboard')}</strong></div>`
+    } else {
+      gl.innerHTML = `
+        <div class="rail-header">
+          <p class="eyebrow">Games</p>
+          <strong>${integrationRuntime.readiness.settlement.realMoneyEnabled ? 'Trusted results' : 'Demo results'}</strong>
         </div>
-      `).join('')}
-    </div>
-  `
+        <div class="leader-list">
+          ${gameLeaderboardRows.map((row, index) => `
+            <div class="game-leader-row">
+              <span class="leader-rank">${index + 1}</span>
+              ${avatarSvg(row.user === 'captain' ? (state.username || 'captain') : row.user, teamById(row.team), true)}
+              <div>
+                <strong>${escapeHtml(row.user === 'captain' ? (state.username || 'captain') : row.user)}</strong>
+                <span>${row.record} record</span>
+              </div>
+              <em>${row.trust}</em>
+            </div>
+          `).join('')}
+        </div>
+      `
+    }
+  }
   return result
 }
 
 function remainingPicks () {
+  const variant = currentPoolVariant()
+  if (variant === 'side-quest') {
+    const categories = awardsCategories.length ? awardsCategories : defaultSideQuestCategories()
+    return categories.filter(category => !state.picks[category.id]).length
+  }
+  if (variant === 'confidence') {
+    return bracketMatchIds.reduce((total, id) => {
+      const hasWinner = !!state.picks[id]
+      const hasConfidence = !!state.picks[`${id}-confidence`]
+      return total + (hasWinner && hasConfidence ? 0 : 1)
+    }, 0)
+  }
+  if (variant === 'survivor') {
+    const totalRounds = 5
+    const currentRound = state.survivorRound || 1
+    const currentPicked = !!state.picks[`survivor-r${currentRound}`]
+    return totalRounds - currentRound + (currentPicked ? 0 : 1)
+  }
   if (templateKind === 'fight-card') {
     return round32Matches.reduce((total, bout) => {
       const winnerPicked = state.picks[bout.id]
@@ -4638,6 +9067,7 @@ function remainingPicks () {
     }, 0)
   }
   if (templateKind === 'awards-card') return awardsCategories.filter(category => !state.picks[category.id]).length
+  if (templateKind === 'round-robin') return 0
   if (templateKind === 'group-plus-knockout' && groupStages.length) {
     const groupRemaining = groupStages.reduce((total, group) =>
       total + (state.picks[groupPickKey(group.id, '1')] ? 0 : 1) + (state.picks[groupPickKey(group.id, '2')] ? 0 : 1), 0)
@@ -4718,19 +9148,19 @@ function bindEvents () {
   sendBootCheckpoint('bindEvents:profile')
 
   $('#resetPicks').addEventListener('click', () => {
-    state.picks = {}
+    resetActivePicks()
     persist()
     renderBracket()
-    showToast('Bracket picks cleared')
+    showToast(`${PoolVariantHelpers ? PoolVariantHelpers.variantDisplayName(currentPoolVariant()) : 'Pool'} picks cleared`)
   })
 
   $('#submitPicks').addEventListener('click', () => {
     const remaining = remainingPicks()
     if (remaining > 0) {
-      showToast(`${remaining} picks left before this bracket is sealed`)
+      showToast(`${remaining} picks left before this ${PoolVariantHelpers ? PoolVariantHelpers.variantDisplayName(currentPoolVariant()) : 'bracket'} is sealed`)
       return
     }
-    showToast(`$${state.selectedTier} bracket submitted for ${state.username}`)
+    showToast(`$${state.selectedTier} ${PoolVariantHelpers ? PoolVariantHelpers.variantDisplayName(currentPoolVariant()) : 'bracket'} submitted for ${state.username}`)
   })
   sendBootCheckpoint('bindEvents:bracket')
 
@@ -5355,6 +9785,8 @@ function boot () {
   bindEvents()
   sendBootCheckpoint('boot:events-bound')
   hydrateStaticShell()
+  // Defer heavy raster fit assets until they are near the viewport.
+  try { if (window.LazyFitAssets) window.LazyFitAssets.observe() } catch (e) { bootIssues.push('lazy assets threw: ' + (e && e.message)) }
   // If any runtime module was missing or the runtime config degraded to demo, say so
   // (non-blocking) — tells us the real cause without a console.
   if (bootIssues.length) { try { console.warn('PearCup boot issues:', bootIssues); showToast('Runtime note: ' + bootIssues.join(' · ')) } catch (e) {} }
@@ -5373,10 +9805,19 @@ function boot () {
   setInterval(detectLiveRelay, 60_000)
 }
 
+function localizeChrome () {
+  const map = { Profile: 'profile', Home: 'home', Bracket: 'bracket', Watch: 'watch', Games: 'games' }
+  $$('.topnav button').forEach(btn => {
+    const key = map[btn.textContent.trim()]
+    if (key) btn.textContent = uiT(key)
+  })
+}
+
 function hydrateStaticShell () {
   try {
     if ($('#teamGrid')) renderTeams()
     if ($('#profileChip') || $('#avatarPreview')) renderProfile()
+    localizeChrome()
     document.documentElement.dataset.pearcupUiHydrated = 'true'
     sendBootCheckpoint('boot:ui-hydrated')
   } catch (err) {
