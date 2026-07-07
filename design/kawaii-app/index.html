@@ -234,7 +234,7 @@
             <h1 id="bracketTitle">Enter a World Cup bracket</h1>
           </div>
 
-          <p class="bracket-step">1 · Select a bracket to enter</p>
+          <p class="bracket-step">1 · Select a bracket to enter <span class="step-sub">rolling pools — join any round before kickoff</span></p>
           <div class="pool-select" id="bracketPoolSelect"></div>
 
           <div class="bracket-entered">
@@ -243,7 +243,7 @@
           </div>
 
           <div class="picks-head">
-            <p class="bracket-step">3 · Make your picks <span class="step-sub" id="picksRemaining"></span></p>
+            <p class="bracket-step">3 · Pick the open matches <span class="step-sub" id="picksRemaining"></span></p>
             <div class="bracket-actions">
               <button class="secondary-button" type="button" id="resetPicks">
                 <span class="button-icon" aria-hidden="true">
@@ -259,6 +259,7 @@
               </button>
             </div>
           </div>
+          <div class="round-strip" id="roundStrip" aria-label="Round status"></div>
           <div class="bracket-board" id="bracketBoard"></div>
 
           <div class="audit-accordion">

@@ -339,6 +339,19 @@ function normalizeBracketPicks (picks = {}) {
     const round32Match = round32ById.get(id)
     if (round32Match && !round32Match.slots.includes(teamId)) delete next[id]
   }
+  // Rolling pools: later-round slots resolve from actual results, so drop any
+  // saved pick that names a team no longer reachable in that match (keeps
+  // picks on decided matches so the scorecard can mark them right/wrong).
+  try {
+    for (const round of buildRounds()) {
+      for (const match of round.matches) {
+        if (round32ById.has(match.id)) continue
+        const pick = next[match.id]
+        if (!pick) continue
+        if (!match.slots[0] || !match.slots[1] || !match.slots.includes(pick)) delete next[match.id]
+      }
+    }
+  } catch (e) {}
   return next
 }
 
@@ -1947,30 +1960,67 @@ function makeMatch (id, time, status, slots, score = [null, null], sample = {}) 
   return { id, time, status, slots, score, sample }
 }
 
+// Rolling round-by-round pools: the tree advances on ACTUAL results, not the
+// user's predictions — so anyone can join mid-tournament and pick whatever
+// matches haven't kicked off yet. A match is pickable while both teams are
+// known and no final result is in.
+function matchDecided (status) {
+  return /^(FT|AET|PEN)/i.test(String(status || ''))
+}
+
+function actualWinner (match) {
+  if (!match || !matchDecided(match.status)) return null
+  const [home, away] = match.slots
+  if (!home || !away) return null
+  const [sa, sb] = match.score
+  if (sa != null && sb != null && sa !== sb) return sa > sb ? home : away
+  const pens = String(match.status).match(/PEN\s*(\d+)\s*-\s*(\d+)/i)
+  if (pens) return Number(pens[1]) > Number(pens[2]) ? home : away
+  return null
+}
+
+function feedersOf (matchId) {
+  const link = bracketLinks.find(l => l.to === matchId)
+  return link ? link.from : []
+}
+
+function canPickMatch (match) {
+  return Boolean(match && match.slots[0] && match.slots[1] && !matchDecided(match.status))
+}
+
 function buildRounds () {
   const round32 = round32Matches.map(match => makeMatch(match.id, match.time, match.status, match.slots, match.score, match.sample))
+  const byId = new Map(round32.map(m => [m.id, m]))
+  const winOf = id => actualWinner(byId.get(id))
+  const synth = (id, time) => {
+    const from = feedersOf(id)
+    const slots = [winOf(from[0]) || null, winOf(from[1]) || null]
+    const match = makeMatch(id, time, slots[0] && slots[1] ? 'Picks open' : 'TBD', slots, [null, null], {})
+    byId.set(id, match)
+    return match
+  }
   const round16 = [
-    makeMatch('r16-1', 'Sat, 07/04, 00:00', 'Next', [getPick('r32-1'), getPick('r32-2')], [null, null], {}),
-    makeMatch('r16-2', 'Sat, 07/04, 04:00', 'Next', [getPick('r32-3'), getPick('r32-4')], [null, null], {}),
-    makeMatch('r16-3', 'Sun, 07/05, 00:00', 'Next', [getPick('r32-5'), getPick('r32-6')], [null, null], {}),
-    makeMatch('r16-4', 'Sun, 07/05, 04:00', 'Next', [getPick('r32-7'), getPick('r32-8')], [null, null], {}),
-    makeMatch('r16-5', 'Mon, 07/06, 00:00', 'Next', [getPick('r32-9'), getPick('r32-10')], [null, null], {}),
-    makeMatch('r16-6', 'Mon, 07/06, 04:00', 'Next', [getPick('r32-11'), getPick('r32-12')], [null, null], {}),
-    makeMatch('r16-7', 'Tue, 07/07, 00:00', 'Next', [getPick('r32-13'), getPick('r32-14')], [null, null], {}),
-    makeMatch('r16-8', 'Tue, 07/07, 04:00', 'Next', [getPick('r32-15'), getPick('r32-16')], [null, null], {})
+    synth('r16-1', 'Sat, 07/04, 00:00'),
+    synth('r16-2', 'Sat, 07/04, 04:00'),
+    synth('r16-3', 'Sun, 07/05, 00:00'),
+    synth('r16-4', 'Sun, 07/05, 04:00'),
+    synth('r16-5', 'Mon, 07/06, 00:00'),
+    synth('r16-6', 'Mon, 07/06, 04:00'),
+    synth('r16-7', 'Tue, 07/07, 00:00'),
+    synth('r16-8', 'Tue, 07/07, 04:00')
   ]
   const qf = [
-    makeMatch('qf-1', 'Thu, 07/09, 00:00', 'Open', [getPick('r16-1'), getPick('r16-2')], [null, null], {}),
-    makeMatch('qf-2', 'Fri, 07/10, 00:00', 'Open', [getPick('r16-3'), getPick('r16-4')], [null, null], {}),
-    makeMatch('qf-3', 'Fri, 07/10, 04:00', 'Open', [getPick('r16-5'), getPick('r16-6')], [null, null], {}),
-    makeMatch('qf-4', 'Sat, 07/11, 00:00', 'Open', [getPick('r16-7'), getPick('r16-8')], [null, null], {})
+    synth('qf-1', 'Thu, 07/09, 00:00'),
+    synth('qf-2', 'Fri, 07/10, 00:00'),
+    synth('qf-3', 'Fri, 07/10, 04:00'),
+    synth('qf-4', 'Sat, 07/11, 00:00')
   ]
   const semi = [
-    makeMatch('sf-1', 'Tue, 07/14, 00:00', 'Open', [getPick('qf-1'), getPick('qf-2')], [null, null], {}),
-    makeMatch('sf-2', 'Wed, 07/15, 00:00', 'Open', [getPick('qf-3'), getPick('qf-4')], [null, null], {})
+    synth('sf-1', 'Tue, 07/14, 00:00'),
+    synth('sf-2', 'Wed, 07/15, 00:00')
   ]
   const final = [
-    makeMatch('final-1', 'Sun, 07/19, 01:00', 'Open', [getPick('sf-1'), getPick('sf-2')], [null, null], {})
+    synth('final-1', 'Sun, 07/19, 01:00')
   ]
 
   return [
@@ -1988,31 +2038,48 @@ function ownersFor (match, teamId) {
   return owners.slice(0, 2)
 }
 
-function renderTeamRow (match, teamId, index) {
+function slotHint (match, index, roundsById) {
+  const feederId = feedersOf(match.id)[index]
+  const feeder = feederId && roundsById ? roundsById.get(feederId) : null
+  if (feeder && feeder.slots[0] && feeder.slots[1]) {
+    return `${teamById(feeder.slots[0]).name} / ${teamById(feeder.slots[1]).name}`
+  }
+  return 'Winner TBD'
+}
+
+function renderTeamRow (match, teamId, index, roundsById) {
   const team = teamId ? teamById(teamId) : null
   const picked = team && getPick(match.id) === team.id
   const score = match.score[index]
+  const decided = matchDecided(match.status)
+  const winner = decided ? actualWinner(match) : null
 
   if (!team) {
     return `
-      <button class="team-row" type="button" disabled>
+      <button class="team-row is-tbd" type="button" disabled>
         <span class="team-flag" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6Z" fill="#717982"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6Z" fill="#c9b3d6"/></svg>
         </span>
-        <span class="team-title">A determ.</span>
+        <span class="team-title slot-hint">${escapeHtml(slotHint(match, index, roundsById))}</span>
         <span class="score"></span>
       </button>
     `
   }
 
   const chips = ownersFor(match, team.id).map(owner => `<span class="pick-chip">${escapeHtml(owner)}</span>`).join('')
+  const won = winner && winner === team.id
+  const lost = winner && winner !== team.id
+  const verdict = decided && picked
+    ? (won ? '<span class="pick-verdict is-hit" title="Your pick won">✓</span>' : '<span class="pick-verdict is-miss" title="Your pick lost">✕</span>')
+    : ''
+  const rowState = `${picked ? ' is-picked' : ''}${won ? ' is-winner' : ''}${lost ? ' is-eliminated' : ''}`
 
   return `
-    <button class="team-row ${picked ? 'is-picked' : ''}" type="button" data-match="${match.id}" data-pick="${team.id}" aria-pressed="${picked}">
+    <button class="team-row${rowState}" type="button" data-match="${match.id}" data-pick="${team.id}" aria-pressed="${picked}"${decided ? ' disabled' : ''}>
       <span class="team-flag">${team.flag}</span>
       <span class="team-title">${escapeHtml(team.name)}</span>
       <span class="pick-side">
-        ${chips}
+        ${verdict}${chips}
         <span class="score">${score === null ? '' : score}</span>
       </span>
     </button>
@@ -2057,7 +2124,7 @@ function enterSelectedPool () {
   state.enteredPools[tier] = true
   persist()
   renderBracket()
-  showToast(`Entered the $${tier} bracket · ${fmtMoney(tier)} escrowed via WDK`)
+  showToast(`Entered the $${tier} pool · ${fmtMoney(tier)} escrowed via WDK — picks stay open every round`)
 }
 
 function renderBracketEntrants (settlement) {
@@ -2157,7 +2224,13 @@ function renderBracketDemoStats (selectedPool) {
   })
 }
 
-function renderBracketBoard () {
+function matchStateClass (match) {
+  if (matchDecided(match.status)) return 'is-decided'
+  if (canPickMatch(match)) return 'is-open'
+  return 'is-tbd'
+}
+
+function renderBracketBoard (rounds = buildRounds()) {
   const placements = {
     round32: index => ({ column: 1, row: index + 2, span: 1 }),
     round16: index => ({ column: 2, row: 2 + (index * 2), span: 2 }),
@@ -2165,22 +2238,26 @@ function renderBracketBoard () {
     semi: index => ({ column: 4, row: 5 + (index * 8), span: 8 }),
     final: () => ({ column: 5, row: 9, span: 8 })
   }
-  const rounds = buildRounds()
+  const roundsById = new Map()
+  rounds.forEach(round => round.matches.forEach(match => roundsById.set(match.id, match)))
+  const pickableIds = new Set([...roundsById.values()].filter(canPickMatch).map(m => m.id))
 
   $('#bracketBoard').innerHTML = `
     <svg class="bracket-lines" id="bracketLines" aria-hidden="true"></svg>
     ${rounds.map((round, roundIndex) => `
-    <p class="round-title" style="grid-column:${roundIndex + 1};grid-row:1">${round.label}</p>
+    <p class="round-title" style="grid-column:${roundIndex + 1};grid-row:1" data-round-col="${round.key}">${round.label}</p>
     ${round.matches.map((match, index) => {
       const place = placements[round.key](index)
+      const stateClass = matchStateClass(match)
+      const statusLabel = stateClass === 'is-open' ? (getPick(match.id) ? 'Picked ✓' : 'Pick now') : match.status
       return `
-        <article class="match-card bracket-match" data-round="${round.key}" data-match-card="${match.id}" style="grid-column:${place.column};grid-row:${place.row} / span ${place.span}">
+        <article class="match-card bracket-match ${stateClass}" data-round="${round.key}" data-match-card="${match.id}" style="grid-column:${place.column};grid-row:${place.row} / span ${place.span}">
           <div class="match-meta">
             <span>${match.time}</span>
-            <span class="match-status">${match.status}</span>
+            <span class="match-status">${statusLabel}</span>
           </div>
-          ${renderTeamRow(match, match.slots[0], 0)}
-          ${renderTeamRow(match, match.slots[1], 1)}
+          ${renderTeamRow(match, match.slots[0], 0, roundsById)}
+          ${renderTeamRow(match, match.slots[1], 1, roundsById)}
         </article>
       `
     }).join('')}
@@ -2189,13 +2266,46 @@ function renderBracketBoard () {
 
   $$('#bracketBoard [data-pick]').forEach(button => {
     button.addEventListener('click', () => {
+      if (!pickableIds.has(button.dataset.match)) return
       state.picks[button.dataset.match] = button.dataset.pick
-      clearDownstream(button.dataset.match)
       persist()
       renderBracket()
     })
   })
   scheduleBracketConnectors()
+}
+
+function renderRoundStrip (rounds) {
+  const el = $('#roundStrip')
+  if (!el) return
+  el.innerHTML = rounds.map(round => {
+    const decided = round.matches.filter(m => matchDecided(m.status))
+    const open = round.matches.filter(canPickMatch)
+    const openUnpicked = open.filter(m => !getPick(m.id))
+    const hits = decided.filter(m => getPick(m.id) && getPick(m.id) === actualWinner(m)).length
+    const yourScore = decided.some(m => getPick(m.id)) ? ` · you ${hits}/${decided.length}` : ''
+    let stateClass, label
+    if (open.length > 0) {
+      stateClass = 'is-live'
+      label = openUnpicked.length > 0 ? `${openUnpicked.length} open — pick now` : `picked ✓ · locks at kickoff`
+    } else if (decided.length === round.matches.length) {
+      stateClass = 'is-done'
+      label = `decided${yourScore}`
+    } else {
+      stateClass = 'is-locked'
+      label = 'opens when results land'
+    }
+    return `
+      <button class="round-pill ${stateClass}" type="button" data-round-jump="${round.key}">
+        <b>${round.label}</b><span>${label}</span>
+      </button>`
+  }).join('')
+  $$('#roundStrip [data-round-jump]').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const title = document.querySelector(`.round-title[data-round-col="${pill.dataset.roundJump}"]`)
+      if (title) title.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+    })
+  })
 }
 
 async function renderBracket () {
@@ -2205,9 +2315,10 @@ async function renderBracket () {
   const entered = !!state.enteredPools[selectedPool.tier]
   $('#bracketTierLabel').textContent = `$${selectedPool.tier} pool${entered ? ' · entered' : ''}`
   renderPoolSelect()
+  const rounds = buildRounds()
   const remaining = remainingPicks()
   const pr = $('#picksRemaining')
-  if (pr) pr.textContent = remaining > 0 ? `${remaining} left` : 'complete ✓'
+  if (pr) pr.textContent = remaining > 0 ? `${remaining} open now — lock at kickoff` : 'all open picks in ✓'
   // Signpost the flow: highlight the step the user should act on next.
   const steps = $$('#bracket .bracket-step')
   if (steps.length >= 3) {
@@ -2217,7 +2328,8 @@ async function renderBracket () {
   }
   const statsEl = $('#bracketStats')
   if (statsEl) statsEl.innerHTML = '<p class="live-copy">Building WDK entry intents, QVAC attestation, and replay roots…</p>'
-  renderBracketBoard()
+  renderRoundStrip(rounds)
+  renderBracketBoard(rounds)
 
   if (!settlementStackAvailable()) {
     renderBracketDemoStats(selectedPool)
@@ -4233,8 +4345,18 @@ function applyKickResult (result) {
   return result
 }
 
+function pickableMatchIds () {
+  const out = []
+  for (const round of buildRounds()) {
+    for (const match of round.matches) {
+      if (canPickMatch(match)) out.push(match.id)
+    }
+  }
+  return out
+}
+
 function remainingPicks () {
-  return bracketMatchIds.filter(id => !state.picks[id]).length
+  return pickableMatchIds().filter(id => !state.picks[id]).length
 }
 
 function bindViewButtons (root = document) {
@@ -4316,10 +4438,10 @@ function bindEvents () {
   $('#submitPicks').addEventListener('click', () => {
     const remaining = remainingPicks()
     if (remaining > 0) {
-      showToast(`${remaining} picks left before this bracket is sealed`)
+      showToast(`${remaining} open ${remaining === 1 ? 'match' : 'matches'} still unpicked — they lock at kickoff`)
       return
     }
-    showToast(`$${state.selectedTier} bracket submitted for ${state.username}`)
+    showToast(`Picks in for this round, ${state.username} — next round opens when results land 🎉`)
   })
   sendBootCheckpoint('bindEvents:bracket')
 
