@@ -1522,17 +1522,23 @@ function renderLivePanel (tab) {
 
   if (tab === 'stats') {
     const st = snap.st
-    // Live football-data feed carries score but not possession/shots — fall back to a projection so the card isn't empty.
-    const poss = (st && st.possession && st.possession !== 50) ? st.possession : 54
-    const shots = (st && st.shots && (st.shots[0] || st.shots[1])) ? st.shots : [7, 4]
-    const shotShare = Math.round((shots[0] / Math.max(1, shots[0] + shots[1])) * 100)
-    const threat = (st && st.threat && st.threat !== 50) ? st.threat : 61
-    const rows = [
-      ['Score', String(snap.home.goals), String(snap.away.goals), snap.home.goals + snap.away.goals ? Math.round((snap.home.goals / Math.max(1, snap.home.goals + snap.away.goals)) * 100) : 50],
-      ['Possession', `${poss}%`, `${100 - poss}%`, poss],
-      ['Shots', String(shots[0]), String(shots[1]), shotShare],
-      ['Attacking threat', threat > 66 ? 'High' : threat > 45 ? 'Medium' : 'Low', '', threat]
-    ]
+    // Combat fits ship fit-specific matchStats (strikes, takedowns, control time, etc.).
+    // For soccer-style fits we project possession/shots/threat so the card isn't empty.
+    const isCombat = templateKind === 'fight-card'
+    const rows = isCombat
+      ? matchStats.map(([label, home, away, share]) => [label, String(home), String(away), typeof share === 'number' ? share : 50])
+      : (() => {
+          const poss = (st && st.possession && st.possession !== 50) ? st.possession : 54
+          const shots = (st && st.shots && (st.shots[0] || st.shots[1])) ? st.shots : [7, 4]
+          const shotShare = Math.round((shots[0] / Math.max(1, shots[0] + shots[1])) * 100)
+          const threat = (st && st.threat && st.threat !== 50) ? st.threat : 61
+          return [
+            ['Score', String(snap.home.goals), String(snap.away.goals), snap.home.goals + snap.away.goals ? Math.round((snap.home.goals / Math.max(1, snap.home.goals + snap.away.goals)) * 100) : 50],
+            ['Possession', `${poss}%`, `${100 - poss}%`, poss],
+            ['Shots', String(shots[0]), String(shots[1]), shotShare],
+            ['Attacking threat', threat > 66 ? 'High' : threat > 45 ? 'Medium' : 'Low', '', threat]
+          ]
+        })()
     return `
       <div class="live-stat-head">
         <strong>${escapeHtml(snap.home.name)} vs ${escapeHtml(snap.away.name)}</strong>
@@ -3632,6 +3638,20 @@ function renderWatchStats (st) {
       chip('Status', matchStateLabel(st).txt) +
       chip('Kickoff', fmtTime(st.utcDate)) +
       chip('Round', stageLabel(st))
+    return
+  }
+  if (templateKind === 'fight-card') {
+    el.className = 'stats-strip'
+    const rows = matchStats.slice(0, 3)
+    el.innerHTML = rows.map(([label, home, away, share]) => {
+      const pct = typeof share === 'number' ? share : 50
+      return `
+        <div class="stat-meter">
+          <span>${escapeHtml(label)}</span>
+          <div class="meter"><i style="width:${pct}%"></i></div>
+          <strong>${escapeHtml(home)} / ${escapeHtml(away)}</strong>
+        </div>`
+    }).join('')
     return
   }
   el.className = 'stats-strip'
