@@ -1386,3 +1386,13 @@ html[data-mode="dark"] .live-menu button.is-active, html[data-mode="dark"] .prop
   box-shadow: inset 1px 1px 0 var(--bevel-lo), inset -1px -1px 0 var(--bevel-hi) !important;
   padding: 6px !important; margin: 0 !important;
 }
+
+/* Combat fits: replace the soccer pitch with an arena/cage background on mini-game stages */
+.fit-arcade #games .penalty-stage {
+  background:
+    linear-gradient(180deg, rgba(12, 18, 30, 0.55), rgba(12, 18, 30, 0.15) 30%, transparent 55%),
+    url('/generated-assets/mma-boxing-fight-card/mini-game-stage/stage-arena.png') center 40% / cover no-repeat,
+    linear-gradient(180deg, #0f0f12 0 42%, #1a1a1d 42% 100%) !important;
+}
+.fit-arcade #games .goal-frame { border-color: rgba(180, 180, 190, 0.65) !important; }
+.fit-arcade #games .penalty-line { background: rgba(180, 180, 190, 0.35) !important; }
