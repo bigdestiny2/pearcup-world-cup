@@ -14,7 +14,7 @@
       "height": 900,
       "minWidth": 1024,
       "minHeight": 760,
-      "backgroundColor": "#ffeef6"
+      "backgroundColor": "#1a1e26"
     },
     "routes": {
       "": ".",
@@ -26,7 +26,7 @@
         "/package.json",
         "/index.html",
         "/styles.css",
-        "/client-skin.css",
+        "/server-skin.css",
         "/pearcup-boot.js",
         "/core.js",
         "/adapters.js",

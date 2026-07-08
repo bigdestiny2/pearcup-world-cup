@@ -214,8 +214,8 @@
     "lobby-app/styles.css",
     "lobby-app/app.js",
     "mma-app/index.html",
-    "mma-app/styles.css",
-    "mma-app/app.js"
+    "shared/design-system.css",
+    "app/dashboard-skin.css"
   ],
   "requiredScripts": [
     "scripts/audit-mma-card-assets.js",

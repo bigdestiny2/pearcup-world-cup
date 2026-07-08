@@ -170,7 +170,7 @@
   // ---- P2P-client identity: expose the server's accent ---------------------
   // Every server opens into the SAME window-chrome client (matching the lobby);
   // the neutral light-client STRUCTURE (surface/line/ink/radius) is forced in
-  // client-skin.css with !important so it beats the fit's — and app.js's own —
+  // server-skin.css with !important so it beats the fit's — and app.js's own —
   // inline theme. Here we only surface each fit's ACCENT color as the server's
   // identity, used for chrome highlights (nav, primary actions, brand mark).
   if (root.document && root.document.documentElement) {
