@@ -4003,11 +4003,83 @@ function startSpectatorSim () {
 }
 function stopSpectatorSim () { if (spectatorTimer) { clearInterval(spectatorTimer); spectatorTimer = null } }
 
+function watchSocialPosts () {
+  const now = Date.now()
+  const isCombat = templateKind === 'fight-card'
+  const fitTag = isCombat ? '#ufc' : '#worldcup'
+  const fitCat = isCombat ? 'combat-sports' : 'soccer'
+  return [
+    { postId: 'ws-native-1', sourceId: 'native-activity', protocol: 'in-app-p2p',
+      author: { handle: 'PoolChamp', displayName: 'Pool Champion', verified: false },
+      text: isCombat ? 'Main event just locked — who do you have by KO? 🥊' : 'Just won the bracket pool! 🏆',
+      createdAt: new Date(now - 120000).toISOString(), eventTags: { category: fitCat }, topicTags: [fitTag] },
+    { postId: 'ws-nostr-1', sourceId: 'nostr-relays', protocol: 'nostr',
+      author: { handle: isCombat ? 'mmafan@nostr' : 'soccerfan@nostr', displayName: isCombat ? 'MMA Fan' : 'Soccer Fan', pubkeyOrDid: 'pk-watch', verified: false },
+      text: isCombat ? 'Holloway\'s pace is unreal tonight. #ufc #mma' : 'What a goal from the wing! Absolutely clinical finish.',
+      createdAt: new Date(now - 300000).toISOString(), eventTags: { category: fitCat }, topicTags: [fitTag, isCombat ? '#mma' : '#football'] },
+    { postId: 'ws-bsky-1', sourceId: 'bluesky-atproto', protocol: 'at-protocol',
+      author: { handle: 'ufcfan.bsky.social', displayName: 'MMA Insider', verified: true },
+      text: isCombat ? 'Main event is about to start. This card is stacked! #ufc #mma' : 'The knockout power on this card is scary. #worldcup',
+      mediaRefs: [{ kind: 'image', url: '#', previewRef: null }],
+      createdAt: new Date(now - 600000).toISOString(), eventTags: { category: isCombat ? 'combat-sports' : 'soccer' }, topicTags: ['#ufc', '#mma'] }
+  ]
+}
+
+function formatWatchSocialTime (iso) {
+  if (!iso) return ''
+  const diff = Date.now() - new Date(iso).getTime()
+  if (diff < 0) return 'now'
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  return `${Math.floor(mins / 60)}h ago`
+}
+
+function renderWatchSocialFeed () {
+  const panel = $('#watchSocialFeed')
+  const status = $('#watchSocialStatus')
+  if (!panel) return
+  const posts = watchSocialPosts()
+  if (status) status.textContent = `${posts.length} live post${posts.length === 1 ? '' : 's'}`
+  panel.innerHTML = posts.map(post => {
+    const author = post.author || {}
+    const verified = author.verified ? '<span class="sp-verified" title="Verified">✓</span>' : ''
+    const media = post.mediaRefs && post.mediaRefs.length ? '<span class="sp-media">1 media</span>' : ''
+    const cat = post.eventTags && post.eventTags.category ? `<span class="sp-cat">${escapeHtml(post.eventTags.category)}</span>` : ''
+    return `
+      <article class="social-post" data-post-id="${escapeAttr(post.postId)}">
+        <div class="sp-head">
+          <span class="sp-author">${escapeHtml(author.displayName || author.handle || 'Anonymous')}${verified}</span>
+          <span class="sp-source">${escapeHtml(post.protocol)}</span>
+          <span class="sp-time">${escapeHtml(formatWatchSocialTime(post.createdAt))}</span>
+        </div>
+        <p>${escapeHtml(post.text)}</p>
+        <div class="sp-meta">
+          <span>${cat}${media}</span>
+          <span class="sp-actions">
+            <button class="sp-btn" type="button" data-sp-mute="${escapeAttr(author.handle || '')}">mute</button>
+            <button class="sp-btn" type="button" data-sp-hide="${escapeAttr(post.sourceId)}">hide</button>
+          </span>
+        </div>
+      </article>`
+  }).join('')
+}
+
 function renderWatch () {
   startLiveFeed()
   seedFeedEvents()
   renderWatchStats(feedState())
   applyFeedTick(null, feedState())
+  bindScreenShareSignaling()
+  // Make sure the watch header reflects THIS fit's main event immediately.
+  const snap = livePanelSnapshot()
+  const titleEl = $('#watchTitle')
+  if (titleEl) titleEl.textContent = `${snap.home.name} vs ${snap.away.name}`
+  const liveBadge = $('#tvLive')
+  if (liveBadge) {
+    liveBadge.textContent = snap.live ? 'Live' : snap.status
+    liveBadge.classList.toggle('is-live', snap.live)
+  }
   const room = watchParticipants()
   const grouped = ['es', 'at'].map(teamId => {
     const picked = room.filter(person => person.pick === teamId)
@@ -4104,6 +4176,8 @@ function renderWatch () {
     window.PearCupWatchSync.updatePresence()
     if (typeof window.PearCupWatchSync.renderChallengeList === 'function') window.PearCupWatchSync.renderChallengeList()
   }
+
+  renderWatchSocialFeed()
 }
 
 function currentGameRound () {
@@ -9841,6 +9915,8 @@ function boot () {
   bindEvents()
   sendBootCheckpoint('boot:events-bound')
   hydrateStaticShell()
+  // Best-effort enrichment from the BoxingData proxy for combat fits.
+  enrichFightCardFromApi().catch(() => {})
   // Defer heavy raster fit assets until they are near the viewport.
   try { if (window.LazyFitAssets) window.LazyFitAssets.observe() } catch (e) { bootIssues.push('lazy assets threw: ' + (e && e.message)) }
   // If any runtime module was missing or the runtime config degraded to demo, say so
@@ -9892,6 +9968,77 @@ function hydrateStaticShell () {
   } catch (err) {
     document.documentElement.dataset.pearcupUiHydrated = 'partial'
     bootIssues.push('ui hydrate threw: ' + (err && err.message ? err.message : String(err)))
+  }
+}
+
+function overlayBoxingCard (fit, card) {
+  if (!fit || !card || !Array.isArray(card.bouts) || !card.bouts.length) return fit
+  const mainBout = card.bouts[0]
+  const next = { ...fit }
+
+  function findFighter (id) {
+    return (card.fighters || []).find(f => f.id === id) || null
+  }
+
+  if (fit.arcade && typeof fit.arcade === 'object') {
+    const arcade = { ...fit.arcade }
+    for (const side of ['red', 'blue']) {
+      const corner = fit.arcade[side]
+      if (!corner || typeof corner !== 'object') continue
+      const boutId = mainBout.slots.find(id => id === corner.id) || (side === 'red' ? mainBout.slots[0] : mainBout.slots[1])
+      const fighter = findFighter(boutId)
+      if (fighter && fighter.recordText) arcade[side] = { ...corner, record: fighter.recordText }
+    }
+    next.arcade = arcade
+  }
+
+  if (Array.isArray(fit.teams)) {
+    next.teams = fit.teams.map(team => {
+      const fighter = findFighter(team.id)
+      return fighter && fighter.recordText ? { ...team, record: fighter.recordText } : team
+    })
+  }
+
+  const mainFighters = mainBout.slots.map(id => findFighter(id)).filter(Boolean)
+  if (mainFighters.length === 2 && mainFighters[0].punchStats && mainFighters[1].punchStats) {
+    const [red, blue] = mainFighters
+    const addRow = (label, rVal, bVal) => {
+      if (rVal == null && bVal == null) return null
+      const total = (rVal || 0) + (bVal || 0)
+      return [label, String(rVal != null ? rVal : '—'), String(bVal != null ? bVal : '—'), total > 0 ? Math.round(((rVal || 0) / total) * 100) : 50]
+    }
+    const stats = [
+      addRow('Punches landed', red.punchStats.landed, blue.punchStats.landed),
+      addRow('Punches thrown', red.punchStats.thrown, blue.punchStats.thrown),
+      addRow('Accuracy %', red.punchStats.accuracy != null ? `${red.punchStats.accuracy}%` : null, blue.punchStats.accuracy != null ? `${blue.punchStats.accuracy}%` : null)
+    ].filter(Boolean)
+    if (stats.length) next.matchStats = stats
+  }
+
+  return next
+}
+
+async function enrichFightCardFromApi () {
+  if (templateKind !== 'fight-card') return
+  try {
+    const response = await fetch('/api/boxing-card', { cache: 'no-store' })
+    if (!response.ok) return
+    const result = await response.json()
+    if (!result || !result.card) return
+    const cfg = window.ULTIMATE_FIT_CONFIG || {}
+    const enriched = overlayBoxingCard(cfg, result.card)
+    if (!enriched || enriched === cfg) return
+    // Patch the runtime globals that were already copied from the fit config.
+    if (Array.isArray(enriched.teams)) teams = enriched.teams
+    if (Array.isArray(enriched.matchStats)) matchStats = enriched.matchStats
+    if (Array.isArray(enriched.homeFixtures)) homeFixtures = enriched.homeFixtures
+    if (enriched.arcade && cfg.arcade) window.ULTIMATE_FIT_CONFIG.arcade = enriched.arcade
+    // Re-render surfaces that depend on the enriched data.
+    if ($('#home') && $('#home').classList.contains('is-active')) { renderHomeDashboard(); renderPools() }
+    if ($('#watch') && $('#watch').classList.contains('is-active')) renderWatch()
+    sendBootCheckpoint('boot:boxing-enriched', result.source)
+  } catch (error) {
+    bootIssues.push('boxing enrichment failed: ' + (error && error.message ? error.message : String(error)))
   }
 }
 

@@ -5,6 +5,7 @@ const fs = require('node:fs')
 const http = require('node:http')
 const path = require('node:path')
 const { generateLobbyServers } = require('./generate-lobby-servers')
+const boxing = require('../src/boxing-data-provider-engine')
 
 const DEFAULT_PORT = 4198
 
@@ -37,6 +38,10 @@ function createLobbyAppServer (input = {}) {
       return
     }
 
+    if (pathname === '/api/boxing-card') {
+      return serveBoxingCard(response)
+    }
+
     let filePath
     if (pathname.startsWith('/kawaii/')) {
       filePath = path.join(kawaiiDir, pathname.slice('/kawaii/'.length))
@@ -67,6 +72,43 @@ function createLobbyAppServer (input = {}) {
       response.end(data)
     })
   })
+}
+
+const boxingCache = boxing.createMemoryCache()
+
+function buildCuratedCard () {
+  return {
+    event: 'Holloway vs McGregor',
+    bouts: [
+      {
+        id: 'main-1',
+        billing: 'Main event',
+        weightClass: 'Featherweight',
+        rounds: 5,
+        fighterA: { id: 'silva', name: 'Max Holloway', nickname: 'Blessed', country: 'USA', record: '26-8-0', punchStats: { thrown: 485, landed: 245, accuracy: 51 } },
+        fighterB: { id: 'jones', name: 'Conor McGregor', nickname: 'The Notorious', country: 'Ireland', record: '22-6-0', punchStats: { thrown: 320, landed: 142, accuracy: 44 } }
+      }
+    ]
+  }
+}
+
+async function serveBoxingCard (response) {
+  try {
+    const config = {
+      enabled: process.env.BOXING_DATA_ENABLED !== 'false',
+      baseUrl: process.env.BOXING_DATA_BASE_URL || boxing.BOXING_DATA_BASE_URL,
+      proxy: process.env.BOXING_DATA_PROXY_URL || null,
+      eventId: process.env.BOXING_DATA_EVENT_ID || null,
+      curatedCard: buildCuratedCard(),
+      headers: { accept: 'application/json' }
+    }
+    const result = await boxing.fetchBoxingCard({ config, fetchImpl: fetch, cache: boxingCache, now: Date.now() })
+    response.writeHead(200, { 'Content-Type': 'application/json' })
+    response.end(JSON.stringify(result))
+  } catch (error) {
+    response.writeHead(500, { 'Content-Type': 'application/json' })
+    response.end(JSON.stringify({ card: null, source: 'error', stale: true, reason: error.message }))
+  }
 }
 
 function listen (server, port) {

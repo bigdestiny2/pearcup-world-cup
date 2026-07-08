@@ -356,7 +356,7 @@
 
               <div class="stadium">
                 <div class="stadium-tv">
-                  <video id="shareVideo" class="share-video" playsinline muted hidden></video>
+                  <video id="shareVideo" class="share-video" playsinline muted autoplay hidden></video>
                   <div class="share-badge" id="shareBadge" hidden></div>
                   <div class="scorebug">
                     <span id="tvClock">15:00 ET</span>
@@ -415,6 +415,15 @@
                     <svg viewBox="0 0 24 24"><path d="M4 12 20 4l-4 16-4-6-8-2Z"/></svg>
                   </button>
                 </form>
+              </div>
+
+              <div class="social-panel">
+                <div class="rail-header">
+                  <p class="eyebrow">Feed</p>
+                  <strong>Social</strong>
+                  <span class="social-status" id="watchSocialStatus">no posts yet</span>
+                </div>
+                <div class="social-feed" id="watchSocialFeed"></div>
               </div>
             </aside>
           </div>
