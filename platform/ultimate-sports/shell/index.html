@@ -1,8 +1,26 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-mode="dark">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+      (function () {
+        var root = document.documentElement
+        try { root.setAttribute('data-mode', localStorage.getItem('us-mode') || 'dark') } catch (e) { root.setAttribute('data-mode', 'dark') }
+        function icon () { return root.getAttribute('data-mode') === 'dark' ? '☾' : '☀' }
+        document.addEventListener('click', function (e) {
+          var b = e.target.closest && e.target.closest('.mode-toggle')
+          if (!b) return
+          var next = root.getAttribute('data-mode') === 'dark' ? 'light' : 'dark'
+          root.setAttribute('data-mode', next)
+          try { localStorage.setItem('us-mode', next) } catch (er) {}
+          b.textContent = icon()
+        })
+        document.addEventListener('DOMContentLoaded', function () {
+          var t = document.querySelector('.mode-toggle'); if (t) t.textContent = icon()
+        })
+      })()
+    </script>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:* pear:; object-src 'none'; base-uri 'none'">
     <title>PearCup Prototype</title>
     <link rel="stylesheet" href="./styles.css">
@@ -21,6 +39,15 @@
   </head>
   <body>
     <div class="app-shell">
+      <div class="titlebar">
+        <span class="app-ico" aria-hidden="true">U</span>
+        <span class="t">Ultimate Sports <small id="winSubtitle">— Tournament Server</small></span>
+        <button class="mode-toggle" type="button" aria-label="Toggle dark or light mode" title="Dark / light mode">☾</button>
+        <span class="win-btns" aria-hidden="true"><i class="mi"></i><i class="ma"></i><i class="cl"></i></span>
+      </div>
+      <nav class="menubar" aria-label="Menu">
+        <span>File</span><span>Edit</span><span>View</span><span>Room</span><span>Wallet</span><span>Help</span>
+      </nav>
       <header class="topbar">
         <button class="brand" type="button" data-view="home" aria-label="Open lobby">
           <span class="brand-mark" aria-hidden="true">
@@ -41,9 +68,6 @@
         </nav>
 
         <div class="topbar-right">
-          <button class="theme-btn" id="themeBtn" type="button" aria-label="Change theme" title="Change theme">
-            <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.7-.8 1.7-1.7 0-.4-.2-.8-.5-1.1-.3-.3-.5-.7-.5-1.1 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-3.9-4-7.4-9-7.4Z"/><circle cx="7.5" cy="11.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="8" r="1.3" fill="currentColor" stroke="none"/><circle cx="16.5" cy="11.5" r="1.3" fill="currentColor" stroke="none"/></svg>
-          </button>
           <button class="wallet-chip" id="walletChip" type="button" data-view="onboarding" aria-label="Open wallet">
             <span class="wallet-ico">💰</span><span class="wallet-amt">490 USDT</span>
           </button>
@@ -76,6 +100,12 @@
           </div>
         </div>
       </header>
+
+      <div class="lcd-strip" aria-label="Live ticker">
+        <span class="tag">◉ LIVE</span>
+        <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="scroll"><b id="shellTicker">connected · syncing room state…</b></span>
+      </div>
 
       <main class="screens">
         <section class="screen is-active" id="onboarding" aria-labelledby="onboardingTitle">
@@ -144,6 +174,15 @@
                   <text x="110" y="199" text-anchor="middle" font-size="13" font-weight="900" fill="#294f3c" font-family="Arial, sans-serif">captain</text>
                 </svg>
               </div>
+              <div class="avatar-upload">
+                <label class="avatar-upload-btn">
+                  <span aria-hidden="true">▲</span> Upload photo
+                  <input type="file" id="avatarInput" accept="image/*" hidden>
+                </label>
+                <button type="button" id="avatarClearBtn" class="avatar-clear-btn" hidden>Remove</button>
+                <p class="avatar-hint">or pick an example</p>
+                <div class="avatar-examples" id="avatarExamples" aria-label="Example avatars"></div>
+              </div>
               <div class="kit-card">
                 <span class="kit-swatch" id="primarySwatch" style="background:#139b49"></span>
                 <span class="kit-swatch" id="secondarySwatch" style="background:#ffd447"></span>
@@ -155,7 +194,6 @@
               </div>
               <div id="walletManage"></div>
               <div id="liveDataSettings"></div>
-              <div id="themeSwitcher"></div>
             </aside>
           </div>
         </section>
@@ -452,6 +490,14 @@
           </div>
         </section>
       </main>
+
+      <div class="statusbar">
+        <span class="og-palette" aria-hidden="true"><i style="background:#05130b"></i><i style="background:#34f08a"></i><i style="background:#1a8a4f"></i><i style="background:#ef4444"></i><i style="background:#f5c518"></i><i style="background:#3b82f6"></i><i style="background:#22c55e"></i><i style="background:#a855f7"></i><i style="background:#e7eaf0"></i><i style="background:#000000"></i></span>
+        <span id="shellStatusNet"><span class="ok">◉</span> in server</span>
+        <span class="sep">|</span><span id="shellStatusPeers">peers —</span>
+        <span class="sep">|</span><span id="shellStatusRoom">room ready</span>
+        <span class="right">pear://ultimate-sports · v0.4</span>
+      </div>
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -569,7 +615,7 @@
         }
 
         function shellState (patch) {
-          var fallback = { view: 'onboarding', username: 'captain', team: 'br' }
+          var fallback = { view: 'onboarding', username: 'captain', team: 'br', avatar: null }
           try {
             var saved = JSON.parse(localStorage.getItem('pearcup-prototype') || 'null') || {}
             var next = Object.assign({}, fallback, saved, patch || {})
@@ -630,39 +676,28 @@
         }
 
         function shellPortrait (name, team) {
-          var key = String(name || '').toLowerCase()
-          if (team && team.id && shellPortraits[key + '-' + team.id]) return shellPortraits[key + '-' + team.id]
-          if (shellPortraits[key]) return shellPortraits[key]
-          var index = shellHash(key + '-' + (team && team.name || 'team')) % shellAvatarPool.length
-          return 'avatars/' + shellAvatarPool[index] + '.png'
+          var st = shellState()
+          if (st.avatar && String(name || '').toLowerCase() === String(st.username || 'captain').toLowerCase()) return st.avatar
+          return null
         }
 
         function shellAvatar (team, name, className) {
-          var primary = team.colors[0] === '#ffffff' ? team.colors[1] : team.colors[0]
-          var secondary = team.colors[1] === '#ffffff' ? team.colors[2] : team.colors[1]
-          var deep = primary === '#ffffff' ? '#3a1030' : primary
-          var prefix = className.indexOf('compact') === -1 ? 'shellShowcase' : 'shellCompact'
           var label = shellEscape(shellInitials(name))
-          var shortName = shellEscape(String(name || 'captain').slice(0, 16))
+          var clip = className.indexOf('compact') === -1 ? 'ssShow' : 'ssComp'
           var portrait = shellPortrait(name, team)
           if (portrait) {
-            return '<svg class="avatar-art ' + className + '" viewBox="0 0 200 200" role="img" aria-label="' + shellEscape(name) + ' avatar">' +
-              '<defs><clipPath id="' + prefix + 'PortraitClip"><rect x="14" y="14" width="172" height="172" rx="46"/></clipPath></defs>' +
-              '<rect x="10" y="10" width="180" height="180" rx="50" fill="' + shellEscape(secondary) + '" opacity=".34"/>' +
-              '<text x="100" y="113" text-anchor="middle" font-size="44" font-weight="900" fill="' + shellEscape(deep) + '" opacity=".5" font-family="Arial, sans-serif">' + label + '</text>' +
-              '<image href="' + shellEscape(portrait) + '" x="14" y="14" width="172" height="172" clip-path="url(#' + prefix + 'PortraitClip)" preserveAspectRatio="xMidYMid slice"/>' +
-              '<rect x="14" y="14" width="172" height="172" rx="46" fill="none" stroke="#ffffff" stroke-width="6"/>' +
-              '<rect x="14" y="14" width="172" height="172" rx="46" fill="none" stroke="' + shellEscape(primary) + '" stroke-width="3" opacity=".65"/></svg>'
+            return '<svg class="avatar-art ' + className + ' retro-av" viewBox="0 0 100 100" role="img" aria-label="' + shellEscape(name) + ' avatar">' +
+              '<defs><clipPath id="' + clip + 'Clip"><rect x="3" y="3" width="94" height="94" rx="2"/></clipPath></defs>' +
+              '<rect x="1.5" y="1.5" width="97" height="97" rx="3" fill="#0b0f14"/>' +
+              '<image href="' + shellEscape(portrait) + '" x="3" y="3" width="94" height="94" clip-path="url(#' + clip + 'Clip)" preserveAspectRatio="xMidYMid slice"/>' +
+              '<rect x="2" y="2" width="96" height="96" rx="3" fill="none" stroke="#05130b" stroke-width="2"/></svg>'
           }
-          return '<svg class="avatar-art ' + className + '" viewBox="0 0 220 220" role="img" aria-label="' + shellEscape(name) + ' badge avatar">' +
-            '<defs><linearGradient id="' + prefix + 'Badge" x1="24" y1="18" x2="190" y2="204" gradientUnits="userSpaceOnUse">' +
-            '<stop stop-color="' + shellEscape(secondary) + '"/><stop offset=".48" stop-color="' + shellEscape(primary) + '"/><stop offset="1" stop-color="' + shellEscape(deep) + '"/></linearGradient>' +
-            '<linearGradient id="' + prefix + 'Shine" x1="54" y1="28" x2="156" y2="174" gradientUnits="userSpaceOnUse"><stop stop-color="#fff" stop-opacity=".78"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>' +
-            '<rect x="20" y="18" width="180" height="184" rx="44" fill="url(#' + prefix + 'Badge)"/><path d="M36 55c44-25 99-31 148-12 8 44 2 93-18 132-36 20-79 23-124 9-18-40-20-86-6-129Z" fill="#fff" opacity=".14"/>' +
-            '<path d="M47 52c31-21 76-26 113-12-31 8-64 28-94 61-11-18-17-34-19-49Z" fill="url(#' + prefix + 'Shine)"/><circle cx="110" cy="76" r="40" fill="#fff" opacity=".95"/><circle cx="110" cy="76" r="32" fill="' + shellEscape(secondary) + '" opacity=".92"/>' +
-            '<text x="110" y="89" text-anchor="middle" font-size="42" font-weight="900" font-family="Arial, sans-serif">' + shellEscape(team.flag) + '</text><path d="M67 130c10-21 25-32 43-32s33 11 43 32l-10 45H77Z" fill="#fff" opacity=".92"/><path d="M74 130c9-17 21-25 36-25s27 8 36 25l-8 38H82Z" fill="' + shellEscape(secondary) + '" opacity=".9"/>' +
-            '<path d="M88 108h44l-9 19h-26Z" fill="' + shellEscape(primary) + '" opacity=".88"/><text x="110" y="158" text-anchor="middle" font-size="46" font-weight="900" fill="' + shellEscape(deep) + '" font-family="Arial, sans-serif">' + label + '</text><text x="110" y="181" text-anchor="middle" font-size="18" font-weight="900" fill="' + shellEscape(deep) + '" opacity=".8" font-family="Arial, sans-serif">19</text>' +
-            '<rect x="48" y="184" width="124" height="20" rx="10" fill="#fff" opacity=".9"/><text x="110" y="199" text-anchor="middle" font-size="13" font-weight="900" fill="' + shellEscape(deep) + '" font-family="Arial, sans-serif">' + shortName + '</text></svg>'
+          var hue = shellHash(String(name || '') + '-' + (team && team.id ? team.id : '')) % 360
+          return '<svg class="avatar-art ' + className + ' retro-av" viewBox="0 0 100 100" role="img" aria-label="' + shellEscape(name) + ' avatar">' +
+            '<rect x="1.5" y="1.5" width="97" height="97" rx="3" fill="#0b0f14"/>' +
+            '<rect x="1.5" y="1.5" width="97" height="97" rx="3" fill="hsl(' + hue + ' 55% 48% / 0.20)"/>' +
+            '<rect x="2" y="2" width="96" height="96" rx="3" fill="none" stroke="#05130b" stroke-width="2"/>' +
+            '<text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-size="40" font-weight="700" fill="#34f08a" font-family="ui-monospace, Consolas, monospace">' + label + '</text></svg>'
         }
 
         function renderStaticShell () {

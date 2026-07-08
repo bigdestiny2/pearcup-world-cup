@@ -30,6 +30,9 @@ const modules = {
   sportsDataClients: require('./sports-data-client-engine'),
   sportsDataSmoke: require('./sports-data-smoke-engine'),
   sportsDataProviders: require('./sports-data-provider-engine'),
+  socialFeedProviders: require('./social-feed-provider-engine'),
+  socialFeedAggregator: require('./social-feed-aggregator-engine'),
+  socialFeedClients: require('./social-feed-client-engine'),
   livePrediction: require('./live-prediction-engine'),
   game: require('./game-engine'),
   identity: require('./identity-engine'),
@@ -471,6 +474,58 @@ function createUltimateSportsPlatform ({
     return modules.sportsDataProviders.recommendProviderStack(input)
   }
 
+  function createSocialFeedProviderPlan (input = {}) {
+    return modules.socialFeedProviders.createSocialFeedProviderPlan(input)
+  }
+
+  function socialFeedProviderPlanForFit (fitOrId) {
+    return modules.socialFeedProviders.providerPlanForFit(fitOrId)
+  }
+
+  function createSocialFeedAggregatorPlan (input = {}) {
+    return modules.socialFeedAggregator.createSocialFeedAggregatorPlan(input)
+  }
+
+  function socialFeedRouteForFit (fitOrId) {
+    return modules.socialFeedAggregator.aggregatorRouteForFit(fitOrId)
+  }
+
+  function normalizeSocialPost (input = {}) {
+    return modules.socialFeedAggregator.normalizeSocialPost(input)
+  }
+
+  function dedupeSocialPosts (posts) {
+    return modules.socialFeedAggregator.dedupeSocialPosts(posts)
+  }
+
+  function createSocialFeedClientPlan (input = {}) {
+    return modules.socialFeedClients.createSocialFeedClientPlan(input)
+  }
+
+  function socialFeedSourceClientFor (sourceId) {
+    return modules.socialFeedClients.sourceClientFor(sourceId)
+  }
+
+  function socialFeedCredentialReadinessForSource (sourceId, env = {}) {
+    return modules.socialFeedClients.credentialReadinessForSource(sourceId, env)
+  }
+
+  function createSocialFeedRequestPlan (input = {}) {
+    return modules.socialFeedClients.createSocialFeedRequestPlan(input)
+  }
+
+  function executeSocialFeedRequest (input = {}) {
+    return modules.socialFeedClients.executeSocialFeedRequest(input)
+  }
+
+  function assertNoSocialFeedSettlementLeak (command) {
+    return modules.socialFeedAggregator.assertNoSettlementLeak(command)
+  }
+
+  function assertNoSocialFeedPrizeProximityLeak (targetEngineId, payload) {
+    return modules.socialFeedAggregator.assertNoPrizeProximityLeak(targetEngineId, payload)
+  }
+
   function createMmaCardAssetPlan (input = {}) {
     return modules.mmaCardAssets.createMmaCardAssetPlan(input)
   }
@@ -629,6 +684,19 @@ function createUltimateSportsPlatform ({
     createSportsDataProviderPlan,
     providerPlanForFit,
     recommendSportsDataProviderStack,
+    createSocialFeedProviderPlan,
+    socialFeedProviderPlanForFit,
+    createSocialFeedAggregatorPlan,
+    socialFeedRouteForFit,
+    normalizeSocialPost,
+    dedupeSocialPosts,
+    createSocialFeedClientPlan,
+    socialFeedSourceClientFor,
+    socialFeedCredentialReadinessForSource,
+    createSocialFeedRequestPlan,
+    executeSocialFeedRequest,
+    assertNoSocialFeedSettlementLeak,
+    assertNoSocialFeedPrizeProximityLeak,
     createMmaCardAssetPlan,
     createMmaCardHiggsfieldQueue,
     createMmaCardHiggsfieldApiRequestPlan,

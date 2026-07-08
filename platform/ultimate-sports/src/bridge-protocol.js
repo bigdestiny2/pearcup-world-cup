@@ -31,6 +31,19 @@ const BRIDGE_ACTIONS = Object.freeze([
   'createSportsDataProviderPlan',
   'providerPlanForFit',
   'recommendSportsDataProviderStack',
+  'createSocialFeedProviderPlan',
+  'socialFeedProviderPlanForFit',
+  'createSocialFeedAggregatorPlan',
+  'socialFeedRouteForFit',
+  'normalizeSocialPost',
+  'dedupeSocialPosts',
+  'createSocialFeedClientPlan',
+  'socialFeedSourceClientFor',
+  'socialFeedCredentialReadinessForSource',
+  'createSocialFeedRequestPlan',
+  'executeSocialFeedRequest',
+  'assertNoSocialFeedSettlementLeak',
+  'assertNoSocialFeedPrizeProximityLeak',
   'createChallengeWagerPlan',
   'materializeChallenge',
   'dispatchMaterializedChallenge',
@@ -167,6 +180,32 @@ function routeAction (platform, action, payload) {
       return platform.providerPlanForFit(payload.fit || payload.fitId || payload)
     case 'recommendSportsDataProviderStack':
       return platform.recommendSportsDataProviderStack(payload.input || payload)
+    case 'createSocialFeedProviderPlan':
+      return platform.createSocialFeedProviderPlan(payload.input || payload)
+    case 'socialFeedProviderPlanForFit':
+      return platform.socialFeedProviderPlanForFit(payload.fit || payload.fitId || payload)
+    case 'createSocialFeedAggregatorPlan':
+      return platform.createSocialFeedAggregatorPlan(payload.input || payload)
+    case 'socialFeedRouteForFit':
+      return platform.socialFeedRouteForFit(payload.fit || payload.fitId || payload)
+    case 'normalizeSocialPost':
+      return platform.normalizeSocialPost(payload.input || payload)
+    case 'dedupeSocialPosts':
+      return platform.dedupeSocialPosts(payload.posts || [])
+    case 'createSocialFeedClientPlan':
+      return platform.createSocialFeedClientPlan(payload.input || payload)
+    case 'socialFeedSourceClientFor':
+      return platform.socialFeedSourceClientFor(payload.sourceId || payload)
+    case 'socialFeedCredentialReadinessForSource':
+      return platform.socialFeedCredentialReadinessForSource(payload.sourceId, payload.env || {})
+    case 'createSocialFeedRequestPlan':
+      return platform.createSocialFeedRequestPlan(payload.input || payload)
+    case 'executeSocialFeedRequest':
+      return platform.executeSocialFeedRequest(payload.input || payload)
+    case 'assertNoSocialFeedSettlementLeak':
+      return platform.assertNoSocialFeedSettlementLeak(payload.command || payload)
+    case 'assertNoSocialFeedPrizeProximityLeak':
+      return platform.assertNoSocialFeedPrizeProximityLeak(payload.targetEngineId || payload.engineId, payload.payload || payload.data)
     case 'createChallengeWagerPlan':
       return platform.createChallengeWagerPlan(payload.challengeId || payload.challengeRef || payload.challenge, payload.input || {})
     case 'materializeChallenge':

@@ -28,5 +28,12 @@
     "kycVerified": false,
     "jurisdictionAllowed": false,
     "responsiblePlayAccepted": false
+  },
+  "providers": {
+    "higgsfield": {
+      "keyId": "",
+      "apiSecret": "",
+      "apiBaseUrl": "https://api.higgsfield.ai"
+    }
   }
 }

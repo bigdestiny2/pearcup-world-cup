@@ -16,7 +16,7 @@ function generateLobbyServers (input = {}) {
   const lobby = app.createTournamentLobby({})
 
   const activeFitIds = new Set(lobby.activeServers.map(server => server.fitId))
-  const featuredFitId = input.featuredFitId || 'world-cup'
+  const featuredFitId = input.featuredFitId || 'mma-boxing-fight-card'
 
   const servers = catalog.eventFits.map((fit, index) => {
     const isLive = activeFitIds.has(fit.fitId) || liveFitIds().includes(fit.fitId)
@@ -58,7 +58,7 @@ function taglineForFit (fitId) {
     'pro-playoffs': 'NBA, NHL, MLB series playoffs.',
     'tennis-grand-slams': 'Grand slam draw and set-score games.',
     'esports-major': 'Map, objective, and clutch esports games.',
-    'mma-boxing-fight-card': 'Fight-night cards, methods, and rounds.',
+    'mma-boxing-fight-card': 'MAIN EVENT — Holloway vs McGregor · pick method + round.',
     'sailgp-companion': 'Fleet-race companion and foiling props.',
     'creator-reality-brackets': 'Creator and reality show brackets.',
     'awards-prediction-pools': 'Oscars, Grammys, and ceremony-night cards.',

@@ -1,6 +1,6 @@
 {
   "catalogueVersion": "pearbrowser-catalogue-v1",
-  "updatedAt": "2026-07-07T15:05:54.635Z",
+  "updatedAt": "2026-07-08T16:31:22.000Z",
   "apps": [
     {
       "appId": "ultimate-sports",
@@ -21,7 +21,7 @@
       },
       "isFeatured": true,
       "isLive": true,
-      "releasedAt": "2026-07-06T22:15:00.000Z"
+      "releasedAt": "2026-07-08T16:31:22.000Z"
     }
   ]
 }

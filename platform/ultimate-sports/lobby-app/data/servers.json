@@ -9,7 +9,7 @@
     "recommendedVariantCount": 5,
     "recommendedMiniGameCount": 6,
     "isLive": true,
-    "isFeatured": true,
+    "isFeatured": false,
     "tagline": "Global group-stage and knockout bracket pools.",
     "coverUrl": "/generated-assets/world-cup/server-card-cover/cover.jpg",
     "appUrl": "/shell/index.html?fit=world-cup"
@@ -114,8 +114,8 @@
     "recommendedVariantCount": 4,
     "recommendedMiniGameCount": 7,
     "isLive": true,
-    "isFeatured": false,
-    "tagline": "Fight-night cards, methods, and rounds.",
+    "isFeatured": true,
+    "tagline": "MAIN EVENT — Holloway vs McGregor · pick method + round.",
     "coverUrl": "/generated-assets/mma-boxing-fight-card/server-card-cover/cover.jpg",
     "appUrl": "/shell/index.html?fit=mma-boxing-fight-card"
   },

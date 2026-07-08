@@ -12,6 +12,8 @@ function loadModule () {
   const prevRoomAccess = global.PearCupRoomAccess
   const prevDocument = global.document
   const prevUltimateFit = global.ULTIMATE_FIT_CONFIG
+  const prevCore = global.PearCupCore
+  const prevAdapters = global.PearCupAdapters
 
   try {
     global.document = {
@@ -19,6 +21,9 @@ function loadModule () {
         dataset: {}
       }
     }
+
+    global.PearCupCore = require('../shell/core.js')
+    global.PearCupAdapters = require('../shell/adapters.js')
 
     global.PearCupRoomAccess = {
       enforced: false,
@@ -38,6 +43,8 @@ function loadModule () {
     global.PearCupRoomAccess = prevRoomAccess
     global.document = prevDocument
     global.ULTIMATE_FIT_CONFIG = prevUltimateFit
+    global.PearCupCore = prevCore
+    global.PearCupAdapters = prevAdapters
   }
 }
 
@@ -196,8 +203,8 @@ test('integration: fastest valid tap wins a round', async (t) => {
     const p2Tapped = client2.tap(moment.id)
     assert.equal(p2Tapped, true)
 
-    // Resolve the moment inside the window.
-    t.mock.timers.tick(moment.windowMs + 10)
+    // Resolve the moment inside the window (include the reveal grace period).
+    t.mock.timers.tick(moment.windowMs + 200)
 
     assert.equal(snap1.scores.you, 1)
     assert.equal(snap1.scores.opp, 0)
@@ -249,7 +256,7 @@ test('integration: replayed/duplicate taps do not double-count', async (t) => {
     const replayedAgain = client2._testHelpers.simulateRemoteTap(moment.id, replayTs)
     assert.equal(replayedAgain, true) // injection accepted syntactically, but state ignores it
 
-    t.mock.timers.tick(moment.windowMs + 10)
+    t.mock.timers.tick(moment.windowMs + 200)
 
     // Only one point awarded (client1 wins); no double-counting.
     assert.equal(snap1.scores.you, 1)
@@ -291,7 +298,7 @@ test('integration: game completes after all rounds', async (t) => {
       t.mock.timers.tick(moment.appearAt - Date.now())
       t.mock.timers.tick(1)
       client1.tap(moment.id)
-      t.mock.timers.tick(moment.windowMs + 10)
+      t.mock.timers.tick(moment.windowMs + 200)
     }
 
     assert.equal(snap1.over, true)
@@ -312,6 +319,144 @@ test('integration: game completes after all rounds', async (t) => {
   } finally {
     delete global.postSettlementReceipt
     if (client1) client1.leave()
+    if (client2) client2.leave()
+    t.mock.timers.reset()
+  }
+})
+test('integration: mismatched remote commitment loses the round', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 0 })
+
+  let snap1 = null
+  let snap2 = null
+  let client1, client2
+
+  try {
+    const peerNet = makePeerNet()
+    client1 = loadClient(peerNet)
+    client2 = loadClient(peerNet)
+
+    const unsub1 = client1.onState(s => { snap1 = s })
+    const unsub2 = client2.onState(s => { snap2 = s })
+
+    const code = client1.host('ROOM-MISMATCH')
+    client2.join(code)
+
+    const moment = snap1.schedule[0]
+    t.mock.timers.tick(moment.appearAt)
+
+    // Client1 taps first; client2 taps shortly after.
+    t.mock.timers.tick(10)
+    assert.equal(client1.tap(moment.id), true)
+    t.mock.timers.tick(10)
+    assert.equal(client2.tap(moment.id), true)
+
+    // Client1 receives a forged remote reveal that does not match client2's commitment.
+    client1._testHelpers.simulateRemoteReveal(moment.round, Date.now(), 'forged-nonce')
+
+    t.mock.timers.tick(moment.windowMs + 200)
+
+    // Client1's local timestamp is valid and verified; the remote reveal fails verification.
+    assert.equal(snap1.scores.you, 1)
+    assert.equal(snap1.scores.opp, 0)
+
+    unsub1()
+    unsub2()
+  } finally {
+    if (client1) client1.leave()
+    if (client2) client2.leave()
+    t.mock.timers.reset()
+  }
+})
+
+test('integration: impossible latency produces a disputed QVAC attestation', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 0 })
+
+  let snap1 = null
+  let snap2 = null
+  let client1, client2
+
+  try {
+    const peerNet = makePeerNet()
+    client1 = loadClient(peerNet)
+    client2 = loadClient(peerNet)
+
+    const unsub1 = client1.onState(s => { snap1 = s })
+    const unsub2 = client2.onState(s => { snap2 = s })
+
+    const code = client1.host('ROOM-FAST')
+    client2.join(code)
+
+    const moment = snap1.schedule[0]
+    t.mock.timers.tick(moment.appearAt)
+
+    // Both players tap within 50 ms of the moment appearing — biologically implausible.
+    t.mock.timers.tick(1)
+    assert.equal(client1.tap(moment.id), true)
+    t.mock.timers.tick(2)
+    assert.equal(client2.tap(moment.id), true)
+
+    t.mock.timers.tick(moment.windowMs + 200)
+
+    const roundId = `rc-${moment.round + 1}`
+    const attestation1 = snap1.qvacAttestations[roundId]
+    const attestation2 = snap2.qvacAttestations[roundId]
+    assert.ok(attestation1)
+    assert.ok(attestation2)
+    assert.equal(attestation1.review.ruling, 'disputed')
+    assert.equal(attestation1.ruling, 'disputed')
+    assert.ok(attestation1.rationale.includes('Impossible'))
+
+    unsub1()
+    unsub2()
+  } finally {
+    if (client1) client1.leave()
+    if (client2) client2.leave()
+    t.mock.timers.reset()
+  }
+})
+
+test('integration: opponent disconnect forfeits the match', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 0 })
+
+  let snap1 = null
+  let snap2 = null
+  let client1, client2
+
+  try {
+    const peerNet = makePeerNet()
+    client1 = loadClient(peerNet)
+    client2 = loadClient(peerNet)
+
+    const unsub1 = client1.onState(s => { snap1 = s })
+    const unsub2 = client2.onState(s => { snap2 = s })
+
+    const code = client1.host('ROOM-FORFEIT')
+    client2.join(code)
+
+    const moment = snap1.schedule[0]
+    t.mock.timers.tick(moment.appearAt)
+    t.mock.timers.tick(10)
+    assert.equal(client1.tap(moment.id), true)
+
+    // Client1 disconnects mid-round.
+    t.mock.timers.tick(10)
+    client1.leave()
+
+    // Let the forfeit timer fire on client2.
+    t.mock.timers.tick(1)
+
+    assert.equal(snap2.over, true)
+    assert.equal(snap2.scores.you, snap2.totalRounds)
+
+    const attestation = snap2.qvacAttestations['rc-1']
+    assert.ok(attestation)
+    assert.equal(attestation.ruling, 'forfeit')
+    assert.ok(attestation.winnerUserId)
+
+
+    unsub1()
+    unsub2()
+  } finally {
     if (client2) client2.leave()
     t.mock.timers.reset()
   }

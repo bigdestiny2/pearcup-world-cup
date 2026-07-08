@@ -48,7 +48,8 @@ const state = {
   crypto: false,
   friends: loadFriends(),
   privateRooms: loadPrivateRooms(),
-  presence: { channel: null, online: new Map(), heartbeat: null, sweeper: null }
+  presence: { channel: null, online: new Map(), heartbeat: null, sweeper: null },
+  socialFeed: loadSocialFeed()
 }
 
 const $ = (selector, root = document) => root.querySelector(selector)
@@ -71,6 +72,8 @@ async function boot () {
   renderSettings()
   renderActiveCompetitions()
   renderPrivateRooms()
+  renderSocialFeed()
+  bindSocialFeedControls()
   try {
     const response = await fetch('./data/servers.json', { cache: 'no-store' })
     if (!response.ok) throw new Error(`servers fetch failed: ${response.status}`)
@@ -80,6 +83,7 @@ async function boot () {
     renderServerTable()
     renderStatus()
     renderTicker()
+    renderSocialFeed()
   } catch (error) {
     renderError(error)
   }
@@ -105,11 +109,11 @@ function saveStored (patch) {
 
 function loadProfile () {
   const saved = loadStored()
-  return { username: saved.username || 'captain', team: saved.team || 'br' }
+  return { username: saved.username || 'captain', team: saved.team || 'br', avatar: saved.avatar || null }
 }
 
 function saveProfile () {
-  saveStored({ username: state.profile.username, team: state.profile.team })
+  saveStored({ username: state.profile.username, team: state.profile.team, avatar: state.profile.avatar })
 }
 
 function loadWallet () {
@@ -724,6 +728,211 @@ function renderStatus () {
   $('#peersLabel').textContent = state.friends.length
     ? `${friendsOnline}/${state.friends.length} friends online`
     : `${state.presence.online.size + 1} peers`
+}
+
+/* ==================== social feed ==================== */
+
+const SOCIAL_FEED_MAX_POSTS = 30
+const SOCIAL_FEED_PROTOCOL_LABELS = {
+  nostr: 'Nostr',
+  'at-protocol': 'Bluesky',
+  'activity-pub': 'Mastodon',
+  'in-app-p2p': 'Native'
+}
+
+function loadSocialFeed () {
+  const stored = loadStored()
+  return {
+    posts: generateDemoSocialPosts(),
+    mutedAuthors: stored.mutedAuthors || [],
+    hiddenSources: stored.hiddenSources || [],
+    activeCategory: null,
+    refreshing: false
+  }
+}
+
+function saveSocialFeed () {
+  const stored = loadStored()
+  stored.mutedAuthors = state.socialFeed.mutedAuthors
+  stored.hiddenSources = state.socialFeed.hiddenSources
+  saveStored(stored)
+}
+
+function generateDemoSocialPosts () {
+  const now = Date.now()
+  return [
+    { postId: 'sf-native-1', sourceId: 'native-activity', protocol: 'in-app-p2p', externalId: 'share-1',
+      author: { handle: 'PoolChamp', displayName: 'Pool Champion', verified: false },
+      text: 'Just won the World Cup bracket pool! 🏆 #worldcup', lang: 'en',
+      createdAt: new Date(now - 120000).toISOString(), ingestedAt: new Date(now - 110000).toISOString(),
+      eventTags: { competitionId: 'wc-2026', fixtureId: null, category: 'soccer' },
+      topicTags: ['#worldcup'], moderation: { state: 'allowed', reasons: [], score: 0 }, settlementTier: 'context-only' },
+    { postId: 'sf-nostr-1', sourceId: 'nostr-relays', protocol: 'nostr', externalId: 'nostr-evt-001',
+      author: { handle: 'soccerfan@nostr', displayName: 'Soccer Fan', pubkeyOrDid: 'pk-abc', verified: false },
+      text: 'What a goal from the wing! Absolutely clinical finish. #worldcup #football',
+      mediaRefs: [], lang: 'en',
+      createdAt: new Date(now - 300000).toISOString(), ingestedAt: new Date(now - 290000).toISOString(),
+      eventTags: { competitionId: null, fixtureId: null, category: 'soccer' },
+      topicTags: ['#worldcup', '#football'], moderation: { state: 'allowed', reasons: [], score: 0 }, settlementTier: 'context-only' },
+    { postId: 'sf-bsky-1', sourceId: 'bluesky-atproto', protocol: 'at-protocol', externalId: 'at://post/xyz1',
+      author: { handle: 'ufcfan.bsky.social', displayName: 'MMA Insider', verified: true },
+      text: 'Main event is about to start. This card is stacked! #ufc #mma',
+      mediaRefs: [{ kind: 'image', url: '#', previewRef: null }], lang: 'en',
+      createdAt: new Date(now - 600000).toISOString(), ingestedAt: new Date(now - 590000).toISOString(),
+      eventTags: { competitionId: null, fixtureId: null, category: 'combat-sports' },
+      topicTags: ['#ufc', '#mma'], moderation: { state: 'allowed', reasons: [], score: 0 }, settlementTier: 'context-only' },
+    { postId: 'sf-native-2', sourceId: 'native-activity', protocol: 'in-app-p2p', externalId: 'share-2',
+      author: { handle: 'GameWizard', displayName: 'Game Wizard', verified: false },
+      text: '5-game prediction streak! Who can beat that? #esports',
+      lang: 'en',
+      createdAt: new Date(now - 900000).toISOString(), ingestedAt: new Date(now - 890000).toISOString(),
+      eventTags: { competitionId: null, fixtureId: null, category: 'esports' },
+      topicTags: ['#esports'], moderation: { state: 'allowed', reasons: [], score: 0 }, settlementTier: 'context-only' },
+    { postId: 'sf-mast-1', sourceId: 'mastodon-instances', protocol: 'activity-pub', externalId: 'mast-001',
+      author: { handle: 'sailgp@mastodon.social', displayName: 'SailGP Follower', verified: false },
+      text: 'Incredible racing in Dubai today! The speeds are unreal. #sailgp #sailing',
+      mediaRefs: [], lang: 'en',
+      createdAt: new Date(now - 1200000).toISOString(), ingestedAt: new Date(now - 1190000).toISOString(),
+      eventTags: { competitionId: null, fixtureId: null, category: 'sailing' },
+      topicTags: ['#sailgp', '#sailing'], moderation: { state: 'allowed', reasons: [], score: 0 }, settlementTier: 'context-only' }
+  ]
+}
+
+function filterSocialFeedPosts (category) {
+  const muted = new Set(state.socialFeed.mutedAuthors)
+  const hiddenSources = new Set(state.socialFeed.hiddenSources)
+  return state.socialFeed.posts
+    .filter(post => post.moderation && post.moderation.state === 'allowed')
+    .filter(post => !hiddenSources.has(post.sourceId))
+    .filter(post => {
+      if (!post.author) return true
+      const authorKey = post.author.pubkeyOrDid || post.author.handle
+      return !muted.has(authorKey)
+    })
+    .filter(post => !category || !post.eventTags || post.eventTags.category === category)
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .slice(0, SOCIAL_FEED_MAX_POSTS)
+}
+
+function renderSocialFeed () {
+  const panel = $('#socialFeedPanel')
+  if (!panel) return
+  const category = state.socialFeed.activeCategory
+  const posts = filterSocialFeedPosts(category)
+  const empty = $('#socialFeedEmpty')
+  const status = $('#socialFeedStatus')
+  const mutedCount = $('#socialMutedCount')
+
+  if (mutedCount) mutedCount.textContent = String(state.socialFeed.mutedAuthors.length)
+  if (status) status.textContent = posts.length ? `${posts.length} live post${posts.length === 1 ? '' : 's'}` : 'no posts yet'
+  if (empty) empty.classList.toggle('is-hidden', posts.length > 0)
+
+  panel.innerHTML = posts.length
+    ? posts.map(post => renderSocialPostCard(post)).join('')
+    : (empty ? '' : '<p class="empty-note">No live posts yet for this event.</p>')
+
+  $$('#socialFeedPanel [data-mute-author]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const author = btn.dataset.muteAuthor
+      if (!state.socialFeed.mutedAuthors.includes(author)) {
+        state.socialFeed.mutedAuthors.push(author)
+        saveSocialFeed()
+        renderSocialFeed()
+      }
+    })
+  })
+  $$('#socialFeedPanel [data-hide-source]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const source = btn.dataset.hideSource
+      if (!state.socialFeed.hiddenSources.includes(source)) {
+        state.socialFeed.hiddenSources.push(source)
+        saveSocialFeed()
+        renderSocialFeed()
+      }
+    })
+  })
+  $$('#socialFeedPanel [data-report-post]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const postId = btn.dataset.reportPost
+      const post = state.socialFeed.posts.find(p => p.postId === postId)
+      if (post) {
+        post.moderation = { state: 'hidden', reasons: ['user-report'], score: 1 }
+        renderSocialFeed()
+      }
+    })
+  })
+}
+
+function renderSocialPostCard (post) {
+  const author = post.author || {}
+  const authorKey = author.pubkeyOrDid || author.handle || 'unknown'
+  const displayName = escapeHtml(author.displayName || author.handle || 'Anonymous')
+  const protocolLabel = SOCIAL_FEED_PROTOCOL_LABELS[post.protocol] || post.protocol
+  const timeAgo = formatTimeAgo(post.createdAt)
+  const mediaBadge = post.mediaRefs && post.mediaRefs.length ? `<span class="sf-media">${post.mediaRefs.length} media</span>` : ''
+  const verifiedBadge = author.verified ? '<span class="sf-verified" title="Verified">✓</span>' : ''
+  const categoryTag = post.eventTags && post.eventTags.category
+    ? `<span class="sf-cat">${escapeHtml(post.eventTags.category)}</span>` : ''
+
+  return `
+    <div class="sf-post" data-post-id="${escapeAttr(post.postId)}">
+      <div class="sf-head">
+        <span class="sf-author">${displayName}${verifiedBadge}</span>
+        <span class="sf-source">${escapeHtml(protocolLabel)}</span>
+        <span class="sf-time">${escapeHtml(timeAgo)}</span>
+      </div>
+      <p class="sf-text">${escapeHtml(post.text)}</p>
+      <div class="sf-meta">
+        ${categoryTag}
+        ${mediaBadge}
+        <span class="sf-actions">
+          <button class="sf-btn" type="button" data-mute-author="${escapeAttr(authorKey)}" title="Mute author">mute</button>
+          <button class="sf-btn" type="button" data-hide-source="${escapeAttr(post.sourceId)}" title="Hide source">hide</button>
+          <button class="sf-btn" type="button" data-report-post="${escapeAttr(post.postId)}" title="Report post">report</button>
+        </span>
+      </div>
+    </div>`
+}
+
+function formatTimeAgo (isoString) {
+  if (!isoString) return ''
+  const diff = Date.now() - new Date(isoString).getTime()
+  if (diff < 0) return 'now'
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
+
+function setSocialFeedCategory (category) {
+  state.socialFeed.activeCategory = category || null
+  renderSocialFeed()
+}
+
+function bindSocialFeedControls () {
+  const refreshBtn = $('#socialRefreshBtn')
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', () => {
+      state.socialFeed.refreshing = true
+      renderSocialFeed()
+      setTimeout(() => {
+        state.socialFeed.posts = generateDemoSocialPosts().concat(state.socialFeed.posts.filter(p => p.moderation.state !== 'hidden'))
+        state.socialFeed.refreshing = false
+        renderSocialFeed()
+      }, 600)
+    })
+  }
+  const mutedBtn = $('#socialMutedBtn')
+  if (mutedBtn) {
+    mutedBtn.addEventListener('click', () => {
+      if (state.socialFeed.mutedAuthors.length === 0) return
+      state.socialFeed.mutedAuthors = []
+      saveSocialFeed()
+      renderSocialFeed()
+    })
+  }
 }
 
 function renderTicker () {

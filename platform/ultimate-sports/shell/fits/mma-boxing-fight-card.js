@@ -9,8 +9,8 @@
   const surface = '#1a1a1d'
 
   const teams = [
-    { id: 'silva', name: 'R. Silva', flag: '🇧🇷', colors: [red, '#7f1d1d', '#fee2e2'] },
-    { id: 'jones', name: 'D. Jones', flag: '🇺🇸', colors: [blue, '#1e3a8a', '#dbeafe'] },
+    { id: 'silva', name: 'M. Holloway', nickname: 'Blessed', flag: '🇺🇸', colors: ['#ef4444', '#f59e0b', '#fee2e2'] },
+    { id: 'jones', name: 'C. McGregor', nickname: 'The Notorious', flag: '🇮🇪', colors: ['#22c55e', '#15803d', '#dcfce7'] },
     { id: 'nunes', name: 'A. Nunes', flag: '🇧🇷', colors: [red, '#7f1d1d', '#fee2e2'] },
     { id: 'shevchenko', name: 'V. Shevchenko', name: 'V. Shevchenko', flag: '🇰🇬', colors: [blue, '#1e3a8a', '#dbeafe'] },
     { id: 'oliveira', name: 'C. Oliveira', flag: '🇧🇷', colors: [red, '#7f1d1d', '#fee2e2'] },
@@ -69,7 +69,7 @@
   ]
 
   const homeFixtures = [
-    { status: 'Main event', title: 'Silva vs Jones', detail: 'Light Heavyweight title pool', live: true },
+    { status: 'Main event', title: 'Holloway vs McGregor', detail: 'Featherweight main event · 5 rounds', live: true },
     { status: 'Co-main', title: 'Nunes vs Shevchenko', detail: '$50 pool closing', live: true },
     { status: 'Featured', title: 'Oliveira vs Dariush', detail: 'Lightweight bracket room', live: false }
   ]
@@ -94,29 +94,29 @@
 
   const commentary = {
     EN: [
-      ['Main', 'Silva vs Jones is the main event room. Picks are open until the walkouts.'],
+      ['Main', 'Holloway vs McGregor is the main event room. Picks are open until the walkouts.'],
       ['Co-main', 'Nunes vs Shevchenko follows on the main card.'],
       ['Prelims', 'The early prelims start with Sterling vs O\'Malley.']
     ],
     PT: [
-      ['Main', 'Silva vs Jones é a sala do evento principal. Palpites abertos até a entrada.'],
+      ['Main', 'Holloway vs McGregor é a sala do evento principal. Palpites abertos até a entrada.'],
       ['Co-main', 'Nunes vs Shevchenko vem depois no card principal.'],
       ['Prelims', 'As preliminares começam com Sterling vs O\'Malley.']
     ],
     ES: [
-      ['Main', 'Silva vs Jones es la sala del evento estelar. Picks abiertos hasta la salida.'],
+      ['Main', 'Holloway vs McGregor es la sala del evento estelar. Picks abiertos hasta la salida.'],
       ['Co-main', 'Nunes vs Shevchenko sigue en la cartelera principal.'],
       ['Prelims', 'Las preliminares comienzan con Sterling vs O\'Malley.']
     ],
     FR: [
-      ['Main', 'Silva vs Jones est la salle de l\'événement principal. Picks ouverts jusqu\'à l\'entrée.'],
+      ['Main', 'Holloway vs McGregor est la salle de l\'événement principal. Picks ouverts jusqu\'à l\'entrée.'],
       ['Co-main', 'Nunes vs Shevchenko suit sur la carte principale.'],
       ['Prelims', 'Les préliminaires commencent avec Sterling vs O\'Malley.']
     ]
   }
 
   const defaultChat = [
-    { user: 'lina', text: 'Silva/Jones room is up. No fake result until the fight lands.', time: 'Main' },
+    { user: 'lina', text: 'Holloway/McGregor room is up. No fake result until the fight lands.', time: 'Main' },
     { user: 'vera', text: 'Nunes/Shevchenko pool is next on my list.', time: 'Co-main' },
     { user: 'ash', text: 'Main card bracket is live.', time: 'Card' }
   ]
@@ -138,7 +138,7 @@
   root.registerFit('mma-boxing-fight-card', {
     fitId: 'mma-boxing-fight-card',
     title: 'Combat Sport Fight Cards',
-    subtitle: 'Ultimate Sports',
+    subtitle: 'Holloway vs McGregor · Featherweight',
     category: 'combat-sports',
     templateKind: 'fight-card',
     entrantShape: 'player',
@@ -176,6 +176,17 @@
     defaultChat,
     gameRounds,
     gameLeaderboardRows,
+    // Street Fighter-style VS-screen data for the arcade theme (fit-loader adds
+    // the `fit-arcade` class + injects the VS screen from this block).
+    arcade: {
+      event: 'Holloway vs McGregor',
+      promotion: 'ULTIMATE FIGHTING · MAIN EVENT',
+      venue: 'T-MOBILE ARENA · LAS VEGAS',
+      weightClass: 'FEATHERWEIGHT',
+      rounds: 5,
+      red: { id: 'silva', last: 'HOLLOWAY', first: 'MAX', nick: 'BLESSED', flag: '🇺🇸', country: 'USA', record: '26–8–0', hometown: 'WAIANAE, HI', color: '#ef4444', color2: '#f59e0b', stance: 'orthodox' },
+      blue: { id: 'jones', last: 'McGREGOR', first: 'CONOR', nick: 'THE NOTORIOUS', flag: '🇮🇪', country: 'IRE', record: '22–6–0', hometown: 'DUBLIN, IRE', color: '#22c55e', color2: '#16a34a', stance: 'southpaw' }
+    },
     assets: root.defaultFitAssets('mma-boxing-fight-card')
   })
 })(window)

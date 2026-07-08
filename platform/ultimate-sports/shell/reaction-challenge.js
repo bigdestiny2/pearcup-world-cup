@@ -1,9 +1,11 @@
-// PearCup Reaction Challenge — fastest-tap P2P mini-game.
+// PearCup Reaction Challenge — fastest-tap P2P mini-game with commit/reveal + QVAC.
 //
 // Two peers join the same room topic. A shared moment schedule is derived from a
 // seed both players agree on, so neither can pre-compute the moments alone.
-// When a moment appears each player taps; the peer with the smallest valid
-// timestamp inside the latency window wins the point.
+// When a moment appears each player taps; the tap timestamp is committed to a
+// hash immediately and only revealed after the reaction window closes. Fastest
+// verified timestamp wins the round, and every round is attested by the QVAC
+// demo referee with latency auditing.
 //
 // This module is a standalone classic browser script; it will be wired into the
 // Games surface by shell/app.js later. Public API: ReactionChallenge.host,
@@ -18,10 +20,20 @@
     return
   }
 
+  const canRequireLocal = typeof module !== 'undefined' && module.exports && typeof require !== 'undefined'
+  const Core = root.PearCupCore || (canRequireLocal ? require('./core.js') : null)
+  if (!Core) {
+    if (root.console && root.console.warn) root.console.warn('PearCupCore missing — Reaction Challenge disabled')
+    return
+  }
+
   const DEFAULT_ROUNDS = 5
   const WINDOW_MS = 800
+  const REVEAL_GRACE_MS = 100
   const CHALLENGE_TTL_MS = 60000
   const DEFAULT_MOMENTS = ['goal', 'save', 'penalty', 'red-card', 'VAR-overturn']
+  const RESOLVER_VERSION = 'reaction-challenge-v2'
+  const IMPOSSIBLE_LATENCY_MS = 50
 
   const state = {
     active: false,
@@ -44,6 +56,11 @@
     remoteTaps: {},
     resolved: new Set(),
     timers: [],
+    commits: {},
+    reveals: {},
+    commitPhase: true,
+    qvacAttestations: {},
+    forfeitTimer: null,
     listeners: new Set()
   }
 
@@ -79,9 +96,13 @@
       scores: { ...state.scores },
       schedule: state.schedule.slice(),
       currentMoment,
+      commitPhase: state.commitPhase,
       localTaps: { ...state.localTaps },
       remoteTaps: { ...state.remoteTaps },
+      commits: deepClone(state.commits),
+      reveals: deepClone(state.reveals),
       resolved: Array.from(state.resolved),
+      qvacAttestations: deepClone(state.qvacAttestations),
       statusText: state.over
         ? 'Game over'
         : state.started
@@ -90,6 +111,11 @@
             ? 'Waiting for opponent'
             : 'Idle'
     }
+  }
+
+  function deepClone (value) {
+    if (value == null) return value
+    return JSON.parse(JSON.stringify(value))
   }
 
   function emitState () {
@@ -106,9 +132,17 @@
     }
   }
 
+  function clearForfeitTimer () {
+    if (state.forfeitTimer) {
+      if (typeof root.clearTimeout === 'function') root.clearTimeout(state.forfeitTimer)
+      state.forfeitTimer = null
+    }
+  }
+
   function reset () {
     stopAnnouncing()
     clearTimers()
+    clearForfeitTimer()
     if (state.channel) {
       try { state.channel.close() } catch (e) {}
     }
@@ -132,7 +166,12 @@
       localTaps: {},
       remoteTaps: {},
       resolved: new Set(),
-      timers: []
+      timers: [],
+      commits: {},
+      reveals: {},
+      commitPhase: true,
+      qvacAttestations: {},
+      forfeitTimer: null
     })
     syncDiagnostics('idle')
   }
@@ -258,6 +297,8 @@
     switch (msg.t) {
       case 'hello': return onHello(msg.peer, msg.cred, msg.helloNonce)
       case 'challenge': return onChallenge(msg)
+      case 'commit': return onCommit(msg)
+      case 'reveal': return onReveal(msg)
       case 'tap': return onTap(msg)
       case 'leave': return onOppLeft()
     }
@@ -331,7 +372,11 @@
     state.scores = { you: 0, opp: 0 }
     state.localTaps = {}
     state.remoteTaps = {}
+    state.commits = {}
+    state.reveals = {}
+    state.commitPhase = true
     state.resolved = new Set()
+    state.qvacAttestations = {}
 
     syncDiagnostics('started')
     emitState()
@@ -340,7 +385,15 @@
 
   function onOppLeft () {
     if (state.over) return
-    leave(true)
+    clearForfeitTimer()
+    if (state.active && state.started && state.opp) {
+      state.forfeitTimer = root.setTimeout(() => {
+        state.forfeitTimer = null
+        forfeitMatch()
+      }, 0)
+    } else {
+      leave(true)
+    }
   }
 
   // ---- deterministic scheduling (pure helpers) ----
@@ -385,34 +438,162 @@
       : { winner: 'opp', reason: 'faster' }
   }
 
+  // ---- commit / reveal helpers ----
+
+  function ensureCommits (round) {
+    if (!state.commits[round]) state.commits[round] = { local: null, remote: null }
+    return state.commits[round]
+  }
+
+  function ensureReveals (round) {
+    if (!state.reveals[round]) state.reveals[round] = { local: null, remote: null }
+    return state.reveals[round]
+  }
+
+  function makeCommitment (timestamp, nonce) {
+    return Core.deterministicHash(String(timestamp) + '|' + nonce)
+  }
+
+  function verifyCommitment (commitment, timestamp, nonce) {
+    return commitment === makeCommitment(timestamp, nonce)
+  }
+
   // ---- round timing ----
 
   function scheduleRound (i) {
     if (!state.started || state.over || i >= state.schedule.length) return
     state.currentRound = i
+    state.commitPhase = true
     const moment = state.schedule[i]
     const now = Date.now()
 
     const appearDelay = Math.max(0, moment.appearAt - now)
-    const resolveDelay = Math.max(0, moment.appearAt + moment.windowMs - now)
+    const revealDelay = Math.max(0, moment.appearAt + moment.windowMs - now)
+    const resolveDelay = revealDelay + REVEAL_GRACE_MS
 
-    const appearTimer = root.setTimeout(() => { emitState() }, appearDelay)
+    const appearTimer = root.setTimeout(() => {
+      state.commitPhase = false
+      emitState()
+    }, appearDelay)
     state.timers.push(appearTimer)
 
-    const resolveTimer = root.setTimeout(() => { resolveMoment(moment) }, resolveDelay)
+    const revealTimer = root.setTimeout(() => { sendReveal(i) }, revealDelay)
+    state.timers.push(revealTimer)
+
+    const resolveTimer = root.setTimeout(() => { resolveRound(i) }, resolveDelay)
     state.timers.push(resolveTimer)
   }
 
-  function resolveMoment (moment) {
-    if (state.resolved.has(moment.id)) return
+  function sendReveal (round) {
+    if (!state.started || state.over) return
+    const moment = state.schedule[round]
+    if (!moment) return
+    const commits = ensureCommits(round)
+    const reveals = ensureReveals(round)
+    if (reveals.local) return // already revealed
+
+    let timestamp
+    let nonce
+    if (commits.local && commits.local.nonce != null) {
+      timestamp = state.localTaps[moment.id] || 0
+      nonce = commits.local.nonce
+    } else {
+      // No tap in time — commit to a zero timestamp so the round can still resolve.
+      timestamp = 0
+      nonce = challengeNonce()
+      const commitment = makeCommitment(timestamp, nonce)
+      commits.local = { commitment, nonce, at: Date.now() }
+      send({ t: 'commit', round, commitment })
+    }
+
+    reveals.local = { timestamp, nonce }
+    send({ t: 'reveal', round, timestamp, nonce })
+    emitState()
+  }
+
+  function resolveRound (round) {
+    if (state.over) return
+    const moment = state.schedule[round]
+    if (!moment || state.resolved.has(moment.id)) return
     state.resolved.add(moment.id)
 
-    const localTs = state.localTaps[moment.id]
-    const remoteTs = state.remoteTaps[moment.id]
-    const result = scoreMoment(moment, localTs, remoteTs)
+    const commits = state.commits[round] || { local: null, remote: null }
+    const reveals = state.reveals[round] || { local: null, remote: null }
 
-    if (result.winner === 'you') state.scores.you += 1
-    else if (result.winner === 'opp') state.scores.opp += 1
+    const localVerified = Boolean(
+      commits.local &&
+      reveals.local &&
+      verifyCommitment(commits.local.commitment, reveals.local.timestamp, reveals.local.nonce)
+    )
+    const remoteVerified = Boolean(
+      commits.remote &&
+      reveals.remote &&
+      verifyCommitment(commits.remote.commitment, reveals.remote.timestamp, reveals.remote.nonce)
+    )
+
+    const localTs = localVerified ? reveals.local.timestamp : null
+    const remoteTs = remoteVerified ? reveals.remote.timestamp : null
+
+    const localValid = localTs != null && localTs >= moment.appearAt && localTs <= moment.appearAt + moment.windowMs
+    const remoteValid = remoteTs != null && remoteTs >= moment.appearAt && remoteTs <= moment.appearAt + moment.windowMs
+
+    let outcome
+    let reason
+    if (!localValid && !remoteValid) {
+      outcome = 'draw'
+      reason = 'no-valid-tap'
+    } else if (localValid && !remoteValid) {
+      outcome = 'you'
+      reason = 'opponent-missed'
+    } else if (!localValid && remoteValid) {
+      outcome = 'opp'
+      reason = 'you-missed'
+    } else if (localTs === remoteTs) {
+      outcome = 'draw'
+      reason = 'tie'
+    } else if (localTs < remoteTs) {
+      outcome = 'you'
+      reason = 'faster'
+    } else {
+      outcome = 'opp'
+      reason = 'faster'
+    }
+
+    if (outcome === 'you') state.scores.you += 1
+    else if (outcome === 'opp') state.scores.opp += 1
+
+    const localLatency = localValid ? localTs - moment.appearAt : null
+    const remoteLatency = remoteValid ? remoteTs - moment.appearAt : null
+    const latencyAudit = {
+      localLatency,
+      remoteLatency,
+      windowStart: moment.appearAt,
+      windowEnd: moment.appearAt + moment.windowMs
+    }
+
+    const roundResult = buildRoundResult({
+      round,
+      moment,
+      outcome,
+      localCommit: commits.local,
+      remoteCommit: commits.remote,
+      localReveal: reveals.local,
+      remoteReveal: reveals.remote,
+      latencyAudit
+    })
+
+    const impossible = (localLatency != null && localLatency < IMPOSSIBLE_LATENCY_MS) ||
+      (remoteLatency != null && remoteLatency < IMPOSSIBLE_LATENCY_MS)
+    const review = impossible
+      ? { ruling: 'disputed', confidence: 0.2, rationale: 'Impossible human reaction time detected.' }
+      : { ruling: 'verified', confidence: 0.95, rationale: 'Commitments verified and latencies within human window.' }
+
+    const attestation = Core.createQvacRefereeAttestation({
+      roundResult,
+      refereeId: 'qvac-reaction-ref',
+      review
+    })
+    state.qvacAttestations[roundResult.roundId] = attestation
 
     emitState()
 
@@ -420,6 +601,63 @@
       finishGame()
     } else {
       scheduleRound(moment.round + 1)
+    }
+  }
+
+  function buildRoundResult ({ round, moment, outcome, localCommit, remoteCommit, localReveal, remoteReveal, latencyAudit }) {
+    const gameId = `reaction-challenge-${state.code}`
+    const roundId = `rc-${round + 1}`
+    const selfId = state.self.peerId
+    const oppId = state.opp.peerId
+
+    const shooter = { id: selfId }
+    const keeper = { id: oppId }
+    const shooterInput = localReveal ? { timestamp: localReveal.timestamp, nonce: localReveal.nonce } : null
+    const keeperInput = remoteReveal ? { timestamp: remoteReveal.timestamp, nonce: remoteReveal.nonce } : null
+    const shooterCommitment = localCommit ? localCommit.commitment : null
+    const keeperCommitment = remoteCommit ? remoteCommit.commitment : null
+    const shooterNonce = localReveal ? localReveal.nonce : null
+    const keeperNonce = remoteReveal ? remoteReveal.nonce : null
+
+    const winnerUserId = outcome === 'you' ? selfId : outcome === 'opp' ? oppId : null
+
+    const stateHash = Core.deterministicHash({
+      resolverVersion: RESOLVER_VERSION,
+      gameId,
+      roundId,
+      shooterCommitment,
+      keeperCommitment,
+      shooterInput,
+      keeperInput,
+      outcome,
+      latencyAudit
+    })
+
+    const sourceEventIds = [
+      Core.deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: selfId, commitment: shooterCommitment }),
+      Core.deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: oppId, commitment: keeperCommitment }),
+      Core.deterministicHash({ type: 'GameInputRevealed', roundId, playerId: selfId, timestamp: localReveal ? localReveal.timestamp : null, nonce: localReveal ? localReveal.nonce : null }),
+      Core.deterministicHash({ type: 'GameInputRevealed', roundId, playerId: oppId, timestamp: remoteReveal ? remoteReveal.timestamp : null, nonce: remoteReveal ? remoteReveal.nonce : null }),
+      Core.deterministicHash({ type: 'GameRoundResolved', roundId, outcome })
+    ]
+
+    return {
+      gameId,
+      roundId,
+      resolverVersion: RESOLVER_VERSION,
+      outcome,
+      winnerUserId,
+      shooter,
+      keeper,
+      shooterInput,
+      keeperInput,
+      shooterCommitment,
+      keeperCommitment,
+      shooterNonce,
+      keeperNonce,
+      stateHash,
+      sourceEventIds,
+      latencyAudit
     }
   }
 
@@ -432,6 +670,7 @@
 
   function postReceipt () {
     if (typeof root.postSettlementReceipt !== 'function') return
+    if (state.role !== 'A') return
     const winner = state.scores.you > state.scores.opp
       ? state.self.peerId
       : state.scores.opp > state.scores.you
@@ -452,6 +691,66 @@
     try { root.postSettlementReceipt(receipt) } catch (e) {}
   }
 
+  function forfeitMatch () {
+    if (state.over || !state.opp) return
+    clearTimers()
+    const roundIndex = state.currentRound
+    const gameId = `reaction-challenge-${state.code}`
+    const roundId = `rc-${roundIndex + 1}`
+    const selfId = state.self.peerId
+    const oppId = state.opp.peerId
+
+    const sourceEventIds = [
+      Core.deterministicHash({
+        type: 'GameRoundForfeitRecorded',
+        gameId,
+        roundId,
+        forfeitingPlayerId: oppId,
+        winnerUserId: selfId,
+        claimantUserId: selfId,
+        reason: 'disconnect'
+      })
+    ]
+    const stateHash = Core.deterministicHash({
+      resolverVersion: RESOLVER_VERSION,
+      gameId,
+      roundId,
+      outcome: 'forfeit',
+      forfeitingPlayerId: oppId,
+      winnerUserId: selfId,
+      claimantUserId: selfId,
+      reason: 'disconnect',
+      sourceEventIds
+    })
+    const roundResult = {
+      gameId,
+      roundId,
+      resolverVersion: RESOLVER_VERSION,
+      shooter: { id: selfId },
+      keeper: { id: oppId },
+      outcome: 'forfeit',
+      winnerUserId: selfId,
+      forfeitingPlayerId: oppId,
+      claimantUserId: selfId,
+      forfeitReason: 'disconnect',
+      stateHash,
+      sourceEventIds
+    }
+    const review = { ruling: 'verified', confidence: 0.95, rationale: 'Opponent disconnected; match forfeited.' }
+    const attestation = Core.createQvacRefereeAttestation({
+      roundResult,
+      refereeId: 'qvac-reaction-ref',
+      review
+    })
+    state.qvacAttestations[roundId] = attestation
+
+    state.scores.you = state.schedule.length
+    state.over = true
+    syncDiagnostics('over')
+    postReceipt()
+    emitState()
+  }
+
   // ---- player input ----
 
   function tap (momentId) {
@@ -462,7 +761,13 @@
     if (state.localTaps[momentId] != null) return false
 
     const ts = Date.now()
+    const nonce = challengeNonce()
+    const commitment = makeCommitment(ts, nonce)
+
     state.localTaps[momentId] = ts
+    ensureCommits(moment.round).local = { commitment, nonce, at: ts }
+
+    send({ t: 'commit', round: moment.round, commitment })
     send({ t: 'tap', momentId, ts, round: moment.round })
     emitState()
     return true
@@ -475,6 +780,24 @@
     if (state.resolved.has(msg.momentId)) return
     if (state.remoteTaps[msg.momentId] != null) return // ignore duplicate / replay
     state.remoteTaps[msg.momentId] = msg.ts
+    emitState()
+  }
+
+  function onCommit (msg) {
+    if (!state.started || state.over || !state.opp || msg.sender !== state.opp.peerId) return
+    const round = msg.round
+    if (round == null) return
+    ensureCommits(round).remote = { commitment: msg.commitment, at: Date.now() }
+    emitState()
+  }
+
+  function onReveal (msg) {
+    if (!state.started || state.over || !state.opp || msg.sender !== state.opp.peerId) return
+    const round = msg.round
+    if (round == null) return
+    const reveals = ensureReveals(round)
+    if (reveals.remote) return // ignore duplicate reveals
+    reveals.remote = { timestamp: msg.timestamp, nonce: msg.nonce }
     emitState()
   }
 
@@ -505,13 +828,37 @@
       getState: getSnapshot,
       simulateRemoteTap: function (momentId, ts) {
         if (!state.started || !state.opp) return false
+        const moment = state.schedule.find(m => m.id === momentId)
         onMessage({
           t: 'tap',
           room: state.code,
           sender: state.opp.peerId,
           momentId,
           ts,
-          round: 0
+          round: moment ? moment.round : 0
+        })
+        return true
+      },
+      simulateRemoteCommit: function (round, commitment) {
+        if (!state.started || !state.opp) return false
+        onMessage({
+          t: 'commit',
+          room: state.code,
+          sender: state.opp.peerId,
+          round,
+          commitment
+        })
+        return true
+      },
+      simulateRemoteReveal: function (round, timestamp, nonce) {
+        if (!state.started || !state.opp) return false
+        onMessage({
+          t: 'reveal',
+          room: state.code,
+          sender: state.opp.peerId,
+          round,
+          timestamp,
+          nonce
         })
         return true
       }

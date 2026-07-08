@@ -215,3 +215,87 @@ test('bridge handler exposes standup audit and sports data aggregator actions', 
   assert.equal(smokePlan.ok, true)
   assert.equal(smokePlan.result.checks[0].status, 'missing-env')
 })
+
+test('bridge handler exposes social feed provider, aggregator, and client actions', () => {
+  const handler = bridge.createBridgeHandler({
+    platformOptions: { peerId: 'bridge-social' }
+  })
+  const providerPlan = handler.handle(bridge.createBridgeRequest({
+    action: 'createSocialFeedProviderPlan',
+    requestId: 'req-sf-provider',
+    payload: {}
+  }))
+  const aggregatorPlan = handler.handle(bridge.createBridgeRequest({
+    action: 'createSocialFeedAggregatorPlan',
+    requestId: 'req-sf-aggregator',
+    payload: {}
+  }))
+  const route = handler.handle(bridge.createBridgeRequest({
+    action: 'socialFeedRouteForFit',
+    requestId: 'req-sf-route',
+    payload: { fitId: 'world-cup' }
+  }))
+  const normalized = handler.handle(bridge.createBridgeRequest({
+    action: 'normalizeSocialPost',
+    requestId: 'req-sf-normalize',
+    payload: {
+      input: {
+        sourceId: 'nostr-relays',
+        externalId: 'bridge-post-1',
+        text: 'Bridge test! #worldcup',
+        payload: { content: 'Bridge test! #worldcup' }
+      }
+    }
+  }))
+  const clientPlan = handler.handle(bridge.createBridgeRequest({
+    action: 'createSocialFeedClientPlan',
+    requestId: 'req-sf-client',
+    payload: { input: { env: {} } }
+  }))
+  const requestPlan = handler.handle(bridge.createBridgeRequest({
+    action: 'createSocialFeedRequestPlan',
+    requestId: 'req-sf-request',
+    payload: {
+      input: {
+        sourceId: 'nostr-relays',
+        env: {}
+      }
+    }
+  }))
+  const leakCheck = handler.handle(bridge.createBridgeRequest({
+    action: 'assertNoSocialFeedSettlementLeak',
+    requestId: 'req-sf-leak',
+    payload: {
+      command: { type: 'pool:settle', payload: { postId: 'social-post-x' } }
+    }
+  }))
+
+  assert.equal(providerPlan.ok, true)
+  assert.equal(providerPlan.result.settlementTier, 'context-only')
+  assert.equal(providerPlan.result.recommendation.primarySourceId, 'nostr-relays')
+
+  assert.equal(aggregatorPlan.ok, true)
+  assert.equal(aggregatorPlan.result.settlementTier, 'context-only')
+  assert.equal(aggregatorPlan.result.strategy.noSettlement, true)
+
+  assert.equal(route.ok, true)
+  assert.equal(route.result.fitId, 'world-cup')
+  assert.equal(route.result.settlementTier, 'context-only')
+
+  assert.equal(normalized.ok, true)
+  assert.equal(normalized.result.canSettle, false)
+  assert.equal(normalized.result.moderation.state, 'allowed')
+
+  assert.equal(clientPlan.ok, true)
+  assert.equal(clientPlan.result.noSettlement, true)
+  assert.equal(clientPlan.result.coverage.websocketClients, 1)
+
+  assert.equal(requestPlan.ok, true)
+  assert.equal(requestPlan.result.sourceId, 'nostr-relays')
+  assert.equal(requestPlan.result.canSettleCandidate, false)
+  assert.equal(requestPlan.result.clientKind, 'websocket-relay')
+
+  assert.equal(leakCheck.ok, true)
+  assert.equal(leakCheck.result.ok, false)
+  assert.equal(leakCheck.result.leaked, true)
+})

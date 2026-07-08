@@ -1,5 +1,7 @@
 (function attachPearCupCore (root) {
   const resolverVersion = 'penalty-clash-v1'
+  const fkResolverVersion = 'free-kick-duel-v1'
+  const bbResolverVersion = 'buzzer-beater-duel-v1'
 
   // In the browser the shell loads engines.bundle.js before this file, so
   // root.UltimateEngines is already present. In Node tests we load the same
@@ -383,11 +385,15 @@
     if (!roundResult) return null
     if (roundResult.outcome === 'forfeit') return roundResult.winnerUserId || null
     if (roundResult.outcome === 'disputed') return null
+    if (roundResult.winnerUserId != null) return roundResult.winnerUserId
     if (roundResult.outcome === 'goal') return roundResult.shooter && roundResult.shooter.id || null
     return roundResult.keeper && roundResult.keeper.id || null
   }
 
   function outcomeLabel (outcome) {
+    if (outcome === 'you') return 'You win'
+    if (outcome === 'opp') return 'Opponent wins'
+    if (outcome === 'draw') return 'Draw'
     if (outcome === 'save') return 'Save confirmed'
     if (outcome === 'post') return 'Off the post'
     if (outcome === 'miss') return 'Miss confirmed'
@@ -528,6 +534,179 @@
       forfeitingPlayerId: forfeiter,
       claimantUserId: claimant,
       forfeitReason: normalizedReason,
+      stateHash,
+      sourceEventIds: evidenceSourceEventIds
+    }
+  }
+
+  function createPenaltyClashRoundResult ({
+    gameId,
+    roundIndex,
+    roundId: explicitRoundId,
+    shooter,
+    keeper,
+    shooterInput,
+    keeperInput,
+    shooterCommitment,
+    keeperCommitment,
+    shooterNonce = 'shooter-nonce',
+    keeperNonce = 'keeper-nonce',
+    outcome,
+    sourceEventIds = null
+  }) {
+    const roundId = explicitRoundId || `pc-${roundIndex + 1}`
+    const roundSeed = deterministicHash({ gameId, roundId, shooterCommitment, keeperCommitment })
+    const timingGap = Math.abs((shooterInput && shooterInput.releaseTick || 0) - (keeperInput && keeperInput.releaseTick || 0))
+    const stateHash = deterministicHash({
+      resolverVersion,
+      gameId,
+      roundId,
+      roundSeed,
+      shooterInput,
+      keeperInput,
+      outcome
+    })
+    const fallbackSourceEventIds = [
+      deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: shooter.id, commitment: shooterCommitment }),
+      deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: keeper.id, commitment: keeperCommitment }),
+      deterministicHash({ type: 'GameInputRevealed', roundId, playerId: shooter.id, input: shooterInput }),
+      deterministicHash({ type: 'GameInputRevealed', roundId, playerId: keeper.id, input: keeperInput }),
+      deterministicHash({ type: 'GameRoundResolved', roundId, outcome })
+    ]
+    const evidenceSourceEventIds = Array.isArray(sourceEventIds) && sourceEventIds.length
+      ? [...sourceEventIds]
+      : fallbackSourceEventIds
+
+    return {
+      gameId,
+      roundId,
+      resolverVersion,
+      shooter,
+      keeper,
+      shooterInput,
+      keeperInput,
+      shooterCommitment,
+      keeperCommitment,
+      shooterNonce,
+      keeperNonce,
+      roundSeed,
+      timingGap,
+      outcome,
+      outcomeLabel: outcomeLabel(outcome),
+      stateHash,
+      sourceEventIds: evidenceSourceEventIds
+    }
+  }
+
+  function createFreeKickDuelRoundResult ({
+    gameId,
+    roundIndex,
+    roundId: explicitRoundId,
+    shooter,
+    keeper,
+    shooterInput,
+    keeperInput,
+    shooterCommitment,
+    keeperCommitment,
+    shooterNonce = 'shooter-nonce',
+    keeperNonce = 'keeper-nonce',
+    outcome,
+    sourceEventIds = null
+  }) {
+    const roundId = explicitRoundId || `fk-${roundIndex + 1}`
+    const roundSeed = deterministicHash({ gameId, roundId, shooterCommitment, keeperCommitment })
+    const stateHash = deterministicHash({
+      resolverVersion: fkResolverVersion,
+      gameId,
+      roundId,
+      roundSeed,
+      shooterInput,
+      keeperInput,
+      outcome
+    })
+    const fallbackSourceEventIds = [
+      deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: shooter.id, commitment: shooterCommitment }),
+      deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: keeper.id, commitment: keeperCommitment }),
+      deterministicHash({ type: 'GameInputRevealed', roundId, playerId: shooter.id, input: shooterInput }),
+      deterministicHash({ type: 'GameInputRevealed', roundId, playerId: keeper.id, input: keeperInput }),
+      deterministicHash({ type: 'GameRoundResolved', roundId, outcome })
+    ]
+    const evidenceSourceEventIds = Array.isArray(sourceEventIds) && sourceEventIds.length
+      ? [...sourceEventIds]
+      : fallbackSourceEventIds
+
+    return {
+      gameId,
+      roundId,
+      resolverVersion: fkResolverVersion,
+      shooter,
+      keeper,
+      shooterInput,
+      keeperInput,
+      shooterCommitment,
+      keeperCommitment,
+      shooterNonce,
+      keeperNonce,
+      roundSeed,
+      outcome,
+      outcomeLabel: outcomeLabel(outcome),
+      stateHash,
+      sourceEventIds: evidenceSourceEventIds
+    }
+  }
+
+  function createBuzzerBeaterDuelRoundResult ({
+    gameId,
+    roundIndex,
+    roundId: explicitRoundId,
+    shooter,
+    keeper,
+    shooterInput,
+    keeperInput,
+    shooterCommitment,
+    keeperCommitment,
+    shooterNonce = 'shooter-nonce',
+    keeperNonce = 'keeper-nonce',
+    outcome,
+    sourceEventIds = null
+  }) {
+    const roundId = explicitRoundId || `bb-${roundIndex + 1}`
+    const roundSeed = deterministicHash({ gameId, roundId, shooterCommitment, keeperCommitment })
+    const stateHash = deterministicHash({
+      resolverVersion: bbResolverVersion,
+      gameId,
+      roundId,
+      roundSeed,
+      shooterInput,
+      keeperInput,
+      outcome
+    })
+    const fallbackSourceEventIds = [
+      deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: shooter.id, commitment: shooterCommitment }),
+      deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: keeper.id, commitment: keeperCommitment }),
+      deterministicHash({ type: 'GameInputRevealed', roundId, playerId: shooter.id, input: shooterInput }),
+      deterministicHash({ type: 'GameInputRevealed', roundId, playerId: keeper.id, input: keeperInput }),
+      deterministicHash({ type: 'GameRoundResolved', roundId, outcome })
+    ]
+    const evidenceSourceEventIds = Array.isArray(sourceEventIds) && sourceEventIds.length
+      ? [...sourceEventIds]
+      : fallbackSourceEventIds
+
+    return {
+      gameId,
+      roundId,
+      resolverVersion: bbResolverVersion,
+      shooter,
+      keeper,
+      shooterInput,
+      keeperInput,
+      shooterCommitment,
+      keeperCommitment,
+      shooterNonce,
+      keeperNonce,
+      roundSeed,
+      outcome,
+      outcomeLabel: outcomeLabel(outcome),
       stateHash,
       sourceEventIds: evidenceSourceEventIds
     }
@@ -1180,7 +1359,10 @@
     winnerUserIdForRoundResult,
     participantUserIdsForRoundResult,
     createPenaltyClashRound,
+    createPenaltyClashRoundResult,
     createPenaltyClashForfeitRound,
+    createFreeKickDuelRoundResult,
+    createBuzzerBeaterDuelRoundResult,
     createQvacRefereeAttestation,
     verifyQvacRoundAttestation,
     createBracketPoolSettlementResult,

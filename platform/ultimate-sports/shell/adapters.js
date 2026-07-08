@@ -7,8 +7,8 @@
     return {
       id: refereeId,
       mode: 'demo',
-      attestRound ({ roundResult }) {
-        return core.createQvacRefereeAttestation({ roundResult, refereeId })
+      attestRound ({ roundResult, review = null }) {
+        return core.createQvacRefereeAttestation({ roundResult, refereeId, review })
       },
       attestPoolSettlement ({ poolResult }) {
         return core.createQvacPoolSettlementAttestation({ poolResult, refereeId })

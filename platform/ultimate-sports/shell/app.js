@@ -325,10 +325,8 @@ let reactionChallengeSnapshot = null
 let liveMarketUnsub = null
 let liveMarketSnapshot = null
 
-// Games that have a playable shell implementation (peer + AI). The Games surface
-// and watch challenge tray filter the fit's recommendedMiniGames by this set so
-// unimplemented catalog games show "coming soon" instead of a broken match.
-const SHELL_IMPLEMENTED_MINI_GAMES = new Set([
+// Ranked competitive duels: commit/reveal + QVAC referee. Shown in the Games lobby.
+const SHELL_COMPETITIVE_MINI_GAMES = new Set([
   'penalty-clash',
   'prediction-duel',
   'trivia-duel',
@@ -336,18 +334,34 @@ const SHELL_IMPLEMENTED_MINI_GAMES = new Set([
   'buzzer-beater-duel',
   'ace-serve-duel',
   'home-run-derby',
-  'reaction-challenge',
+  'reaction-challenge'
+])
+
+// Social / watch-party side bets: no ranked duel, low-stakes, shown in the Watch tray.
+const SHELL_SOCIAL_MINI_GAMES = new Set([
   'next-event',
   'scoreline-lock',
-  'watch-party-streak'
+  'watch-party-streak',
+  'momentum-duel',
+  'player-prop-duel'
+])
+
+// Backward-compatible alias for surfaces that still check "implemented".
+const SHELL_IMPLEMENTED_MINI_GAMES = new Set([
+  ...SHELL_COMPETITIVE_MINI_GAMES,
+  ...SHELL_SOCIAL_MINI_GAMES
 ])
 
 function playableMiniGames () {
-  return fitMiniGames.filter(gt => SHELL_IMPLEMENTED_MINI_GAMES.has(gt))
+  return fitMiniGames.filter(gt => SHELL_COMPETITIVE_MINI_GAMES.has(gt))
 }
 
 function isPlayableMiniGame (gameType) {
-  return SHELL_IMPLEMENTED_MINI_GAMES.has(gameType)
+  return SHELL_COMPETITIVE_MINI_GAMES.has(gameType)
+}
+
+function isSocialMiniGame (gameType) {
+  return SHELL_SOCIAL_MINI_GAMES.has(gameType)
 }
 
 function selectedMiniGameTitle () {
@@ -368,7 +382,7 @@ let adoptingHostState = false
 function reportHostState () {
   if (adoptingHostState || !HOST || !HOST.isHosted()) return
   HOST.reportState({
-    profile: { username: state.username, team: state.team },
+    profile: { username: state.username, team: state.team, avatar: state.avatar },
     wallet: state.wallet
   })
 }
@@ -381,6 +395,7 @@ function adoptHostState (data) {
     if (data.profile) {
       if (data.profile.username) state.username = data.profile.username
       if (data.profile.team) state.team = data.profile.team
+      if ('avatar' in data.profile) state.avatar = data.profile.avatar
     }
     persist()
   } finally {
@@ -408,6 +423,7 @@ function loadState () {
     view: 'onboarding',
     username: 'captain',
     team: fitDefaultTeam,
+    avatar: null,
     selectedTier: 25,
     selectedPoolVariant: selectedPool.variant || 'classic-bracket',
     picks: {},
@@ -749,213 +765,102 @@ function mixHex (hex, target, amount) {
   return `#${mixed.join('')}`
 }
 
-// Registry for AI-generated Higgsfield portraits, keyed by `${name}-${team.id}`.
-// The static SVG shell remains a pre-boot fallback; hydrated avatars use these assets.
-const AVATAR_PORTRAITS = (typeof window !== 'undefined' && (window.__pearcupPortraits = window.__pearcupPortraits || {})) || {}
-Object.assign(AVATAR_PORTRAITS, {
-  'captain-br': 'avatars/captain-br.png',
-  captain: 'avatars/captain-br.png',
-  vera: 'avatars/vera-no.png',
-  milo: 'avatars/milo-mx.png',
-  lina: 'avatars/lina-no.png',
-  kaito: 'avatars/kaito-jp.png',
-  mateo: 'avatars/mateo-ar.png',
-  emre: 'avatars/emre-ch.png',
-  zola: 'avatars/zola-ci.png',
-  samir: 'avatars/samir.png',
-  saki: 'avatars/saki.png',
-  dado: 'avatars/dado.png',
-  ash: 'avatars/ash.png'
-})
-Object.assign(AVATAR_PORTRAITS, {
-  aria: 'avatars/p-aria.png', rico: 'avatars/p-rico.png', kenji: 'avatars/p-kenji.png',
-  amara: 'avatars/p-amara.png', luca: 'avatars/p-luca.png', sofia: 'avatars/p-sofia.png',
-  omar: 'avatars/p-omar.png', nina: 'avatars/p-nina.png', diego: 'avatars/p-diego.png',
-  yuki: 'avatars/p-yuki.png', kwame: 'avatars/p-kwame.png', ingrid: 'avatars/p-ingrid.png',
-  rafa: 'avatars/p-rafa.png', mei: 'avatars/p-mei.png', tariq: 'avatars/p-tariq.png',
-  freya: 'avatars/p-freya.png', santi: 'avatars/p-santi.png', kofi: 'avatars/p-kofi.png'
-})
-
-const AVATAR_POOL = [
-  'p-aria', 'p-rico', 'p-kenji', 'p-amara', 'p-luca', 'p-sofia', 'p-omar', 'p-nina',
-  'p-diego', 'p-yuki', 'p-kwame', 'p-ingrid', 'p-rafa', 'p-mei', 'p-tariq', 'p-freya',
-  'p-santi', 'p-kofi'
-]
-
-function pooledPortrait (name, team) {
-  const h = hashString(`${name}-${team && team.id ? team.id : ''}`)
-  return `avatars/${AVATAR_POOL[h % AVATAR_POOL.length]}.png`
+// Old kawaii portrait PNGs + anime-avatar generator retired. Avatars are now
+// retro monogram tiles (see avatarSvg); only the local user's own uploaded pic
+// renders as a photo.
+function isCurrentUser (name) {
+  return String(name || '').toLowerCase() === String((state && state.username) || 'captain').toLowerCase()
 }
 
 function avatarPortrait (name, team) {
-  if (!team || !team.id) return AVATAR_PORTRAITS[String(name).toLowerCase()] || null
-  return AVATAR_PORTRAITS[`${name}-${team.id}`] ||
-    AVATAR_PORTRAITS[String(name).toLowerCase()] ||
-    pooledPortrait(name, team)
+  // Old-school P2P-client look: the kawaii portrait PNGs are retired. Only the
+  // local user's own uploaded/chosen pic renders as a photo; everyone else gets
+  // a retro monogram tile (see avatarSvg). Keeps the app image-light and on-theme.
+  if (state && state.avatar && isCurrentUser(name)) return state.avatar
+  return null
 }
 
-// Pick a jersey base color that stays visible on light backgrounds:
-// prefer the iconic primary, but skip past any near-white team color.
-function pickJerseyColor (colors) {
-  const isNearWhite = hex => {
-    const clean = hex.replace('#', '')
-    const full = clean.length === 3 ? clean.split('').map(c => c + c).join('') : clean
-    const rgb = [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16))
-    return Math.min(...rgb) > 214
+// Uploaded photo → square center-crop → ~256px JPEG data URL (small enough for
+// localStorage + a postMessage handshake). Center-crop so portraits aren't
+// stretched; re-encode / abort if the result is pathologically large.
+async function downscaleAvatar (file, size = 256, quality = 0.74) {
+  if (!file || !file.type || !file.type.startsWith('image/')) return null
+  const dataUrl = await new Promise((res, rej) => {
+    const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej
+    r.readAsDataURL(file)
+  })
+  const img = await new Promise((res, rej) => {
+    const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = dataUrl
+  })
+  const side = Math.min(img.naturalWidth, img.naturalHeight)
+  if (!side) return null
+  const sx = (img.naturalWidth - side) / 2
+  const sy = (img.naturalHeight - side) / 2
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = size
+  const ctx = canvas.getContext('2d')
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size)
+  let out = canvas.toDataURL('image/jpeg', quality)
+  if (out.length > 60000) out = canvas.toDataURL('image/jpeg', 0.6)
+  return out.length > 90000 ? null : out
+}
+
+// Example avatars: procedural symmetric pixel "identicons" on a dark tile —
+// on-theme (8-bit/retro), self-contained, no external assets or credits needed.
+function presetAvatarDataUrl (seed, hue) {
+  const cells = 5, size = 100, pad = 12, grid = (size - pad * 2) / cells
+  let h = 0
+  for (let i = 0; i < seed.length; i++) { h = ((h << 5) - h + seed.charCodeAt(i)) | 0 }
+  const rand = () => { h = (h * 1103515245 + 12345) & 0x7fffffff; return h / 0x7fffffff }
+  const fg = `hsl(${hue} 72% 58%)`
+  let rects = ''
+  for (let y = 0; y < cells; y++) {
+    for (let x = 0; x < Math.ceil(cells / 2); x++) {
+      if (rand() > 0.5) {
+        const rx = pad + x * grid, ry = pad + y * grid
+        rects += `<rect x="${rx}" y="${ry}" width="${grid}" height="${grid}" fill="${fg}"/>`
+        const mx = pad + (cells - 1 - x) * grid
+        if (mx !== rx) rects += `<rect x="${mx}" y="${ry}" width="${grid}" height="${grid}" fill="${fg}"/>`
+      }
+    }
   }
-  return colors.find(c => !isNearWhite(c)) || colors[0]
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}"><rect width="${size}" height="${size}" fill="#0b0f14"/>${rects}</svg>`
+  return 'data:image/svg+xml;base64,' + btoa(svg)
 }
-
-const KAWAII_HAIR = ['#ff8fc0', '#b79bff', '#7cc4ff', '#ffd76b', '#8a5a3c', '#5a4a6b']
-const KAWAII_SKIN = ['#ffe6d3', '#ffd9c0', '#f0c09b', '#d9a17a', '#b97e58']
+const EXAMPLE_AVATARS = [['blaze', 8], ['viper', 145], ['neon', 285], ['ghost', 205], ['ember', 32], ['frost', 190], ['gold', 46], ['jade', 160]]
+  .map(([seed, hue]) => presetAvatarDataUrl(seed, hue))
 
 function avatarSvg (name, team, compact = false) {
-  const seed = hashString(`${name}-${team.id}`)
+  const seed = hashString(`${name}-${team && team.id ? team.id : ''}`)
   const scaleClass = compact ? 'compact-avatar' : 'showcase-avatar'
-  const prefix = `av-${compact ? 'sm' : 'lg'}-${team.id}-${seed}`.replace(/[^a-z0-9-]/gi, '')
-  const jersey = pickJerseyColor(team.colors)
-  const jerseyLight = mixHex(jersey, '#ffffff', 0.32)
-  const jerseyDeep = mixHex(jersey, '#3a1030', 0.28)
-  const accent = team.colors.find(c => c !== jersey) || '#ff8fc0'
+  const prefix = `av-${compact ? 'sm' : 'lg'}-${team && team.id ? team.id : ''}-${seed}`.replace(/[^a-z0-9-]/gi, '')
   const label = escapeHtml(initials(name))
-  const shoe = mixHex(accent, '#ff8fc0', 0.15)
-  const skin = KAWAII_SKIN[seed % KAWAII_SKIN.length]
-  const skinShade = mixHex(skin, '#e08a6a', 0.45)
-  const ariaLabel = `${escapeHtml(name)} anime avatar wearing ${escapeHtml(team.name)} kit`
+  const ariaLabel = `${escapeHtml(name)} avatar`
 
   const portrait = avatarPortrait(name, team)
   if (portrait) {
-    const pv = compact ? '10 10 180 180' : '0 0 200 200'
+    // Uploaded/chosen photo → sharp square client tile (no kawaii rounding).
     return `
-    <svg class="avatar-art ${scaleClass}" viewBox="${pv}" role="img" aria-label="${ariaLabel}">
-      <defs><clipPath id="${prefix}-pc"><rect x="14" y="14" width="172" height="172" rx="46"/></clipPath></defs>
-      <rect x="10" y="10" width="180" height="180" rx="50" fill="${jerseyLight}"/>
-      <text x="100" y="113" text-anchor="middle" font-size="44" font-weight="900" fill="${jerseyDeep}" opacity="0.72" font-family="Arial, sans-serif">${label}</text>
-      <image href="${escapeHtml(portrait)}" x="14" y="14" width="172" height="172" clip-path="url(#${prefix}-pc)" preserveAspectRatio="xMidYMid slice"/>
-      <rect x="14" y="14" width="172" height="172" rx="46" fill="none" stroke="#ffffff" stroke-width="6"/>
-      <rect x="14" y="14" width="172" height="172" rx="46" fill="none" stroke="${jersey}" stroke-width="3" opacity="0.6"/>
+    <svg class="avatar-art ${scaleClass} retro-av" viewBox="0 0 100 100" role="img" aria-label="${ariaLabel}">
+      <defs><clipPath id="${prefix}-pc"><rect x="3" y="3" width="94" height="94" rx="2"/></clipPath></defs>
+      <rect x="1.5" y="1.5" width="97" height="97" rx="3" fill="#0b0f14"/>
+      <image href="${escapeHtml(portrait)}" x="3" y="3" width="94" height="94" clip-path="url(#${prefix}-pc)" preserveAspectRatio="xMidYMid slice"/>
+      <rect x="2" y="2" width="96" height="96" rx="3" fill="none" stroke="#05130b" stroke-width="2"/>
     </svg>`
   }
 
-  // ---- Seeded cosmetic traits (decorrelated so each user/team reads as a distinct character) ----
-  const hair = KAWAII_HAIR[Math.floor(seed / 3) % KAWAII_HAIR.length]
-  const hairDeep = mixHex(hair, '#5a2a4a', 0.35)
-  const hairLite = mixHex(hair, '#ffffff', 0.28)
-  const eyeColors = ['#6b4a2f', '#7a5aa0', '#3f7fbf', '#3fa07f', '#a0567f', '#c06a3a']
-  const eyeCol = eyeColors[Math.floor(seed / 19) % eyeColors.length]
-  const eyeDeep = mixHex(eyeCol, '#160b0c', 0.5)
-  const styleId = Math.floor(seed / 7) % 7
-  const eyeId = Math.floor(seed / 11) % 4
-  const mouthId = Math.floor(seed / 13) % 4
-  const accId = Math.floor(seed / 17) % 5
-  const jerseyNumber = String((seed % 89) + 10)
-  const hf = `url(#${prefix}-hair)`
-
-  const crown = `<path d="M44 76c-4-36 22-60 56-60s60 24 56 60c-6-16-16-22-24-18 2-8-3-14-10-14 1 7-4 12-10 12 2-9-6-16-12-16s-14 7-12 16c-6 0-11-5-10-12-7 0-12 6-10 14-8-4-18 2-24 18Z" fill="${hf}"/>`
-
-  // Hair drawn BEHIND the head (tails, length).
-  const hairBack = [
-    '',
-    `<path d="M42 78c-18 10-24 40-16 74 12-6 20-8 28-4-8-24-10-48-4-70Z" fill="${hairDeep}"/><path d="M158 78c18 10 24 40 16 74-12-6-20-8-28-4 8-24 10-48 4-70Z" fill="${hairDeep}"/>`,
-    `<path d="M150 66c34 6 42 44 26 82-8 20-22 26-30 18 16-30 16-70 4-100Z" fill="${hairDeep}"/>`,
-    '',
-    `<path d="M38 74c-8 42-6 78 4 100 8-2 14-2 20 2-2-42-2-82-4-108Z" fill="${hairDeep}"/><path d="M162 74c8 42 6 78-4 100-8-2-14-2-20 2 2-42 2-82 4-108Z" fill="${hairDeep}"/>`,
-    '',
-    ''
-  ][styleId]
-
-  // Hair drawn OVER the head (crown, bangs, buns).
-  const hairFront = [
-    `${crown}<circle cx="46" cy="66" r="16" fill="${hf}"/><circle cx="154" cy="66" r="16" fill="${hf}"/>`,
-    `${crown}<circle cx="40" cy="80" r="7" fill="${accent}"/><circle cx="160" cy="80" r="7" fill="${accent}"/>`,
-    `${crown}<circle cx="150" cy="64" r="7" fill="${accent}"/>`,
-    `<path d="M40 82c-6-26 6-38 14-30-2-16 8-24 16-14 0-16 12-22 20-10 4-16 16-18 22-4 2-16 16-18 22-4 8-12 20-6 20 10 8-8 20 0 14 18-12-8-28-10-44-10s-32 2-44 10Z" fill="${hf}"/>`,
-    `<path d="M46 74c0-34 24-56 54-56s54 22 54 56c-6-14-16-20-26-16-6-6-14-6-20 0-6-4-14-4-20 2-8-6-30-2-42 14Z" fill="${hf}"/><path d="M100 20v22" stroke="${hairDeep}" stroke-width="2.5" opacity="0.55" fill="none"/>`,
-    `${crown}<circle cx="70" cy="22" r="14" fill="${hf}"/><circle cx="130" cy="22" r="14" fill="${hf}"/><circle cx="70" cy="22" r="6" fill="${hairDeep}" opacity="0.4"/><circle cx="130" cy="22" r="6" fill="${hairDeep}" opacity="0.4"/>`,
-    `${crown}<circle cx="52" cy="52" r="12" fill="${hf}"/><circle cx="148" cy="52" r="12" fill="${hf}"/><circle cx="70" cy="34" r="12" fill="${hf}"/><circle cx="130" cy="34" r="12" fill="${hf}"/><circle cx="100" cy="27" r="13" fill="${hf}"/>`
-  ][styleId]
-
-  const shine = `<path d="M66 40q34-22 68 2" stroke="${hairLite}" stroke-width="4" opacity="0.5" fill="none" stroke-linecap="round"/>`
-
-  // Eyes.
-  const eyes = [
-    `<ellipse cx="76" cy="74" rx="13" ry="16" fill="#fff"/><ellipse cx="124" cy="74" rx="13" ry="16" fill="#fff"/>
-     <circle cx="77" cy="76" r="11" fill="${eyeCol}"/><circle cx="125" cy="76" r="11" fill="${eyeCol}"/>
-     <circle cx="77" cy="77" r="6" fill="${eyeDeep}"/><circle cx="125" cy="77" r="6" fill="${eyeDeep}"/>
-     <circle cx="81" cy="71" r="4" fill="#fff"/><circle cx="129" cy="71" r="4" fill="#fff"/>
-     <circle cx="73" cy="81" r="2" fill="#fff"/><circle cx="121" cy="81" r="2" fill="#fff"/>`,
-    `<path d="M66 79q10-13 20 0" stroke="${eyeDeep}" stroke-width="4" fill="none" stroke-linecap="round"/>
-     <path d="M114 79q10-13 20 0" stroke="${eyeDeep}" stroke-width="4" fill="none" stroke-linecap="round"/>`,
-    `<ellipse cx="76" cy="74" rx="13" ry="16" fill="#fff"/><circle cx="77" cy="76" r="11" fill="${eyeCol}"/><circle cx="77" cy="77" r="6" fill="${eyeDeep}"/><circle cx="81" cy="71" r="4" fill="#fff"/>
-     <path d="M114 80q10-13 20 0" stroke="${eyeDeep}" stroke-width="4" fill="none" stroke-linecap="round"/>`,
-    `<ellipse cx="76" cy="74" rx="14" ry="18" fill="#fff"/><ellipse cx="124" cy="74" rx="14" ry="18" fill="#fff"/>
-     <ellipse cx="77" cy="76" rx="11" ry="13" fill="${eyeCol}"/><ellipse cx="125" cy="76" rx="11" ry="13" fill="${eyeCol}"/>
-     <circle cx="77" cy="78" r="6" fill="${eyeDeep}"/><circle cx="125" cy="78" r="6" fill="${eyeDeep}"/>
-     <circle cx="80" cy="70" r="5" fill="#fff"/><circle cx="128" cy="70" r="5" fill="#fff"/>`
-  ][eyeId]
-
-  const brows = (eyeId === 0 || eyeId === 3)
-    ? `<path d="M64 58q12-6 22 0" stroke="${hairDeep}" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M114 58q12-6 22 0" stroke="${hairDeep}" stroke-width="3" fill="none" stroke-linecap="round"/>`
-    : ''
-
-  // Mouth.
-  const mouth = [
-    `<path d="M92 96q8 7 16 0" stroke="${skinShade}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`,
-    `<path d="M93 94q7 11 14 0Z" fill="#d16a7a"/><path d="M94 95q6 3 12 0" stroke="#fff" stroke-width="2" fill="none"/>`,
-    `<path d="M92 95q4 4 8 0 4 4 8 0" stroke="${skinShade}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
-    `<ellipse cx="100" cy="97" rx="4" ry="5" fill="#d16a7a"/>`
-  ][mouthId]
-
-  // Accessory (headband / clip / cap / bow).
-  const accessory = [
-    '',
-    `<path d="M52 52q48-32 96 0" stroke="${accent}" stroke-width="8" fill="none" stroke-linecap="round"/>`,
-    `<g transform="translate(60 50)"><path d="M0 -8 2.4 -2.4 8 -2.4 3.4 1.4 5 7 0 3.4 -5 7 -3.4 1.4 -8 -2.4 -2.4 -2.4Z" fill="${mixHex(accent, '#ffffff', 0.12)}" stroke="#fff" stroke-width="0.8"/></g>`,
-    `<path d="M46 54c2-30 22-46 54-46s52 16 54 46c-30-12-78-12-108 0Z" fill="${jersey}"/><path d="M150 54c14-2 24 2 24 8 0 4-8 6-18 4Z" fill="${jerseyDeep}"/><path d="M46 54q54-16 108 0" stroke="${jerseyDeep}" stroke-width="2" opacity="0.5" fill="none"/>`,
-    `<g transform="translate(66 30)"><path d="M0 0 -12 -7 -12 7Z" fill="${accent}"/><path d="M0 0 12 -7 12 7Z" fill="${accent}"/><circle r="4" fill="${mixHex(accent, '#ffffff', 0.2)}"/></g>`
-  ][accId]
-
-  const viewBox = compact ? '24 4 152 168' : '0 0 200 250'
-
+  // No photo → minimal retro monogram tile: phosphor-mono initials on a tinted
+  // LCD square. Retires the kawaii anime-avatar generator below (now unreached).
+  const monoHue = seed % 360
   return `
-    <svg class="avatar-art ${scaleClass}" viewBox="${viewBox}" role="img" aria-label="${ariaLabel}">
-      <defs>
-        <linearGradient id="${prefix}-kit" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="${jerseyLight}"/><stop offset="1" stop-color="${jersey}"/>
-        </linearGradient>
-        <radialGradient id="${prefix}-hair" cx="0.4" cy="0.25" r="0.95">
-          <stop offset="0" stop-color="${hairLite}"/><stop offset="1" stop-color="${hair}"/>
-        </radialGradient>
-      </defs>
-      <ellipse cx="100" cy="240" rx="50" ry="8" fill="#e56fa6" opacity="0.2"/>
-      <rect x="76" y="178" width="18" height="42" rx="9" fill="${jerseyDeep}"/>
-      <rect x="106" y="178" width="18" height="42" rx="9" fill="${jerseyDeep}"/>
-      <ellipse cx="82" cy="224" rx="15" ry="8" fill="${shoe}"/>
-      <ellipse cx="118" cy="224" rx="15" ry="8" fill="${shoe}"/>
-      <path d="M64 158c0-22 16-34 36-34s36 12 36 34l3 26c0 7-5 12-13 12H74c-8 0-13-5-13-12Z" fill="url(#${prefix}-kit)"/>
-      <circle cx="100" cy="150" r="15" fill="#ffffff" opacity="0.85"/>
-      <text x="100" y="188" text-anchor="middle" font-family="Arial Rounded MT Bold, Arial, sans-serif" font-weight="800" font-size="26" fill="#ffffff">${jerseyNumber}</text>
-      <rect x="48" y="152" width="17" height="38" rx="8.5" fill="url(#${prefix}-kit)"/>
-      <rect x="135" y="152" width="17" height="38" rx="8.5" fill="url(#${prefix}-kit)"/>
-      <circle cx="56" cy="192" r="10" fill="${skin}"/>
-      <circle cx="144" cy="192" r="10" fill="${skin}"/>
-      ${hairBack}
-      <rect x="90" y="106" width="20" height="18" rx="8" fill="${skinShade}"/>
-      <circle cx="100" cy="74" r="56" fill="${skin}"/>
-      <circle cx="44" cy="80" r="9" fill="${skinShade}"/>
-      <circle cx="156" cy="80" r="9" fill="${skinShade}"/>
-      ${hairFront}
-      ${shine}
-      ${accessory}
-      <ellipse cx="72" cy="86" rx="12" ry="8" fill="#ff9ec4" opacity="0.6"/>
-      <ellipse cx="128" cy="86" rx="12" ry="8" fill="#ff9ec4" opacity="0.6"/>
-      ${brows}
-      ${eyes}
-      ${mouth}
-      <path d="M132 132l12 4v14l-12-3Z" fill="#ffffff" opacity="0.9"/>
-      <text x="138" y="145" text-anchor="middle" font-size="11" font-family="Arial, sans-serif">${team.flag}</text>
-    </svg>
-  `
+    <svg class="avatar-art ${scaleClass} retro-av" viewBox="0 0 100 100" role="img" aria-label="${escapeHtml(name)} avatar">
+      <rect x="1.5" y="1.5" width="97" height="97" rx="3" fill="#0b0f14"/>
+      <rect x="1.5" y="1.5" width="97" height="97" rx="3" fill="hsl(${monoHue} 55% 48% / 0.20)"/>
+      <rect x="2" y="2" width="96" height="96" rx="3" fill="none" stroke="#05130b" stroke-width="2"/>
+      <text x="50" y="52" text-anchor="middle" dominant-baseline="central" font-size="40" font-weight="700" fill="#34f08a" font-family="ui-monospace, Consolas, monospace">${label}</text>
+    </svg>`
+
 }
 
 function showToast (message) {
@@ -1389,7 +1294,6 @@ function renderProfile () {
   renderWalletChip()
   renderWalletManage()
   renderLiveDataSettings()
-  renderThemeSwitcher()
 
   $('#profileChip').innerHTML = `
     ${avatarSvg(name, team, true)}
@@ -1405,6 +1309,18 @@ function renderProfile () {
   $('#primarySwatch').style.background = team.colors[0]
   $('#secondarySwatch').style.background = team.colors[1]
   $('#accentSwatch').style.background = team.colors[2]
+
+  const examplesEl = $('#avatarExamples')
+  if (examplesEl && !examplesEl.dataset.filled) {
+    examplesEl.innerHTML = EXAMPLE_AVATARS.map(src =>
+      `<button type="button" class="avatar-example" data-src="${escapeHtml(src)}" aria-label="Use this example avatar" style="background-image:url(${src})"></button>`).join('')
+    examplesEl.dataset.filled = '1'
+  }
+  if (examplesEl) {
+    $$('#avatarExamples .avatar-example').forEach(btn => btn.classList.toggle('is-active', btn.dataset.src === state.avatar))
+  }
+  const clearBtn = $('#avatarClearBtn')
+  if (clearBtn) clearBtn.hidden = !state.avatar
 }
 
 // The big hero scoreline mirrors whatever the Watch feed is showing (live relay or sim).
@@ -1416,9 +1332,7 @@ function renderHomeHero () {
   if (backdrop && cfg.assets && cfg.assets.heroBackdrop) {
     backdrop.style.backgroundImage = `url('${escapeHtml(cfg.assets.heroBackdrop)}')`
   }
-  const flag = t => t && t.flag && t.flag !== '⚽'
-    ? t.flag
-    : (t && t.crest ? `<img class="score-crest" src="${escapeHtml(t.crest)}" alt="" onerror="this.replaceWith(document.createTextNode('⚽'))">` : '⚽')
+  const flag = t => (t && t.flag && t.flag !== '⚽') ? t.flag : '⚽'
   const set = (id, html) => { const el = $(id); if (el) el.innerHTML = html }
   set('#heroHomeFlag', flag(snap.home)); set('#heroAwayFlag', flag(snap.away))
   set('#heroHomeName', escapeHtml(snap.home.name)); set('#heroAwayName', escapeHtml(snap.away.name))
@@ -1518,67 +1432,82 @@ function fixtureTeams (fixture) {
 // Snapshot of whatever the live/sim feed currently holds, for the Home dashboard.
 // Falls back to the fit's configured live homeFixture so every sport shows its own match.
 function livePanelSnapshot () {
+  const live = isLiveApi()
   let st = null
   try { st = feedState() } catch { st = null }
-  const live = isLiveApi()
   const liveFixture = homeFixtures.find(f => f.live)
   const fallback = liveFixture ? fixtureTeams(liveFixture) : null
-  const home = st ? st.home : (fallback ? fallback.home : { name: 'Spain', flag: '🇪🇸', goals: 0, teamId: 'es' })
-  const away = st ? st.away : (fallback ? fallback.away : { name: 'Austria', flag: '🇦🇹', goals: 0, teamId: 'at' })
+  let home = st ? st.home : (fallback ? fallback.home : { name: 'Spain', flag: '🇪🇸', goals: 0, teamId: 'es' })
+  let away = st ? st.away : (fallback ? fallback.away : { name: 'Austria', flag: '🇦🇹', goals: 0, teamId: 'at' })
+  // If the feed's match is for a different sport than THIS fit (its teams aren't in
+  // the fit roster — e.g. the world-cup demo live feed showing on the MMA server),
+  // display the fit's own main event instead. Preserves any live score.
+  let foreignFeed = false
+  if (!(home && home.teamId && teams.some(t => t.id === home.teamId))) {
+    foreignFeed = true
+    const me = mainEventTeams()
+    home = { ...home, name: me.home.name, flag: me.home.flag, teamId: me.home.id }
+    away = { ...away, name: me.away.name, flag: me.away.flag, teamId: me.away.id }
+  }
   const status = st ? matchStateLabel(st).txt : (liveFixture ? liveFixture.status : 'Kicks off 15:00 ET')
-  const events = (state.feedEvents || [])
+  // A feed for another sport carries the wrong events (world-cup goals) — drop
+  // them so the timeline shows the clean "waiting" state, not "Spain vs Austria".
+  const events = foreignFeed ? [] : (state.feedEvents || [])
   return { st, live, home, away, status, events }
 }
 
-function renderMomentumChart (snap, lead, momentum) {
-  const clamp = value => Math.max(10, Math.min(96, value))
-  const diff = Math.abs(snap.home.goals - snap.away.goals)
-  const possession = snap.st && Number.isFinite(Number(snap.st.possession)) ? Number(snap.st.possession) : 55 + diff * 4
-  const leadBias = lead === snap.home ? possession - 50 : 50 - possession
-  const eventBoost = snap.events.slice(0, 6).reduce((boost, ev) => {
-    const weight = ev.type === 'goal' ? 12 : ev.type === 'shot' ? 7 : ev.type === 'corner' ? 5 : 3
-    return boost + (ev.team === lead.name ? weight : -weight / 2)
-  }, 0)
-  const base = [32, 38, 46, 43, 54, 61, 58, 69, 74, 71, 82, 78, 88, 92]
-  const values = base.map((value, index) => {
-    const progress = index / Math.max(1, base.length - 1)
-    return clamp(value + leadBias * 0.45 + eventBoost * 0.16 + momentum * 0.24 * progress)
-  })
-  const width = 360
-  const top = 22
-  const bottom = 126
-  const chartHeight = bottom - top
-  const left = 18
-  const step = (width - left * 2) / Math.max(1, values.length - 1)
-  const points = values.map((value, index) => {
-    const x = left + step * index
-    const y = bottom - (value / 100) * chartHeight
-    return { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)) }
-  })
-  const line = points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' ')
-  const area = `${line} L ${points[points.length - 1].x} ${bottom} L ${points[0].x} ${bottom} Z`
-  const grid = [25, 50, 75].map(tick => {
-    const y = Number((bottom - (tick / 100) * chartHeight).toFixed(1))
-    return `<line x1="${left}" y1="${y}" x2="${width - left}" y2="${y}"></line>`
-  }).join('')
-  const bars = points.map((point, index) => index % 2 === 0
-    ? `<rect class="momentum-band" x="${Number((point.x - 4).toFixed(1))}" y="${point.y}" width="8" height="${Number((bottom - point.y).toFixed(1))}" rx="4"></rect>`
-    : '').join('')
-  const aria = `${lead.name} momentum plus ${momentum}, ${snap.home.name} ${snap.home.goals} to ${snap.away.goals} ${snap.away.name}`
+// Winamp spectrum-analyzer widget — ONE rAF loop draws into whatever
+// .winamp-viz canvas is on screen. Peaks rise instantly + fall slowly.
+function startWinampViz () {
+  if (startWinampViz._on) return
+  startWinampViz._on = true
+  const N = 22
+  const peaks = new Array(N).fill(999)
+  const phase = new Array(N).fill(0).map((_, i) => i * 0.7)
+  const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+  let t = 0
+  function frame () {
+    const canvas = document.querySelector('.winamp-viz')
+    if (canvas && canvas.getContext && canvas.offsetParent) {
+      const ctx = canvas.getContext('2d')
+      const W = canvas.width, H = canvas.height
+      const mom = Math.max(0, Math.min(30, Number(canvas.dataset.momentum || 6)))
+      ctx.fillStyle = '#05130b'; ctx.fillRect(0, 0, W, H)
+      const barW = W / N, seg = 4, gap = 2
+      for (let i = 0; i < N; i++) {
+        const wave = Math.sin(t * 0.09 + phase[i]) * 0.5 + 0.5
+        const noise = reduce ? 0.5 : (Math.sin(t * 0.23 + i * 1.7) * 0.5 + 0.5)
+        let h = 0.26 + 0.56 * wave * noise + mom * 0.012
+        h = Math.max(0.06, Math.min(1, h))
+        const barH = h * (H - 6)
+        const x = Math.floor(i * barW) + 1
+        const w = Math.max(2, Math.floor(barW) - 2)
+        for (let y = H - 3; y > H - 3 - barH; y -= (seg + gap)) {
+          const frac = (H - 3 - y) / (H - 6)
+          ctx.fillStyle = frac < 0.55 ? '#2ee06a' : frac < 0.82 ? '#e8d020' : '#ff4d4d'
+          ctx.fillRect(x, y - seg, w, seg)
+        }
+        const peakY = H - 3 - barH
+        if (peakY < peaks[i]) peaks[i] = peakY
+        else peaks[i] = Math.min(H - 4, peaks[i] + 0.8)
+        ctx.fillStyle = '#d8ffe8'
+        ctx.fillRect(x, Math.max(2, peaks[i]), w, 2)
+      }
+    }
+    t++
+    requestAnimationFrame(frame)
+  }
+  requestAnimationFrame(frame)
+}
 
+function renderMomentumChart (snap, lead, momentum) {
+  // Winamp-style spectrum analyzer (a real pixel widget). Drawn on <canvas> by
+  // startWinampViz(); intensity is driven by the current momentum.
+  const bias = lead === snap.home ? 1 : -1
+  const aria = `${lead.name} momentum plus ${momentum}, ${snap.home.name} vs ${snap.away.name}`
   return `
-    <div class="momentum-chart" role="img" aria-label="${escapeHtml(aria)}">
-      <svg viewBox="0 0 ${width} 150" aria-hidden="true" focusable="false">
-        <g class="momentum-grid">${grid}</g>
-        <path class="momentum-area" d="${area}"></path>
-        <g>${bars}</g>
-        <path class="momentum-line" d="${line}"></path>
-        <g class="momentum-points">
-          ${points.filter((_, index) => index % 3 === 1 || index === points.length - 1).map(point => `<circle cx="${point.x}" cy="${point.y}" r="4"></circle>`).join('')}
-        </g>
-        <text class="momentum-axis" x="${left}" y="16">Pressure</text>
-        <text class="momentum-axis is-right" x="${width - left}" y="16">${escapeHtml(lead.name)}</text>
-      </svg>
+    <div class="momentum-viz" role="img" aria-label="${escapeHtml(aria)}">
+      <canvas class="winamp-viz" width="320" height="104" data-momentum="${momentum}" data-bias="${bias}"></canvas>
     </div>
     <div class="momentum-meta">
       <span>${escapeHtml(snap.home.name)}</span>
@@ -2360,7 +2289,6 @@ function renderPoolSelect () {
     const variantName = PoolVariantHelpers ? PoolVariantHelpers.variantDisplayName(pool.variant) : (pool.variant || 'Classic bracket')
     return `
       <button class="pool-pick${selected ? ' is-selected' : ''}${entered ? ' is-entered' : ''}" type="button" data-pool="${pool.tier}">
-        <img class="pool-pick-badge" src="assets/${badge}.png" alt="">
         <span class="pool-pick-heat">${pool.heat}</span>
         <span class="pool-pick-fee">$${pool.tier}</span>
         <span class="pool-pick-meta">${variantName} · ${pool.prize} prize · ${pool.entrants} in</span>
@@ -3413,13 +3341,53 @@ function commentaryLine (type, teamName, lang) {
   return (row[lang] || row.EN).replace('{t}', teamName)
 }
 
+// The live match's fighters/teams come from THIS fit's main event (first bout),
+// so the momentum card, hero, watch, and rail show the real matchup on every
+// server — not the world-cup default.
+function mainEventTeams () {
+  const fitCfg = (typeof window !== 'undefined' && window.ULTIMATE_FIT_CONFIG) || {}
+  const fitTeams = Array.isArray(fitCfg.teams) ? fitCfg.teams : []
+  const mainBout = (Array.isArray(fitCfg.round32Matches) && fitCfg.round32Matches[0]) || null
+  const pick = (id, fb) => fitTeams.find(t => t.id === id) || fb
+  const home = pick(mainBout && mainBout.slots && mainBout.slots[0], fitTeams[0]) || { id: 'es', name: 'Spain', flag: '🇪🇸' }
+  const away = pick(mainBout && mainBout.slots && mainBout.slots[1], fitTeams[1]) || { id: 'at', name: 'Austria', flag: '🇦🇹' }
+  const comp = (fitCfg.arcade && fitCfg.arcade.promotion) || fitCfg.title || 'FIFA World Cup'
+  return { home, away, comp }
+}
+
+// Re-apply the main-event teams to the live sim once the fit config is
+// guaranteed loaded (called from boot()); the sim is constructed early.
+function reseedLiveMatch () {
+  try {
+    const me = mainEventTeams()
+    const s = feedState()
+    if (s && s.home) { s.home.name = me.home.name; s.home.flag = me.home.flag; s.home.teamId = me.home.id }
+    if (s && s.away) { s.away.name = me.away.name; s.away.flag = me.away.flag; s.away.teamId = me.away.id }
+    if (s && s.competition) s.competition.name = me.comp
+  } catch (e) {}
+}
+
+// Given a feed's home/away, return the names to DISPLAY: the feed's own if its
+// teams belong to this fit, otherwise this fit's main event (so the world-cup
+// demo live feed doesn't show Spain vs Austria on the fight server).
+function displayMatchTeams (home, away) {
+  if (home && home.teamId && teams.some(t => t.id === home.teamId)) return { home, away }
+  const me = mainEventTeams()
+  return {
+    home: Object.assign({}, home || {}, { name: me.home.name, flag: me.home.flag, teamId: me.home.id }),
+    away: Object.assign({}, away || {}, { name: me.away.name, flag: me.away.flag, teamId: me.away.id })
+  }
+}
+
 function createSimLiveFeed () {
   const listeners = new Set()
   let timer = null
+  const me = mainEventTeams()
+  const homeTeam = me.home, awayTeam = me.away, compName = me.comp
   const st = {
     minute: 0,
-    home: { name: 'Spain', flag: '🇪🇸', teamId: 'es', goals: 0 },
-    away: { name: 'Austria', flag: '🇦🇹', teamId: 'at', goals: 0 },
+    home: { name: homeTeam.name, flag: homeTeam.flag, teamId: homeTeam.id, goals: 0 },
+    away: { name: awayTeam.name, flag: awayTeam.flag, teamId: awayTeam.id, goals: 0 },
     possession: 50,
     shots: [0, 0],
     threat: 50,
@@ -3427,12 +3395,12 @@ function createSimLiveFeed () {
     matchStatus: 'TIMED',
     utcDate: '2026-07-02T19:00:00Z',
     stage: 'LAST_32',
-    competition: { name: 'FIFA World Cup' }
+    competition: { name: compName }
   }
   const emit = ev => listeners.forEach(fn => fn(ev, st))
   function tick () {
     if (st.matchStatus === 'TIMED' || st.matchStatus === 'SCHEDULED') {
-      emit({ type: 'preview', team: 'Spain vs Austria room is open. Kickoff is 15:00 ET.', clock: 'Soon', minute: 0 })
+      emit({ type: 'preview', team: st.home.name + ' vs ' + st.away.name + ' room is open.', clock: 'Soon', minute: 0 })
       return
     }
     st.minute += 1
@@ -3584,8 +3552,10 @@ function renderCommentaryFeed () {
   // Live API: show only real goals for this match (+ an intro), not the sim lines.
   if (isLiveApi()) {
     const st = feedState()
-    const goals = (state.feedEvents || []).filter(e => e.type === 'goal')
-    const intro = `<div class="commentary-line"><time>LIVE</time><p>Following ${escapeHtml(st.home.name)} vs ${escapeHtml(st.away.name)} — QVAC commentary updates as goals go in.</p></div>`
+    const dt = displayMatchTeams(st.home, st.away)
+    const foreign = dt.home.name !== st.home.name
+    const goals = foreign ? [] : (state.feedEvents || []).filter(e => e.type === 'goal')
+    const intro = `<div class="commentary-line"><time>LIVE</time><p>Following ${escapeHtml(dt.home.name)} vs ${escapeHtml(dt.away.name)} — QVAC commentary updates as goals go in.</p></div>`
     feed.innerHTML = intro + goals.map(ev => `
       <div class="commentary-line is-goal">
         <time>${escapeHtml(ev.clock || 'LIVE')}</time>
@@ -3628,12 +3598,9 @@ function renderLiveBoard (st) {
   if (!el) return
   const info = matchStateLabel(st)
   const scoreMid = st.hasScore ? `${st.home.goals}<span>–</span>${st.away.goals}` : '<span class="lb-vs">vs</span>'
-  const crest = url => url
-    ? `<span class="lb-crestwrap"><img class="lb-crest" src="${escapeHtml(url)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="lb-crest lb-crest-blank" style="display:none">⚽</span></span>`
-    : '<div class="lb-crest lb-crest-blank">⚽</div>'
+  const crest = () => '<div class="lb-crest lb-crest-blank">⚽</div>'
   el.innerHTML = `
     <div class="lb-comp">
-      ${st.competition && st.competition.emblem ? `<img class="lb-emblem" src="${escapeHtml(st.competition.emblem)}" alt="">` : ''}
       <span>${escapeHtml((st.competition && st.competition.name) || 'FIFA World Cup')}${stageLabel(st) ? ' · ' + stageLabel(st) : ''}</span>
     </div>
     <div class="lb-teams">
@@ -3705,10 +3672,11 @@ function applyFeedTick (ev, st) {
     : st.matchStatus === 'TIMED' || st.matchStatus === 'SCHEDULED' ? 'Soon'
     : `${st.minute || 0}'`
   const clock = $('#tvClock'); if (clock) clock.textContent = clockTxt
+  const dt = displayMatchTeams(st.home, st.away)
   const score = $('#tvScore'); if (score) score.textContent = st.hasScore === false
-    ? `${st.home.name} vs ${st.away.name}`
-    : `${st.home.name} ${st.home.goals} - ${st.away.goals} ${st.away.name}`
-  const title = $('#watchTitle'); if (title) title.textContent = `${st.home.name} vs ${st.away.name}`
+    ? `${dt.home.name} vs ${dt.away.name}`
+    : `${dt.home.name} ${st.home.goals} - ${st.away.goals} ${dt.away.name}`
+  const title = $('#watchTitle'); if (title) title.textContent = `${dt.home.name} vs ${dt.away.name}`
   // Live vs simulated presentation: real API → rich scoreboard + source badge.
   const tv = document.querySelector('#watch .stadium-tv')
   const board = $('#tvLiveBoard'); const src = $('#liveSource')
@@ -4044,7 +4012,6 @@ function renderWatch () {
                   <em>${escapeHtml(person.name)}</em>
                 </span>`).join('')}
             </div>
-            <img class="couch-img" src="assets/${gi === 0 ? 'couch' : 'couch2'}.png" alt="">
           </div>
         </div>`).join('')}
     </div>
@@ -4054,10 +4021,15 @@ function renderWatch () {
         <strong>Challenge watchers</strong>
       </div>
       <div class="watch-challenge-list" id="watchChallengeList">
-        ${fitMiniGames.map(gt => `
-          <button class="secondary-button compact-action watch-challenge-game ${isPlayableMiniGame(gt) ? '' : 'is-coming-soon'}" data-game-type="${escapeHtml(gt)}" type="button">
-            ${escapeHtml(miniGameTitles[gt] || gt)}${isPlayableMiniGame(gt) ? '' : ' · soon'}
-          </button>`).join('')}
+        ${fitMiniGames.map(gt => {
+          const social = isSocialMiniGame(gt)
+          const playable = isPlayableMiniGame(gt)
+          const label = social ? ' · watch party' : (playable ? '' : ' · soon')
+          return `
+          <button class="secondary-button compact-action watch-challenge-game ${playable || social ? '' : 'is-coming-soon'}" data-game-type="${escapeHtml(gt)}" type="button">
+            ${escapeHtml(miniGameTitles[gt] || gt)}${label}
+          </button>`
+        }).join('')}
       </div>
     </div>`
 
@@ -4079,7 +4051,7 @@ function renderWatch () {
   $$('#watchChallengeList .watch-challenge-game').forEach(button => {
     button.addEventListener('click', () => {
       const gt = button.dataset.gameType
-      if (!isPlayableMiniGame(gt)) {
+      if (!isPlayableMiniGame(gt) && !isSocialMiniGame(gt)) {
         showToast(`${miniGameTitles[gt] || gt} is coming soon — picking a winner with commit/reveal is next.`)
         return
       }
@@ -4568,7 +4540,7 @@ function ensureShootoutDom () {
       <div class="shoot-banner" id="shootBanner" aria-live="polite"></div>
       <div class="shootout-over" id="shootoutOver" hidden>
         <div class="shootout-over-card">
-          <img class="over-trophy" id="overTrophy" src="assets/trophy.png" alt="" hidden>
+          <p class="over-win" id="overTrophy" hidden>★ WINNER ★</p>
           <p class="over-title" id="overTitle"></p>
           <p class="over-score" id="overScore"></p>
           <p class="over-prize" id="overPrize"></p>
@@ -5051,16 +5023,16 @@ function completeProfileOnboarding () {
 
 function miniGameDescription (gameType) {
   if (gameType === 'penalty-clash') return 'Best-of-five Penalty Clash — you take 5 penalties and keep their 5. Outscore them for the win.'
-  if (gameType === 'prediction-duel') return 'Predict the outcome — commit your pick, then reveal after your opponent locks in.'
-  if (gameType === 'trivia-duel') return 'Answer fast — correct picks score, ties broken by speed.'
+  if (gameType === 'prediction-duel') return 'Predict a live fixture outcome — your pick is committed and scored against a bound event snapshot.'
+  if (gameType === 'trivia-duel') return 'Race to answer — the verified question bank is attested by QVAC so the answer key cannot change mid-match.'
   if (gameType === 'free-kick-duel') return 'Bend it around the wall — out-think the keeper from set pieces.'
   if (gameType === 'buzzer-beater-duel') return 'Beat the buzzer — shoot from downtown and read your defender.'
   if (gameType === 'ace-serve-duel') return 'Serve for aces — place it, power it, spin it past the returner.'
   if (gameType === 'home-run-derby') return 'Read the pitch, time your swing, and launch it — 3 cuts to out-slug your rival.'
   if (gameType === 'reaction-challenge') return 'Fastest tap wins — wait for the moment, then beat your opponent to the buzzer.'
-  if (gameType === 'next-event') return 'Predict the next live event before it happens — closest call wins.'
-  if (gameType === 'scoreline-lock') return 'Lock the final scoreline before kickoff. Exact beats result-class.'
-  if (gameType === 'watch-party-streak') return 'Yes-or-no live prompts — keep the streak alive the longest.'
+  if (gameType === 'next-event') return 'Watch-party side bet — predict the next live event with the room.'
+  if (gameType === 'scoreline-lock') return 'Watch-party side bet — lock a scoreline before kickoff for bragging rights.'
+  if (gameType === 'watch-party-streak') return 'Watch-party side bet — yes-or-no prompts; longest streak wins.'
   return `${escapeHtml(miniGameTitles[gameType] || gameType)} is coming soon.`
 }
 
@@ -5089,7 +5061,6 @@ function renderGameLobby () {
     </div>
 
     <div class="lobby-hero">
-      <img class="lobby-mascot" src="assets/mascot.png" alt="">
       <div class="lobby-hero-copy">
         <p class="eyebrow">${gameTypeLabel} · Lobby</p>
         <h2 class="lobby-title">Find a match</h2>
@@ -5366,6 +5337,8 @@ function renderPeerPredictionDuel () {
   const revealed = PM.predictionRevealed.you
   const oppRevealed = PM.predictionRevealed.opp
   const roundResolved = PM.predictionCorrect != null
+  const event = PM.predictionEvent
+  const eventLabel = event ? `${escapeHtml(event.title)} · ${escapeHtml(event.status)}` : 'Binding event…'
   const gamesTitle = $('#gamesTitle')
   if (gamesTitle) gamesTitle.textContent = title
   const scoreboard = $('#gameScoreboard')
@@ -5377,7 +5350,7 @@ function renderPeerPredictionDuel () {
     <div class="game-score-core">
       <span class="prediction-round">Round ${Math.min(round, 3)} of 3</span>
       <strong class="prediction-score">${PM.predictionScore.you} — ${PM.predictionScore.opp}</strong>
-      <em>${PM.predictionOver ? 'Match over' : 'Predict the outcome'}</em>
+      <em>${PM.predictionOver ? 'Match over' : eventLabel}</em>
     </div>
     <div class="game-player-card is-away">
       ${avatarSvg(opponent.name, teamById(opponent.team || state.team), true)}
@@ -5407,6 +5380,13 @@ function renderPeerPredictionDuel () {
           <p class="prediction-result-score">You ${localCorrect ? '+1' : '0'} — ${oppCorrect ? '+1' : '0'} ${escapeHtml(opponent.name)}</p>
           <button class="primary-button inline-action" id="predictionNextRound" type="button">Next round</button>
         </div>`
+    } else if (!PM.predictionEventReceived) {
+      body = `
+        <div class="prediction-waiting">
+          <p class="eyebrow">Event binding</p>
+          <strong>Locking to live fixture…</strong>
+          <p class="live-copy">Waiting for the event snapshot from your opponent.</p>
+        </div>`
     } else if (revealed) {
       body = `
         <div class="prediction-waiting">
@@ -5425,7 +5405,7 @@ function renderPeerPredictionDuel () {
     } else {
       body = `
         <div class="prediction-pick">
-          <p class="eyebrow">Round ${round} of 3</p>
+          <p class="eyebrow">Round ${round} of 3 · ${eventLabel}</p>
           <strong>${picked ? 'Locked in' : 'Pick an outcome'}</strong>
           <p class="live-copy">${picked ? `You picked ${escapeHtml(PM.predictionChoices.you)}. Waiting for ${escapeHtml(opponent.name)}…` : 'Choose one option. Your pick is hidden until both players lock in.'}</p>
           <div class="prediction-grid">
@@ -5612,7 +5592,7 @@ function renderPeerTriviaDuel () {
   if (!PM) return
   const title = miniGameTitles['trivia-duel'] || 'Trivia Duel'
   const opponent = (state.match && state.match.opponent) || { name: 'Opponent' }
-  const questions = fitTriviaQuestions || []
+  const questions = PM.triviaVerifiedBank || fitTriviaQuestions || []
   const q = questions[PM.triviaRound]
   const round = PM.triviaRound + 1
   const picked = PM.triviaAnswers.you != null
@@ -5622,6 +5602,7 @@ function renderPeerTriviaDuel () {
   const roundResolved = revealed && oppRevealed
   const correct = q ? q.answer : null
   const options = ['A', 'B', 'C', 'D']
+  const bankStatus = PM.triviaBankReceived ? 'Verified bank' : 'Loading question bank…'
 
   const optionClass = opt => {
     if (roundResolved) {
@@ -5644,7 +5625,7 @@ function renderPeerTriviaDuel () {
     <div class="game-score-core">
       <span class="trivia-round">Round ${Math.min(round, 3)} of 3</span>
       <strong class="trivia-score">${PM.triviaScore.you} — ${PM.triviaScore.opp}</strong>
-      <em>${PM.triviaOver ? 'Match over' : 'Answer fast'}</em>
+      <em>${PM.triviaOver ? 'Match over' : bankStatus}</em>
     </div>
     <div class="game-player-card is-away">
       ${avatarSvg(opponent.name, teamById(opponent.team || state.team), true)}
@@ -5681,6 +5662,13 @@ function renderPeerTriviaDuel () {
           <strong class="trivia-result-title">Correct answer: ${escapeHtml(correct)}</strong>
           <p class="trivia-result-score">You ${localCorrect ? '+1' : '0'} — ${oppCorrect ? '+1' : '0'} ${escapeHtml(opponent.name)}</p>
           <button class="primary-button inline-action" id="triviaNextQuestion" type="button">Next question</button>
+        </div>`
+    } else if (!PM.triviaBankReceived) {
+      body = `
+        <div class="trivia-waiting">
+          <p class="eyebrow">Verified bank</p>
+          <strong>Loading question bank…</strong>
+          <p class="live-copy">Waiting for the QVAC-bound answer key from your opponent.</p>
         </div>`
     } else if (revealed) {
       body = `
@@ -9145,6 +9133,40 @@ function bindEvents () {
   $('#saveProfile').addEventListener('click', () => {
     completeProfileOnboarding()
   })
+
+  const avatarInput = $('#avatarInput')
+  if (avatarInput) {
+    avatarInput.addEventListener('change', async event => {
+      const file = event.target.files && event.target.files[0]
+      event.target.value = ''
+      if (!file) return
+      const url = await downscaleAvatar(file)
+      if (!url) { showToast('Could not read that image'); return }
+      state.avatar = url
+      persist()
+      renderProfile()
+      renderView(state.view)
+      showToast('Profile photo updated')
+    })
+  }
+  const avatarClear = $('#avatarClearBtn')
+  if (avatarClear) {
+    avatarClear.addEventListener('click', () => {
+      state.avatar = null
+      persist(); renderProfile(); renderView(state.view)
+      showToast('Photo removed')
+    })
+  }
+  const avatarExamples = $('#avatarExamples')
+  if (avatarExamples) {
+    avatarExamples.addEventListener('click', event => {
+      const btn = event.target.closest('.avatar-example')
+      if (!btn) return
+      state.avatar = btn.dataset.src
+      persist(); renderProfile(); renderView(state.view)
+      showToast('Avatar set')
+    })
+  }
   sendBootCheckpoint('bindEvents:profile')
 
   $('#resetPicks').addEventListener('click', () => {
@@ -9173,7 +9195,6 @@ function bindEvents () {
 
   $('#shareScreenBtn').addEventListener('click', toggleScreenShare)
   $('#shareGameBtn').addEventListener('click', toggleInviteBar)
-  const themeBtn = $('#themeBtn'); if (themeBtn) themeBtn.addEventListener('click', () => showThemePicker(false))
   sendBootCheckpoint('bindEvents:watch')
 
   $('#advanceGameRound').addEventListener('click', () => {
@@ -9448,7 +9469,7 @@ function runtimeSelfTestSnapshot (status, errors = [], extra = {}) {
     activeScreenDataset: document.documentElement.dataset.pearcupActiveScreen || null,
     activeNav: Array.from(document.querySelectorAll('.topnav button.is-active')).map(el => el.textContent.trim()),
     hasGamesLobby: Boolean(document.querySelector('#gameLobby')),
-    hasLobbyMascot: Boolean(active && active.querySelector('img.lobby-mascot[src="assets/mascot.png"]')),
+    hasGamesHero: Boolean(active && active.querySelector('.lobby-hero')),
     p2pBackendBadge: (document.querySelector('#p2pBackendBadge') && document.querySelector('#p2pBackendBadge').textContent.trim()) || '',
     generatedAvatarImages: activeAvatarImages,
     inviteModalOpen: Boolean(modal) || extra.inviteModalOpen === true,
@@ -9726,9 +9747,9 @@ async function runBootRuntimeSelfTest () {
     const active = document.querySelector('.screen.is-active')
     if (!active || active.id !== 'games') errors.push('Games route did not become active')
     if (!document.querySelector('#inviteFriendBtn')) errors.push('Invite button did not render')
-    if (!document.querySelector('img.lobby-mascot[src="assets/mascot.png"]')) errors.push('Lobby mascot did not render')
-    const avatarImages = Array.from(document.querySelectorAll('#games svg.avatar-art image')).map(el => el.getAttribute('href') || '')
-    if (!avatarImages.some(src => /avatars\//.test(src))) errors.push('Games view did not render generated avatar images')
+    if (!document.querySelector('#games .lobby-hero')) errors.push('Games lobby hero did not render')
+    const gamesTiles = document.querySelectorAll('#games svg.avatar-art.retro-av')
+    if (!gamesTiles.length) errors.push('Games view did not render avatar tiles')
     if (window.PearCupPeerMatch && typeof window.PearCupPeerMatch.host === 'function') {
       window.PearCupPeerMatch.host()
     }
@@ -9778,6 +9799,8 @@ function scheduleBootReadyProbe () {
 function boot () {
   sendBootCheckpoint('boot:start')
   applyTheme(state.theme)
+  reseedLiveMatch()
+  try { startWinampViz() } catch (e) {}
   bindCoreFallbackEvents()
   window.addEventListener('pearcup:p2p-backend', renderPeerBackendBadge)
   assertP2PModulesReady()

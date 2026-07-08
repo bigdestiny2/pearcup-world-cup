@@ -167,6 +167,107 @@
     })
   }
 
+  // ---- P2P-client identity: expose the server's accent ---------------------
+  // Every server opens into the SAME window-chrome client (matching the lobby);
+  // the neutral light-client STRUCTURE (surface/line/ink/radius) is forced in
+  // client-skin.css with !important so it beats the fit's — and app.js's own —
+  // inline theme. Here we only surface each fit's ACCENT color as the server's
+  // identity, used for chrome highlights (nav, primary actions, brand mark).
+  if (root.document && root.document.documentElement) {
+    const accent = (cfg.theme && (cfg.theme['--green'] || cfg.theme['--blue'] || cfg.theme['--pink'])) || '#3fc4a8'
+    root.document.documentElement.style.setProperty('--server-accent', accent)
+  }
+
+  // ---- Street Fighter arcade theme (fits with an `arcade` block) ----------
+  // The combat fit ships an `arcade` block (fighters, records, colors). We add a
+  // `fit-arcade` class (arcade-skin CSS keys off it) and inject a VS screen into
+  // the home hero, re-mounting on re-render via a MutationObserver.
+  if (cfg.arcade && root.document && root.document.documentElement) {
+    root.ULTIMATE_ARCADE = cfg.arcade
+    root.document.documentElement.classList.add('fit-arcade')
+  }
+
+  function arcadeEsc (v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    })
+  }
+
+  // HD fighter portrait (Higgsfield-generated), one per corner.
+  function arcadeFighter (f, side) {
+    const img = side === 'red' ? 'avatars/fighter-red.png' : 'avatars/fighter-green.png'
+    return '<img class="av-portrait" src="' + img + '" alt="' + arcadeEsc(f.last) + '" decoding="async">'
+  }
+
+  function arcadeFighterCol (f, side) {
+    return '<div class="av-fighter av-' + side + '" style="--fc:' + arcadeEsc(f.color) + ';--fc2:' + arcadeEsc(f.color2) + '">' +
+      '<div class="av-health"><span class="av-hlabel">' + arcadeEsc(f.country) + '</span><i></i></div>' +
+      '<div class="av-figwrap">' + arcadeFighter(f, side) + '</div>' +
+      '<div class="av-plate">' +
+        '<div class="av-nick">"' + arcadeEsc(f.nick) + '"</div>' +
+        '<div class="av-name"><span class="av-flag">' + f.flag + '</span>' + arcadeEsc(f.last) + '</div>' +
+        '<div class="av-rec">' + arcadeEsc(f.first) + ' · ' + arcadeEsc(f.record) + ' · ' + arcadeEsc(f.hometown) + '</div>' +
+      '</div>' +
+    '</div>'
+  }
+
+  function arcadeVsHtml () {
+    const a = cfg.arcade
+    return '<div class="arcade-vs" role="img" aria-label="' + arcadeEsc(a.event) + '">' +
+      '<div class="av-scan" aria-hidden="true"></div>' +
+      '<div class="av-top"><span class="av-promo">' + arcadeEsc(a.promotion) + '</span><span class="av-meta">' + arcadeEsc(a.weightClass) + ' · ' + arcadeEsc(a.rounds) + ' ROUNDS</span></div>' +
+      '<div class="av-stage">' + arcadeFighterCol(a.red, 'red') + '<div class="av-vs" aria-hidden="true"><span>VS</span></div>' + arcadeFighterCol(a.blue, 'blue') + '</div>' +
+      '<div class="av-bottom"><span class="av-venue">' + arcadeEsc(a.venue) + '</span><button class="av-fightbtn" type="button">&#9654; ENTER THE FIGHT POOL</button></div>' +
+    '</div>'
+  }
+
+  function mountArcadeVs () {
+    if (!cfg.arcade || !root.document) return
+    const host = root.document.querySelector('#home .live-command')
+    if (!host || host.querySelector('.arcade-vs')) return
+    const wrap = root.document.createElement('div')
+    wrap.innerHTML = arcadeVsHtml()
+    const el = wrap.firstElementChild
+    if (!el) return
+    host.insertBefore(el, host.firstChild)
+    const btn = el.querySelector('.av-fightbtn')
+    if (btn) {
+      btn.addEventListener('click', function () {
+        const nav = root.document.querySelector('.topnav [data-view="bracket"]')
+        if (nav) nav.click()
+      })
+    }
+  }
+
+  // Turn the watch-party stadium into a fight broadcast (HD portraits facing
+  // off) instead of the soccer pitch.
+  function mountArcadeBroadcast () {
+    if (!cfg.arcade || !root.document) return
+    const tv = root.document.querySelector('#watch .stadium-tv')
+    if (!tv || tv.querySelector('.tv-fight')) return
+    const a = cfg.arcade
+    const el = root.document.createElement('div')
+    el.className = 'tv-fight'
+    el.innerHTML =
+      '<div class="tvf-fighter tvf-red"><img src="avatars/fighter-red.png" alt="" decoding="async"></div>' +
+      '<div class="tvf-center"><span class="tvf-live">◉ LIVE</span><span class="tvf-vs">VS</span><span class="tvf-tale">' + arcadeEsc(a.weightClass) + '</span></div>' +
+      '<div class="tvf-fighter tvf-blue"><img src="avatars/fighter-green.png" alt="" decoding="async"></div>'
+    tv.insertBefore(el, tv.firstChild)
+  }
+
+  function mountArcade () {
+    try { mountArcadeVs() } catch (e) {}
+    try { mountArcadeBroadcast() } catch (e) {}
+  }
+
+  function observeArcade () {
+    if (!cfg.arcade || !root.MutationObserver || !root.document) return
+    const screens = root.document.querySelector('.screens') || root.document.body
+    if (!screens) return
+    const obs = new root.MutationObserver(function () { try { mountArcade() } catch (e) {} })
+    obs.observe(screens, { childList: true, subtree: true })
+  }
+
   // This script runs in <head>, so document.body may not exist yet — defer the
   // body-level theming (dark background / fit-dark class) until the body is ready.
   function applyBackground () {
@@ -193,9 +294,21 @@
     header.appendChild(btn)
   }
 
+  // Name the window after the server, like a real client titlebar.
+  function applyWindowTitle () {
+    const sub = root.document.getElementById('winSubtitle')
+    if (sub && cfg.title) sub.textContent = '— ' + cfg.title
+    const tick = root.document.getElementById('shellTicker')
+    if (tick && cfg.subtitle) tick.textContent = 'connected · ' + cfg.subtitle + ' · syncing room state…'
+  }
+
   function onReady () {
     try { applyBackground() } catch (e) {}
     try { addCloseButton() } catch (e) {}
+    try { applyWindowTitle() } catch (e) {}
+    try { mountArcade() } catch (e) {}
+    try { observeArcade() } catch (e) {}
+    try { root.addEventListener('pearcup:booted', function () { try { mountArcade() } catch (e) {} }) } catch (e) {}
   }
 
   if (root.document.readyState === 'loading') {

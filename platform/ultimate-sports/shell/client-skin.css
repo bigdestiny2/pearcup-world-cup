@@ -1,39 +1,495 @@
-/* Ultimate Sports — P2P client skin for the shell.
-   Carries the lobby's client design language (sharp geometry, Tahoma/mono type,
-   dark client chrome, phosphor-LCD network/live data) into the in-server
-   surfaces, while each fit keeps its own accent COLOR theme. Loaded after
-   styles.css so structural overrides win; fits only set color tokens (via inline
-   style on <html>) so they still win on color. */
+/* Ultimate Sports — in-server P2P-client shell.
+   When you open a server it lands in the SAME window-chrome client as the lobby
+   (titlebar, menubar/toolbar, LCD live strip, server panels, statusbar) rather
+   than the kawaii-cup layout. Structural tokens are re-forced to the neutral
+   light client in fit-loader.js; each server keeps its own ACCENT color
+   (--server-accent) as its identity. This sheet builds the window frame and
+   re-dresses the kawaii surfaces as light client panels. Loaded after styles.css
+   so it wins on structure. */
+
+/* ===========================================================================
+   OG P2P CLIENT — two cohesive modes (Winamp/mIRC dark · Napster/Win9x light),
+   toggled via <html data-mode>. Everything is hard-edged and beveled; the LCD
+   phosphor readouts (wallet, ticker, EQ, scorebug) stay a dark-green display in
+   BOTH modes because a real LCD is dark regardless of the app skin.
+   =========================================================================== */
+/* pixel-era fonts (self-hosted → same-origin, allowed by default-src 'self') */
+@font-face { font-family: 'PixTerm'; src: url('./fonts/vt323.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'PixArcade'; src: url('./fonts/press-start-2p.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'PixBlock'; src: url('./fonts/silkscreen.woff2') format('woff2'); font-display: swap; }
 
 :root {
-  /* geometry: sharp, not kawaii-rounded */
-  --radius: 4px;
-  --radius-lg: 6px;
-  --radius-sm: 3px;
-  /* type: desktop-client faces, not rounded display */
-  --display: Tahoma, Geneva, Verdana, "Segoe UI", system-ui, sans-serif;
-  --body: Tahoma, Geneva, Verdana, "Segoe UI", system-ui, sans-serif;
-  --mono: ui-monospace, "SF Mono", Consolas, "Lucida Console", monospace;
-  /* client-frame constants (not fit-themed) */
-  --client-chrome: #1c212b;
-  --client-chrome-2: #262b35;
-  --client-line: #0d0f14;
-  --client-ink: #eef1f6;
-  --client-dim: #97a0b0;
-  --lcd: #34f08a;
-  --lcd-dim: #1a8a4f;
-  --lcd-bg: #05130b;
-  --lcd-line: #0c2a1a;
-  --live: #ff4d4d;
+  /* shared, mode-independent — pixel type */
+  --ui: 'PixTerm', ui-monospace, "Lucida Console", monospace;
+  --mono: 'PixTerm', ui-monospace, "Lucida Console", monospace;
+  --arcade: 'PixArcade', 'PixTerm', monospace;
+  --server-accent: #3fc4a8;
+  --lcd: #34f08a; --lcd-dim: #1a8a4f; --lcd-bg: #05130b; --lcd-line: #0c2a1a; --live: #ff4d4d;
+  /* hard OG geometry + type, forced over the kawaii tokens (beats inline) */
+  --radius: 1px !important; --radius-lg: 1px !important; --radius-sm: 1px !important;
+  --shadow: none !important; --shadow-strong: none !important;
+  --display: 'PixTerm', ui-monospace, "Lucida Console", monospace !important;
+  --body: 'PixBlock', 'PixTerm', ui-monospace, "Lucida Console", monospace !important;
 }
 
-/* flatten the kawaii chunky "3D" drop shadows everywhere */
-.primary-button,
-.secondary-button,
-.topnav button.is-active,
-.pool-pick,
-.team-card {
+/* VT323 is compact + tall — bump text a touch for legibility */
+.app-shell {
+  font-family: var(--ui); font-size: 15px;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility; letter-spacing: .01em;
+}
+.app-shell h1 { font-size: 26px; letter-spacing: .01em; }
+.app-shell h2 { font-size: 20px; }
+.app-shell .eyebrow, .app-shell small, .fixture-time, .match-status { font-size: 13px; letter-spacing: .03em; line-height: 1.35; }
+.leader-row, .chat-message, .commentary-line, .pool-meta, .lv td, .av-rec { font-family: var(--body); font-size: 14px; }
+/* keep the phosphor/terminal readouts on the terminal font, never Silkscreen */
+.lcd-strip, .signal-panel, .scorebug, #tvClock, #tvScore, .wallet-chip, .wallet-amt,
+.winamp-viz, .stat-meter { font-family: var(--mono) !important; }
+/* pixel text needs a taller line-box below 14px */
+.app-shell .prop-label, .app-shell .pick-chip, .app-shell .entered-chip,
+.app-shell .audit-heading, .app-shell .av-hlabel, .app-shell .leader-row span,
+.app-shell .team-row { line-height: 1.35; }
+.app-shell .prop-label, .app-shell .pick-chip { font-size: 11px !important; }
+.app-shell .audit-heading, .app-shell .av-hlabel { font-size: 12px !important; }
+
+/* Press Start 2P for short arcade/chrome labels (it's wide → small sizes) */
+.av-name { font-family: var(--arcade) !important; letter-spacing: 0 !important; text-transform: uppercase; }
+.titlebar .t, .titlebar .t small, .brand span, .lcd-strip .tag { text-transform: uppercase; }
+.titlebar .t { font-family: var(--ui) !important; font-size: 12px !important; letter-spacing: .02em; }
+.titlebar .t small { font-family: var(--ui) !important; font-size: 10px !important; }
+.brand span { font-family: var(--ui) !important; font-size: 11px !important; letter-spacing: .04em; }
+.lcd-strip .tag { font-family: var(--ui) !important; font-size: 11px !important; letter-spacing: .04em; }
+.av-name { font-size: 18px !important; line-height: 1.15 !important; }
+.av-promo { font-family: var(--ui) !important; font-size: 11px !important; }
+.av-meta { font-family: var(--ui) !important; font-size: 11px !important; }
+.av-nick { font-family: var(--ui) !important; font-size: 10px !important; }
+
+/* ---- LIGHT MODE — Napster / LimeWire · Windows-9x silver ---- */
+html[data-mode="light"] {
+  --desk: #0d5a5a; --frame: #3a3a36 !important;
+  --chrome: #c3c3bd !important; --chrome-2: #a9a9a1 !important;
+  --bevel-hi: #ffffff !important; --bevel-lo: #7c7c74 !important;
+  --field: #dedcd4 !important; --field-alt: #eaeae2 !important; --field-line: #b6b6ae !important;
+  --surface: #cdcdc6 !important; --surface-2: #d8d8d0 !important; --surface-3: #bfbfb7 !important;
+  --card: #cdcdc6 !important; --soft: #d8d8d0 !important;
+  --ink: #0a0a0a !important; --muted: #494945 !important; --line: #b6b6ae !important; --line-strong: #7c7c74 !important;
+  --sel: #0b3d91 !important; --sel-deep: #062a66 !important;
+}
+
+/* light mode: neutralise hardcoded-white panel/button gradients → gray */
+html[data-mode="light"] .topnav button,
+html[data-mode="light"] .theme-btn,
+html[data-mode="light"] .shell-close-btn,
+html[data-mode="light"] .secondary-button,
+html[data-mode="light"] .icon-button,
+html[data-mode="light"] .pool-pick-cta,
+html[data-mode="light"] .avatar-clear-btn,
+html[data-mode="light"] .prop-option {
+  background: linear-gradient(180deg, #d8d8d0, #c4c4bc) !important;
+}
+html[data-mode="light"] .profile-chip { background: #cdcdc6 !important; }
+html[data-mode="light"] .brand-mark { background: linear-gradient(160deg, #d8d8d0, #bfbfb7) !important; }
+html[data-mode="light"] .avatar-stage { background: radial-gradient(120% 90% at 50% 10%, #dedcd4, #cdcdc6 70%) !important; }
+html[data-mode="light"] .live-card,
+html[data-mode="light"] .mini-fixture,
+html[data-mode="light"] .signal-panel,
+html[data-mode="light"] .stat-card,
+html[data-mode="light"] .leaderboard-panel,
+html[data-mode="light"] .pool-card {
+  background: linear-gradient(145deg, var(--surface), var(--surface-2)) !important;
+}
+html[data-mode="light"] .entry-ledger-row.is-pending,
+html[data-mode="light"] .payout-recipient-row.is-pending {
+  background: linear-gradient(160deg, #fff1cf, var(--surface)) !important;
+}
+
+/* ---- DARK MODE — Winamp / mIRC · charcoal metal ---- */
+html[data-mode="dark"], html:not([data-mode]) {
+  --desk: #050507; --frame: #000000 !important;
+  --chrome: #26262c !important; --chrome-2: #191920 !important;
+  --bevel-hi: #45454f !important; --bevel-lo: #000000 !important;
+  --field: #0e0e13 !important; --field-alt: #17171d !important; --field-line: #000000 !important;
+  --surface: #16161c !important; --surface-2: #101015 !important; --surface-3: #0a0a0e !important;
+  --card: #16161c !important; --soft: #101015 !important;
+  --ink: #d6d6de !important; --muted: #83838f !important; --line: #000000 !important; --line-strong: #37373f !important;
+  --sel: #3f7bff !important; --sel-deep: #1d4fd8 !important;
+}
+
+/* ---------- desktop + window frame ---------- */
+
+body {
+  background: radial-gradient(120% 120% at 50% -10%, #2c3340, var(--desk) 70%) !important;
+  background-attachment: fixed !important;
+  color: var(--ink);
+  padding: 20px 18px;
+}
+/* kill the kawaii bubble field */
+body::before { content: none !important; background: none !important; animation: none !important; }
+
+.app-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: calc(100vh - 40px);
+  background: var(--chrome);
+  border: 1px solid var(--frame);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), inset 0 1px 0 var(--bevel-hi);
+  grid-template-rows: auto auto auto 1fr auto;
+}
+
+/* ---------- titlebar ---------- */
+
+.titlebar {
+  display: flex; align-items: center; gap: 9px;
+  height: 34px; padding: 0 10px;
+  background: linear-gradient(180deg, #262b35, #191d25);
+  color: #eef1f6;
+  border-bottom: 1px solid #0d0f14;
+  user-select: none;
+}
+.app-ico {
+  width: 18px; height: 18px; border-radius: 4px;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--lcd), var(--lcd-dim));
+  color: var(--lcd-bg);
+  font-weight: 900; font-size: 12px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+.titlebar .t { font-size: 12px; font-weight: 700; }
+.titlebar .t small { color: #97a0b0; font-weight: 400; margin-left: 6px; }
+.win-btns { margin-left: auto; display: flex; gap: 6px; }
+.win-btns i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+.win-btns .mi { background: #f5bd4f; }
+.win-btns .ma { background: #34c759; }
+.win-btns .cl { background: #ff5f57; }
+
+/* ---------- topbar → client toolbar (nav = menu buttons) ---------- */
+
+.topbar {
+  position: static;
+  min-height: 0;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  padding: 7px 10px;
+  background: linear-gradient(180deg, #eef1f6, var(--chrome-2)) !important;
+  border-bottom: 1px solid var(--bevel-lo);
+  box-shadow: inset 0 1px 0 var(--bevel-hi);
+  backdrop-filter: none;
+}
+
+.brand { gap: 8px; border-radius: 4px; }
+.brand span {
+  color: var(--ink);
+  font-family: var(--ui);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 13px;
+}
+.brand-mark {
+  width: 20px; height: 20px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, var(--server-accent), color-mix(in srgb, var(--server-accent) 60%, #000));
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.35);
+}
+.brand-mark svg { color: #fff; }
+.brand-mark svg circle { fill: #fff; }
+
+.topnav { gap: 3px; }
+.topnav button {
+  min-height: 30px;
+  border-radius: 4px;
+  color: var(--ink);
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
+  background: linear-gradient(180deg, #ffffff, #e6eaf2);
+  border: 1px solid var(--bevel-lo);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+  padding: 0 12px;
+}
+.topnav button:hover { border-color: var(--sel); }
+.topnav button.is-active {
+  background: var(--server-accent);
+  color: #08110d;
+  border-color: color-mix(in srgb, var(--server-accent) 60%, #000);
   box-shadow: none;
+}
+
+.theme-btn {
+  color: var(--ink-dim, #626a78);
+  background: linear-gradient(180deg, #ffffff, #e6eaf2) !important;
+  border: 1px solid var(--bevel-lo) !important;
+  border-radius: 4px;
+}
+.theme-btn:hover { border-color: var(--sel); }
+
+/* wallet chip → LCD readout */
+.wallet-chip {
+  border-radius: 4px;
+  padding: 5px 10px;
+  background: var(--lcd-bg) !important;
+  border: 1px solid var(--lcd-line);
+  color: var(--lcd) !important;
+  font-family: var(--mono);
+  text-shadow: 0 0 6px rgba(52,240,138,.4);
+  box-shadow: inset 0 0 8px rgba(0,0,0,.5);
+}
+.wallet-chip .wallet-ico { filter: grayscale(1) brightness(1.4); }
+.wallet-amt { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* profile chip on light chrome */
+.profile-chip {
+  background: #ffffff;
+  border: 1px solid var(--bevel-lo);
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+}
+.profile-chip .chip-name { color: var(--ink); font-weight: 700; }
+.profile-chip .chip-team { color: var(--muted); }
+
+/* back-to-lobby button (added by fit-loader when embedded) */
+.shell-close-btn {
+  border-radius: 4px !important;
+  background: linear-gradient(180deg, #ffffff, #e6eaf2) !important;
+  border: 1px solid var(--bevel-lo) !important;
+  color: var(--ink) !important;
+  font-family: var(--ui) !important;
+}
+.shell-close-btn:hover { border-color: var(--sel) !important; }
+
+/* ---------- LCD live strip ---------- */
+
+.lcd-strip {
+  display: flex; align-items: center; gap: 10px;
+  padding: 5px 10px;
+  background: var(--lcd-bg);
+  border-bottom: 1px solid #0d0f14;
+  color: var(--lcd);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  overflow: hidden;
+}
+.lcd-strip .tag {
+  color: var(--live);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 6px rgba(255,77,77,.5);
+  white-space: nowrap;
+}
+.lcd-strip .eq { display: inline-flex; gap: 2px; align-items: flex-end; height: 12px; }
+.lcd-strip .eq i {
+  width: 3px; height: 100%;
+  background: var(--lcd);
+  box-shadow: 0 0 5px rgba(52,240,138,.6);
+  transform-origin: bottom;
+  animation: eqbar 0.9s ease-in-out infinite;
+}
+.lcd-strip .eq i:nth-child(2) { animation-delay: .15s; }
+.lcd-strip .eq i:nth-child(3) { animation-delay: .3s; }
+.lcd-strip .eq i:nth-child(4) { animation-delay: .45s; }
+@keyframes eqbar { 0%,100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+.lcd-strip .scroll { overflow: hidden; white-space: nowrap; flex: 1; min-width: 0; }
+.lcd-strip .scroll b {
+  font-weight: 500;
+  text-shadow: 0 0 6px rgba(52,240,138,.35);
+  color: var(--lcd);
+}
+
+/* ---------- statusbar ---------- */
+
+.statusbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 10px;
+  background: linear-gradient(180deg, var(--chrome), var(--chrome-2));
+  border-top: 1px solid var(--bevel-lo);
+  box-shadow: inset 0 1px 0 var(--bevel-hi);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.statusbar .ok { color: var(--lcd-dim); }
+.statusbar .sep { color: var(--bevel-lo); }
+.statusbar .right { margin-left: auto; color: var(--ink-faint, #8b93a1); }
+
+/* ---------- content region ---------- */
+
+.screens { background: var(--chrome); padding: 14px; }
+.screen { gap: 14px; }
+
+/* section headings → client panel-header labels */
+.section-heading .eyebrow, .eyebrow {
+  font-family: var(--ui);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  color: var(--muted);
+  font-weight: 700;
+}
+.section-heading h1, .section-heading h2 {
+  font-family: var(--ui);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+/* generic panel treatment: flat, sharp, bordered client panels */
+.live-command, .commentary-panel, .chat-panel, .game-card, .integration-panel,
+.settlement-rail-card, .audit-drop, .leader-panel, .signal-panel, .match-card,
+.pool-pick, .game-arena, .stadium-tv, .watch-challenge-panel, .mini-fixture,
+.stats-strip, .game-scoreboard, .game-lobby, .watch-party {
+  border-radius: var(--radius) !important;
+  box-shadow: none !important;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+}
+
+/* the live-command hub: give it a client "panel head" feel, drop the pink wash */
+.live-command { background: var(--surface); border: 1px solid var(--frame); }
+.hero-backdrop {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--server-accent) 14%, #ffffff), #ffffff) !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+.live-scoreline #heroClock, .live-scoreline #heroScore, .live-scoreline #heroState,
+#tvClock, #tvScore { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.score-core strong { font-family: var(--ui); }
+
+/* activity rail panels line up like the lobby rail groups */
+.activity-rail { gap: 12px; }
+.rail-header .eyebrow { color: var(--muted); }
+.rail-header strong { color: var(--ink); font-family: var(--ui); }
+
+/* pool cards → sharp entries with accent CTA */
+.pool-pick:hover { transform: none; border-color: var(--sel); }
+.pool-pick.is-selected { border-color: var(--server-accent) !important; box-shadow: inset 0 0 0 1px var(--server-accent) !important; }
+.pool-pick.is-entered { border-color: var(--server-accent) !important; }
+.pool-pick-fee { color: var(--ink); font-family: var(--ui); }
+.pool-pick-cta {
+  border-radius: 4px !important;
+  background: linear-gradient(180deg, #ffffff, #e6eaf2) !important;
+  color: var(--ink) !important;
+  border: 1px solid var(--bevel-lo) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8) !important;
+}
+.pool-pick.is-selected .pool-pick-cta { background: var(--server-accent) !important; color: #08110d !important; border-color: color-mix(in srgb, var(--server-accent) 60%, #000) !important; }
+
+/* leaderboard reads like an LCD standings table */
+.leader-panel { background: var(--surface); }
+
+/* live hub segmented control (Overview / Stats / Rooms / Games / QVAC) */
+.live-menu { gap: 3px; }
+.live-menu button {
+  border-radius: 4px;
+  font-family: var(--ui);
+  font-weight: 700;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  box-shadow: none;
+}
+.live-menu button:hover { color: var(--ink); background: var(--field-alt); }
+.live-menu button.is-active {
+  background: var(--server-accent);
+  color: #08110d;
+  border-color: color-mix(in srgb, var(--server-accent) 60%, #000);
+  box-shadow: none;
+}
+
+/* hero status chips: neutral client chips, not pink pills */
+.live-scoreline span:not([class]) {
+  background: var(--field-alt) !important;
+  color: var(--muted) !important;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* rail schedule rows → sharp client list items */
+.mini-fixture {
+  border-radius: var(--radius) !important;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  box-shadow: none !important;
+}
+.mini-fixture.is-current { border-color: var(--server-accent); box-shadow: inset 2px 0 0 var(--server-accent) !important; }
+.fixture-time { color: var(--muted); font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.mini-fixture .icon-button.is-live {
+  background: var(--server-accent) !important;
+  color: #08110d !important;
+  border: 1px solid color-mix(in srgb, var(--server-accent) 60%, #000) !important;
+}
+
+/* home pool cards → sharp client entries */
+.pool-card {
+  border-radius: var(--radius) !important;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  box-shadow: none !important;
+}
+.stake { font-family: var(--ui); color: var(--ink); }
+.stake span { color: var(--muted); }
+.pool-badge {
+  border-radius: 3px;
+  font-family: var(--ui);
+  font-weight: 700;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: var(--field-alt);
+  color: var(--muted);
+  border: 1px solid var(--bevel-lo);
+  box-shadow: none;
+}
+.pool-badge.is-hot, .pool-badge.is-live {
+  background: var(--lcd-bg);
+  color: var(--lcd);
+  border-color: var(--lcd-line);
+}
+.pool-meta strong { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+.pool-meta span { color: var(--muted); }
+.rail-chip { border-radius: 3px; font-family: var(--ui); }
+
+/* ---------- buttons: flat client ---------- */
+
+.primary-button, .secondary-button {
+  border-radius: 4px;
+  font-family: var(--ui);
+  letter-spacing: 0.01em;
+  box-shadow: none;
+}
+.primary-button {
+  background: var(--server-accent);
+  color: #08110d;
+  border: 1px solid color-mix(in srgb, var(--server-accent) 60%, #000);
+}
+.primary-button:hover { filter: brightness(1.05); }
+.secondary-button {
+  background: linear-gradient(180deg, #ffffff, #e6eaf2);
+  color: var(--ink);
+  border: 1px solid var(--bevel-lo);
+}
+.secondary-button:hover { border-color: var(--sel); }
+.icon-button {
+  border-radius: 4px;
+  background: linear-gradient(180deg, #ffffff, #e6eaf2);
+  border: 1px solid var(--bevel-lo);
+  color: var(--ink);
+}
+
+/* pills / chips squared off */
+.pill, .pool-pick-heat, .heat, .badge, .wr-label, .entered-chip, .pick-chip, .kit-card { border-radius: 3px; }
+
+/* inputs sharp */
+input, select, textarea {
+  border-radius: 4px !important;
+  border: 1px solid var(--bevel-lo) !important;
+  background: var(--field) !important;
+  color: var(--ink) !important;
 }
 
 /* tabular figures read like a scoreboard */
@@ -42,74 +498,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- client chrome: the topbar is the same across every server ---------- */
-
-.topbar {
-  min-height: 56px;
-  background: linear-gradient(180deg, var(--client-chrome-2), var(--client-chrome)) !important;
-  border-bottom: 1px solid var(--client-line);
-  box-shadow: none;
-  padding: 9px 16px;
-}
-
-.brand { gap: 9px; }
-.brand span {
-  color: var(--client-ink);
-  font-family: var(--display);
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-size: 14px;
-}
-.brand-mark {
-  width: 22px; height: 22px;
-  border-radius: 4px;
-  background: linear-gradient(135deg, var(--lcd), var(--lcd-dim));
-  color: var(--lcd-bg);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.2);
-}
-.brand-mark svg { color: var(--lcd-bg); }
-.brand-mark svg circle { fill: var(--lcd-bg); }
-
-.topnav { gap: 3px; }
-.topnav button {
-  min-height: 32px;
-  border-radius: 3px;
-  color: var(--client-dim);
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 12.5px;
-  letter-spacing: 0.02em;
-}
-.topnav button:hover { background: rgba(255,255,255,.07); color: var(--client-ink); }
-.topnav button.is-active {
-  background: var(--green);
-  color: #05130b;
-  box-shadow: none;
-}
-
-.theme-btn { color: var(--client-dim); border-color: rgba(255,255,255,.14) !important; }
-.theme-btn:hover { color: var(--client-ink); }
-
-/* wallet chip → mono client readout */
-.wallet-chip {
-  border-radius: 4px;
-  padding: 6px 11px;
-  background: var(--lcd-bg) !important;
-  border: 1px solid var(--lcd-line);
-  color: var(--lcd) !important;
-  font-family: var(--mono);
-  text-shadow: 0 0 6px rgba(52,240,138,.4);
-}
-.wallet-chip .wallet-ico { filter: none; }
-.wallet-amt { font-family: var(--mono); font-variant-numeric: tabular-nums; }
-
-/* profile chip on dark chrome */
-.profile-chip { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); }
-.profile-chip .chip-name { color: var(--client-ink); }
-.profile-chip .chip-team { color: var(--client-dim); }
-
-/* ---------- live + network data → LCD / mono ---------- */
+/* ---------- live + network data → LCD ---------- */
 
 .live-badge, .tv-live, #tvLive {
   border-radius: 3px;
@@ -126,7 +515,7 @@
 
 .match-status { font-family: var(--mono); font-weight: 700; }
 
-.scorebug {
+.scorebug, #tvClock, #tvScore {
   border-radius: 3px;
   background: var(--lcd-bg);
   border: 1px solid var(--lcd-line);
@@ -139,9 +528,8 @@
 
 /* room signal panel → terminal readout */
 .signal-panel {
-  border-radius: 4px;
-  background: var(--lcd-bg);
-  border: 1px solid var(--lcd-line);
+  background: var(--lcd-bg) !important;
+  border: 1px solid var(--lcd-line) !important;
   color: var(--lcd);
 }
 .signal-panel .rail-header .eyebrow { color: var(--lcd-dim); }
@@ -150,270 +538,718 @@
 .signal-row span { color: var(--lcd-dim); }
 .signal-row strong { color: var(--lcd); text-shadow: 0 0 5px rgba(52,240,138,.35); }
 
-/* live scoreline clock/score → mono */
-.live-scoreline #heroClock, .live-scoreline #heroScore, .live-scoreline #heroState,
-#tvClock, #tvScore { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+/* stadium TV + chat read like client panes */
+.stadium-tv { background: var(--client-chrome-2, #10141b); }
+#tvClock, #tvScore { padding: 6px 10px; }
+.live-meta { border-radius: 4px; background: var(--field-alt); border: 1px solid var(--bevel-lo); box-shadow: none; }
+.live-meta span { color: var(--muted); font-family: var(--ui); }
+.live-meta strong { color: var(--ink); font-family: var(--mono); }
+.chat-message { color: var(--ink); }
+.chat-message time { color: var(--muted); font-family: var(--mono); }
 
-/* ---------- buttons: sharp, flat, client ---------- */
+/* commentary / language tabs */
+.language-tabs button { border-radius: 4px; }
 
-.primary-button, .secondary-button {
-  border-radius: 4px;
-  font-family: var(--display);
-  letter-spacing: 0.01em;
-}
-.primary-button {
-  background: var(--green);
-  color: #05130b;
-}
-.primary-button:hover { filter: brightness(1.06); }
-.secondary-button {
-  border-radius: 4px;
+/* ---------- games lobby: client panels, accent CTA ---------- */
+.lobby-hero {
+  border-radius: var(--radius) !important;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--server-accent) 10%, #ffffff), #ffffff) !important;
   border: 1px solid var(--line-strong);
+  box-shadow: none !important;
 }
+.lobby-quick {
+  border-radius: 4px !important;
+  background: var(--server-accent) !important;
+  color: #08110d !important;
+  border: 1px solid color-mix(in srgb, var(--server-accent) 60%, #000) !important;
+  box-shadow: none !important;
+}
+.lobby-quick:hover { filter: brightness(1.05); }
+.lobby-friend {
+  border-radius: var(--radius) !important;
+  background: var(--field-alt) !important;
+  border: 1px solid var(--line-strong);
+  box-shadow: none !important;
+}
+.lobby-challenge { border-radius: 4px !important; }
+.mini-game-tab { border-radius: 4px !important; }
 
-/* pills / chips that were fully rounded → slightly sharp */
-.pill, .pool-pick-heat, .heat, .badge, .wr-label,
-.entered-chip, .pick-chip, .kit-card { border-radius: 3px; }
-
-/* inputs sharp */
-input, select, textarea { border-radius: 4px !important; }
-
-/* cards / panels: keep fit color, sharpen + calm shadow */
-.match-card, .pool-pick, .team-card, .live-command, .commentary-panel,
-.chat-panel, .game-card, .integration-panel, .settlement-rail-card,
-.audit-drop, .leader-panel {
-  border-radius: 5px;
-  box-shadow: none;
-}
-
-/* section eyebrows read like client labels */
-.eyebrow {
-  font-family: var(--display);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-/* ---------- Watch + Games surfaces: client language, not kawaii soft ---------- */
-
-/* live scoreboard / stadium TV */
-.stadium-tv,
-#watch .stadium-tv {
-  border-radius: 5px;
-  background: var(--client-chrome-2);
-  border: 1px solid var(--client-line);
-}
-
-#tvClock, #tvScore, #watchTitle,
-.lb-score, .scorebug {
-  font-family: var(--mono);
-  font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 6px rgba(52, 240, 138, 0.35);
-}
-
-#tvClock, #tvScore {
-  background: var(--lcd-bg);
-  color: var(--lcd);
-  border: 1px solid var(--lcd-line);
-  border-radius: 4px;
-  padding: 6px 10px;
-}
-
-/* live source badge */
-#liveSource, .ls-badge, .ls-src {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.04em;
-}
-.ls-badge {
-  background: var(--lcd-bg);
-  color: var(--lcd);
-  border: 1px solid var(--lcd-line);
-  border-radius: 3px;
-}
-.ls-badge i {
-  background: var(--live) !important;
-  box-shadow: 0 0 6px var(--live);
-}
-
-/* watch-party meta chips */
-.live-meta {
-  border-radius: 4px;
-  background: var(--client-chrome);
-  border: 1px solid var(--client-line);
-  box-shadow: none;
-}
-.live-meta span {
-  color: var(--client-dim);
-  font-family: var(--display);
-}
-.live-meta strong {
-  color: var(--client-ink);
-  font-family: var(--mono);
-}
-
-/* watch challenge tray */
-.watch-challenge-panel {
-  border-radius: 5px;
-  background: var(--client-chrome-2);
-  border: 1px solid var(--client-line);
-}
-.watch-challenge-head strong {
-  color: var(--client-ink);
-  font-family: var(--display);
-}
-.watch-challenge-game {
-  border-radius: 3px;
-  border: 1px solid rgba(255,255,255,.12);
-  background: rgba(255,255,255,.05);
-  color: var(--client-ink);
-}
-.watch-challenge-game:hover {
-  background: rgba(255,255,255,.1);
-}
-.watch-challenge-game.is-coming-soon {
-  color: var(--client-dim);
-  border-style: dashed;
-}
-
-/* chat read like a terminal pane */
-.chat-panel,
-#chatFeed {
-  border-radius: 4px;
-  background: var(--client-chrome);
-  border: 1px solid var(--client-line);
-}
-.chat-message {
-  color: var(--client-ink);
-}
-.chat-message time {
-  color: var(--client-dim);
-  font-family: var(--mono);
-}
-
-/* games arena */
-.game-arena {
-  border-radius: 5px;
-  background: var(--client-chrome-2);
-  border: 1px solid var(--client-line);
-}
-
-/* ---------- Accessibility ---------- */
+/* ---------- accessibility ---------- */
 
 @media (prefers-reduced-motion: reduce) {
-  body::before {
-    animation: none;
-  }
-  .lb-state.is-live i {
-    animation: none;
-  }
+  .lcd-strip .eq i { animation: none; }
+  .lb-state.is-live i { animation: none; }
 }
 
-/* stronger focus rings on the dark chrome */
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:not([tabindex="-1"]):focus-visible {
-  outline: 2px solid var(--lcd);
+  outline: 2px solid var(--sel);
   outline-offset: 2px;
 }
 
-/* ---------- Loading / skeleton / empty on client chrome ---------- */
-.loading-state {
-  color: var(--client-dim);
-}
-.loading-state strong {
-  color: var(--client-ink);
-}
-.loading-spinner {
-  border-color: rgba(255,255,255,.12);
-  border-top-color: var(--lcd);
-}
+/* ---------- loading / skeleton / empty ---------- */
+.loading-state { color: var(--muted); }
+.loading-state strong { color: var(--ink); }
+.loading-spinner { border-color: rgba(0,0,0,.12); border-top-color: var(--sel); }
 .skeleton {
-  background: linear-gradient(90deg, rgba(255,255,255,.06) 25%, rgba(255,255,255,.10) 50%, rgba(255,255,255,.06) 75%);
+  background: linear-gradient(90deg, rgba(0,0,0,.05) 25%, rgba(0,0,0,.09) 50%, rgba(0,0,0,.05) 75%);
   background-size: 200% 100%;
 }
-.empty-state {
-  background: rgba(255,255,255,.04);
-  border-color: rgba(255,255,255,.12);
-  color: var(--client-dim);
-}
-.empty-state strong { color: var(--client-ink); }
-.empty-state.is-error {
-  background: rgba(255,77,77,.10);
-  border-color: var(--live);
-  color: #ff9999;
-}
-.empty-state.is-error strong { color: #ff9999; }
+.empty-state { background: var(--field-alt); border-color: var(--bevel-lo); color: var(--muted); }
+.empty-state strong { color: var(--ink); }
+.empty-state.is-error { background: rgba(255,77,77,.10); border-color: var(--live); color: #b3243a; }
+.empty-state.is-error strong { color: #b3243a; }
 
-/* ---------- Reaction Challenge ---------- */
-.reaction-challenge-stage {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 280px;
-  text-align: center;
-}
-.reaction-stage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 24px;
-}
-.reaction-stage .eyebrow {
-  color: var(--client-dim);
-  font-family: var(--mono);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.reaction-moment {
-  font-size: 34px;
-  font-weight: 800;
-  color: var(--client-dim);
-  min-height: 44px;
-  transition: color 0.12s ease;
-}
-.reaction-moment.is-visible {
-  color: var(--lcd);
-}
+/* ---------- reaction challenge minigame ---------- */
+.reaction-challenge-stage { display: flex; align-items: center; justify-content: center; min-height: 280px; text-align: center; }
+.reaction-stage { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 24px; }
+.reaction-stage .eyebrow { color: var(--muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; }
+.reaction-moment { font-size: 34px; font-weight: 800; color: var(--muted); min-height: 44px; transition: color 0.12s ease; }
+.reaction-moment.is-visible { color: var(--server-accent); }
 .reaction-tap-button {
-  font-size: 22px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  padding: 16px 48px;
-  border-radius: 4px;
-  background: var(--lcd);
-  color: var(--lcd-bg);
-  border: 1px solid var(--lcd-dim);
-  box-shadow: 0 0 0 0 rgba(52, 240, 138, 0);
+  font-size: 22px; font-weight: 900; letter-spacing: 0.06em; padding: 16px 48px;
+  border-radius: 4px; background: var(--server-accent); color: #08110d;
+  border: 1px solid color-mix(in srgb, var(--server-accent) 60%, #000);
   transition: transform 0.06s ease, box-shadow 0.12s ease;
 }
-.reaction-tap-button:active:not(:disabled) {
-  transform: scale(0.96);
+.reaction-tap-button:active:not(:disabled) { transform: scale(0.96); }
+.reaction-tap-button.is-disabled, .reaction-tap-button:disabled {
+  background: var(--field-alt); color: var(--muted); border-color: var(--bevel-lo); cursor: not-allowed;
 }
-.reaction-tap-button.is-disabled,
-.reaction-tap-button:disabled {
-  background: var(--client-chrome);
-  color: var(--client-dim);
-  border-color: var(--client-line);
-  cursor: not-allowed;
-}
-.reaction-result-title {
-  font-size: 26px;
-  color: var(--client-ink);
-}
-.reaction-result-score {
-  font-size: 20px;
-  color: var(--client-dim);
-  font-family: var(--mono);
-}
+.reaction-result-title { font-size: 26px; color: var(--ink); }
+.reaction-result-score { font-size: 20px; color: var(--muted); font-family: var(--mono); }
 
 @media (prefers-reduced-motion: reduce) {
-  .reaction-moment {
-    transition: none;
-  }
-  .reaction-tap-button {
-    transition: none;
-  }
+  .reaction-moment { transition: none; }
+  .reaction-tap-button { transition: none; }
 }
+
+/* =========================================================================
+   OLD-SCHOOL WINAMP / NAPSTER RETRO PASS — Home · Data (Watch) · Bracket
+   Old kawaii avatars/portraits are retired (app.js renders retro monogram
+   tiles). Data surfaces become dense monospace Napster tables + Winamp EQ/LED
+   readouts, wrapped in beveled Win9x panels.
+   ========================================================================= */
+
+/* retro monogram / photo tiles — always sharp squares, never kawaii-round */
+.retro-av { border-radius: 3px !important; overflow: hidden; background: #0b0f14; }
+
+/* neutralize the kawaii pink avatar preview box → clean client frame */
+.avatar-stage {
+  background: var(--field-alt) !important;
+  border: 1px solid var(--bevel-lo) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--chrome-2) !important;
+}
+.avatar-stage::before, .avatar-stage::after { display: none !important; }
+
+/* ---- profile-pic upload UI (onboarding aside) ---- */
+.avatar-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 4px; }
+.avatar-upload-btn {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  font-family: var(--ui); font-weight: 700; font-size: 12px; color: #08110d;
+  padding: 6px 12px; border-radius: 4px;
+  background: var(--server-accent); border: 1px solid color-mix(in srgb, var(--server-accent) 60%, #000);
+}
+.avatar-upload-btn:hover { filter: brightness(1.05); }
+.avatar-clear-btn {
+  font-family: var(--ui); font-weight: 700; font-size: 11.5px; color: var(--ink);
+  padding: 6px 10px; border-radius: 4px; cursor: pointer;
+  background: linear-gradient(180deg,#fff,#e6eaf2); border: 1px solid var(--bevel-lo);
+}
+.avatar-clear-btn:hover { border-color: var(--sel); }
+.avatar-hint { width: 100%; margin: 4px 0 0; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.avatar-examples { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.avatar-example {
+  width: 40px; height: 40px; padding: 0; cursor: pointer;
+  border: 1px solid var(--bevel-lo); border-radius: 3px;
+  background-color: #0b0f14; background-size: cover; background-position: center;
+}
+.avatar-example:hover { border-color: var(--sel); }
+.avatar-example.is-active { border-color: var(--server-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--server-accent) 45%, transparent); }
+.leader-row .retro-av, .entered-chip .retro-av, .mini-fixture .retro-av { width: 24px; height: 24px; }
+.avatar-stack .retro-av { width: 20px; height: 20px; }
+
+/* beveled Win9x panel chrome for the data/list panels */
+.leader-panel, .signal-panel, .commentary-panel, .chat-panel, .watch-party,
+.game-card, .integration-panel, .pool-card, .mini-fixture, .stats-strip,
+.game-scoreboard, .game-lobby {
+  border: 1px solid var(--bevel-lo) !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--chrome-2) !important;
+  border-radius: 3px !important;
+}
+.signal-panel { border-color: var(--lcd-line) !important; box-shadow: inset 0 0 8px rgba(0,0,0,.55) !important; }
+
+/* section/rail headers → Napster gray column-header bars */
+.rail-header {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 4px 8px; border-radius: 3px;
+  background: linear-gradient(180deg, #eef1f6, var(--chrome-2));
+  border: 1px solid var(--bevel-lo);
+  box-shadow: inset 0 1px 0 var(--bevel-hi);
+}
+.rail-header .eyebrow { margin: 0; }
+.rail-header strong { font-family: var(--ui); }
+
+/* ---- LEADERBOARD → Napster ranked table (mono, alternating rows) ---- */
+.leader-list {
+  display: flex; flex-direction: column; gap: 0;
+  margin-top: 6px;
+  border: 1px solid var(--bevel-lo);
+  border-radius: 3px; overflow: hidden;
+  background: var(--field);
+}
+.leader-row {
+  display: grid;
+  grid-template-columns: 20px 24px 1fr auto;
+  align-items: center; gap: 8px;
+  padding: 4px 8px;
+  font-family: var(--mono); font-size: 12px;
+  border-bottom: 1px solid var(--field-line);
+  border-radius: 0 !important; box-shadow: none !important;
+}
+.leader-row:nth-child(even) { background: var(--field-alt); }
+.leader-row:last-child { border-bottom: none; }
+.leader-row > div { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.leader-rank { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.leader-row strong { font-family: var(--mono); font-weight: 700; font-size: 12px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.leader-row span { color: var(--muted); font-size: 10.5px; }
+.leader-row em { font-style: normal; font-family: var(--mono); color: var(--pos); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ---- ENTRANTS → dense mono chips with LED ---- */
+.entered-avatars { display: flex; flex-wrap: wrap; gap: 4px; }
+.entered-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 8px 2px 3px; border-radius: 3px !important;
+  background: var(--field-alt); border: 1px solid var(--bevel-lo);
+  font-family: var(--mono); font-size: 11px; color: var(--ink);
+  box-shadow: none !important;
+}
+.entered-chip .retro-av { width: 18px; height: 18px; }
+.entered-chip em { font-style: normal; }
+.entered-chip.is-you { border-color: var(--server-accent); background: color-mix(in srgb, var(--server-accent) 14%, #fff); }
+
+/* ---- POOLS → beveled Napster rows, mono meta, tiny stacked tiles ---- */
+.pool-meta { font-family: var(--mono); }
+.pool-meta strong { font-variant-numeric: tabular-nums; color: var(--ink); }
+.pool-meta span { color: var(--muted); }
+.avatar-stack { display: inline-flex; }
+.avatar-stack .retro-av { margin-left: -6px; border: 1px solid #05130b; }
+.avatar-stack .retro-av:first-child { margin-left: 0; }
+
+/* ---- DATA (Watch) stat strip → Winamp EQ / LED meters ---- */
+.stats-strip { display: grid; gap: 6px; padding: 8px !important; background: var(--lcd-bg) !important; border-color: var(--lcd-line) !important; }
+.stat-meter {
+  display: grid; grid-template-columns: 74px 1fr auto; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; color: var(--lcd-dim);
+}
+.stat-meter > span { text-transform: uppercase; letter-spacing: 0.05em; }
+.stat-meter .meter {
+  height: 11px; border: 1px solid #0c2a1a; border-radius: 2px; overflow: hidden;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,.55) 0 1px, transparent 1px 4px),
+    #04140b;
+}
+.stat-meter .meter i {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, var(--lcd-dim), var(--lcd));
+  box-shadow: 0 0 6px rgba(52,240,138,.5);
+}
+.stat-meter strong { color: var(--lcd); font-variant-numeric: tabular-nums; text-shadow: 0 0 5px rgba(52,240,138,.4); }
+
+/* ---- HOME live hub → Winamp "now playing" dark LCD panel ---- */
+.live-command {
+  background: linear-gradient(180deg, #12161d, #0a0d12) !important;
+  border: 1px solid #000 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06) !important;
+  color: #cfe3d8;
+}
+.live-command .eyebrow { color: var(--lcd-dim) !important; }
+.hero-backdrop { display: none !important; }
+.live-scoreline strong, .live-team strong { color: #eef6f0 !important; }
+.live-team span, .live-scoreline span:not([class]) { color: #8fb0a2 !important; background: transparent !important; }
+.live-scoreline #heroClock, .live-scoreline #heroScore, .live-scoreline #heroState {
+  color: var(--lcd) !important; background: var(--lcd-bg); border: 1px solid var(--lcd-line);
+  border-radius: 3px; padding: 4px 8px; text-shadow: 0 0 6px rgba(52,240,138,.4);
+}
+.live-menu button { color: #9fb6ab; }
+.live-menu button:hover { background: rgba(52,240,138,.12); color: var(--lcd); }
+.live-menu button.is-active { background: var(--lcd); color: #05130b; border-color: var(--lcd-dim); }
+/* inner sub-cards (Momentum / Timeline / Pool impact) → dark LCD cells */
+.live-detail > * , .live-detail article {
+  background: #0e1218 !important;
+  border: 1px solid #05130b !important;
+  color: #cfe3d8;
+  box-shadow: inset 0 0 0 1px rgba(52,240,138,.04) !important;
+}
+.live-detail .eyebrow, .live-detail h3, .live-detail h4 { color: var(--lcd-dim) !important; }
+
+/* =========================================================================
+   EARLY-P2P (NAPSTER / LIMEWIRE) PASS — in-server picks · data · chat · feeds
+   Pick boards read like a LimeWire transfer/results list; chat + commentary are
+   IRC/mIRC terminal panes; audit/data are dense mono tables.
+   ========================================================================= */
+
+/* ---- PICKS: bracket & fight-card boards → transfer/results list ---- */
+.match-card, .fight-bout {
+  border: 1px solid var(--bevel-lo) !important;
+  border-radius: 3px !important;
+  background: var(--field) !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--chrome-2) !important;
+  overflow: hidden;
+}
+.match-meta {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 3px 8px;
+  background: linear-gradient(180deg, #eef1f6, var(--chrome-2));
+  border-bottom: 1px solid var(--bevel-lo);
+}
+.fight-bout-slot { font-family: var(--ui); font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink); }
+.match-meta .match-status { font-family: var(--mono); font-size: 10.5px; color: var(--muted); text-transform: uppercase; }
+
+.team-row {
+  display: grid !important; grid-template-columns: 20px 1fr auto; align-items: center; gap: 8px;
+  width: 100%; padding: 4px 8px;
+  border: 0 !important; border-bottom: 1px solid var(--field-line) !important;
+  border-radius: 0 !important; box-shadow: none !important;
+  background: var(--field); color: var(--ink);
+  font-family: var(--mono); font-size: 12px; text-align: left;
+}
+.team-row:hover:not(:disabled) { background: color-mix(in srgb, var(--sel) 12%, #ffffff); }
+.team-row.is-picked { background: var(--sel) !important; color: #fff; }
+.team-row.is-picked .team-title, .team-row.is-picked .score { color: #fff; }
+.team-row:disabled { color: var(--muted); }
+.team-flag { font-size: 15px; line-height: 1; }
+.team-title { font-family: var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pick-side { display: inline-flex; align-items: center; gap: 6px; }
+.pick-chip {
+  font-family: var(--mono); font-size: 9.5px; padding: 0 4px; border-radius: 2px;
+  background: var(--field-alt); border: 1px solid var(--bevel-lo); color: var(--muted);
+}
+.team-row.is-picked .pick-chip { background: rgba(255,255,255,.22); color: #fff; border-color: rgba(255,255,255,.4); }
+.score { font-variant-numeric: tabular-nums; color: var(--muted); font-family: var(--mono); }
+
+/* method / round prop picks → segmented button cells */
+.prop-row {
+  display: grid !important; grid-template-columns: 58px 1fr; gap: 8px; align-items: center;
+  padding: 4px 8px; background: var(--field-alt); border-bottom: 1px solid var(--field-line);
+}
+.prop-label { font-family: var(--ui); font-size: 9.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.prop-options { display: flex; flex-wrap: wrap; gap: 3px; }
+.prop-option {
+  font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 2px;
+  border: 1px solid var(--bevel-lo); background: linear-gradient(180deg, #fff, #e6eaf2); color: var(--ink);
+}
+.prop-option:hover { border-color: var(--sel); }
+.prop-option.is-picked { background: var(--sel); color: #fff; border-color: var(--sel-deep); }
+
+/* ---- CHAT + COMMENTARY → IRC / mIRC terminal panes ---- */
+.chat-panel, .commentary-panel { background: var(--lcd-bg) !important; border: 1px solid var(--lcd-line) !important; box-shadow: inset 0 0 10px rgba(0,0,0,.5) !important; }
+.chat-panel .rail-header, .commentary-panel .rail-header { background: linear-gradient(180deg,#12161d,#0b0f14); border-color: #05130b; }
+.chat-panel .rail-header .eyebrow, .commentary-panel .rail-header .eyebrow { color: var(--lcd-dim); }
+.chat-panel .rail-header strong, .commentary-panel .rail-header strong { color: var(--lcd); }
+#chatFeed, .commentary-feed { font-family: var(--mono); font-size: 12px; padding: 6px 8px; line-height: 1.55; }
+.chat-message, .commentary-line { display: block; padding: 0; margin: 0 0 1px; background: transparent !important; border: 0 !important; box-shadow: none !important; color: #bfe0cf; }
+.chat-message time, .commentary-line time { color: var(--lcd-dim); font-family: var(--mono); font-size: 11px; margin-right: 5px; }
+.chat-message time::before, .commentary-line time::before { content: '['; }
+.chat-message time::after, .commentary-line time::after { content: ']'; }
+.chat-message strong { color: var(--lcd); font-weight: 700; margin-right: 5px; }
+.chat-message strong::before { content: '<'; }
+.chat-message strong::after { content: '>'; }
+.chat-message p, .commentary-line p { display: inline; margin: 0; color: #cfe3d8; }
+.commentary-line.is-goal p { color: var(--lcd); font-weight: 700; text-shadow: 0 0 6px rgba(52,240,138,.4); }
+.chat-form { border-top: 1px solid var(--lcd-line); background: #0b0f14; }
+.chat-form input { background: #04140b !important; color: var(--lcd) !important; border: 1px solid var(--lcd-line) !important; font-family: var(--mono); }
+.chat-form input::placeholder { color: var(--lcd-dim); }
+.commentary-panel .language-tabs button { background: #0e1218; color: var(--lcd-dim); border: 1px solid var(--lcd-line); font-family: var(--mono); border-radius: 2px; }
+.commentary-panel .language-tabs button.is-active { background: var(--lcd); color: #05130b; }
+
+/* ---- DATA: audit / stats → dense mono tables with gray headers ---- */
+.audit-drop { border: 1px solid var(--bevel-lo) !important; border-radius: 3px !important; box-shadow: none !important; overflow: hidden; background: var(--field); }
+.audit-drop summary { padding: 4px 8px; font-family: var(--ui); font-size: 11.5px; font-weight: 700; color: var(--ink); background: linear-gradient(180deg,#eef1f6,var(--chrome-2)); border-bottom: 1px solid transparent; cursor: pointer; }
+.audit-drop[open] summary { border-bottom-color: var(--bevel-lo); }
+.audit-body { font-family: var(--mono); font-size: 11.5px; padding: 8px; color: var(--ink); }
+.audit-heading { font-family: var(--ui); font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.integration-panel { font-family: var(--mono); font-size: 11.5px; }
+.integration-panel strong, .audit-body strong { font-variant-numeric: tabular-nums; }
+
+/* =========================================================================
+   STREET FIGHTER ARCADE THEME — combat fits (.fit-arcade). A VS-screen hero
+   injected by fit-loader from the fit's `arcade` block, + arcade flavor on the
+   fight-card picks. Only this fit opts in; the rest stay the P2P client.
+   ========================================================================= */
+
+/* the home hub becomes the arcade cabinet backdrop */
+.fit-arcade #home .live-command {
+  background: #08080c !important;
+  border: 2px solid #000 !important;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.05), inset 0 0 40px rgba(0,0,0,.85) !important;
+  padding: 10px !important;
+}
+.fit-arcade .live-scoreline { display: none !important; }   /* VS screen replaces it */
+
+/* ---- VS SCREEN ---- */
+.arcade-vs {
+  position: relative; isolation: isolate; overflow: hidden;
+  color: #fff; font-family: var(--ui);
+  border: 2px solid #000; border-radius: 4px;
+  background: linear-gradient(115deg, #240a0a 0 47%, #0a0a0a 47% 53%, #0a2010 53% 100%);
+}
+.arcade-vs::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(120% 80% at 50% 0%, rgba(255,255,255,.10), transparent 60%);
+}
+.av-scan {
+  position: absolute; inset: 0; z-index: 6; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.30) 0 1px, transparent 1px 3px);
+  mix-blend-mode: multiply;
+}
+.arcade-vs > *:not(.av-scan) { position: relative; z-index: 2; }
+
+.av-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 7px 12px; background: linear-gradient(180deg, #1a1a1f, #0c0c10); border-bottom: 2px solid #000;
+}
+.av-promo { font-weight: 900; letter-spacing: .12em; font-size: 11px; color: #ffd23c; text-shadow: 0 0 8px rgba(255,210,60,.5); }
+.av-meta { font-family: var(--mono); font-size: 10.5px; color: #b8b8c0; letter-spacing: .04em; }
+
+.av-stage { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; min-height: 250px; padding: 8px 4px 0; }
+.av-fighter { position: relative; display: flex; flex-direction: column; min-width: 0; }
+
+.av-health {
+  position: relative; height: 16px; margin: 2px 8px 0;
+  border: 2px solid #000; border-radius: 2px; background: #2a0000;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.15); overflow: hidden;
+}
+.av-health i { display: block; height: 100%; width: 100%; background: linear-gradient(180deg, #d7ff2e, #7bd11a 55%, #f5c518); box-shadow: inset 0 -3px 0 rgba(0,0,0,.25); }
+.av-hlabel { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; padding: 0 6px; font-family: var(--mono); font-size: 9px; font-weight: 700; color: #05130b; letter-spacing: .08em; }
+.av-blue .av-hlabel { justify-content: flex-end; }
+
+.av-figwrap { display: flex; align-items: flex-end; justify-content: center; height: 236px; overflow: hidden; }
+.av-portrait { height: 100%; width: 100%; object-fit: contain; object-position: bottom center; display: block; mix-blend-mode: screen; }
+.av-fig { height: 100%; width: auto; }
+
+.av-plate { padding: 4px 10px 12px; }
+.av-red .av-plate { text-align: left; }
+.av-blue .av-plate { text-align: right; }
+.av-nick { font-size: 10px; font-style: italic; color: #ffd23c; letter-spacing: .06em; text-transform: uppercase; }
+.av-name {
+  font-size: 26px; font-weight: 900; letter-spacing: .02em; line-height: 1; margin: 1px 0 2px;
+  color: #fff; text-transform: uppercase; transform: skewX(-5deg);
+  text-shadow: 2px 2px 0 #000, -1px -1px 0 var(--fc), 0 0 14px color-mix(in srgb, var(--fc) 70%, transparent);
+}
+.av-flag { margin-right: 6px; font-size: 18px; }
+.av-blue .av-flag { margin: 0 0 0 6px; }
+.av-rec { font-family: var(--mono); font-size: 9.5px; color: #a8a8b2; }
+
+.av-vs { position: relative; align-self: center; width: 92px; height: 92px; display: grid; place-items: center; margin: 0 -6px 42px; z-index: 4; }
+.av-vs::before {
+  content: ""; position: absolute; inset: -18px; z-index: -1;
+  background: repeating-conic-gradient(from 0deg, #ffd23c 0 9deg, transparent 9deg 18deg);
+  opacity: .5; border-radius: 50%;
+  -webkit-mask: radial-gradient(circle, #000 38%, transparent 62%); mask: radial-gradient(circle, #000 38%, transparent 62%);
+  animation: avspin 9s linear infinite;
+}
+.av-vs span {
+  font-size: 54px; font-weight: 900; font-style: italic; color: #fff; letter-spacing: -.04em; transform: skewX(-8deg);
+  text-shadow: 3px 3px 0 #b91c1c, -2px -2px 0 #16a34a, 0 0 18px rgba(255,255,255,.6);
+}
+@keyframes avspin { to { transform: rotate(360deg); } }
+
+.av-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; background: linear-gradient(180deg, #0c0c10, #050507); border-top: 2px solid #000; }
+.av-venue { font-family: var(--mono); font-size: 10px; color: #8a8a94; letter-spacing: .05em; }
+.av-fightbtn {
+  font-weight: 900; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; padding: 7px 16px; color: #1a0500; cursor: pointer;
+  background: linear-gradient(180deg, #ffe14d, #f5a623); border: 2px solid #000; border-radius: 3px;
+  box-shadow: 0 2px 0 #7a3d00, 0 0 14px rgba(245,166,35,.5); animation: avpulse 1.4s ease-in-out infinite;
+}
+.av-fightbtn:hover { filter: brightness(1.08); }
+@keyframes avpulse { 0%,100% { box-shadow: 0 2px 0 #7a3d00, 0 0 10px rgba(245,166,35,.4); } 50% { box-shadow: 0 2px 0 #7a3d00, 0 0 22px rgba(245,166,35,.85); } }
+
+/* the VS screen is the hero — drop the generic "Live cup hub" heading */
+.fit-arcade #home .home-titlebar { display: none; }
+
+/* ---- arcade flavor on the fight-card picks ---- */
+.fit-arcade .fight-bout-slot { color: #b8860b; }
+.fit-arcade .fight-bout .match-status { color: var(--server-accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .av-vs::before, .av-fightbtn { animation: none; }
+}
+
+/* ===========================================================================
+   OG COHESION — hard edges + Win9x/Winamp bevels, token-driven so BOTH modes
+   render consistently. Appended last so it wins over the accumulated rules.
+   =========================================================================== */
+
+/* 1 — everything square; only real dots/LEDs stay round */
+.app-shell, .app-shell *, .arcade-vs, .arcade-vs * { border-radius: 1px !important; }
+.win-btns i, .led, .party-dot, .peers .led, .wr-buttons button, .lb-state i,
+.reaction-layer * { border-radius: 50% !important; }
+
+/* 2 — desktop + window frame per mode */
+body { background: radial-gradient(120% 120% at 50% -10%, color-mix(in srgb, var(--desk) 78%, #fff 4%), var(--desk) 72%) !important; }
+.app-shell {
+  background: var(--chrome) !important;
+  border: 1px solid var(--frame) !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), 0 18px 55px rgba(0,0,0,.6) !important;
+}
+.titlebar { background: linear-gradient(180deg, color-mix(in srgb, var(--chrome) 70%, #000 6%), color-mix(in srgb, var(--chrome) 50%, #000 14%)) !important; border-bottom: 1px solid #000 !important; color: var(--ink) !important; }
+.titlebar .t, .titlebar .t small { color: var(--ink) !important; }
+html[data-mode="dark"] .titlebar .t, html[data-mode="dark"] .titlebar .t small { color: #e6e6ee !important; }
+
+/* 3 — RAISED beveled panels (surfaces) */
+.leader-panel, .commentary-panel, .chat-panel, .watch-party, .game-card, .integration-panel,
+.pool-card, .pool-pick, .mini-fixture, .game-scoreboard, .game-lobby, .match-card, .fight-bout,
+.audit-drop, .lobby-hero, .lobby-friend, .live-command, .rail-header, .entered-chip, .kit-card,
+.profile-chip, .watch-challenge-panel {
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--bevel-lo) !important;
+  color: var(--ink);
+}
+.live-detail > *, .live-detail article { background: var(--surface-2) !important; color: var(--ink) !important; border: 1px solid var(--line) !important; box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--bevel-lo) !important; }
+
+/* 4 — chrome bars */
+.topbar { background: var(--chrome) !important; border-bottom: 1px solid var(--bevel-lo) !important; box-shadow: inset 1px 1px 0 var(--bevel-hi) !important; }
+.statusbar { background: var(--chrome) !important; border-top: 1px solid var(--bevel-hi) !important; color: var(--muted) !important; }
+.statusbar .right, .statusbar .sep { color: var(--muted) !important; }
+
+/* 5 — RAISED beveled buttons; pressed = sunken */
+.primary-button, .secondary-button, .icon-button, .topnav button, .prop-option, .lobby-quick,
+.mini-game-tab, .live-menu button, .avatar-upload-btn, .avatar-clear-btn, .pool-pick-cta,
+.language-tabs button, .shell-close-btn, .theme-btn {
+  background: var(--surface-2) !important; color: var(--ink) !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--bevel-lo) !important;
+  font-family: var(--ui) !important; text-shadow: none !important;
+}
+.primary-button:active, .secondary-button:active, .topnav button:active, .prop-option:active,
+.live-menu button:active, .icon-button:active {
+  box-shadow: inset 1px 1px 0 var(--bevel-lo), inset -1px -1px 0 var(--bevel-hi) !important;
+}
+/* accent = primary action + active tab + selected prop */
+.primary-button, .topnav button.is-active, .live-menu button.is-active, .prop-option.is-picked,
+.lobby-quick, .avatar-upload-btn, .commentary-panel .language-tabs button.is-active {
+  background: var(--server-accent) !important; color: #07130d !important;
+  border-color: color-mix(in srgb, var(--server-accent) 55%, #000) !important;
+}
+.team-row.is-picked, .pool-pick.is-selected .pool-pick-cta {
+  background: var(--sel) !important; color: #fff !important;
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,.25), inset -1px -1px 0 rgba(0,0,0,.35) !important;
+}
+.team-row.is-picked .team-title, .team-row.is-picked .score, .team-row.is-picked em { color: #fff !important; }
+
+/* 6 — SUNKEN fields + list wells */
+input, select, textarea, .leader-list, .lv-wrap {
+  background: var(--field) !important; color: var(--ink) !important;
+  border: 1px solid var(--bevel-lo) !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-lo), inset -1px -1px 0 var(--bevel-hi) !important;
+}
+input::placeholder, textarea::placeholder { color: var(--muted) !important; }
+
+/* 7 — text colors follow the mode */
+h1, h2, h3, h4, strong, .brand span, .chip-name, .team-title, .stake, .pool-pick-fee,
+.leader-row strong, .fixture-time + strong, .rail-header strong, .fight-bout-slot {
+  color: var(--ink) !important;
+}
+.eyebrow, .chip-team, small, .rail-header .eyebrow, .pool-badge, .match-status,
+.leader-row span, .fixture-time, .pool-meta span, .stake span, .over-rec { color: var(--muted) !important; }
+.screens, .home-main, .activity-rail, .watch-layout, .games-layout, .bracket-step { color: var(--ink); }
+
+/* 8 — table rows adapt */
+.leader-row { border-color: var(--field-line) !important; }
+.leader-row:nth-child(even) { background: var(--field-alt) !important; }
+.leader-row em { color: var(--server-accent) !important; }
+
+/* 9 — CHAT + COMMENTARY become mode-tokenized panes (terminal in dark, Napster in light) */
+.chat-panel, .commentary-panel { background: var(--field) !important; box-shadow: inset 1px 1px 0 var(--bevel-lo), inset -1px -1px 0 var(--bevel-hi) !important; }
+.chat-panel .rail-header, .commentary-panel .rail-header { background: var(--surface-2) !important; border-color: var(--line) !important; }
+.chat-panel .rail-header strong, .commentary-panel .rail-header strong { color: var(--ink) !important; }
+#chatFeed, .commentary-feed, .chat-message p, .commentary-line p { color: var(--ink) !important; }
+.chat-message strong { color: var(--server-accent) !important; }
+.chat-message time, .commentary-line time { color: var(--muted) !important; }
+.commentary-line.is-goal p { color: var(--server-accent) !important; }
+.chat-form { background: var(--surface-2) !important; border-top: 1px solid var(--line) !important; }
+.chat-form input { background: var(--field) !important; color: var(--ink) !important; }
+.commentary-panel .language-tabs button { background: var(--surface-2) !important; color: var(--muted) !important; }
+
+/* 10 — LCD DISPLAYS stay dark-green in BOTH modes (real screens) */
+.wallet-chip { background: var(--lcd-bg) !important; color: var(--lcd) !important; border: 1px solid var(--lcd-line) !important; box-shadow: inset 0 0 8px rgba(0,0,0,.6) !important; }
+.lcd-strip { background: var(--lcd-bg) !important; border-bottom: 1px solid #000 !important; }
+.signal-panel { background: var(--lcd-bg) !important; color: var(--lcd) !important; border: 1px solid var(--lcd-line) !important; box-shadow: inset 0 0 8px rgba(0,0,0,.6) !important; }
+.signal-panel .rail-header { background: transparent !important; box-shadow: none !important; }
+.signal-panel .rail-header strong { color: var(--lcd) !important; }
+.stats-strip { background: var(--lcd-bg) !important; border: 1px solid var(--lcd-line) !important; }
+.scorebug, #tvClock, #tvScore { background: var(--lcd-bg) !important; color: var(--lcd) !important; border: 1px solid var(--lcd-line) !important; }
+.stadium-tv { background: #0a0e0a !important; }  /* the broadcast is a screen */
+
+/* 11 — mode toggle button in the titlebar */
+.mode-toggle {
+  margin-left: 6px; width: 22px; height: 18px; padding: 0; cursor: pointer;
+  display: inline-grid; place-items: center; font-size: 11px; line-height: 1;
+  background: var(--surface-2); color: var(--ink);
+  border: 1px solid var(--line);
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--bevel-lo);
+}
+.mode-toggle:active { box-shadow: inset 1px 1px 0 var(--bevel-lo), inset -1px -1px 0 var(--bevel-hi); }
+
+/* the arcade VS screen stays a dark broadcast monitor in both modes (intentional) */
+.fit-arcade #home .live-command { background: #08080c !important; box-shadow: inset 1px 1px 0 #2a2a30, inset -1px -1px 0 #000 !important; }
+
+/* ===========================================================================
+   HD WIDGETS + NO-GRADIENT BUTTONS + DARK-MODE CONTRAST
+   =========================================================================== */
+
+/* Winamp spectrum widget = a black LCD screen (both modes) */
+.momentum-viz { padding: 0 !important; background: #05130b !important; border: 1px solid var(--lcd-line) !important; box-shadow: inset 0 0 10px rgba(0,0,0,.7) !important; overflow: hidden; }
+.winamp-viz { display: block; width: 100%; height: auto; image-rendering: pixelated; background: #05130b; }
+
+/* 1 — flatten EVERY button/bar gradient to a solid pixel fill */
+.primary-button, .secondary-button, .icon-button, .topnav button, .prop-option, .lobby-quick,
+.mini-game-tab, .live-menu button, .avatar-upload-btn, .avatar-clear-btn, .pool-pick-cta,
+.language-tabs button, .shell-close-btn, .wbtn, .tbtn, .set-input, .audit-drop summary,
+.rail-header, .titlebar, .topbar, .statusbar, .chat-form, .pool-badge, .lobby-hero, .lobby-friend,
+.chat-panel .rail-header, .commentary-panel .rail-header, .av-health i, .av-fightbtn, .brand-mark {
+  background-image: none !important;
+}
+.av-fightbtn { background: #f5c518 !important; color: #1a0500 !important; border: 1px solid #7a3d00 !important; box-shadow: inset 1px 1px 0 #ffe98a, inset -1px -1px 0 #7a3d00 !important; }
+.av-health i { background: #2ee06a !important; }
+.brand-mark { background: var(--server-accent) !important; }
+
+/* 2 — dark-mode contrast: buttons a step lighter than the chrome, bright ink */
+html[data-mode="dark"] .primary-button, html[data-mode="dark"] .secondary-button,
+html[data-mode="dark"] .icon-button, html[data-mode="dark"] .topnav button,
+html[data-mode="dark"] .prop-option, html[data-mode="dark"] .mini-game-tab,
+html[data-mode="dark"] .wbtn, html[data-mode="dark"] .tbtn, html[data-mode="dark"] .audit-drop summary,
+html[data-mode="dark"] .avatar-upload-btn, html[data-mode="dark"] .avatar-clear-btn,
+html[data-mode="dark"] .language-tabs button, html[data-mode="dark"] .set-input {
+  background: #30303a !important; color: #e9e9f1 !important; border-color: #48485400 !important;
+  border: 1px solid #050508 !important;
+}
+html[data-mode="dark"] h1, html[data-mode="dark"] h2, html[data-mode="dark"] h3,
+html[data-mode="dark"] strong, html[data-mode="dark"] .team-title, html[data-mode="dark"] .chip-name { color: #f1f1f7 !important; }
+html[data-mode="dark"] .eyebrow, html[data-mode="dark"] small, html[data-mode="dark"] .chip-team,
+html[data-mode="dark"] .leader-row span, html[data-mode="dark"] .pool-meta span { color: #9a9aa6 !important; }
+/* keep accent/selected buttons colored (they already override background) */
+html[data-mode="dark"] .primary-button, html[data-mode="dark"] .topnav button.is-active,
+html[data-mode="dark"] .live-menu button.is-active, html[data-mode="dark"] .prop-option.is-picked {
+  background: var(--server-accent) !important; color: #07130d !important;
+}
+
+/* 3 — pool cards readable + decluttered in both modes */
+.pool-card, .pool-pick { color: var(--ink) !important; }
+.pool-meta strong, .pool-pick-fee, .stake, .stake strong { color: var(--ink) !important; }
+.pool-meta span, .stake span, .pool-meta { color: var(--muted) !important; }
+.rail-chip { background: var(--field-alt) !important; color: var(--muted) !important; border: 1px solid var(--line) !important; box-shadow: none !important; text-transform: uppercase; letter-spacing: .04em; font-size: 9.5px; }
+.rail-chip.is-locked { color: var(--muted) !important; }
+.pool-footer .avatar-stack, .avatar-stack { display: none !important; }
+
+/* kill the pink→purple→blue gradient stripe on pool cards → thin solid accent */
+.pool-card::before { background: var(--server-accent) !important; height: 2px !important; }
+.pool-card, .pool-pick { background: var(--surface) !important; }
+
+/* ===========================================================================
+   WATCH: fight broadcast (arcade) + tidy the seated avatars
+   =========================================================================== */
+.fit-arcade #watch #tvPitch { display: none !important; }
+.fit-arcade #watch #tvLiveBoard { display: none !important; }   /* soccer matchup board */
+.fit-arcade #watch .stadium-tv { min-height: 300px; }           /* don't collapse when the pitch is hidden */
+.tv-fight {
+  position: absolute; inset: 0; z-index: 2; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end;
+  background: linear-gradient(115deg, #1a0808 0 47%, #050505 47% 53%, #08160c 53% 100%); overflow: hidden;
+}
+.tv-fight::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.28) 0 1px, transparent 1px 3px); z-index: 4; }
+.tvf-fighter { height: 100%; display: flex; align-items: flex-end; overflow: hidden; }
+.tvf-red { background: radial-gradient(120% 90% at 40% 20%, #2a0a0a, #060606 75%); }
+.tvf-blue { background: radial-gradient(120% 90% at 60% 20%, #0a2010, #060606 75%); }
+.tvf-fighter img { height: 100%; width: 100%; object-fit: contain; object-position: bottom center; display: block; }
+.tvf-center { z-index: 3; align-self: center; display: grid; place-items: center; gap: 8px; }
+.tvf-live { font-family: var(--mono); color: var(--live); font-size: 13px; text-shadow: 0 0 6px rgba(255,77,77,.5); }
+.tvf-vs { font-family: var(--arcade); font-size: 24px; color: #fff; text-shadow: 2px 2px 0 #b91c1c, -2px -2px 0 #16a34a, 0 0 14px rgba(255,255,255,.5); }
+.tvf-tale { font-family: var(--arcade); font-size: 7px; color: #ffd23c; }
+.fit-arcade #watch .scorebug { z-index: 5 !important; }
+.fit-arcade #watch .reaction-layer { z-index: 6 !important; }
+
+/* seated watch-party avatars → tidy bordered roster (no float, no bob) */
+.watch-party {
+  background: var(--surface) !important; border: 1px solid var(--line) !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--bevel-lo) !important;
+  padding: 10px; margin-top: 12px;
+}
+.party-label { margin: 0 0 8px; padding: 0 2px; font-size: 13px; color: var(--ink) !important; }
+.party-dot { box-shadow: none !important; }
+.couches { display: flex !important; flex-wrap: wrap; gap: 10px; margin: 0 !important; }
+.couch-group {
+  flex: 1 1 200px; min-width: 160px; padding: 8px;
+  background: var(--surface-2) !important; border: 1px solid var(--line) !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--bevel-lo) !important;
+}
+.couch-team { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.couch-team .score-flag { width: 22px; height: 22px; font-size: 14px; box-shadow: none; }
+.couch-team strong { font-size: 12px; }
+.couch-team span:last-child { margin-left: auto; font-size: 11px; color: var(--muted); }
+.couch-scene { position: static !important; display: block !important; padding: 0 !important; }
+.couch-img { display: none !important; }
+.couch-seated {
+  position: static !important; bottom: auto !important; left: auto !important; right: auto !important;
+  padding: 0 !important; pointer-events: auto !important; z-index: auto !important;
+  display: flex !important; flex-wrap: wrap; gap: 6px;
+}
+.seated {
+  position: static !important; animation: none !important; margin: 0 !important;
+  display: inline-flex !important; flex-direction: column; align-items: center;
+  gap: 2px; width: 40px; padding: 2px; text-align: center;
+}
+.seated .seated-av { width: 28px; height: 28px; }
+.seated .seated-av svg, .seated .seated-av .avatar-art { filter: none !important; }
+.seated em {
+  display: block; margin-top: 0 !important; font-style: normal; font-size: 9px;
+  color: var(--ink) !important; background: transparent !important;
+  border: 1px solid var(--line); border-radius: 2px !important; box-shadow: none !important;
+  padding: 1px 4px; max-width: 40px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.watch-reactions {
+  display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 6px 10px;
+  background: var(--surface-2) !important; border: 1px solid var(--line) !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--bevel-lo) !important;
+}
+.wr-buttons button {
+  background: var(--surface-2) !important; border: 1px solid var(--line) !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--bevel-lo) !important;
+}
+
+/* ===========================================================================
+   MS PAINT / WIN98 PROGRAM CHROME — menu bar + color palette (our colors)
+   =========================================================================== */
+.menubar {
+  display: flex; gap: 1px; padding: 2px 5px;
+  background: var(--chrome) !important;
+  border-bottom: 1px solid var(--bevel-lo) !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-hi) !important;
+  font-family: var(--ui); font-size: 13px; user-select: none;
+}
+.menubar span { padding: 2px 9px 3px; color: var(--ink) !important; cursor: default; line-height: 1; }
+.menubar span:hover { background: var(--sel); color: #fff !important; }
+.menubar span::first-letter { text-decoration: underline; }  /* Win9x accelerator */
+
+.og-palette {
+  display: inline-flex; margin-right: 8px; padding: 1px;
+  background: var(--field);
+  box-shadow: inset 1px 1px 0 var(--bevel-lo), inset -1px -1px 0 var(--bevel-hi);
+}
+.og-palette i { width: 8px; height: 11px; display: block; box-shadow: inset -1px -1px 0 rgba(0,0,0,.45); }
+
+/* the toolbar (nav) reads as a Win98 button bar */
+.topbar { padding: 3px 6px !important; gap: 4px !important; }
+.topnav { gap: 2px !important; }
+.topnav button { padding: 3px 12px 4px !important; }
+.mode-toggle { image-rendering: pixelated; }
+
+/* one bevel language: every interactive control raised, pressed = sunken */
+.screens button:active, .toolbar button:active, .wr-buttons button:active,
+.chat-form button:active, .room-controls button:active { box-shadow: inset 1px 1px 0 var(--bevel-lo), inset -1px -1px 0 var(--bevel-hi) !important; }

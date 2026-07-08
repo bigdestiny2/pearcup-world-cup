@@ -21,6 +21,13 @@
   const Net = root.PearCupPeerNet
   if (!Net) { markModule('missing-peer-net'); console.warn('PearCupPeerNet missing — peer match disabled'); return }
 
+  const Core = root.PearCupCore
+  if (!Core) { markModule('missing-core'); console.warn('PearCupCore missing — peer match disabled'); return }
+
+  const Qvac = (root.PearCupAdapters && root.PearCupAdapters.createDemoQvacAdapter)
+    ? root.PearCupAdapters.createDemoQvacAdapter({ refereeId: 'qvac-mini-game-ref' })
+    : null
+
   const TOTAL = 5 // rounds (each player takes 5, keeps 5)
   const PREDICTION_ROUNDS = 3
   const TRIVIA_ROUNDS = 3
@@ -48,6 +55,9 @@
     predictionRevealed: { you: false, opp: false },
     predictionCorrect: null,
     predictionOver: false,
+    predictionEvent: null,        // event snapshot used to derive outcomes
+    predictionEventNonce: null,   // host nonce for the event snapshot
+    predictionEventReceived: false,
     // Trivia duel state
     triviaRound: 0,
     triviaScore: { you: 0, opp: 0 },
@@ -57,6 +67,11 @@
     triviaRemoteNonce: null,
     triviaRevealed: { you: false, opp: false },
     triviaOver: false,
+    triviaVerifiedBank: null,     // QVAC-bound question bank
+    triviaBankHash: null,
+    triviaOriginalBankHash: null,
+    triviaBankReceived: false,
+    triviaBankAttestation: null,
     // Free-kick duel state
     fkRound: 0,
     fkScore: { you: 0, opp: 0 },
@@ -96,7 +111,12 @@
     hrRevealed: { you: false, opp: false },
     hrResolved: null,
     hrBusy: false,
-    hrOver: false
+    hrOver: false,
+    // QVAC settlement evidence
+    qvacAttestations: {},
+    forfeitTimer: null,
+    forfeitMs: 30000,
+    connectTimeout: null
   }
 
   const $ = sel => document.querySelector(sel)
@@ -121,6 +141,7 @@
 
   function reset () {
     stopAnnouncing()
+    clearForfeitTimer()
     if (PM.channel) { try { PM.channel.close() } catch (e) {} }
     Object.assign(PM, {
       active: false, started: false, over: false, channel: null, code: null,
@@ -137,6 +158,9 @@
       predictionRevealed: { you: false, opp: false },
       predictionCorrect: null,
       predictionOver: false,
+      predictionEvent: null,
+      predictionEventNonce: null,
+      predictionEventReceived: false,
       triviaRound: 0,
       triviaScore: { you: 0, opp: 0 },
       triviaAnswers: { you: null, opp: null },
@@ -145,6 +169,11 @@
       triviaRemoteNonce: null,
       triviaRevealed: { you: false, opp: false },
       triviaOver: false,
+      triviaVerifiedBank: null,
+      triviaBankHash: null,
+      triviaOriginalBankHash: null,
+      triviaBankReceived: false,
+      triviaBankAttestation: null,
       fkRound: 0,
       fkScore: { you: 0, opp: 0 },
       fkCommit: null,
@@ -180,7 +209,10 @@
       hrRevealed: { you: false, opp: false },
       hrResolved: null,
       hrBusy: false,
-      hrOver: false
+      hrOver: false,
+      qvacAttestations: {},
+      forfeitTimer: null,
+      connectTimeout: null
     })
     syncDiagnostics('idle')
   }
@@ -188,6 +220,257 @@
   function shooterRoleForKick (k) { return k % 2 === 0 ? 'A' : 'B' } // A shoots first each round
   function iAmShooter () { return shooterRoleForKick(PM.kIndex) === PM.role }
   function roundOf (k) { return Math.floor(k / 2) }
+
+  function playerObj (p) { return p ? { id: p.peerId, name: p.name, team: p.team } : null }
+  function gameIdFor () { return `pearcup-${PM.gameType}-${PM.code}` }
+  function roundIdForGame (gameType, roundIndex) {
+    if (gameType === 'penalty-clash') return `pc-${roundIndex + 1}`
+    if (gameType === 'free-kick-duel') return `fk-${roundIndex + 1}`
+    if (gameType === 'buzzer-beater-duel') return `bb-${roundIndex + 1}`
+    if (gameType === 'prediction-duel') return `pd-${roundIndex + 1}`
+    if (gameType === 'trivia-duel') return `td-${roundIndex + 1}`
+    return `mg-${roundIndex + 1}`
+  }
+
+  function currentFitId () {
+    return root.CURRENT_FIT_ID || 'world-cup'
+  }
+
+  function predictionOptions () {
+    const cfg = root.ULTIMATE_FIT_CONFIG || {}
+    return Array.isArray(cfg.predictionOptions) && cfg.predictionOptions.length
+      ? cfg.predictionOptions
+      : ['Home win', 'Away win', 'Draw', 'Over 2.5 goals', 'Under 2.5 goals', 'Penalty shootout']
+  }
+
+  function currentFixtureSnapshot () {
+    const fixtures = root.homeFixtures && Array.isArray(root.homeFixtures) ? root.homeFixtures : []
+    const fx = fixtures[0] || root.ULTIMATE_FIT_CONFIG && root.ULTIMATE_FIT_CONFIG.currentFixture || null
+    if (!fx) return null
+    return {
+      title: fx.title || fx.name || 'Featured match',
+      status: fx.status || fx.state || 'upcoming',
+      slots: fx.slots || [],
+      score: fx.score || [null, null],
+      live: Boolean(fx.live),
+      recordedAt: new Date().toISOString()
+    }
+  }
+
+  function derivePredictionOutcome (snapshot, roundIndex, options) {
+    const base = Core.deterministicHash({ snapshot, roundIndex, options })
+    const idx = Math.abs(parseInt(base.slice(2), 16)) % options.length
+    return options[idx]
+  }
+
+  function buildVerifiedTriviaBank () {
+    const bank = root.ULTIMATE_TRIVIA_BANK && root.ULTIMATE_TRIVIA_BANK[currentFitId()]
+      ? root.ULTIMATE_TRIVIA_BANK[currentFitId()]
+      : (root.ULTIMATE_TRIVIA_BANK && root.ULTIMATE_TRIVIA_BANK['world-cup']) || []
+    return bank.slice(0, TRIVIA_ROUNDS).map((q, i) => ({
+      id: q.id || `${currentFitId()}-${i + 1}`,
+      question: q.question,
+      options: Array.isArray(q.options) ? q.options.slice(0, 4) : ['A', 'B', 'C', 'D'],
+      answer: q.answer
+    }))
+  }
+
+  function attestTriviaBank (verifiedBank, bankHash) {
+    try {
+      const gameId = gameIdFor()
+      const roundId = `${gameId}-bank`
+      const a = playerObj(playerA())
+      const b = playerObj(playerB())
+      const shooterCommitment = Core.createCommitment({ gameId, roundId, playerId: a.id, input: { bankHash, fitId: currentFitId() }, nonce: 'bank-shooter' })
+      const keeperCommitment = Core.createCommitment({ gameId, roundId, playerId: b.id, input: { bankHash, fitId: currentFitId() }, nonce: 'bank-keeper' })
+      const sourceEventIds = [
+        Core.deterministicHash({ type: 'TriviaBankDistributed', gameId, bankHash, fitId: currentFitId() }),
+        Core.deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: a.id, commitment: shooterCommitment }),
+        Core.deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: b.id, commitment: keeperCommitment }),
+        Core.deterministicHash({ type: 'GameInputRevealed', roundId, playerId: a.id, input: { bankHash, fitId: currentFitId() } }),
+        Core.deterministicHash({ type: 'GameInputRevealed', roundId, playerId: b.id, input: { bankHash, fitId: currentFitId() } })
+      ]
+      const roundResult = {
+        gameId,
+        roundId,
+        resolverVersion: 'trivia-duel-bank-v1',
+        shooter: a,
+        keeper: b,
+        shooterInput: { bankHash, fitId: currentFitId() },
+        keeperInput: { bankHash, fitId: currentFitId() },
+        shooterCommitment,
+        keeperCommitment,
+        shooterNonce: 'bank-shooter',
+        keeperNonce: 'bank-keeper',
+        outcome: 'verified',
+        stateHash: Core.deterministicHash({ bank: verifiedBank, bankHash, fitId: currentFitId() }),
+        sourceEventIds
+      }
+      const attestation = Core.createQvacRefereeAttestation({ roundResult, refereeId: Qvac ? Qvac.id : 'qvac-mini-game-ref' })
+      PM.triviaBankAttestation = attestation
+      if (Qvac) PM.qvacAttestations['bank'] = attestation
+    } catch (e) {
+      console.warn('QVAC trivia bank attestation failed', e && e.message)
+    }
+  }
+
+  function playerA () {
+    if (!PM.self || !PM.opp) return null
+    return PM.role === 'A' ? PM.self : PM.opp
+  }
+  function playerB () {
+    if (!PM.self || !PM.opp) return null
+    return PM.role === 'B' ? PM.self : PM.opp
+  }
+  function powerToBand (power) {
+    const p = Number(power) || 0
+    if (p < 25) return 1
+    if (p < 50) return 2
+    if (p < 75) return 3
+    return 4
+  }
+  function curveToBand (curve) {
+    const c = Number(curve) || 0
+    if (c <= -2) return -2
+    if (c < 0) return -1
+    if (c === 0) return 0
+    if (c > 2) return 2
+    return 1
+  }
+
+  function clearForfeitTimer () {
+    if (!PM.forfeitTimer) return
+    if (typeof root.clearTimeout === 'function') root.clearTimeout(PM.forfeitTimer)
+    PM.forfeitTimer = null
+  }
+  function startForfeitTimer (silentPeerId) {
+    clearForfeitTimer()
+    if (!PM.active || !PM.started || PM.over || !silentPeerId) return
+    PM.forfeitTimer = root.setTimeout(() => { forfeitRound(silentPeerId) }, PM.forfeitMs)
+  }
+
+  function getCurrentScores () {
+    if (PM.gameType === 'free-kick-duel') return { ...PM.fkScore }
+    if (PM.gameType === 'buzzer-beater-duel') return { ...PM.bbScore }
+    if (PM.gameType === 'ace-serve-duel') return { ...PM.asScore }
+    if (PM.gameType === 'home-run-derby') return { ...PM.hrScore }
+    if (PM.gameType === 'prediction-duel') return { ...PM.predictionScore }
+    if (PM.gameType === 'trivia-duel') return { ...PM.triviaScore }
+    const so = state.shootout || { you: 0, opp: 0 }
+    return { you: so.you, opp: so.opp }
+  }
+
+  function finishMatch () {
+    if (!PM.over || PM.role !== 'A') return
+    if (typeof root.postSettlementReceipt !== 'function') return
+    const scores = getCurrentScores()
+    const winner = scores.you > scores.opp ? 'you' : scores.opp > scores.you ? 'opp' : null
+    root.postSettlementReceipt({
+      gameType: PM.gameType,
+      you: 'you',
+      scores,
+      winner,
+      settledAt: new Date().toISOString(),
+      qvacAttestations: Object.values(PM.qvacAttestations)
+    })
+  }
+
+  async function forfeitRound (silentPeerId) {
+    if (!PM.active || !PM.started || PM.over || !PM.opp) return
+    const winnerPeer = PM.self.peerId === silentPeerId ? PM.opp : PM.self
+    const winnerUserId = winnerPeer.peerId
+    const roundIndex = roundOf(PM.kIndex)
+    const roundId = roundIdForGame(PM.gameType, roundIndex)
+    const gameId = gameIdFor()
+    const me = playerObj(PM.self)
+    const opp = playerObj(PM.opp)
+    const shooter = iAmShooter() ? me : opp
+    const keeper = iAmShooter() ? opp : me
+
+    if (PM.gameType === 'penalty-clash') {
+      const roundResult = Core.createPenaltyClashForfeitRound({
+        gameId,
+        roundIndex,
+        roundId,
+        shooter,
+        keeper,
+        forfeitingPlayerId: silentPeerId,
+        winnerUserId,
+        claimantUserId: winnerUserId,
+        reason: 'disconnect-timeout',
+        sourceEventIds: [Core.deterministicHash({ type: 'GameRoundForfeitRecorded', gameId, roundId, forfeitingPlayerId: silentPeerId, winnerUserId, reason: 'disconnect-timeout' })]
+      })
+      if (Qvac) PM.qvacAttestations[roundId] = await Qvac.attestRound({ roundResult })
+      if (winnerUserId === PM.self.peerId) state.shootout.you += 1
+      else state.shootout.opp += 1
+      PM.over = true
+      syncDiagnostics('over')
+      finishMatch()
+      return
+    }
+
+    // Prediction / trivia forfeit: award the match to the remaining player.
+    if (PM.gameType === 'prediction-duel' || PM.gameType === 'trivia-duel') {
+      const scoreField = PM.gameType === 'prediction-duel' ? 'predictionScore' : 'triviaScore'
+      const overField = PM.gameType === 'prediction-duel' ? 'predictionOver' : 'triviaOver'
+      PM[scoreField].you = winnerUserId === PM.self.peerId ? 99 : 0
+      PM[scoreField].opp = winnerUserId === PM.self.peerId ? 0 : 99
+      PM[overField] = true
+      PM.over = true
+      syncDiagnostics('over')
+      finishMatch()
+      return
+    }
+
+    // Generic forfeit round for commit/reveal duels (free-kick, buzzer-beater, etc.)
+    const resolverVersion = PM.gameType === 'free-kick-duel' ? 'free-kick-duel-v1'
+      : PM.gameType === 'buzzer-beater-duel' ? 'buzzer-beater-duel-v1'
+      : `${PM.gameType}-v1`
+    const roundResult = {
+      gameId,
+      roundId,
+      resolverVersion,
+      shooter,
+      keeper,
+      outcome: 'forfeit',
+      outcomeLabel: 'Forfeit',
+      winnerUserId,
+      forfeitingPlayerId: silentPeerId,
+      claimantUserId: winnerUserId,
+      stateHash: Core.deterministicHash({
+        resolverVersion,
+        gameId,
+        roundId,
+        outcome: 'forfeit',
+        forfeitingPlayerId: silentPeerId,
+        winnerUserId,
+        claimantUserId: winnerUserId
+      }),
+      sourceEventIds: [Core.deterministicHash({ type: 'GameRoundForfeitRecorded', gameId, roundId, forfeitingPlayerId: silentPeerId, winnerUserId, reason: 'disconnect-timeout' })]
+    }
+    if (Qvac) PM.qvacAttestations[roundId] = await Qvac.attestRound({ roundResult })
+
+    if (PM.gameType === 'free-kick-duel') {
+      PM.fkScore.you = winnerUserId === PM.self.peerId ? 99 : 0
+      PM.fkScore.opp = winnerUserId === PM.self.peerId ? 0 : 99
+      PM.fkOver = true
+    } else if (PM.gameType === 'buzzer-beater-duel') {
+      PM.bbScore.you = winnerUserId === PM.self.peerId ? 99 : 0
+      PM.bbScore.opp = winnerUserId === PM.self.peerId ? 0 : 99
+      PM.bbOver = true
+    } else if (PM.gameType === 'ace-serve-duel') {
+      PM.asScore.you = winnerUserId === PM.self.peerId ? 99 : 0
+      PM.asScore.opp = winnerUserId === PM.self.peerId ? 0 : 99
+      PM.asOver = true
+    } else if (PM.gameType === 'home-run-derby') {
+      PM.hrScore.you = winnerUserId === PM.self.peerId ? 99 : 0
+      PM.hrScore.opp = winnerUserId === PM.self.peerId ? 0 : 99
+      PM.hrOver = true
+    }
+    PM.over = true
+    syncDiagnostics('over')
+    finishMatch()
+  }
 
   // ---- lifecycle ----
   function host (code, silent, gameType) {
@@ -202,6 +485,7 @@
     if (!silent) { showToast('Room created — invite your friend'); renderInvite() }
     else showToast('Challenge sent — waiting for them to accept…')
     startAnnouncing()
+    return PM.code
   }
 
   function join (code, gameType) {
@@ -280,14 +564,17 @@
 
   function onMessage (msg) {
     if (!msg || msg.room !== PM.code || msg.sender === PM.self.peerId) return
+    clearForfeitTimer()
     switch (msg.t) {
       case 'hello': return onHello(msg.peer, msg.cred, msg.gameType)
       case 'challenge': return onChallenge(msg)
       case 'commit': return onCommit(msg)
       case 'dive': return onDive(msg)
       case 'reveal': return onReveal(msg)
+      case 'prediction-event': return onPredictionEvent(msg)
       case 'prediction-commit': return onPredictionCommit(msg)
       case 'prediction-reveal': return onPredictionReveal(msg)
+      case 'trivia-bank': return onTriviaBank(msg)
       case 'trivia-commit': return onTriviaCommit(msg)
       case 'trivia-reveal': return onTriviaReveal(msg)
       case 'fk-commit': return onFreeKickCommit(msg)
@@ -362,6 +649,15 @@
       PM.triviaRemoteNonce = null
       PM.triviaRevealed = { you: false, opp: false }
       PM.triviaOver = false
+      const verifiedBank = buildVerifiedTriviaBank()
+      PM.triviaVerifiedBank = verifiedBank
+      PM.triviaBankHash = Core.deterministicHash(verifiedBank)
+      PM.triviaOriginalBankHash = PM.triviaBankHash
+      PM.triviaBankReceived = true
+      attestTriviaBank(verifiedBank, PM.triviaBankHash)
+      if (PM.role === 'A') {
+        send({ t: 'trivia-bank', bank: verifiedBank, bankHash: PM.triviaBankHash, fitId: currentFitId() })
+      }
       closeModal()
       showToast(`Connected to ${PM.opp.name} — trivia duel!`)
       setView('games')
@@ -379,6 +675,14 @@
       PM.predictionRevealed = { you: false, opp: false }
       PM.predictionCorrect = null
       PM.predictionOver = false
+      const eventSnapshot = currentFixtureSnapshot()
+      const eventNonce = Net.newNonce()
+      PM.predictionEvent = eventSnapshot
+      PM.predictionEventNonce = eventNonce
+      PM.predictionEventReceived = true
+      if (PM.role === 'A' && eventSnapshot) {
+        send({ t: 'prediction-event', snapshot: eventSnapshot, nonce: eventNonce })
+      }
       closeModal()
       showToast(`Connected to ${PM.opp.name} — predict the outcome!`)
       setView('games')
@@ -573,6 +877,7 @@
       hideAimGrid(); stopPowerMeter()
       showShootBanner('Struck! keeper diving…', 'is-stop')
       send({ t: 'commit', kickId: PM.kIndex, hash: Net.commitHash(zone, nonce) })
+      startForfeitTimer(PM.opp && PM.opp.peerId)
     } else {
       if (!PM.remoteCommit) return
       PM.myDive = zone
@@ -580,6 +885,7 @@
       hideAimGrid()
       showShootBanner('Dive called…', 'is-stop')
       send({ t: 'dive', kickId: PM.kIndex, zone })
+      startForfeitTimer(PM.opp && PM.opp.peerId)
     }
   }
 
@@ -608,14 +914,25 @@
   }
 
   // ---- Prediction duel: commit/reveal peer-vs-peer ----
+  function onPredictionEvent (msg) {
+    if (!PM.active || !PM.started || PM.gameType !== 'prediction-duel') return
+    if (PM.role !== 'B' || PM.predictionEventReceived) return
+    PM.predictionEvent = msg.snapshot || null
+    PM.predictionEventNonce = msg.nonce || null
+    PM.predictionEventReceived = true
+    renderGames()
+  }
+
   function onPredictionCommit (msg) {
     if (!PM.active || !PM.started || PM.gameType !== 'prediction-duel') return
+    if (msg.round !== PM.predictionRound) return
     PM.predictionRemoteCommit = msg.hash
     renderGames()
   }
 
   function onPredictionReveal (msg) {
     if (!PM.active || !PM.started || PM.gameType !== 'prediction-duel') return
+    if (msg.round !== PM.predictionRound) return
     if (PM.predictionRemoteCommit && Net.commitHash(msg.choice, msg.nonce) !== PM.predictionRemoteCommit) {
       showToast('⚠ Opponent prediction mismatch — round voided')
       return
@@ -630,10 +947,12 @@
   function predictionPick (choice) {
     if (!PM.active || !PM.started || PM.gameType !== 'prediction-duel' || PM.predictionOver) return
     if (PM.predictionChoices.you != null) return
+    if (!PM.predictionEventReceived) return
     const nonce = Net.newNonce()
     PM.predictionChoices.you = choice
     PM.predictionCommit = { choice, nonce }
     send({ t: 'prediction-commit', round: PM.predictionRound, hash: Net.commitHash(choice, nonce) })
+    startForfeitTimer(PM.opp && PM.opp.peerId)
     renderGames()
   }
 
@@ -646,36 +965,87 @@
     else renderGames()
   }
 
-  function predictionEntropy (localChoice, localNonce, remoteChoice, remoteNonce) {
-    // Order inputs deterministically by peer id so both clients derive the same answer.
-    const localFirst = PM.self.peerId < PM.opp.peerId
-    const a = localFirst ? localChoice : remoteChoice
-    const na = localFirst ? localNonce : remoteNonce
-    const b = localFirst ? remoteChoice : localChoice
-    const nb = localFirst ? remoteNonce : localNonce
-    return Net.digest(`${a}|${na}|${b}|${nb}`)
-  }
-
-  function resolvePredictionRound () {
+  async function resolvePredictionRound () {
     if (!PM.active || !PM.started || PM.gameType !== 'prediction-duel') return
+    clearForfeitTimer()
     const localChoice = PM.predictionChoices.you
     const remoteChoice = PM.predictionChoices.opp
     const localNonce = PM.predictionCommit && PM.predictionCommit.nonce
     const remoteNonce = PM.predictionRemoteNonce
     if (localChoice == null || remoteChoice == null || !localNonce || !remoteNonce) return
-    const entropy = predictionEntropy(localChoice, localNonce, remoteChoice, remoteNonce)
-    const options = window.ULTIMATE_FIT_CONFIG && window.ULTIMATE_FIT_CONFIG.predictionOptions ? window.ULTIMATE_FIT_CONFIG.predictionOptions : ['Option A', 'Option B', 'Option C', 'Option D']
-    const correctIndex = Math.abs(parseInt(entropy.slice(2), 16)) % options.length
-    const correct = options[correctIndex]
+    const options = predictionOptions()
+    const snapshot = PM.predictionEvent || currentFixtureSnapshot() || { title: 'No fixture bound', status: 'unknown' }
+    const correct = derivePredictionOutcome(snapshot, PM.predictionRound, options)
     PM.predictionCorrect = correct
-    if (localChoice === correct) PM.predictionScore.you += 1
-    if (remoteChoice === correct) PM.predictionScore.opp += 1
+    const localCorrect = localChoice === correct
+    const remoteCorrect = remoteChoice === correct
+    if (localCorrect) PM.predictionScore.you += 1
+    if (remoteCorrect) PM.predictionScore.opp += 1
+
+    // QVAC-attest the prediction round bound to the event snapshot.
+    try {
+      const roundIndex = PM.predictionRound
+      const roundId = roundIdForGame(PM.gameType, roundIndex)
+      const gameId = gameIdFor()
+      const a = playerObj(playerA())
+      const b = playerObj(playerB())
+      const aInput = { choice: localChoice, correct }
+      const bInput = { choice: remoteChoice, correct }
+      const aCommitment = Core.createCommitment({ gameId, roundId, playerId: a.id, input: aInput, nonce: localNonce })
+      const bCommitment = Core.createCommitment({ gameId, roundId, playerId: b.id, input: bInput, nonce: remoteNonce })
+      const snapshotHash = Core.deterministicHash({ snapshot, nonce: PM.predictionEventNonce })
+      let outcome, winnerUserId
+      if (localCorrect && remoteCorrect) { outcome = 'draw'; winnerUserId = null }
+      else if (localCorrect) { outcome = 'you'; winnerUserId = a.id }
+      else if (remoteCorrect) { outcome = 'opp'; winnerUserId = b.id }
+      else { outcome = 'draw'; winnerUserId = null }
+      const sourceEventIds = [
+        Core.deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: a.id, commitment: aCommitment }),
+        Core.deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: b.id, commitment: bCommitment }),
+        Core.deterministicHash({ type: 'GameInputRevealed', roundId, playerId: a.id, input: aInput }),
+        Core.deterministicHash({ type: 'GameInputRevealed', roundId, playerId: b.id, input: bInput }),
+        Core.deterministicHash({ type: 'GameRoundResolved', roundId, outcome, correct, snapshotHash })
+      ]
+      const roundResult = {
+        gameId,
+        roundId,
+        resolverVersion: 'prediction-duel-v1',
+        shooter: a,
+        keeper: b,
+        shooterInput: aInput,
+        keeperInput: bInput,
+        shooterCommitment: aCommitment,
+        keeperCommitment: bCommitment,
+        shooterNonce: localNonce,
+        keeperNonce: remoteNonce,
+        outcome,
+        winnerUserId,
+        stateHash: Core.deterministicHash({
+          resolverVersion: 'prediction-duel-v1',
+          gameId,
+          roundId,
+          snapshotHash,
+          aInput,
+          bInput,
+          outcome,
+          winnerUserId
+        }),
+        sourceEventIds
+      }
+      if (Qvac) PM.qvacAttestations[roundId] = await Qvac.attestRound({ roundResult })
+    } catch (e) {
+      console.warn('QVAC prediction-duel attestation failed', e && e.message)
+    }
+
     const roundOver = PM.predictionRound + 1 >= PREDICTION_ROUNDS
     if (roundOver) {
       PM.predictionOver = true
+      PM.over = true
       const win = PM.predictionScore.you > PM.predictionScore.opp
       const draw = PM.predictionScore.you === PM.predictionScore.opp
       showToast(win ? `You win ${PM.predictionScore.you}–${PM.predictionScore.opp}!` : draw ? `Draw ${PM.predictionScore.you}–${PM.predictionScore.opp}` : `${PM.opp.name} wins ${PM.predictionScore.opp}–${PM.predictionScore.you}`)
+      syncDiagnostics('over')
+      finishMatch()
     }
     renderGames()
   }
@@ -693,6 +1063,19 @@
   }
 
   // ---- Trivia duel: commit/reveal peer-vs-peer ----
+  function onTriviaBank (msg) {
+    if (!PM.active || !PM.started || PM.gameType !== 'trivia-duel') return
+    if (PM.role !== 'B' || PM.triviaBankReceived) return
+    const receivedBank = Array.isArray(msg.bank) ? msg.bank : []
+    const receivedHash = msg.bankHash || Core.deterministicHash(receivedBank)
+    PM.triviaVerifiedBank = receivedBank
+    PM.triviaBankHash = receivedHash
+    PM.triviaOriginalBankHash = receivedHash
+    PM.triviaBankReceived = true
+    attestTriviaBank(receivedBank, receivedHash)
+    renderGames()
+  }
+
   function onTriviaCommit (msg) {
     if (!PM.active || !PM.started || PM.gameType !== 'trivia-duel') return
     if (msg.round !== PM.triviaRound) return
@@ -717,10 +1100,12 @@
   function triviaPick (choice) {
     if (!PM.active || !PM.started || PM.gameType !== 'trivia-duel' || PM.triviaOver) return
     if (PM.triviaAnswers.you != null) return
+    if (!PM.triviaBankReceived) return
     const nonce = Net.newNonce()
     PM.triviaAnswers.you = choice
     PM.triviaCommit = { choice, nonce }
     send({ t: 'trivia-commit', round: PM.triviaRound, hash: Net.commitHash(choice, nonce) })
+    startForfeitTimer(PM.opp && PM.opp.peerId)
     renderGames()
   }
 
@@ -733,23 +1118,89 @@
     else renderGames()
   }
 
-  function resolveTriviaQuestion () {
+  async function resolveTriviaQuestion () {
     if (!PM.active || !PM.started || PM.gameType !== 'trivia-duel') return
+    clearForfeitTimer()
     const localChoice = PM.triviaAnswers.you
     const remoteChoice = PM.triviaAnswers.opp
     if (localChoice == null || remoteChoice == null) return
-    const bank = window.ULTIMATE_FIT_CONFIG && window.ULTIMATE_FIT_CONFIG.triviaQuestions
+    const bank = PM.triviaVerifiedBank
     const q = bank && bank[PM.triviaRound]
     if (!q) return
     const correct = q.answer
-    if (localChoice === correct) PM.triviaScore.you += 1
-    if (remoteChoice === correct) PM.triviaScore.opp += 1
+    const localCorrect = localChoice === correct
+    const remoteCorrect = remoteChoice === correct
+    if (localCorrect) PM.triviaScore.you += 1
+    if (remoteCorrect) PM.triviaScore.opp += 1
+
+    // QVAC-attest the trivia round against the verified bank answer key.
+    try {
+      const roundIndex = PM.triviaRound
+      const roundId = roundIdForGame(PM.gameType, roundIndex)
+      const gameId = gameIdFor()
+      const a = playerObj(playerA())
+      const b = playerObj(playerB())
+      const aInput = { choice: localChoice, questionId: q.id, correct }
+      const bInput = { choice: remoteChoice, questionId: q.id, correct }
+      const aCommitment = Core.createCommitment({ gameId, roundId, playerId: a.id, input: aInput, nonce: PM.triviaCommit.nonce })
+      const bCommitment = Core.createCommitment({ gameId, roundId, playerId: b.id, input: bInput, nonce: PM.triviaRemoteNonce })
+      const bankHash = PM.triviaBankHash
+      let outcome, winnerUserId
+      if (localCorrect && remoteCorrect) { outcome = 'draw'; winnerUserId = null }
+      else if (localCorrect) { outcome = 'you'; winnerUserId = a.id }
+      else if (remoteCorrect) { outcome = 'opp'; winnerUserId = b.id }
+      else { outcome = 'draw'; winnerUserId = null }
+      const sourceEventIds = [
+        Core.deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: a.id, commitment: aCommitment }),
+        Core.deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: b.id, commitment: bCommitment }),
+        Core.deterministicHash({ type: 'GameInputRevealed', roundId, playerId: a.id, input: aInput }),
+        Core.deterministicHash({ type: 'GameInputRevealed', roundId, playerId: b.id, input: bInput }),
+        Core.deterministicHash({ type: 'GameRoundResolved', roundId, outcome, questionId: q.id, correct, bankHash })
+      ]
+      const roundResult = {
+        gameId,
+        roundId,
+        resolverVersion: 'trivia-duel-v1',
+        shooter: a,
+        keeper: b,
+        shooterInput: aInput,
+        keeperInput: bInput,
+        shooterCommitment: aCommitment,
+        keeperCommitment: bCommitment,
+        shooterNonce: PM.triviaCommit.nonce,
+        keeperNonce: PM.triviaRemoteNonce,
+        outcome,
+        winnerUserId,
+        stateHash: Core.deterministicHash({
+          resolverVersion: 'trivia-duel-v1',
+          gameId,
+          roundId,
+          bankHash,
+          aInput,
+          bInput,
+          outcome,
+          winnerUserId
+        }),
+        sourceEventIds
+      }
+      const bankTampered = PM.triviaOriginalBankHash && PM.triviaBankHash !== PM.triviaOriginalBankHash
+      const review = bankTampered
+        ? { ruling: 'disputed', rationale: 'Question bank hash does not match the distributed answer key.', confidence: 0.1 }
+        : null
+      if (Qvac) PM.qvacAttestations[roundId] = await Qvac.attestRound({ roundResult, review })
+    } catch (e) {
+      console.warn('QVAC trivia-duel attestation failed', e && e.message)
+    }
+
     const roundOver = PM.triviaRound + 1 >= TRIVIA_ROUNDS
     if (roundOver) {
       PM.triviaOver = true
+      PM.over = true
       const win = PM.triviaScore.you > PM.triviaScore.opp
       const draw = PM.triviaScore.you === PM.triviaScore.opp
       showToast(win ? `You win ${PM.triviaScore.you}–${PM.triviaScore.opp}!` : draw ? `Draw ${PM.triviaScore.you}–${PM.triviaScore.opp}` : `${PM.opp.name} wins ${PM.triviaScore.opp}–${PM.triviaScore.you}`)
+      syncDiagnostics('over')
+      finishMatch()
     }
     renderGames()
   }
@@ -781,6 +1232,7 @@
     PM.fkCommit = { aim, power, curve, nonce }
     PM.fkRevealed.you = false
     send({ t: 'fk-commit', round: PM.fkRound, hash: Net.commitHash(JSON.stringify({ aim, power, curve }), nonce) })
+    startForfeitTimer(PM.opp && PM.opp.peerId)
     renderGames()
   }
 
@@ -793,6 +1245,7 @@
     PM.fkCommit = { dive, wall, nonce }
     PM.fkRevealed.you = false
     send({ t: 'fk-commit', round: PM.fkRound, hash: Net.commitHash(JSON.stringify({ dive, wall }), nonce) })
+    startForfeitTimer(PM.opp && PM.opp.peerId)
     renderGames()
   }
 
@@ -809,7 +1262,10 @@
       send({ t: 'fk-reveal', round: PM.fkRound, dive: PM.fkCommit.dive, wall: PM.fkCommit.wall, nonce: PM.fkCommit.nonce })
       if (PM.fkRemoteReveal) { resolveFreeKick(PM.fkRemoteReveal.aim, PM.fkCommit.dive, PM.fkRemoteReveal.power, PM.fkRemoteReveal.curve, PM.fkCommit.wall, PM.fkRemoteReveal.nonce); resolved = true }
     }
-    if (!resolved) renderGames()
+    if (!resolved) {
+      startForfeitTimer(PM.opp && PM.opp.peerId)
+      renderGames()
+    }
   }
 
   function onFreeKickCommit (msg) {
@@ -847,22 +1303,74 @@
   function resolveFreeKick (aim, dive, power, curve, wall, nonce) {
     if (PM.fkBusy) return
     PM.fkBusy = true
+    clearForfeitTimer()
     const onFrame = aim !== 'wall' && aim !== 'wide' && power >= 30 && power <= 95
     const wallBlocks = wall && wall === aimZoneToWall(aim) && Math.abs(curve) < 3
     const saved = dive === aim && Math.abs(curve) < 7
     const goal = onFrame && !wallBlocks && !saved
+    const outcome = goal ? 'goal' : wallBlocks ? 'blocked' : saved ? 'saved' : 'miss'
     let points = 0
     if (goal) points = 3
     else if (onFrame && !wallBlocks) points = 1
     if (iAmShooter()) PM.fkScore.you += points
     else PM.fkScore.opp += points
     PM.fkResolved = { aim, dive, power, curve, wall, onFrame, wallBlocks, saved, goal, points, nonce }
+
+    // QVAC-attest the free-kick round result.
+    try {
+      const roundIndex = PM.fkRound
+      const roundId = roundIdForGame(PM.gameType, roundIndex)
+      const gameId = gameIdFor()
+      const me = playerObj(PM.self)
+      const opp = playerObj(PM.opp)
+      const shooter = iAmShooter() ? me : opp
+      const keeper = iAmShooter() ? opp : me
+      const shooterInput = iAmShooter()
+        ? { aim, power, curve }
+        : { aim: PM.fkRemoteReveal.aim, power: PM.fkRemoteReveal.power, curve: PM.fkRemoteReveal.curve }
+      const keeperInput = iAmShooter()
+        ? { dive: PM.fkRemoteReveal.dive, wall: PM.fkRemoteReveal.wall }
+        : { dive, wall }
+      const shooterNonce = iAmShooter() ? PM.fkCommit.nonce : PM.fkRemoteReveal.nonce
+      const keeperNonce = iAmShooter() ? PM.fkRemoteReveal.nonce : PM.fkCommit.nonce
+      const shooterCommitment = Core.createCommitment({ gameId, roundId, playerId: shooter.id, input: shooterInput, nonce: shooterNonce })
+      const keeperCommitment = Core.createCommitment({ gameId, roundId, playerId: keeper.id, input: keeperInput, nonce: keeperNonce })
+      const sourceEventIds = [
+        Core.deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: shooter.id, commitment: shooterCommitment }),
+        Core.deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: keeper.id, commitment: keeperCommitment }),
+        Core.deterministicHash({ type: 'GameInputRevealed', roundId, playerId: shooter.id, input: shooterInput }),
+        Core.deterministicHash({ type: 'GameInputRevealed', roundId, playerId: keeper.id, input: keeperInput }),
+        Core.deterministicHash({ type: 'GameRoundResolved', roundId, outcome })
+      ]
+      const roundResult = Core.createFreeKickDuelRoundResult({
+        gameId,
+        roundIndex,
+        roundId,
+        shooter,
+        keeper,
+        shooterInput,
+        keeperInput,
+        shooterCommitment,
+        keeperCommitment,
+        shooterNonce,
+        keeperNonce,
+        outcome,
+        sourceEventIds
+      })
+      if (Qvac) PM.qvacAttestations[roundId] = Qvac.attestRound({ roundResult })
+    } catch (e) {
+      console.warn('QVAC free-kick attestation failed', e && e.message)
+    }
+
     const roundOver = PM.kIndex + 1 >= 6
     if (roundOver) {
       PM.fkOver = true
+      PM.over = true
       const win = PM.fkScore.you > PM.fkScore.opp
       const draw = PM.fkScore.you === PM.fkScore.opp
       showToast(win ? `You win ${PM.fkScore.you}–${PM.fkScore.opp}!` : draw ? `Draw ${PM.fkScore.you}–${PM.fkScore.opp}` : `${PM.opp.name} wins ${PM.fkScore.opp}–${PM.fkScore.you}`)
+      syncDiagnostics('over')
+      finishMatch()
     }
     renderGames()
   }
@@ -895,6 +1403,7 @@
     PM.bbCommit = { aim, power, nonce }
     PM.bbRevealed.you = false
     send({ t: 'bb-commit', round: PM.bbRound, hash: Net.commitHash(JSON.stringify({ aim, power }), nonce) })
+    startForfeitTimer(PM.opp && PM.opp.peerId)
     renderGames()
   }
 
@@ -907,6 +1416,7 @@
     PM.bbCommit = { defenderRead, nonce }
     PM.bbRevealed.you = false
     send({ t: 'bb-commit', round: PM.bbRound, hash: Net.commitHash(JSON.stringify({ defenderRead }), nonce) })
+    startForfeitTimer(PM.opp && PM.opp.peerId)
     renderGames()
   }
 
@@ -923,7 +1433,10 @@
       send({ t: 'bb-reveal', round: PM.bbRound, defenderRead: PM.bbCommit.defenderRead, nonce: PM.bbCommit.nonce })
       if (PM.bbRemoteReveal) { resolveBuzzerBeater(PM.bbRemoteReveal.aim, PM.bbCommit.defenderRead, PM.bbRemoteReveal.power, PM.bbCommit.nonce); resolved = true }
     }
-    if (!resolved) renderGames()
+    if (!resolved) {
+      startForfeitTimer(PM.opp && PM.opp.peerId)
+      renderGames()
+    }
   }
 
   function onBuzzerCommit (msg) {
@@ -961,21 +1474,73 @@
   function resolveBuzzerBeater (aim, defenderRead, power, nonce) {
     if (PM.bbBusy) return
     PM.bbBusy = true
+    clearForfeitTimer()
     const onTarget = aim !== 'miss' && power >= 35 && power <= 95
     const blocked = defenderRead === aim
     const basket = onTarget && !blocked
+    const outcome = basket ? 'goal' : blocked ? 'blocked' : onTarget ? 'miss' : 'miss'
     let points = 0
     if (basket) points = 2
     else if (onTarget) points = 1
     if (iAmShooter()) PM.bbScore.you += points
     else PM.bbScore.opp += points
     PM.bbResolved = { aim, defenderRead, power, onTarget, blocked, basket, points, nonce }
+
+    // QVAC-attest the buzzer-beater round result.
+    try {
+      const roundIndex = PM.bbRound
+      const roundId = roundIdForGame(PM.gameType, roundIndex)
+      const gameId = gameIdFor()
+      const me = playerObj(PM.self)
+      const opp = playerObj(PM.opp)
+      const shooter = iAmShooter() ? me : opp
+      const keeper = iAmShooter() ? opp : me
+      const shooterInput = iAmShooter()
+        ? { aim, power }
+        : { aim: PM.bbRemoteReveal.aim, power: PM.bbRemoteReveal.power }
+      const keeperInput = iAmShooter()
+        ? { defenderRead: PM.bbRemoteReveal.defenderRead }
+        : { defenderRead }
+      const shooterNonce = iAmShooter() ? PM.bbCommit.nonce : PM.bbRemoteReveal.nonce
+      const keeperNonce = iAmShooter() ? PM.bbRemoteReveal.nonce : PM.bbCommit.nonce
+      const shooterCommitment = Core.createCommitment({ gameId, roundId, playerId: shooter.id, input: shooterInput, nonce: shooterNonce })
+      const keeperCommitment = Core.createCommitment({ gameId, roundId, playerId: keeper.id, input: keeperInput, nonce: keeperNonce })
+      const sourceEventIds = [
+        Core.deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: shooter.id, commitment: shooterCommitment }),
+        Core.deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: keeper.id, commitment: keeperCommitment }),
+        Core.deterministicHash({ type: 'GameInputRevealed', roundId, playerId: shooter.id, input: shooterInput }),
+        Core.deterministicHash({ type: 'GameInputRevealed', roundId, playerId: keeper.id, input: keeperInput }),
+        Core.deterministicHash({ type: 'GameRoundResolved', roundId, outcome })
+      ]
+      const roundResult = Core.createBuzzerBeaterDuelRoundResult({
+        gameId,
+        roundIndex,
+        roundId,
+        shooter,
+        keeper,
+        shooterInput,
+        keeperInput,
+        shooterCommitment,
+        keeperCommitment,
+        shooterNonce,
+        keeperNonce,
+        outcome,
+        sourceEventIds
+      })
+      if (Qvac) PM.qvacAttestations[roundId] = Qvac.attestRound({ roundResult })
+    } catch (e) {
+      console.warn('QVAC buzzer-beater attestation failed', e && e.message)
+    }
+
     const roundOver = PM.kIndex + 1 >= 6
     if (roundOver) {
       PM.bbOver = true
+      PM.over = true
       const win = PM.bbScore.you > PM.bbScore.opp
       const draw = PM.bbScore.you === PM.bbScore.opp
       showToast(win ? `You win ${PM.bbScore.you}–${PM.bbScore.opp}!` : draw ? `Draw ${PM.bbScore.you}–${PM.bbScore.opp}` : `${PM.opp.name} wins ${PM.bbScore.opp}–${PM.bbScore.you}`)
+      syncDiagnostics('over')
+      finishMatch()
     }
     renderGames()
   }
@@ -1235,6 +1800,48 @@
     // entropy = hash(aim|dive|nonce) with the shooter's revealed nonce — both clients
     // hold identical inputs after reveal, so both derive the identical outcome.
     const outcome = kickOutcome(aim, dive, power, kickEntropy(aim, dive, nonce))
+
+    // Build a QVAC-attested round result from the revealed penalty-clash evidence.
+    try {
+      const roundIndex = roundOf(PM.kIndex)
+      const roundId = roundIdForGame(PM.gameType, roundIndex)
+      const gameId = gameIdFor()
+      const me = playerObj(PM.self)
+      const opp = playerObj(PM.opp)
+      const iShot = iAmShooter()
+      const shooter = iShot ? me : opp
+      const keeper = iShot ? opp : me
+      const shooterInput = { aimZone: aim, powerBand: powerToBand(power), releaseTick: 0 }
+      const keeperInput = { diveZone: dive, releaseTick: 0 }
+      const shooterCommitment = Core.createCommitment({ gameId, roundId, playerId: shooter.id, input: shooterInput, nonce })
+      const keeperCommitment = Core.createCommitment({ gameId, roundId, playerId: keeper.id, input: keeperInput, nonce: 'keeper-nonce' })
+      const sourceEventIds = [
+        Core.deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: shooter.id, commitment: shooterCommitment }),
+        Core.deterministicHash({ type: 'GameCommitmentSubmitted', roundId, playerId: keeper.id, commitment: keeperCommitment }),
+        Core.deterministicHash({ type: 'GameInputRevealed', roundId, playerId: shooter.id, input: shooterInput }),
+        Core.deterministicHash({ type: 'GameInputRevealed', roundId, playerId: keeper.id, input: keeperInput }),
+        Core.deterministicHash({ type: 'GameRoundResolved', roundId, outcome })
+      ]
+      const roundResult = Core.createPenaltyClashRoundResult({
+        gameId,
+        roundIndex,
+        roundId,
+        shooter,
+        keeper,
+        shooterInput,
+        keeperInput,
+        shooterCommitment,
+        keeperCommitment,
+        shooterNonce: nonce,
+        keeperNonce: 'keeper-nonce',
+        outcome,
+        sourceEventIds
+      })
+      if (Qvac) PM.qvacAttestations[roundId] = await Qvac.attestRound({ roundResult })
+    } catch (e) {
+      console.warn('QVAC penalty-clash attestation failed', e && e.message)
+    }
+
     const iShot = iAmShooter()
     const aimPos = zonePosition(aim)
     const divePos = zonePosition(dive)
@@ -1295,6 +1902,7 @@
     const again = $('#playAgain'); if (again) again.textContent = 'New match'
     showToast(win ? `You beat ${PM.opp.name} ${so.you}–${so.opp}!` : draw ? `Level with ${PM.opp.name} ${so.you}–${so.opp}` : `${PM.opp.name} won ${so.opp}–${so.you}`)
     syncDiagnostics('over')
+    finishMatch()
   }
 
   // ---- invite / connect modals ----
@@ -1326,6 +1934,10 @@
   function closeModal () {
     const m = $('#peerModal')
     if (m) { if (m._onKey) document.removeEventListener('keydown', m._onKey); m.remove() }
+    if (PM.connectTimeout) {
+      if (typeof root.clearTimeout === 'function') root.clearTimeout(PM.connectTimeout)
+      PM.connectTimeout = null
+    }
   }
   function modal (html) {
     closeModal()
@@ -1373,7 +1985,12 @@
       <div class="peer-actions"><button class="secondary-button" id="peerCancel" type="button">Cancel</button></div>`)
     el.querySelector('#peerCancel').onclick = () => { closeModal(); leave() }
     // Don't spin forever: if no handshake in 30s, say so and offer the way out.
-    setTimeout(() => {
+    if (PM.connectTimeout) {
+      if (typeof root.clearTimeout === 'function') root.clearTimeout(PM.connectTimeout)
+      PM.connectTimeout = null
+    }
+    PM.connectTimeout = root.setTimeout(() => {
+      PM.connectTimeout = null
       if (PM.started || !document.body.contains(el)) return
       const wait = el.querySelector('#peerWaitLine')
       if (wait) { wait.innerHTML = 'Connection timed out — ask your friend for a fresh invite code.'; wait.style.color = 'var(--pink-deep)' }

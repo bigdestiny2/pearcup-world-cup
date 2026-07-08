@@ -38,7 +38,7 @@ const GAME_BLUEPRINTS = Object.freeze({
     resolver: 'trivia-duel',
     playerCount: 'two-peer-or-room',
     controls: ['question-card', 'answer-choice', 'timer', 'response-time'],
-    evidence: ['question-bank', 'answer-key', 'response-time'],
+    evidence: ['verified-question-bank', 'commit', 'reveal', 'answer-key', 'response-time'],
     scoring: 'correct answers first, fastest total response time breaks ties',
     defaultRounds: 5
   }),
@@ -49,8 +49,8 @@ const GAME_BLUEPRINTS = Object.freeze({
     resolver: 'reaction-challenge',
     playerCount: 'room',
     controls: ['moment-feed', 'tap-target', 'latency-window', 'fastest-tap-result'],
-    evidence: ['moment-id', 'tap-timestamp', 'latency-window'],
-    scoring: 'one point for each fastest valid reaction moment',
+    evidence: ['commit', 'reveal', 'moment-id', 'tap-timestamp', 'latency-window'],
+    scoring: 'one point for each fastest valid reaction moment; commitments prevent timestamp spoofing',
     defaultRounds: 5
   }),
   'next-event': blueprint({
