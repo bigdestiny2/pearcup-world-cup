@@ -9128,6 +9128,15 @@ function bindEvents () {
   bindViewButtons()
   sendBootCheckpoint('bindEvents:view-buttons')
 
+  const closeShellBtn = $('#closeShellBtn')
+  if (closeShellBtn) {
+    closeShellBtn.addEventListener('click', () => {
+      if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+        try { window.parent.postMessage({ type: 'close-app' }, '*') } catch (e) {}
+      }
+    })
+  }
+
   $('#usernameInput').addEventListener('input', event => {
     state.username = event.target.value.trim() || 'captain'
     persist()

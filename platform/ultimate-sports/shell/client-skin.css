@@ -159,7 +159,10 @@ body::before { content: none !important; background: none !important; animation:
 .titlebar .t { font-size: 12px; font-weight: 700; }
 .titlebar .t small { color: #97a0b0; font-weight: 400; margin-left: 6px; }
 .win-btns { margin-left: auto; display: flex; gap: 6px; }
-.win-btns i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+.win-btns i,
+.win-btns .win-btn { width: 12px; height: 12px; border-radius: 50%; display: block; border: 0; padding: 0; cursor: default; }
+.win-btns .win-btn:not(:disabled) { cursor: pointer; }
+.win-btns .win-btn:not(:disabled):hover { filter: brightness(0.9); }
 .win-btns .mi { background: #f5bd4f; }
 .win-btns .ma { background: #34c759; }
 .win-btns .cl { background: #ff5f57; }
