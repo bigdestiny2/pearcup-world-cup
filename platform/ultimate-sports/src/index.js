@@ -34,6 +34,7 @@ module.exports = {
   sportsDataClients: require('./sports-data-client-engine'),
   sportsDataSmoke: require('./sports-data-smoke-engine'),
   sportsDataProviders: require('./sports-data-provider-engine'),
+  boxingData: require('./boxing-data-provider-engine'),
   socialFeedProviders: require('./social-feed-provider-engine'),
   socialFeedAggregator: require('./social-feed-aggregator-engine'),
   socialFeedClients: require('./social-feed-client-engine'),

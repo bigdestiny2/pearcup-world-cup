@@ -44,6 +44,11 @@ body {
 ::selection { background: var(--sel); color: #fff; }
 
 .tnum { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.ok { color: var(--ink-faint); }
+.fatal-error { padding: 24px; font-family: Tahoma, system-ui, sans-serif; color: #eef1f6; }
+.fatal-error-label { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: #8b93a1; }
+.fatal-error-title { font-size: 20px; }
+.fatal-error-msg { color: #97a0b0; }
 
 .desk {
   min-height: 100vh;
@@ -556,3 +561,81 @@ body {
 }
 .sf-btn:hover { color: var(--ink); background: var(--field-alt); border-color: var(--bevel-lo); text-decoration: none; }
 .social-controls { border-top: 1px solid var(--bevel-lo); }
+
+/* ============ fight-night hero — featured live event marquee ============
+   Win98 panel chrome wrapping a dark broadcast "screen" (screens stay dark
+   in the light client, same rule as the LCD strip). */
+.fight-hero {
+  border: 1px solid var(--frame);
+  background: var(--chrome);
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--bevel-lo);
+  margin-bottom: 14px;
+}
+.fh-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 8px;
+  background: linear-gradient(180deg, var(--chrome), var(--chrome-2));
+  border-bottom: 1px solid var(--bevel-lo);
+  font-size: 11px;
+}
+.fh-live {
+  display: inline-flex; align-items: center; gap: 4px;
+  color: #fff; background: var(--live);
+  padding: 1px 6px; font-weight: 700; letter-spacing: .04em;
+  border: 1px solid #a01f1f;
+}
+.fh-live .d { width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: fhpulse 1.2s infinite; }
+@keyframes fhpulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+.fh-eyebrow { font-weight: 700; color: var(--ink); letter-spacing: .04em; }
+.fh-server { margin-left: auto; color: var(--ink-faint); font-family: var(--mono); }
+
+.fh-stage {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  background-color: var(--lcd-bg);
+  background-image:
+    radial-gradient(120% 90% at 18% 6%, rgba(239, 68, 68, .30), transparent 55%),
+    radial-gradient(120% 90% at 82% 6%, rgba(34, 197, 94, .30), transparent 55%);
+  border-top: 1px solid #000; border-bottom: 1px solid #000;
+  padding: 16px 12px; gap: 8px;
+}
+.fh-corner { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; min-width: 0; }
+.fh-portrait {
+  width: 122px; height: 122px; overflow: hidden;
+  border: 2px solid var(--corner, #666);
+  box-shadow: 0 0 20px -5px var(--corner, #666), inset 0 0 0 1px rgba(0, 0, 0, .6);
+  background: #000;
+}
+.fh-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
+.fh-name { color: #fff; font-weight: 700; font-size: 14px; }
+.fh-nick { color: var(--lcd); font-family: var(--mono); font-size: 11px; font-style: italic; }
+.fh-rec { color: #cbd3df; font-size: 12px; }
+
+.fh-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0 4px; }
+.fh-vs {
+  font-family: var(--mono); font-weight: 900; font-size: 32px; color: #ffcf33;
+  text-shadow: 0 2px 0 #7a3d00, 0 0 14px rgba(255, 207, 51, .35); letter-spacing: .02em;
+}
+.fh-class { color: #cbd3df; font-size: 11px; text-align: center; max-width: 116px; letter-spacing: .03em; }
+
+.fh-foot {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  background: linear-gradient(180deg, var(--chrome), var(--chrome-2));
+  border-top: 1px solid var(--bevel-hi);
+}
+.fh-meta { color: var(--ink-dim); font-size: 11.5px; font-family: var(--mono); }
+.fh-join {
+  margin-left: auto;
+  font-family: var(--ui); font-weight: 700; font-size: 13px; letter-spacing: .03em;
+  color: #fff; background: var(--sel); border: 1px solid var(--sel-deep);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .35), inset -1px -1px 0 rgba(0, 0, 0, .3);
+  padding: 7px 18px; cursor: pointer;
+}
+.fh-join:hover { background: var(--sel-deep); }
+.fh-join:active { box-shadow: inset 1px 1px 0 rgba(0, 0, 0, .3), inset -1px -1px 0 rgba(255, 255, 255, .2); }
+
+@media (max-width: 560px) {
+  .fh-portrait { width: 92px; height: 92px; }
+  .fh-vs { font-size: 26px; }
+  .fh-foot { flex-wrap: wrap; }
+}

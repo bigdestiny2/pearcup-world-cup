@@ -885,8 +885,7 @@ function normalizeStartupView (value) {
     .replace(/^#+/, '')
     .replace(/^\/+/, '')
     .toLowerCase()
-  if (clean === 'profile') return 'onboarding'
-  return ['onboarding', 'home', 'bracket', 'watch', 'games'].includes(clean) ? clean : ''
+  return ['profile', 'onboarding', 'home', 'bracket', 'watch', 'games'].includes(clean) ? clean : ''
 }
 
 function startupViewFromHash () {
@@ -941,9 +940,10 @@ function setView (view) {
   syncLocationHashForView(nextView)
   persist()
   renderView(nextView)
-  $$('.screen').forEach(screen => screen.classList.toggle('is-active', screen.id === nextView))
+  $$('.screen').forEach(screen => screen.classList.toggle('is-active', screen.id === nextView || (nextView === 'profile' && screen.id === 'onboarding')))
   $$('.topnav button').forEach(button => {
-    button.classList.toggle('is-active', button.dataset.view === nextView)
+    const target = button.dataset.view
+    button.classList.toggle('is-active', target === nextView || (nextView === 'profile' && target === 'onboarding') || (nextView === 'onboarding' && target === 'profile'))
   })
   syncRuntimeScreenDiagnostics(nextView)
   if (nextView === 'bracket') scheduleBracketConnectors()
@@ -4066,8 +4066,10 @@ function renderWatch () {
   $('#chatFeed').innerHTML = state.chat.length
     ? state.chat.map(message => `
     <div class="chat-message">
-      <time>${message.time}</time>
-      <strong>${escapeHtml(message.user)}</strong>
+      <div class="chat-meta">
+        <strong>${escapeHtml(message.user)}</strong>
+        <time>${escapeHtml(message.time)}</time>
+      </div>
       <p>${escapeHtml(message.text)}</p>
     </div>
   `).join('')
@@ -5049,6 +5051,8 @@ function renderGameLobby () {
   const audit = $('#games .audit-accordion')
   if (audit) audit.hidden = false
   const title = selectedMiniGameTitle()
+  const gamesTitle = $('#gamesTitle')
+  if (gamesTitle) gamesTitle.textContent = title
   const gameTypeLabel = escapeHtml(title)
   const playable = playableMiniGames()
   if (!playable.includes(selectedMiniGame)) selectedMiniGame = playable[0] || 'penalty-clash'

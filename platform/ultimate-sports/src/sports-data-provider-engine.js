@@ -85,11 +85,21 @@ const PROVIDERS = Object.freeze({
     gaps: ['not a live official feed', 'requires evidence review for prize modes'],
     auth: 'local platform attestation',
     recommendation: 'fallback'
+  }),
+  boxingData: provider({
+    providerId: 'boxingdata',
+    title: 'BoxingData API (BoxRec + CompuBox)',
+    role: 'boxing-enrichment-supplement',
+    coverage: ['combat-sports'],
+    strengths: ['fighter records (W-L-D-KO)', 'CompuBox punch stats', 'single combined OpenAPI endpoint via boxing-data-provider-engine'],
+    gaps: ['community project on free Render tier — 503 when the dyno sleeps', 'scrapes BoxRec/CompuBox (ToS / legal gray area)', 'not settlement-grade — enrichment only, keep a curated fallback'],
+    auth: 'public OpenAPI via same-origin proxy',
+    recommendation: 'supplement'
   })
 })
 
 const FIT_PROVIDER_OVERRIDES = Object.freeze({
-  'mma-boxing-fight-card': ['sportsdataio', 'the-odds-api', 'sportradar', 'host-evidence-qvac'],
+  'mma-boxing-fight-card': ['sportsdataio', 'boxingdata', 'the-odds-api', 'sportradar', 'host-evidence-qvac'],
   'esports-major': ['pandascore', 'abios', 'sportradar', 'host-evidence-qvac'],
   'sailgp-companion': ['sailgp-official-or-partner', 'host-evidence-qvac', 'the-odds-api'],
   'creator-reality-brackets': ['host-evidence-qvac'],

@@ -80,6 +80,7 @@ async function boot () {
     state.servers = await response.json()
     state.selectedServerId = (state.servers.find(s => s.isFeatured) || state.servers[0] || {}).serverId || null
     renderFilters()
+    renderFightHero()
     renderServerTable()
     renderStatus()
     renderTicker()
@@ -406,7 +407,7 @@ function renderFriends () {
 function initPresence () {
   const Net = window.PearCupPeerNet
   if (!Net || typeof Net.createChannel !== 'function') {
-    $('#statusNet').innerHTML = '<span class="ok" style="color:var(--ink-faint)">○</span> peer net unavailable'
+    $('#statusNet').innerHTML = '<span class="ok">○</span> peer net unavailable'
     return
   }
   try {
@@ -718,6 +719,46 @@ function renderServerTable () {
       if (server) loadApp(server)
     })
   })
+}
+
+function renderFightHero () {
+  const host = $('#fightHero')
+  if (!host) return
+  const server = state.servers.find(s => s.feature) || null
+  const f = server && server.feature
+  if (!f) { host.innerHTML = ''; return }
+  const corner = (side, c) => `
+    <div class="fh-corner fh-${side}" data-corner="${escapeAttr(c.corner)}">
+      <div class="fh-portrait"><img src="${escapeAttr(c.img)}" alt="${escapeAttr(c.name)}" loading="lazy"></div>
+      <div class="fh-name">${escapeHtml(c.flag)} ${escapeHtml(c.name)}</div>
+      <div class="fh-nick">"${escapeHtml(c.nick)}"</div>
+      <div class="fh-rec tnum">${escapeHtml(c.record)}</div>
+    </div>`
+  host.innerHTML = `
+    <div class="fight-hero">
+      <div class="fh-bar">
+        <span class="fh-live"><span class="d"></span>LIVE</span>
+        <span class="fh-eyebrow">${escapeHtml(f.eyebrow)}</span>
+        <span class="fh-server">${escapeHtml(server.title)}</span>
+      </div>
+      <div class="fh-stage">
+        ${corner('red', f.red)}
+        <div class="fh-mid">
+          <div class="fh-vs">VS</div>
+          <div class="fh-class">${escapeHtml(f.weightClass)}</div>
+        </div>
+        ${corner('blue', f.blue)}
+      </div>
+      <div class="fh-foot">
+        <span class="fh-meta">${escapeHtml(f.venue)} · ${escapeHtml(f.prop)}</span>
+        <button class="fh-join" id="fightHeroJoin" type="button">▶ ${escapeHtml(f.cta)}</button>
+      </div>
+    </div>`
+  host.querySelectorAll('[data-corner]').forEach(el => {
+    el.style.setProperty('--corner', el.dataset.corner)
+  })
+  const join = $('#fightHeroJoin')
+  if (join) join.addEventListener('click', () => loadApp(server))
 }
 
 function renderStatus () {
@@ -1082,10 +1123,10 @@ function categoryName (category) {
 
 function renderError (error) {
   document.body.innerHTML = `
-    <main style="padding:24px;font-family:Tahoma,system-ui,sans-serif;color:#eef1f6">
-      <p style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#8b93a1">Client error</p>
-      <h1 style="font-size:20px">Ultimate Sports could not connect</h1>
-      <p style="color:#97a0b0">${escapeHtml(error.message || error)}</p>
+    <main class="fatal-error">
+      <p class="fatal-error-label">Client error</p>
+      <h1 class="fatal-error-title">Ultimate Sports could not connect</h1>
+      <p class="fatal-error-msg">${escapeHtml(error.message || error)}</p>
     </main>
   `
 }

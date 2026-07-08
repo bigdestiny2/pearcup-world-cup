@@ -1253,3 +1253,133 @@ html[data-mode="dark"] .live-menu button.is-active, html[data-mode="dark"] .prop
 /* one bevel language: every interactive control raised, pressed = sunken */
 .screens button:active, .toolbar button:active, .wr-buttons button:active,
 .chat-form button:active, .room-controls button:active { box-shadow: inset 1px 1px 0 var(--bevel-lo), inset -1px -1px 0 var(--bevel-hi) !important; }
+
+/* ============================================================
+   CHAT — clean terminal room-log (both modes)
+   Was: 3-line-per-message sparse layout, pale-green body on light
+   panel, leftover LCD-green input border. Now: one compact flowing
+   line per message, zebra rows, mode-tokenized colours, bevelled field.
+   ============================================================ */
+#chatFeed { padding: 8px !important; line-height: 1.5 !important; font-family: var(--body) !important; font-size: 13px !important; }
+.chat-message {
+  display: block !important;
+  padding: 8px 10px !important;
+  margin: 0 0 6px !important;
+  background: var(--field) !important;
+  border: 1px solid var(--field-line) !important;
+  border-radius: 0 !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--bevel-lo) !important;
+  color: var(--ink) !important;
+  line-height: 1.5 !important;
+  text-transform: none !important;
+}
+.chat-message:last-child { margin-bottom: 0 !important; }
+.chat-meta {
+  display: flex !important; align-items: baseline !important; justify-content: space-between !important;
+  gap: 8px !important; margin-bottom: 4px !important;
+}
+.chat-message strong {
+  display: inline !important;
+  font-family: var(--display) !important; font-weight: 800 !important; font-size: 12px !important;
+  color: var(--server-accent) !important; margin: 0 !important;
+}
+.chat-message strong::before { content: ''; }
+.chat-message strong::after { content: ''; }
+.chat-message time {
+  display: inline !important;
+  font-family: var(--mono) !important; font-size: 10px !important;
+  color: var(--muted) !important; margin: 0 !important;
+  text-transform: uppercase !important; letter-spacing: .03em !important;
+}
+.chat-message p {
+  display: block !important; margin: 0 !important;
+  font-family: var(--body) !important; font-size: 13px !important;
+  color: var(--ink) !important; text-transform: none !important;
+  overflow-wrap: anywhere; line-height: 1.5 !important;
+}
+/* input row = flush bevelled field + square send button */
+.chat-form { display: flex !important; gap: 5px !important; align-items: center !important; padding: 6px !important; background: var(--surface-2) !important; border-top: 1px solid var(--line) !important; }
+.chat-form input {
+  flex: 1 1 auto !important;
+  background: var(--field) !important; color: var(--ink) !important;
+  border: 1px solid var(--bevel-lo) !important; border-radius: 0 !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-lo), inset -1px -1px 0 var(--bevel-hi) !important;
+  font-family: var(--mono) !important; font-size: 13px !important; padding: 5px 8px !important;
+}
+.chat-form .icon-button {
+  flex: 0 0 auto !important; width: 30px !important; height: 28px !important;
+  display: grid !important; place-items: center !important;
+  background: var(--surface-2) !important;
+  border: 1px solid var(--line) !important; border-radius: 0 !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--bevel-lo) !important;
+}
+.chat-form .icon-button svg { width: 15px !important; height: 15px !important; fill: var(--server-accent) !important; stroke: none !important; }
+/* commentary feed reads like the chat log (was uppercase + looser) */
+.commentary-feed { padding: 5px 7px !important; line-height: 1.5 !important; font-family: var(--mono) !important; font-size: 13px !important; }
+.commentary-line {
+  display: block !important; padding: 3px 6px !important; margin: 0 !important;
+  background: transparent !important; border: 0 !important;
+  border-bottom: 1px solid var(--field-line) !important; box-shadow: none !important;
+  color: var(--ink) !important; line-height: 1.5 !important; text-transform: none !important;
+}
+.commentary-line:nth-child(even) { background: var(--field-alt) !important; }
+.commentary-line:last-child { border-bottom: 0 !important; }
+.commentary-line time { display: inline !important; font-family: var(--mono) !important; font-size: 11px !important; color: var(--muted) !important; margin-right: 5px !important; }
+.commentary-line p { display: inline !important; margin: 0 !important; font-family: var(--mono) !important; font-size: 13px !important; color: var(--ink) !important; text-transform: none !important; overflow-wrap: anywhere; }
+.commentary-line.is-goal p { color: var(--server-accent) !important; }
+
+/* neutralize remaining kawaii-pink status chips → LCD chips (no pink, standing rule) */
+.ls-badge, .is-preview, .peer-badge.is-preview, .lobby-live-badge, .lobby-pill.is-preview {
+  background: var(--lcd-bg) !important; color: var(--lcd) !important;
+  border: 1px solid var(--lcd-line) !important; border-radius: 0 !important;
+  box-shadow: inset 0 0 6px rgba(0,0,0,.5) !important;
+  text-transform: uppercase !important; letter-spacing: .04em !important;
+}
+.ls-badge i, .lobby-live-badge i { background: var(--live) !important; box-shadow: 0 0 4px var(--live) !important; }
+
+/* ============================================================
+   GAMES PAGE — Win98 group-boxes, hard edges, tight rhythm
+   Was: rounded soft-shadow arena wrapping a beveled panel wrapping
+   more panels (nesting soup) + white-gradient hero + loose gaps.
+   Now: one flat chrome container holding discrete bevelled group-boxes.
+   ============================================================ */
+.games-layout { gap: 12px !important; }
+.game-arena {
+  background: var(--chrome) !important;
+  border: 1px solid var(--frame) !important; border-radius: 0 !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--bevel-lo) !important;
+  padding: 12px !important;
+}
+.game-arena > * + * { margin-top: 12px !important; }
+/* no rounded corners anywhere in the games view */
+.game-arena, .game-arena *, .games-layout > * { border-radius: 0 !important; }
+/* flatten the inner .game-lobby wrapper so the arena is the only container */
+.game-lobby {
+  background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0 !important;
+  display: flex !important; flex-direction: column !important; gap: 10px !important;
+}
+/* mini-game tab strip = flush Win98 tabs */
+.mini-game-tabs { display: flex !important; flex-wrap: wrap !important; gap: 3px !important; margin: 0 !important; }
+.mini-game-tab { padding: 5px 10px !important; font-family: var(--ui) !important; font-size: 10px !important; line-height: 1.2 !important; }
+/* hero + friend = consistent bevelled group-boxes (no white gradient) */
+.lobby-hero, .lobby-friend {
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-hi), inset -1px -1px 0 var(--bevel-lo) !important;
+  padding: 12px 14px !important; margin: 0 !important;
+}
+/* players-online + AI-opponents = titled group-box (label = title bar, list = well) */
+.lobby-label {
+  display: block !important;
+  background: var(--surface-2) !important;
+  border: 1px solid var(--line) !important; border-bottom: 0 !important;
+  padding: 4px 8px !important; margin: 4px 0 0 !important;
+  font-family: var(--ui) !important; font-size: 9.5px !important; letter-spacing: .05em !important;
+  text-transform: uppercase !important; color: var(--muted) !important;
+}
+.lobby-list {
+  background: var(--field) !important;
+  border: 1px solid var(--line) !important;
+  box-shadow: inset 1px 1px 0 var(--bevel-lo), inset -1px -1px 0 var(--bevel-hi) !important;
+  padding: 6px !important; margin: 0 !important;
+}

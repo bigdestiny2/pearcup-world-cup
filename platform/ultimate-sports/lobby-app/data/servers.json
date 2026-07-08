@@ -117,7 +117,16 @@
     "isFeatured": true,
     "tagline": "MAIN EVENT — Holloway vs McGregor · pick method + round.",
     "coverUrl": "/generated-assets/mma-boxing-fight-card/server-card-cover/cover.jpg",
-    "appUrl": "/shell/index.html?fit=mma-boxing-fight-card"
+    "appUrl": "/shell/index.html?fit=mma-boxing-fight-card#home",
+    "feature": {
+      "eyebrow": "TONIGHT · MAIN EVENT",
+      "weightClass": "Featherweight · 5 rounds",
+      "venue": "T-Mobile Arena · Las Vegas",
+      "prop": "pick the method + round",
+      "cta": "Enter the room",
+      "red": { "name": "M. Holloway", "nick": "Blessed", "record": "26–8–0", "flag": "🇺🇸", "img": "/shell/avatars/fighter-red.png", "corner": "#ef4444" },
+      "blue": { "name": "C. McGregor", "nick": "The Notorious", "record": "22–6–0", "flag": "🇮🇪", "img": "/shell/avatars/fighter-green.png", "corner": "#22c55e" }
+    }
   },
   {
     "serverId": "server:sailgp-companion",

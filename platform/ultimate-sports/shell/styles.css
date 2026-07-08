@@ -2323,15 +2323,13 @@ h2 {
 .chat-message {
   border: 1px solid rgba(185, 197, 192, 0.72);
   border-radius: var(--radius);
-  background: linear-gradient(145deg, #ffffff, var(--surface-2));
+  background: linear-gradient(145deg, var(--card), var(--surface-2));
   padding: 10px;
   box-shadow: 0 6px 14px rgba(20, 23, 27, 0.045);
 }
 
 .commentary-line time,
 .chat-message time {
-  display: block;
-  margin-bottom: 4px;
   color: var(--muted);
   font-size: 11px;
   font-weight: 760;
@@ -2340,12 +2338,18 @@ h2 {
 .commentary-line p,
 .chat-message p {
   margin: 0;
-  line-height: 1.35;
+  line-height: 1.45;
+}
+
+.chat-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
 }
 
 .chat-message strong {
-  display: block;
-  margin-bottom: 3px;
   color: var(--blue);
   font-size: 12px;
 }
