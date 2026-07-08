@@ -637,6 +637,10 @@ function escapeHtml (value) {
     .replaceAll("'", '&#039;')
 }
 
+function escapeAttr (value) {
+  return escapeHtml(value).replaceAll('`', '&#096;')
+}
+
 function serviceModeLabel (service) {
   return service.mode === 'sdk' ? 'SDK' : 'Demo'
 }
