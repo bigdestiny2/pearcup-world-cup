@@ -50,6 +50,10 @@ body {
 .fatal-error-title { font-size: 20px; }
 .fatal-error-msg { color: #97a0b0; }
 
+.browser-error { padding: 18px 14px; text-align: center; }
+.browser-error-label { font-size: 12px; font-weight: 700; color: var(--neg); margin: 0 0 4px; }
+.browser-error-msg { font-size: 11px; color: var(--ink-faint); margin: 0 0 10px; line-height: 1.45; }
+
 .desk {
   min-height: 100vh;
   padding: 24px 18px;

@@ -65,15 +65,16 @@ async function boot () {
   bindFriends()
   bindRoomModal()
   await ensureSigner()
-  renderIdentity()
-  renderFriends()
-  initPresence()
-  renderWallet()
-  renderSettings()
-  renderActiveCompetitions()
-  renderPrivateRooms()
-  renderSocialFeed()
-  bindSocialFeedControls()
+  // Initial paints are best-effort: a single missing element must not blank the lobby.
+  safeRender('identity', renderIdentity)
+  safeRender('friends', renderFriends)
+  safeRender('presence', initPresence)
+  safeRender('wallet', renderWallet)
+  safeRender('settings', renderSettings)
+  safeRender('activeCompetitions', renderActiveCompetitions)
+  safeRender('privateRooms', renderPrivateRooms)
+  safeRender('socialFeed', renderSocialFeed)
+  safeRender('socialFeedControls', bindSocialFeedControls)
   try {
     const response = await fetch('./data/servers.json', { cache: 'no-store' })
     if (!response.ok) throw new Error(`servers fetch failed: ${response.status}`)
@@ -86,7 +87,15 @@ async function boot () {
     renderTicker()
     renderSocialFeed()
   } catch (error) {
-    renderError(error)
+    renderServerGridError(error)
+  }
+}
+
+function safeRender (label, fn) {
+  try {
+    fn()
+  } catch (error) {
+    console.warn(`[lobby] render "${label}" failed:`, error)
   }
 }
 
@@ -1119,6 +1128,23 @@ function categoryName (category) {
   if (category === 'pro-sports') return 'Pro sports'
   if (category === 'combat-sports') return 'Combat'
   return category.charAt(0).toUpperCase() + category.slice(1)
+}
+
+function renderServerGridError (error) {
+  const grid = $('#serverGrid')
+  const msg = escapeHtml(error.message || error)
+  const html = `<tr><td colspan="6" class="browser-error">
+    <p class="browser-error-label">Server list unavailable</p>
+    <p class="browser-error-msg">${msg}</p>
+    <button type="button" class="wbtn" id="retryServersBtn">Retry</button>
+  </td></tr>`
+  if (grid) {
+    grid.innerHTML = html
+    const btn = $('#retryServersBtn')
+    if (btn) btn.addEventListener('click', () => boot().catch(renderError))
+  }
+  const status = $('#lobbyStatus')
+  if (status) status.textContent = '0 servers'
 }
 
 function renderError (error) {

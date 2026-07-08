@@ -9849,8 +9849,21 @@ function localizeChrome () {
   })
 }
 
+function localizeOnboardingTitle () {
+  const el = $('#onboardingTitle')
+  if (!el) return
+  const fitId = window.CURRENT_FIT_ID || 'world-cup'
+  const labels = {
+    'mma-boxing-fight-card': 'Choose your fighter',
+    'creator-reality-brackets': 'Choose your creator',
+    'awards-prediction-pools': 'Choose your nominee'
+  }
+  el.textContent = labels[fitId] || 'Choose your country'
+}
+
 function hydrateStaticShell () {
   try {
+    localizeOnboardingTitle()
     if ($('#teamGrid')) renderTeams()
     if ($('#profileChip') || $('#avatarPreview')) renderProfile()
     localizeChrome()
