@@ -50,7 +50,20 @@
 
   scripts.reduce(function (chain, src) {
     return chain.then(function () { return loadScript(src) })
-  }, Promise.resolve()).catch(function (err) {
+  }, Promise.resolve())
+  .then(function () {
+    // In a browser dev server, fetch a local runtime config so real wallets/QVAC can boot.
+    if (typeof fetch === 'undefined' || typeof root.PearCupRuntimeSettings === 'undefined') return
+    return fetch('/config/pearcup.runtime.json')
+      .then(function (res) { return res.ok ? res.json() : null })
+      .then(function (config) {
+        if (config && root.PearCupRuntimeSettings.applyRuntimeSettingsToRoot) {
+          root.PearCupRuntimeSettings.applyRuntimeSettingsToRoot(root, config)
+        }
+      })
+      .catch(function () { /* no local config — keep demo runtime */ })
+  })
+  .catch(function (err) {
     var detail = err && err.stack ? err.stack : String(err)
     try {
       var bar = root.document.getElementById('bootErrorBar') || root.document.createElement('pre')

@@ -95,6 +95,27 @@
       mode: 'sdk',
       async: true,
 
+      async getWalletDetails (input = {}) {
+        if (!processor || typeof processor.getWalletDetails !== 'function') {
+          throw new Error('WDK processor does not expose wallet details')
+        }
+        return processor.getWalletDetails(input)
+      },
+
+      async prepareWithdrawal (input = {}) {
+        if (!processor || typeof processor.prepareWithdrawal !== 'function') {
+          throw new Error('WDK processor does not expose withdrawals')
+        }
+        return processor.prepareWithdrawal(input)
+      },
+
+      async listWalletTransactions (input = {}) {
+        if (!processor || typeof processor.listTransactions !== 'function') {
+          throw new Error('WDK processor does not expose transaction listing')
+        }
+        return processor.listTransactions(input)
+      },
+
       async createGameEscrow (input) {
         const escrow = core.createTetherWdkEscrowIntent({ ...input, rail })
         const transaction = await createProcessorTransaction(processor, input, escrow.escrowId)

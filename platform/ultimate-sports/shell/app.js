@@ -442,6 +442,19 @@ function loadState () {
       pendingPayout: 120,
       ledger: [{ label: 'Welcome bonus', amount: 500, kind: 'credit' }]
     },
+    realWallet: {
+      enabled: false,
+      asset: 'usdt-evm',
+      chain: 'ethereum',
+      decimals: 6,
+      address: '',
+      balance: '0',
+      qrData: '',
+      transactions: [],
+      pendingDeposit: null,
+      pendingWithdrawal: null,
+      error: null
+    },
     enteredPools: {},
     liveConfig: { enabled: false, provider: 'football-data', apiKey: '', matchId: '', proxy: '', pollSec: 30 },
     theme: 'kawaii',
@@ -458,6 +471,7 @@ function loadState () {
       chat: saved.chat || defaultChat,
       payoutAddresses: { ...fallback.payoutAddresses, ...(saved.payoutAddresses || {}) },
       wallet: { ...fallback.wallet, ...(saved.wallet || {}) },
+      realWallet: { ...fallback.realWallet, ...(saved.realWallet || {}), enabled: false },
       enteredPools: PoolVariantHelpers
         ? PoolVariantHelpers.normalizeEnteredPools(saved.enteredPools || {})
         : (saved.enteredPools || {}),
@@ -986,8 +1000,9 @@ function renderView (view) {
 
 // ==================== Shared Wallet ====================
 // One wallet used everywhere: header chip (all pages), profile management,
-// bracket entry debits, game escrow, payout credits. Demo balance now; real
-// funding/withdrawal is the Tether WDK deposit/withdraw seam.
+// bracket entry debits, game escrow, payout credits. Demo balance is always
+// available; when Tether WDK is configured the same panel exposes real deposit
+// QR codes, address withdrawals, and an on-chain transaction log.
 function fmtMoney (n) { return `${Number(n).toLocaleString('en-US')} ${state.wallet.currency}` }
 function walletLog (label, amount, kind) {
   state.wallet.ledger = state.wallet.ledger || []
@@ -995,11 +1010,20 @@ function walletLog (label, amount, kind) {
   state.wallet.ledger = state.wallet.ledger.slice(0, 8)
 }
 function fundWallet (amount) {
+  if (realWalletSdkReady()) {
+    showToast('Use the Deposit tab to fund your real wallet')
+    switchWalletTab('deposit')
+    return
+  }
   state.wallet.balance += amount
   walletLog('Funded wallet', amount, 'credit')
   persist(); refreshWallet(); flashWalletChip(); showToast(`Added ${fmtMoney(amount)} to your wallet`)
 }
 function withdrawWallet () {
+  if (realWalletSdkReady()) {
+    switchWalletTab('withdraw')
+    return
+  }
   const amount = state.wallet.balance
   if (amount <= 0) { showToast('Nothing to withdraw'); return }
   state.wallet.balance = 0
@@ -1083,38 +1107,287 @@ function renderWalletChip () {
   chip.innerHTML = `<span class="wallet-ico">💰</span><span class="wallet-amt">${escapeHtml(fmtMoney(state.wallet.balance))}</span>`
 }
 
+// ---------------- Real wallet (Tether WDK) ----------------
+function realWalletSdkReady () {
+  return integrationRuntime &&
+    integrationRuntime.readiness &&
+    integrationRuntime.readiness.tetherWdk &&
+    integrationRuntime.readiness.tetherWdk.sdkReady === true &&
+    integrationRuntime.adapters &&
+    integrationRuntime.adapters.tetherWdk &&
+    typeof integrationRuntime.adapters.tetherWdk.getWalletDetails === 'function'
+}
+
+function realWalletAdapter () {
+  return realWalletSdkReady() ? integrationRuntime.adapters.tetherWdk : null
+}
+
+function formatCryptoBalance (raw, decimals = 6) {
+  if (raw == null) return '0.00'
+  const value = typeof raw === 'bigint' ? raw : BigInt(String(raw))
+  const divisor = BigInt(10 ** Math.max(0, Number(decimals)))
+  const whole = (value / divisor).toString()
+  const frac = (value % divisor).toString().padStart(Number(decimals), '0')
+  const trimmed = frac.replace(/0+$/, '')
+  return trimmed ? `${whole}.${trimmed}` : whole
+}
+
+async function loadRealWallet () {
+  if (!realWalletSdkReady()) {
+    state.realWallet.enabled = false
+    return
+  }
+  state.realWallet.enabled = true
+  const adapter = realWalletAdapter()
+  try {
+    const details = await adapter.getWalletDetails({ asset: state.realWallet.asset || 'usdt-evm', accountIndex: 0 })
+    state.realWallet.asset = details.asset || 'usdt-evm'
+    state.realWallet.chain = details.chain || 'ethereum'
+    state.realWallet.token = details.token || ''
+    state.realWallet.decimals = details.decimals || 6
+    state.realWallet.address = details.address || ''
+    state.realWallet.balance = details.balance || '0'
+    state.realWallet.qrData = details.qrData || ''
+    state.realWallet.error = null
+    await refreshRealWalletTransactions()
+  } catch (err) {
+    state.realWallet.error = err && err.message ? err.message : String(err)
+  }
+}
+
+async function refreshRealWalletTransactions () {
+  const adapter = realWalletAdapter()
+  if (!adapter || typeof adapter.listWalletTransactions !== 'function') return
+  try {
+    const onChain = await adapter.listWalletTransactions()
+    const local = state.realWallet.transactions || []
+    const byId = new Map()
+    for (const tx of onChain) byId.set(tx.id, tx)
+    for (const tx of local) if (tx.kind === 'withdrawal') byId.set(tx.id, tx)
+    state.realWallet.transactions = Array.from(byId.values()).sort((a, b) => {
+      const ta = new Date(a.createdAt || 0).getTime()
+      const tb = new Date(b.createdAt || 0).getTime()
+      return tb - ta
+    })
+  } catch (err) {
+    // Keep existing local log if on-chain listing fails.
+  }
+}
+
+let realWalletPollId = null
+function startRealWalletPolling () {
+  stopRealWalletPolling()
+  if (!realWalletSdkReady()) return
+  loadRealWallet()
+  realWalletPollId = setInterval(() => {
+    if (!realWalletSdkReady()) { stopRealWalletPolling(); return }
+    loadRealWallet().catch(() => {})
+  }, 15000)
+}
+function stopRealWalletPolling () {
+  if (realWalletPollId) { clearInterval(realWalletPollId); realWalletPollId = null }
+}
+
+async function submitRealWithdrawal (amount, address) {
+  if (!realWalletSdkReady()) throw new Error('Real wallet not ready')
+  const adapter = realWalletAdapter()
+  const transfer = await adapter.prepareWithdrawal({
+    asset: state.realWallet.asset,
+    amount: Number(amount),
+    recipient: address,
+    reference: `withdrawal-${Date.now()}`
+  })
+  const tx = {
+    id: transfer.id || `withdrawal-${Date.now()}`,
+    kind: 'withdrawal',
+    status: transfer.status,
+    asset: transfer.asset,
+    chain: transfer.chain,
+    amount: Number(amount),
+    address,
+    recipient: address,
+    hash: transfer.hash || null,
+    fee: transfer.fee || null,
+    createdAt: new Date().toISOString()
+  }
+  state.realWallet.transactions = [tx, ...(state.realWallet.transactions || [])]
+  persist()
+  return transfer
+}
+
+function renderQrCode (data) {
+  try {
+    if (typeof qrcode !== 'function') return '<div class="qr-fallback">QR generator unavailable</div>'
+    const qr = qrcode(0, 'M')
+    qr.addData(data)
+    qr.make()
+    return qr.createSvgTag(4, 2)
+  } catch (e) {
+    return `<div class="qr-fallback">QR error: ${escapeHtml(e.message || 'unknown')}</div>`
+  }
+}
+
+function copyToClipboard (text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard'))
+  } else {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    showToast('Copied to clipboard')
+  }
+}
+
+let walletActiveTab = 'deposit'
+function switchWalletTab (tab) {
+  walletActiveTab = tab
+  renderWalletManage()
+}
+
 function renderWalletManage () {
   const el = $('#walletManage')
   if (!el) return
   const w = state.wallet
+  const rw = state.realWallet || {}
+  const realReady = realWalletSdkReady()
+
+  if (!realReady) {
+    el.innerHTML = `
+      <div class="wallet-card">
+        <div class="wallet-top">
+          <div>
+            <p class="eyebrow">Wallet · Tether WDK</p>
+            <p class="wallet-balance">${escapeHtml(fmtMoney(w.balance))}</p>
+          </div>
+          <span class="wallet-badge ${w.pendingPayout > 0 ? 'is-live' : ''}">${w.pendingPayout > 0 ? `${fmtMoney(w.pendingPayout)} to collect` : 'All collected'}</span>
+        </div>
+        <div class="wallet-actions">
+          <button class="primary-button" type="button" data-fund="50">+ Fund 50</button>
+          <button class="secondary-button" type="button" data-fund="100">+ 100</button>
+          <button class="secondary-button" type="button" data-fund="250">+ 250</button>
+          <button class="primary-button wallet-collect" type="button" id="collectPayoutBtn"${w.pendingPayout > 0 ? '' : ' disabled'}>Collect payouts</button>
+          <button class="secondary-button" type="button" id="withdrawBtn">Withdraw</button>
+        </div>
+        <div class="wallet-ledger">
+          ${(w.ledger || []).map(row => `
+            <div class="wallet-row">
+              <span>${escapeHtml(row.label)}</span>
+              <strong class="${row.kind}">${row.kind === 'credit' ? '+' : '−'}${escapeHtml(fmtMoney(row.amount))}</strong>
+            </div>`).join('')}
+        </div>
+        <p class="wallet-note">Demo balance. Real funding/withdrawal routes through the Tether WDK deposit &amp; payout rails. Shared across brackets, games, and payouts.</p>
+      </div>`
+    $$('#walletManage [data-fund]').forEach(b => b.addEventListener('click', () => fundWallet(Number(b.dataset.fund))))
+    const collect = $('#collectPayoutBtn'); if (collect) collect.addEventListener('click', collectPayouts)
+    const withdraw = $('#withdrawBtn'); if (withdraw) withdraw.addEventListener('click', withdrawWallet)
+    return
+  }
+
+  const balanceDisplay = formatCryptoBalance(rw.balance, rw.decimals)
+  const tokenSymbol = rw.asset === 'btc' ? 'BTC' : 'USDT'
+  const tab = walletActiveTab || 'deposit'
+
+  let body = ''
+  if (tab === 'deposit') {
+    const qr = rw.address ? renderQrCode(rw.qrData || rw.address) : ''
+    body = `
+      <div class="wallet-deposit-panel">
+        <div class="wallet-qr">${qr || '<div class="qr-fallback">Loading address…</div>'}</div>
+        <div class="wallet-address-row">
+          <code class="wallet-address">${escapeHtml(rw.address || '—')}</code>
+          <button class="secondary-button" type="button" id="copyAddressBtn" ${rw.address ? '' : 'disabled'}>Copy</button>
+        </div>
+        <p class="wallet-note">Send only ${tokenSymbol} on ${escapeHtml(rw.chain || 'ethereum')} to this address. Deposits are detected on-chain and credited after confirmation.</p>
+      </div>`
+  } else if (tab === 'withdraw') {
+    body = `
+      <form class="wallet-withdraw-form" id="withdrawForm">
+        <label class="field-label">Amount (${tokenSymbol})
+          <input type="number" step="0.000001" min="0" id="withdrawAmount" placeholder="0.00" required>
+        </label>
+        <label class="field-label">Recipient address
+          <input type="text" id="withdrawAddress" placeholder="0x..." autocomplete="off" spellcheck="false" required>
+        </label>
+        <p class="wallet-note">Withdrawals are ${integrationRuntime.readiness.tetherWdk && integrationRuntime.readiness.tetherWdk.sdkReady && integrationRuntime.readiness.settlement && integrationRuntime.readiness.settlement.realMoneyEnabled ? 'broadcast to the network' : 'quoted only until real-money compliance is enabled'}.</p>
+        <div class="wallet-form-actions">
+          <button class="primary-button" type="submit" id="submitWithdrawBtn">${integrationRuntime.readiness.settlement && integrationRuntime.readiness.settlement.realMoneyEnabled ? 'Withdraw' : 'Quote withdrawal'}</button>
+        </div>
+        <p class="wallet-status" id="withdrawStatus"></p>
+      </form>`
+  } else {
+    const txs = rw.transactions || []
+    body = `
+      <div class="wallet-tx-list">
+        ${txs.length === 0 ? '<p class="wallet-empty">No on-chain transactions yet.</p>' : txs.map(tx => `
+          <div class="wallet-tx ${escapeHtml(tx.status || '').replace(/\s/g, '-')}">
+            <div class="wallet-tx-main">
+              <span class="wallet-tx-kind">${tx.kind === 'withdrawal' ? 'Withdrawal' : 'Deposit'}</span>
+              <strong class="wallet-tx-amount">${tx.kind === 'withdrawal' ? '−' : '+'}${formatCryptoBalance(tx.amount, tx.decimals || rw.decimals)} ${tokenSymbol}</strong>
+            </div>
+            <div class="wallet-tx-meta">
+              <span>${escapeHtml(tx.status || 'pending')}</span>
+              <span>${escapeHtml(tx.chain || rw.chain || '')}</span>
+              <time>${tx.createdAt ? new Date(tx.createdAt).toLocaleString() : '—'}</time>
+            </div>
+            ${tx.hash ? `<code class="wallet-tx-hash">${escapeHtml(tx.hash)}</code>` : ''}
+            ${tx.address ? `<code class="wallet-tx-address">${escapeHtml(tx.address)}</code>` : ''}
+          </div>`).join('')}
+      </div>`
+  }
+
   el.innerHTML = `
     <div class="wallet-card">
       <div class="wallet-top">
         <div>
           <p class="eyebrow">Wallet · Tether WDK</p>
-          <p class="wallet-balance">${escapeHtml(fmtMoney(w.balance))}</p>
+          <p class="wallet-balance">${escapeHtml(balanceDisplay)} ${tokenSymbol}</p>
+          <p class="wallet-address-sub">${escapeHtml(rw.address || '')}</p>
         </div>
-        <span class="wallet-badge ${w.pendingPayout > 0 ? 'is-live' : ''}">${w.pendingPayout > 0 ? `${fmtMoney(w.pendingPayout)} to collect` : 'All collected'}</span>
+        <span class="wallet-badge is-live">Live ${tokenSymbol}</span>
       </div>
-      <div class="wallet-actions">
-        <button class="primary-button" type="button" data-fund="50">+ Fund 50</button>
-        <button class="secondary-button" type="button" data-fund="100">+ 100</button>
-        <button class="secondary-button" type="button" data-fund="250">+ 250</button>
-        <button class="primary-button wallet-collect" type="button" id="collectPayoutBtn"${w.pendingPayout > 0 ? '' : ' disabled'}>Collect payouts</button>
-        <button class="secondary-button" type="button" id="withdrawBtn">Withdraw</button>
+      <div class="wallet-tabs">
+        <button class="wallet-tab ${tab === 'deposit' ? 'is-active' : ''}" type="button" data-wallet-tab="deposit">Deposit</button>
+        <button class="wallet-tab ${tab === 'withdraw' ? 'is-active' : ''}" type="button" data-wallet-tab="withdraw">Withdraw</button>
+        <button class="wallet-tab ${tab === 'history' ? 'is-active' : ''}" type="button" data-wallet-tab="history">History</button>
       </div>
-      <div class="wallet-ledger">
-        ${(w.ledger || []).map(row => `
-          <div class="wallet-row">
-            <span>${escapeHtml(row.label)}</span>
-            <strong class="${row.kind}">${row.kind === 'credit' ? '+' : '−'}${escapeHtml(fmtMoney(row.amount))}</strong>
-          </div>`).join('')}
-      </div>
-      <p class="wallet-note">Demo balance. Real funding/withdrawal routes through the Tether WDK deposit &amp; payout rails. Shared across brackets, games, and payouts.</p>
+      ${rw.error ? `<p class="wallet-error">${escapeHtml(rw.error)}</p>` : ''}
+      ${body}
+      <p class="wallet-note">Real wallet backed by Tether WDK. Demo balance ${fmtMoney(w.balance)} is still used for bracket previews until a deposit is confirmed.</p>
     </div>`
-  $$('#walletManage [data-fund]').forEach(b => b.addEventListener('click', () => fundWallet(Number(b.dataset.fund))))
-  const collect = $('#collectPayoutBtn'); if (collect) collect.addEventListener('click', collectPayouts)
-  const withdraw = $('#withdrawBtn'); if (withdraw) withdraw.addEventListener('click', withdrawWallet)
+
+  $$('#walletManage [data-wallet-tab]').forEach(b => b.addEventListener('click', () => switchWalletTab(b.dataset.walletTab)))
+  const copyBtn = $('#copyAddressBtn')
+  if (copyBtn) copyBtn.addEventListener('click', () => copyToClipboard(rw.address))
+  const form = $('#withdrawForm')
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      const amount = $('#withdrawAmount').value
+      const address = $('#withdrawAddress').value
+      const statusEl = $('#withdrawStatus')
+      const submitBtn = $('#submitWithdrawBtn')
+      if (!amount || !address || Number(amount) <= 0) {
+        statusEl.textContent = 'Enter a valid amount and address.'
+        return
+      }
+      statusEl.textContent = 'Contacting Tether WDK…'
+      if (submitBtn) submitBtn.disabled = true
+      try {
+        const transfer = await submitRealWithdrawal(amount, address)
+        statusEl.textContent = transfer.status === 'broadcast'
+          ? `Broadcast: ${transfer.hash || 'pending'}`
+          : `Quoted: review before enabling broadcast payouts.`
+        renderWalletManage()
+      } catch (err) {
+        statusEl.textContent = err && err.message ? err.message : 'Withdrawal failed.'
+      } finally {
+        if (submitBtn) submitBtn.disabled = false
+      }
+    })
+  }
 }
 
 function showOperatorLiveDataSettings () {
@@ -9939,6 +10212,8 @@ function boot () {
   // Auto-detect a worker-relayed live-match.json feed (no browser CORS).
   detectLiveRelay()
   setInterval(detectLiveRelay, 60_000)
+  // Start polling the real Tether WDK wallet when configured.
+  try { startRealWalletPolling() } catch (e) { bootIssues.push('wallet polling threw: ' + (e && e.message)) }
 }
 
 function localizeChrome () {

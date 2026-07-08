@@ -77,16 +77,17 @@
     "preview": "node scripts/serve-app.js --port 4197"
   },
   "dependencies": {
-    "pear-bridge": "^1.2.5",
-    "pear-electron": "^1.7.28",
-    "hyperswarm": "^4.0.0",
+    "b4a": "^1.6.0",
     "hypercore-crypto": "^3.0.0",
-    "b4a": "^1.6.0"
+    "hyperswarm": "^4.0.0",
+    "pear-bridge": "^1.2.5",
+    "pear-electron": "^1.7.28"
   },
   "optionalDependencies": {
     "@qvac/sdk": "^0.14.0",
     "@tetherto/wdk": "^1.0.0-beta.12",
     "@tetherto/wdk-wallet-btc": "^1.0.0-beta.10",
-    "@tetherto/wdk-wallet-evm": "^1.0.0-beta.14"
+    "@tetherto/wdk-wallet-evm": "^1.0.0-beta.14",
+    "qrcode-generator": "^2.0.4"
   }
 }

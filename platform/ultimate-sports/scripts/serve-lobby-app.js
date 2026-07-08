@@ -53,6 +53,8 @@ function createLobbyAppServer (input = {}) {
       filePath = path.join(generatedDir, pathname.slice('/generated-assets/'.length))
     } else if (pathname.startsWith('/generated/')) {
       filePath = path.join(generatedDir, pathname.slice('/generated/'.length))
+    } else if (pathname.startsWith('/config/')) {
+      filePath = path.join(rootDir, pathname)
     } else {
       filePath = path.join(lobbyDir, pathname === '/' ? 'index.html' : pathname)
     }

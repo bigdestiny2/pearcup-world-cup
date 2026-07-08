@@ -253,7 +253,8 @@
         amount: details.cryptoAmount,
         expected,
         baseline,
-        qrData
+        qrData,
+        createdAt: new Date().toISOString()
       }
       transactions.set(id, transaction)
       return transaction
@@ -438,6 +439,54 @@
       transactions.clear()
     }
 
+    async function getWalletDetails ({ asset, accountIndex = 0 } = {}) {
+      const details = assetDetails({ asset })
+      const account = await accountFor(details.chain, accountIndex)
+      const address = typeof account.getAddress === 'function' ? await account.getAddress() : account.address
+      if (!address) throw new Error('WDK account address is required')
+      const balance = await readBalance(account, details.token)
+      const qrData = details.asset === 'btc'
+        ? `bitcoin:${address}`
+        : `ethereum:${details.token}/transfer?address=${address}`
+      return {
+        asset: details.asset,
+        chain: details.chain,
+        token: details.token,
+        decimals: details.decimals,
+        address,
+        balance: balance.toString(),
+        qrData
+      }
+    }
+
+    async function prepareWithdrawal ({ asset, amount, recipient, reference, accountIndex = 0 } = {}) {
+      if (!recipient) throw new Error('recipient is required for withdrawal')
+      if (amount == null || isNaN(Number(amount)) || Number(amount) <= 0) throw new Error('amount is required for withdrawal')
+      return preparePayoutTransfer({
+        userId: reference || 'wallet-user',
+        amount: Number(amount),
+        asset,
+        recipient,
+        reference: reference || 'wallet-withdrawal'
+      })
+    }
+
+    function listTransactions () {
+      return Array.from(transactions.values()).map(tx => ({
+        id: tx.id,
+        status: tx.status,
+        asset: tx.asset,
+        chain: tx.chain,
+        address: tx.address,
+        token: tx.token,
+        amount: tx.amount,
+        expected: tx.expected ? tx.expected.toString() : null,
+        baseline: tx.baseline ? tx.baseline.toString() : null,
+        qrData: tx.qrData || null,
+        createdAt: tx.createdAt || null
+      }))
+    }
+
     return {
       type: 'tether-wdk-package-processor',
       createTransaction,
@@ -446,6 +495,9 @@
       checkStatus,
       preparePoolPayout,
       releaseEscrow,
+      getWalletDetails,
+      prepareWithdrawal,
+      listTransactions,
       teardown,
       async status () {
         return {
@@ -471,6 +523,21 @@
     })
     return {
       ...adapter,
+      async getWalletDetails (opts = {}) {
+        if (typeof processor.getWalletDetails !== 'function') throw new Error('WDK processor does not support wallet details')
+        const details = await processor.getWalletDetails(opts)
+        return { ...details, kind: 'wallet-details' }
+      },
+      async prepareWithdrawal (opts = {}) {
+        if (typeof processor.prepareWithdrawal !== 'function') throw new Error('WDK processor does not support withdrawals')
+        const transfer = await processor.prepareWithdrawal(opts)
+        return { ...transfer, kind: 'withdrawal' }
+      },
+      async listWalletTransactions (opts = {}) {
+        if (typeof processor.listTransactions !== 'function') throw new Error('WDK processor does not support transaction listing')
+        const txs = await processor.listTransactions(opts)
+        return txs.map(tx => ({ ...tx, kind: tx.kind || 'deposit' }))
+      },
       async close () {
         if (typeof processor.teardown === 'function') await processor.teardown()
       }

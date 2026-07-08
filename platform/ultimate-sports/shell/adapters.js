@@ -200,9 +200,29 @@
     function mapRail (value) {
       return value && typeof value.then === 'function' ? value.then(withRail) : withRail(value)
     }
+    function passthrough (name, fallback) {
+      if (typeof sdk[name] === 'function') {
+        return function (input = {}) {
+          const result = sdk[name](input)
+          return result && typeof result.then === 'function' ? result : Promise.resolve(result)
+        }
+      }
+      if (fallback) return fallback
+      return function () { throw new Error(`Tether WDK SDK adapter missing method: ${name}`) }
+    }
+
     return {
       id,
       mode: 'sdk',
+      getWalletDetails: passthrough('getWalletDetails'),
+      prepareWithdrawal: passthrough('prepareWithdrawal'),
+      listWalletTransactions: passthrough('listWalletTransactions', function () {
+        if (typeof sdk.listTransactions === 'function') {
+          const result = sdk.listTransactions()
+          return result && typeof result.then === 'function' ? result : Promise.resolve(result)
+        }
+        throw new Error('Tether WDK SDK adapter missing method: listWalletTransactions')
+      }),
       createGameEscrow (input) {
         return mapRail(sdk.createGameEscrow({ ...input, rail: input && input.rail || id }))
       },
