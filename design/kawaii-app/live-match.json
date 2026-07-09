@@ -16,17 +16,17 @@
     "id": 2398,
     "startDate": "2026-06-11",
     "endDate": "2026-07-19",
-    "currentMatchday": 4,
+    "currentMatchday": 6,
     "winner": null
   },
-  "id": 537429,
-  "utcDate": "2026-07-02T19:00:00Z",
+  "id": 537471,
+  "utcDate": "2026-07-10T22:00:00Z",
   "status": "TIMED",
   "venue": "SoFi Stadium",
   "matchday": null,
-  "stage": "LAST_32",
+  "stage": "QUARTER_FINALS",
   "group": null,
-  "lastUpdated": "2026-07-02T12:00:00Z",
+  "lastUpdated": "2026-07-09T12:00:00Z",
   "homeTeam": {
     "id": 760,
     "name": "Spain",
@@ -35,10 +35,10 @@
     "crest": ""
   },
   "awayTeam": {
-    "id": 816,
-    "name": "Austria",
-    "shortName": "Austria",
-    "tla": "AUT",
+    "id": 805,
+    "name": "Belgium",
+    "shortName": "Belgium",
+    "tla": "BEL",
     "crest": ""
   },
   "score": {
