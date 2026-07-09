@@ -8,6 +8,19 @@ PearCup is the World Cup bracket, watch party, and P2P minigame app being built 
 > module map, dev workflow, and Pear packaging gotchas, and
 > [`design/kawaii-app/RELEASE.md`](design/kawaii-app/RELEASE.md) for stage/release.
 
+## ▶ Run it live on Pear (production)
+
+The published PearCup app runs peer-to-peer over the [Pear runtime](https://docs.pears.com/) —
+no server, no download beyond Pear itself:
+
+```sh
+pear run pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo
+```
+
+**Production link:** `pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo`
+(kept fetchable via `pear seed` / HiveRelay pin). Ships the live World Cup bracket
+(real 2026 knockout data), watch party, and P2P penalty minigame.
+
 ## Folder Map
 
 - `design/kawaii-app/` - **canonical build** (self-contained Pear app: own `package.json`, `index.cjs`, P2P modules).
