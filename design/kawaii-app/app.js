@@ -114,41 +114,41 @@ const round32Matches = [
   { id: 'r32-8', time: 'Tue, 07/01', status: 'FT', slots: ['eng', 'cd'], score: [2, 1], sample: { eng: ['sasha'], cd: ['kito'] } },
   { id: 'r32-9', time: 'Tue, 07/01', status: 'AET', slots: ['be', 'sn'], score: [3, 2], sample: { be: ['eline'], sn: ['amina'] } },
   { id: 'r32-10', time: 'Tue, 07/01', status: 'FT', slots: ['us', 'ba'], score: [2, 0], sample: { us: ['maya'], ba: ['dado'] } },
-  { id: 'r32-11', time: 'Today, 15:00', status: 'Open', slots: ['es', 'at'], score: [null, null], sample: { es: ['sol'], at: ['finn'] } },
-  { id: 'r32-12', time: 'Today, 19:00', status: 'Open', slots: ['pt', 'hr'], score: [null, null], sample: { pt: ['ines'], hr: ['marko'] } },
-  { id: 'r32-13', time: 'Today, 23:00', status: 'Open', slots: ['ch', 'dz'], score: [null, null], sample: { ch: ['noa'], dz: ['samir'] } },
-  { id: 'r32-14', time: 'Fri, 07/03, 14:00', status: 'Open', slots: ['au', 'eg'], score: [null, null], sample: { au: ['matilda'], eg: ['omar'] } },
-  { id: 'r32-15', time: 'Fri, 07/03, 18:00', status: 'Open', slots: ['ar', 'cv'], score: [null, null], sample: { ar: ['leo'], cv: ['sofia'] } },
-  { id: 'r32-16', time: 'Fri, 07/03, 21:30', status: 'Open', slots: ['co', 'gh'], score: [null, null], sample: { co: ['vale'], gh: ['kwame'] } }
+  { id: 'r32-11', time: 'Tue, 07/01', status: 'FT', slots: ['es', 'at'], score: [3, 0], sample: { es: ['sol'], at: ['finn'] } },
+  { id: 'r32-12', time: 'Tue, 07/01', status: 'FT', slots: ['pt', 'hr'], score: [2, 1], sample: { pt: ['ines'], hr: ['marko'] } },
+  { id: 'r32-13', time: 'Wed, 07/02', status: 'FT', slots: ['ch', 'dz'], score: [2, 0], sample: { ch: ['noa'], dz: ['samir'] } },
+  { id: 'r32-14', time: 'Wed, 07/02', status: 'PEN 2-4', slots: ['au', 'eg'], score: [1, 1], sample: { au: ['matilda'], eg: ['omar'] } },
+  { id: 'r32-15', time: 'Thu, 07/03', status: 'AET', slots: ['ar', 'cv'], score: [3, 2], sample: { ar: ['leo'], cv: ['sofia'] } },
+  { id: 'r32-16', time: 'Thu, 07/03', status: 'FT', slots: ['co', 'gh'], score: [1, 0], sample: { co: ['vale'], gh: ['kwame'] } }
 ]
 
 const commentary = {
   EN: [
-    ['Today', 'Spain vs Austria is the next Round of 32 room. Picks are open until kickoff.'],
-    ['19:00Z', 'Portugal vs Croatia follows later today, then Switzerland vs Algeria closes the slate.'],
-    ['R32', 'Pool impact is live, but the fallback feed will not invent scores before kickoff.']
+    ['Today', 'Spain vs Belgium is the next quarter-final room. Picks are open until kickoff.'],
+    ['22:00Z', 'France vs Morocco opens the quarters, then Norway vs England and Argentina vs Switzerland.'],
+    ['QF', 'Pool impact is live, but the fallback feed will not invent scores before kickoff.']
   ],
   PT: [
-    ['Today', 'Espanha vs Austria e a proxima sala do Round of 32. Palpites abertos ate o inicio.'],
-    ['19:00Z', 'Portugal vs Croacia vem depois, e Suica vs Argelia fecha o dia.'],
-    ['R32', 'O impacto do bolao esta ativo, mas o fallback nao inventa placares antes do jogo.']
+    ['Today', 'Espanha vs Belgica e a proxima sala das quartas. Palpites abertos ate o inicio.'],
+    ['22:00Z', 'Franca vs Marrocos abre as quartas, depois Noruega vs Inglaterra e Argentina vs Suica.'],
+    ['QF', 'O impacto do bolao esta ativo, mas o fallback nao inventa placares antes do jogo.']
   ],
   ES: [
-    ['Today', 'Espana vs Austria es la proxima sala de Round of 32. Picks abiertos hasta el inicio.'],
-    ['19:00Z', 'Portugal vs Croacia sigue mas tarde, y Suiza vs Argelia cierra el dia.'],
-    ['R32', 'El impacto del pool esta activo, pero el fallback no inventa marcadores antes del partido.']
+    ['Today', 'Espana vs Belgica es la proxima sala de cuartos. Picks abiertos hasta el inicio.'],
+    ['22:00Z', 'Francia vs Marruecos abre los cuartos, luego Noruega vs Inglaterra y Argentina vs Suiza.'],
+    ['QF', 'El impacto del pool esta activo, pero el fallback no inventa marcadores antes del partido.']
   ],
   FR: [
-    ['Today', 'Espagne vs Autriche est la prochaine salle du Round of 32. Picks ouverts jusqu au coup d envoi.'],
-    ['19:00Z', 'Portugal vs Croatie suit ensuite, puis Suisse vs Algerie ferme la journee.'],
-    ['R32', 'L impact du pool est actif, mais le fallback ne fabrique pas de score avant le match.']
+    ['Today', 'Espagne vs Belgique est la prochaine salle des quarts. Picks ouverts jusqu au coup d envoi.'],
+    ['22:00Z', 'France vs Maroc ouvre les quarts, puis Norvege vs Angleterre et Argentine vs Suisse.'],
+    ['QF', 'L impact du pool est actif, mais le fallback ne fabrique pas de score avant le match.']
   ]
 }
 
 const defaultChat = [
-  { user: 'lina', text: 'Spain/Austria room is up. No fake score until the feed lands.', time: 'Today' },
-  { user: 'vera', text: 'Portugal/Croatia pool is next on my list.', time: '19:00Z' },
-  { user: 'ash', text: 'Good, bracket is still Round of 32.', time: 'R32' }
+  { user: 'lina', text: 'Spain/Belgium quarter-final room is up. No fake score until the feed lands.', time: 'Today' },
+  { user: 'vera', text: 'France/Morocco pool is next on my list.', time: '20:00Z' },
+  { user: 'ash', text: 'Good, we are into the quarter-finals now.', time: 'QF' }
 ]
 
 const liveTabs = [
@@ -160,9 +160,9 @@ const liveTabs = [
 ]
 
 const homeFixtures = [
-  { status: 'Today, 15:00', title: 'Spain vs Austria', detail: 'Round of 32 match room', live: false },
-  { status: 'Today, 19:00', title: 'Portugal vs Croatia', detail: '$50 pool closing', live: false },
-  { status: 'Today, 23:00', title: 'Switzerland vs Algeria', detail: 'Late room opening', live: false }
+  { status: 'Fri, 07/10', title: 'Spain vs Belgium', detail: 'Quarter-final match room', live: false },
+  { status: 'Thu, 07/09', title: 'France vs Morocco', detail: '$50 pool closing', live: false },
+  { status: 'Sat, 07/11', title: 'Norway vs England', detail: 'Late room opening', live: false }
 ]
 
 const matchStats = [
@@ -1214,7 +1214,7 @@ function livePanelSnapshot () {
   try { st = feedState() } catch { st = null }
   const live = isLiveApi()
   const home = st ? st.home : { name: 'Spain', flag: '🇪🇸', goals: 0, teamId: 'es' }
-  const away = st ? st.away : { name: 'Austria', flag: '🇦🇹', goals: 0, teamId: 'at' }
+  const away = st ? st.away : { name: 'Belgium', flag: '🇧🇪', goals: 0, teamId: 'be' }
   const status = st ? matchStateLabel(st).txt : 'Kicks off 15:00 ET'
   const events = (state.feedEvents || [])
   return { st, live, home, away, status, events }
@@ -2231,12 +2231,15 @@ function matchStateClass (match) {
 }
 
 function renderBracketBoard (rounds = buildRounds()) {
+  // Balanced-tree placement: each match spans 2^round content rows and is
+  // vertically centred on its two feeders. All rounds fit inside 16 content
+  // rows (2–17), so nothing overflows the grid or overlaps a neighbour.
   const placements = {
     round32: index => ({ column: 1, row: index + 2, span: 1 }),
     round16: index => ({ column: 2, row: 2 + (index * 2), span: 2 }),
-    quarter: index => ({ column: 3, row: 3 + (index * 4), span: 4 }),
-    semi: index => ({ column: 4, row: 5 + (index * 8), span: 8 }),
-    final: () => ({ column: 5, row: 9, span: 8 })
+    quarter: index => ({ column: 3, row: 2 + (index * 4), span: 4 }),
+    semi: index => ({ column: 4, row: 2 + (index * 8), span: 8 }),
+    final: () => ({ column: 5, row: 2, span: 16 })
   }
   const roundsById = new Map()
   rounds.forEach(round => round.matches.forEach(match => roundsById.set(match.id, match)))
@@ -2525,20 +2528,20 @@ function createSimLiveFeed () {
   const st = {
     minute: 0,
     home: { name: 'Spain', flag: '🇪🇸', teamId: 'es', goals: 0 },
-    away: { name: 'Austria', flag: '🇦🇹', teamId: 'at', goals: 0 },
+    away: { name: 'Belgium', flag: '🇧🇪', teamId: 'be', goals: 0 },
     possession: 50,
     shots: [0, 0],
     threat: 50,
     hasScore: false,
     matchStatus: 'TIMED',
-    utcDate: '2026-07-02T19:00:00Z',
-    stage: 'LAST_32',
+    utcDate: '2026-07-10T22:00:00Z',
+    stage: 'QUARTER_FINALS',
     competition: { name: 'FIFA World Cup' }
   }
   const emit = ev => listeners.forEach(fn => fn(ev, st))
   function tick () {
     if (st.matchStatus === 'TIMED' || st.matchStatus === 'SCHEDULED') {
-      emit({ type: 'preview', team: 'Spain vs Austria room is open. Kickoff is 15:00 ET.', clock: 'Soon', minute: 0 })
+      emit({ type: 'preview', team: 'Spain vs Belgium room is open. Kickoff is 15:00 ET.', clock: 'Soon', minute: 0 })
       return
     }
     st.minute += 1
@@ -2677,7 +2680,7 @@ function feedState () { return activeFeed.state() }
 function seedFeedEvents () {
   if (!state.feedEvents || !state.feedEvents.length) {
     state.feedEvents = [
-      { clock: 'Today', type: 'preview', team: 'Spain vs Austria room is open.' },
+      { clock: 'Today', type: 'preview', team: 'Spain vs Belgium room is open.' },
       { clock: '19:00Z', type: 'preview', team: 'Kickoff at SoFi Stadium.' },
       { clock: 'R32', type: 'preview', team: 'Portugal vs Croatia and Switzerland vs Algeria follow later today.' }
     ]

@@ -1578,13 +1578,13 @@ h2 {
 }
 
 .bracket-board {
-  min-height: 1720px;
+  min-height: 1900px;
   position: relative;
   overflow-x: auto;
   overflow-y: visible;
   display: grid;
   grid-template-columns: repeat(5, minmax(218px, 1fr));
-  grid-template-rows: 28px repeat(16, 92px);
+  grid-template-rows: 28px repeat(16, 106px);
   align-items: center;
   column-gap: 24px;
   row-gap: 8px;
@@ -2669,9 +2669,9 @@ h2 {
 
 @media (max-width: 900px) {
   .bracket-board {
-    min-height: 1580px;
+    min-height: 1900px;
     grid-template-columns: repeat(5, minmax(180px, 1fr));
-    grid-template-rows: 28px repeat(16, 84px);
+    grid-template-rows: 28px repeat(16, 106px);
     column-gap: 12px;
     row-gap: 9px;
     padding: 18px 8px 26px;
