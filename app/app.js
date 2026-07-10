@@ -4847,11 +4847,115 @@ function renderPeerBackendBadge () {
 }
 
 function pendingFriendJoinCode () {
+  const override = typeof window !== 'undefined' && window.__pearcupPendingJoinOverride
+  if (override) return String(override).trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32)
   try {
     const raw = new URLSearchParams(location.search).get('join') || ''
     return raw.trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32)
   } catch (e) {
     return ''
+  }
+}
+
+function friendJoinCodeFromLink (value) {
+  if (!value) return ''
+  if (typeof value === 'object') {
+    if (typeof value.link === 'string') {
+      const fromLink = friendJoinCodeFromLink(value.link)
+      if (fromLink) return fromLink
+    }
+    if (typeof value.query === 'string') {
+      const fromQuery = friendJoinCodeFromLink(value.query)
+      if (fromQuery) return fromQuery
+    }
+    if (value.query && typeof value.query === 'object') {
+      const queryValue = value.query.join || value.query.get && value.query.get('join')
+      if (queryValue) return String(queryValue).trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32)
+    }
+    if (value.linkData && typeof value.linkData === 'object') {
+      const fromLinkData = friendJoinCodeFromLink(value.linkData)
+      if (fromLinkData) return fromLinkData
+    }
+    if (typeof value.href === 'string') return friendJoinCodeFromLink(value.href)
+    return ''
+  }
+  const raw = String(value).trim()
+  if (!raw) return ''
+  try {
+    const parsed = raw.startsWith('?')
+      ? new URL(`pear://pearcup/${raw}`)
+      : new URL(raw, typeof location !== 'undefined' ? location.href : 'pear://pearcup/')
+    return (parsed.searchParams.get('join') || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32)
+  } catch (e) {
+    const match = raw.match(/(?:^|[?&])join=([^&#]+)/i)
+    return match ? decodeURIComponent(match[1]).trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32) : ''
+  }
+}
+
+function reportPearWakeup (code, status, detail = '') {
+  if (typeof sendBootProbeEvent !== 'function' || !code) return
+  const peerState = window.PearCupPeerMatch && window.PearCupPeerMatch._state
+  sendBootProbeEvent({
+    event: 'pearcup:deep-link',
+    status,
+    code,
+    detail,
+    backend: document.documentElement.dataset.pearcupPeerNet || null,
+    active: Boolean(peerState && peerState.active),
+    started: Boolean(peerState && peerState.started),
+    peerMatchState: document.documentElement.dataset.pearcupPeerMatchState || null
+  })
+}
+
+function applyPearFriendWakeup (code) {
+  const safeCode = String(code || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32)
+  if (!safeCode) return false
+  try {
+    const url = new URL(location.href)
+    url.searchParams.set('join', safeCode)
+    if (typeof history !== 'undefined' && typeof history.replaceState === 'function') {
+      history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+    }
+  } catch (e) {}
+  window.__pearcupPendingJoinOverride = safeCode
+  document.documentElement.dataset.pearcupPendingJoin = safeCode
+  const joined = tryJoinFriendInvite()
+  reportPearWakeup(safeCode, joined ? 'joining' : 'queued')
+  if (joined && typeof setTimeout === 'function') {
+    const startedAt = Date.now()
+    const poll = () => {
+      const peerState = window.PearCupPeerMatch && window.PearCupPeerMatch._state
+      if (peerState && peerState.code === safeCode && peerState.started) {
+        reportPearWakeup(safeCode, 'started')
+        return
+      }
+      if (Date.now() - startedAt < 8_000) setTimeout(poll, 120)
+    }
+    setTimeout(poll, 120)
+  }
+  return joined
+}
+
+function bindPearWakeups () {
+  const pearApi = typeof window !== 'undefined' && window.Pear
+  if (!pearApi || typeof pearApi.wakeups !== 'function' || window.__pearcupWakeupsBound) {
+    if (typeof sendBootProbeEvent === 'function') sendBootProbeEvent({
+      event: 'pearcup:wakeup-listener',
+      status: pearApi && typeof pearApi.wakeups === 'function' ? 'already-bound' : 'unavailable'
+    })
+    return
+  }
+  window.__pearcupWakeupsBound = true
+  try {
+    const stream = pearApi.wakeups(wakeup => {
+      const code = friendJoinCodeFromLink(wakeup)
+      if (code) applyPearFriendWakeup(code)
+    })
+    window.__pearcupWakeupStream = stream || null
+    sendBootProbeEvent({ event: 'pearcup:wakeup-listener', status: 'bound' })
+  } catch (e) {
+    window.__pearcupWakeupsBound = false
+    sendBootProbeEvent({ event: 'pearcup:wakeup-listener', status: 'error', detail: e && e.message ? e.message : String(e) })
   }
 }
 
@@ -5492,6 +5596,7 @@ function loadBootProbeConfig () {
     const direct = normalizeBootProbeUrl(env && env.PEARCUP_BOOT_PROBE_URL)
     if (direct) config.url = direct
     if (truthyEnv(env && env.PEARCUP_BOOT_PROBE_RUNTIME_SELF_TEST)) config.runtimeSelfTest = true
+    if (truthyEnv(env && env.PEARCUP_DISABLE_RUNTIME_SELF_TEST)) config.runtimeSelfTest = false
     const delay = Number(env && env.PEARCUP_BOOT_PROBE_RUNTIME_SELF_TEST_DELAY_MS)
     if (Number.isFinite(delay) && delay >= 0) config.runtimeSelfTestDelayMs = delay
     if (typeof fetch === 'function') {
@@ -5925,6 +6030,7 @@ function boot () {
   // match data; the renderer never contacts Polymarket's trading APIs directly.
   detectPolymarketOdds()
   setInterval(detectPolymarketOdds, productionLiveData ? productionLiveData.pollMs : 30_000)
+  bindPearWakeups()
 }
 
 function hydrateStaticShell () {

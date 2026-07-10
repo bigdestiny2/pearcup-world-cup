@@ -4,7 +4,7 @@ import { createServer } from 'node:http'
 import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = parseArgs(process.argv.slice(2))
@@ -17,6 +17,9 @@ if (!existsSync(appRoot)) throw new Error(`Pear app root does not exist: ${appRo
 
 const pearLaunchRoot = preparePearLaunchRoot(appRoot)
 const bootProbe = await createBootProbe()
+const wakeStore = args.link && !args.positionalLink
+  ? mkdtempSync(join(tmpdir(), 'pearcup-kawaii-pear-wakeup-store-'))
+  : null
 
 const fatalPatterns = [
   /PearCup fallback failed/i,
@@ -43,13 +46,21 @@ const allowedWarnings = [
   /Fix automatically with: pear run pear:\/\/runtime/i
 ]
 
-const child = spawn(pear, ['run', '--dev', '--tmp-store', '--no-ask', '--no-pre', '.'], {
+const pearLink = args.positionalLink && args.link
+  ? `${pathToFileURL(join(pearLaunchRoot.path, 'index.html')).href}?join=${encodeURIComponent(new URL(args.link).searchParams.get('join') || '')}`
+  : '.'
+const pearArgs = ['run', '--dev']
+if (wakeStore) pearArgs.push('--store', wakeStore)
+else pearArgs.push('--tmp-store')
+pearArgs.push('--no-ask', '--no-pre', pearLink)
+const child = spawn(pear, pearArgs, {
   cwd: pearLaunchRoot.path,
   env: {
     ...process.env,
     PEARCUP_TRACE_BRIDGE: '1',
     PEARCUP_BOOT_PROBE_URL: bootProbe.url,
     PEARCUP_BOOT_PROBE_RUNTIME_SELF_TEST: '1',
+    PEARCUP_DISABLE_RUNTIME_SELF_TEST: args.link ? '1' : '0',
     PEARCUP_BOOT_PROBE_RUNTIME_SELF_TEST_DELAY_MS: '350'
   },
   stdio: ['ignore', 'pipe', 'pipe']
@@ -72,6 +83,18 @@ child.on('exit', (code, signal) => {
   }
 })
 
+if (args.link && wakeStore && !args.positionalLink) {
+  setTimeout(() => {
+    const wake = spawn(pear, ['run', '--detached', '--store', wakeStore, '--no-ask', '--no-pre', '--link', args.link, pearLink], {
+      cwd: pearLaunchRoot.path,
+      env: { ...process.env },
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+    wake.stdout.on('data', onData)
+    wake.stderr.on('data', onData)
+  }, 1_500)
+}
+
 await sleep(durationMs)
 
 if (!exited) {
@@ -80,6 +103,7 @@ if (!exited) {
 }
 await bootProbe.close()
 pearLaunchRoot.cleanup()
+if (wakeStore) rmSync(wakeStore, { recursive: true, force: true })
 
 const bridgeProbeEvents = extractBridgeProbeEvents(output)
 const bootProbeErrors = validateBootProbe(bootProbe.received, bridgeProbeEvents)
@@ -247,6 +271,16 @@ function validateBootProbe (payload, bridgeEvents = []) {
     }
   }
 
+  if (args.link) {
+    const expectedJoin = new URL(args.link).searchParams.get('join') || ''
+    const deepLinkEvents = events.filter(event => event && event.event === 'pearcup:deep-link' && event.code === expectedJoin)
+    const started = deepLinkEvents.find(event => event.status === 'started' && event.active === true && event.started === true)
+    if (!started) {
+      errors.push(`Pear renderer did not consume the deep-link room and start the peer match: ${deepLinkEvents.map(event => `${event.status || '(missing)'}:${event.peerMatchState || '(missing)'}`).join(', ') || 'no deep-link event'}`)
+    }
+    return errors
+  }
+
   const selfTestPayload = events.filter(event => event && event.event === 'pearcup:runtime-self-test').pop()
   if (!selfTestPayload) {
     errors.push('Pear renderer did not report the runtime Bracket/Games/invite self-test')
@@ -400,6 +434,9 @@ function parseArgs (argv) {
     else if (arg.startsWith('--label=')) parsed.label = arg.slice('--label='.length)
     else if (arg === '--pear') parsed.pear = argv[++i]
     else if (arg.startsWith('--pear=')) parsed.pear = arg.slice('--pear='.length)
+    else if (arg === '--link') parsed.link = argv[++i]
+    else if (arg.startsWith('--link=')) parsed.link = arg.slice('--link='.length)
+    else if (arg === '--positional-link') parsed.positionalLink = true
     else throw new Error(`Unknown argument: ${arg}`)
   }
   return parsed

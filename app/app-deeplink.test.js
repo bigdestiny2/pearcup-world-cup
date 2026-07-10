@@ -52,8 +52,10 @@ function createHarness ({ search = '?join=Room-42!!', inputValue = 'guest_beta '
     views: []
   }
   const context = {
+    URL,
     URLSearchParams,
-    location: { search },
+    location: { search, href: `https://pearcup-kawaii.pages.dev/play/${search}` },
+    history: { replaceState: () => {} },
     document: { documentElement: { dataset: {} } },
     window: {},
     setTimeout: (fn, ms) => {
@@ -154,6 +156,29 @@ test('tryJoinFriendInvite sanitizes ?join= and opens the peer match on Games', (
   assert.deepEqual(harness.calls.views, ['games'])
   assert.deepEqual(harness.calls.joins, ['room-42'])
   assert.deepEqual(harness.calls.timers, [])
+})
+
+test('Pear wakeup links extract and sanitize room codes for native deep links', () => {
+  const harness = createHarness({ search: '' })
+  assert.equal(harness.context.friendJoinCodeFromLink('pear://pearcup/?join=Room-42!!'), 'room-42')
+  assert.equal(harness.context.friendJoinCodeFromLink('?join=Room-42!!'), 'room-42')
+  assert.equal(harness.context.friendJoinCodeFromLink({ query: '?join=Room-42!!' }), 'room-42')
+  assert.equal(harness.context.friendJoinCodeFromLink({ link: 'pear://pearcup/?join=Room-42!!' }), 'room-42')
+  assert.equal(harness.context.friendJoinCodeFromLink({ linkData: { query: '?join=Room-42!!' } }), 'room-42')
+})
+
+test('Pear wakeup applies a room code through the same retryable join path', () => {
+  let harness
+  const peerMatch = {
+    _state: { active: false },
+    join: code => harness.calls.joins.push(code)
+  }
+  harness = createHarness({ search: '', peerMatch })
+
+  assert.equal(harness.context.applyPearFriendWakeup('Room-42!!'), true)
+  assert.equal(harness.context.document.documentElement.dataset.pearcupPendingJoin, 'room-42')
+  assert.equal(harness.context.document.documentElement.dataset.pearcupJoinState, 'joining')
+  assert.deepEqual(harness.calls.joins, ['room-42'])
 })
 
 test('tryJoinFriendInvite preserves an already-started matching room', () => {
