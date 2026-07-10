@@ -6,8 +6,8 @@
   "type": "commonjs",
   "license": "MIT",
   "scripts": {
-    "dev": "cd app && pear run --dev .",
-    "dev:devtools": "cd app && pear run --dev --devtools .",
+    "dev": "node scripts/launch-kawaii-dev.mjs",
+    "dev:devtools": "node scripts/launch-kawaii-dev.mjs --devtools",
     "refresh:kawaii-live": "keyvault exec --scope sports/football-data sh -c 'FOOTBALL_DATA_KEY=\"$API_KEY\" node app/fetch-live.mjs'",
     "worker:live-data": "node scripts/live-data-relay.mjs",
     "test:live-data-relay": "node --test scripts/live-data-relay.test.mjs",

@@ -71,7 +71,7 @@
     }
   },
   "scripts": {
-    "dev": "pear run --dev .",
+    "dev": "node ../scripts/launch-kawaii-dev.mjs",
     "stage": "pear stage kawaii-dev .",
     "release": "pear release kawaii-dev"
   },

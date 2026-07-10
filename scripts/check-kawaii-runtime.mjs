@@ -76,6 +76,7 @@ function checkStageIncludes (pkg) {
     '/styles.css',
     '/pearcup-boot.js',
     '/app.js',
+    '/pearcup-identity.js',
     '/peer-hiverelay.js',
     '/peer-net.js',
     '/pool-sync.js',
@@ -125,8 +126,8 @@ function checkRootLaunchScripts (pkg) {
   const scripts = pkg.scripts || {}
   for (const [name, expected] of Object.entries({
     'audit:pear-browser': 'node scripts/pear-browser-compat.mjs --canonical',
-    dev: 'cd app && pear run --dev .',
-    'dev:devtools': 'cd app && pear run --dev --devtools .',
+    dev: 'node scripts/launch-kawaii-dev.mjs',
+    'dev:devtools': 'node scripts/launch-kawaii-dev.mjs --devtools',
     'link:new': 'cd app && pear touch',
     stage: 'cd app && pear stage "$PEAR_LINK" .',
     release: 'cd app && pear release "$PEAR_LINK"',
@@ -175,7 +176,7 @@ function checkRendererHtml () {
 
   if (bootIndex >= 0) {
     const bootLoader = readTextFile('pearcup-boot.js')
-    for (const ref of ['./sdk-runtime.js', './peer-hiverelay.js', './peer-net.js', './pool-sync.js', './peer-match.js', './peer-lobby.js', './watch-sync.js', './watch-voice.js', './app.js']) {
+    for (const ref of ['./sdk-runtime.js', './pearcup-identity.js', './peer-hiverelay.js', './peer-net.js', './pool-sync.js', './peer-match.js', './peer-lobby.js', './watch-sync.js', './watch-voice.js', './app.js']) {
       if (!bootLoader.includes(ref)) errors.push(`pearcup-boot.js must load ${ref}`)
     }
   } else {
