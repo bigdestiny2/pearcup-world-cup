@@ -4901,10 +4901,24 @@ function reportPearWakeup (code, status, detail = '') {
     code,
     detail,
     backend: document.documentElement.dataset.pearcupPeerNet || null,
+    backendStatus: document.documentElement.dataset.pearcupPeerNetStatus || null,
+    backendDetail: document.documentElement.dataset.pearcupPeerNetDetail || null,
     active: Boolean(peerState && peerState.active),
     started: Boolean(peerState && peerState.started),
-    peerMatchState: document.documentElement.dataset.pearcupPeerMatchState || null
+    peerMatchState: document.documentElement.dataset.pearcupPeerMatchState || null,
+    channelBackend: document.documentElement.dataset.pearcupPeerMatchChannelBackend || null
   })
+}
+
+if (typeof window !== 'undefined') {
+  window.PearCupOnPeerMatchState = snapshot => {
+    const code = String(snapshot && snapshot.code || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32)
+    if (!code || !snapshot.started || snapshot.state !== 'started') return
+    const pending = String(document.documentElement.dataset.pearcupPendingJoin || pendingFriendJoinCode() || '').trim().toLowerCase()
+    if (pending !== code || window.__pearcupReportedStartedCode === code) return
+    window.__pearcupReportedStartedCode = code
+    reportPearWakeup(code, 'started')
+  }
 }
 
 function applyPearFriendWakeup (code) {
@@ -5057,7 +5071,10 @@ function renderGameLobby () {
   if (joinFriend) joinFriend.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.promptJoin())
   renderPeerBackendBadge()
   // Live matchmaking: announce on the lobby topic + render online peers.
-  if (window.PearCupLobby) { window.PearCupLobby.join(); window.PearCupLobby.renderList() }
+  // The packaged runtime self-test embeds a second same-process guest solely
+  // to prove the friend-match channel. Do not open its unrelated global lobby
+  // stream through the host's finite native HTTP connection pool.
+  if (window.PearCupLobby && !isRuntimeSelfTestGuest()) { window.PearCupLobby.join(); window.PearCupLobby.renderList() }
 }
 
 function startMatch (player, joined) {
@@ -5523,7 +5540,13 @@ function bootRuntimeDiagnostics () {
       active: ds.pearcupPeerMatchActive || null,
       started: ds.pearcupPeerMatchStarted || null,
       code: ds.pearcupPeerMatchCode || null,
-      role: ds.pearcupPeerMatchRole || null
+      role: ds.pearcupPeerMatchRole || null,
+      channelBackend: ds.pearcupPeerMatchChannelBackend || null
+    },
+    peerNetDataset: {
+      backend: ds.pearcupPeerNet || null,
+      status: ds.pearcupPeerNetStatus || null,
+      detail: ds.pearcupPeerNetDetail || null
     },
     controllers: {
       peerNet: controllerReady(window.PearCupPeerNet, ['createChannel', 'newRoomCode', 'newPeerId']),
@@ -6014,7 +6037,10 @@ function boot () {
   bindCoreFallbackEvents()
   window.addEventListener('pearcup:p2p-backend', renderPeerBackendBadge)
   assertP2PModulesReady()
-  startPoolSync()
+  // A real app instance always joins pool sync. The hidden same-process
+  // readiness guest isolates the match transport so two embedded clients do
+  // not consume every long-lived SSE slot before their handshake begins.
+  if (!isRuntimeSelfTestGuest()) startPoolSync()
   sendBootCheckpoint('boot:p2p-ready')
   bindEvents()
   sendBootCheckpoint('boot:events-bound')

@@ -40,7 +40,8 @@
   function syncDiagnostics (stateName) {
     const ds = root.document && root.document.documentElement && root.document.documentElement.dataset
     if (!ds) return
-    ds.pearcupPeerMatchState = stateName || (PM.over ? 'over' : PM.started ? 'started' : PM.active ? 'joining' : 'idle')
+    const currentState = stateName || (PM.over ? 'over' : PM.started ? 'started' : PM.active ? 'joining' : 'idle')
+    ds.pearcupPeerMatchState = currentState
     ds.pearcupPeerMatchActive = String(Boolean(PM.active))
     ds.pearcupPeerMatchStarted = String(Boolean(PM.started))
     if (PM.code) ds.pearcupPeerMatchCode = PM.code
@@ -49,8 +50,24 @@
     else delete ds.pearcupPeerMatchRole
     if (PM.opp && PM.opp.name) ds.pearcupPeerMatchOpponent = PM.opp.name
     else delete ds.pearcupPeerMatchOpponent
+    if (PM.channel && PM.channel.backend) ds.pearcupPeerMatchChannelBackend = PM.channel.backend
+    else delete ds.pearcupPeerMatchChannelBackend
     if (ds.pearcupPendingJoin && PM.code && ds.pearcupPendingJoin === PM.code && PM.started) {
       ds.pearcupJoinState = 'started'
+    }
+    // Let the app shell report asynchronous deep-link transitions to runtime
+    // probes. This is event-driven because a real relay handshake can take
+    // longer than a fixed polling window on first boot.
+    if (typeof root.PearCupOnPeerMatchState === 'function') {
+      try {
+        root.PearCupOnPeerMatchState({
+          state: currentState,
+          active: Boolean(PM.active),
+          started: Boolean(PM.started),
+          code: PM.code || '',
+          channelBackend: PM.channel && PM.channel.backend ? PM.channel.backend : ''
+        })
+      } catch (err) {}
     }
   }
 

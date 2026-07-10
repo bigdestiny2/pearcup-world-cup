@@ -76,6 +76,7 @@
     "release": "pear release kawaii-dev"
   },
   "dependencies": {
+    "bare-fetch": "^3.0.1",
     "pear-bridge": "^1.2.5",
     "pear-electron": "^1.7.28",
     "hyperswarm": "^4.0.0",

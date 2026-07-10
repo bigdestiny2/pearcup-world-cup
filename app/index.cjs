@@ -31,6 +31,15 @@ function patchPearBridgeRootRequests () {
           tracePearBridge('runtime-options', originalUrl, req.url)
           return writeJsonResponse(res, rendererRuntimeOptions())
         }
+        if (shouldProxyHiveRelay(req.url)) {
+          tracePearBridge('hiverelay-proxy', originalUrl, req.url)
+          proxyHiveRelayRequest(req, res).catch(err => {
+            tracePearBridge('hiverelay-proxy-error', req.url, err && err.message ? err.message : String(err))
+            if (!res.headersSent) writeJsonError(res, 502, 'HiveRelay proxy request failed')
+            else { try { res.end() } catch (endErr) {} }
+          })
+          return
+        }
         tracePearBridge('http', originalUrl, req.url)
       }
       return handler(req, res)
@@ -119,6 +128,111 @@ function shouldServeBootProbe (url) {
 function shouldServeRendererRuntimeOptions (url) {
   const path = String(url || '').split('?')[0].split('#')[0]
   return path === '/pearcup-runtime-options.json'
+}
+
+const HIVERELAY_PROXY_PREFIX = '/pearcup-hiverelay'
+const HIVERELAY_ALLOWED_PATHS = new Set([
+  '/api/token',
+  '/api/bridge/status',
+  '/api/swarm/join',
+  '/api/swarm/send',
+  '/api/swarm/leave',
+  '/api/swarm/events'
+])
+
+function shouldProxyHiveRelay (url) {
+  const parsed = new URL(String(url || ''), 'http://pearcup.local')
+  if (!parsed.pathname.startsWith(HIVERELAY_PROXY_PREFIX + '/')) return false
+  return HIVERELAY_ALLOWED_PATHS.has(parsed.pathname.slice(HIVERELAY_PROXY_PREFIX.length))
+}
+
+function hiveRelayOrigin () {
+  const env =
+    (typeof process !== 'undefined' && process.env) ||
+    (typeof Pear !== 'undefined' && Pear.config && Pear.config.env) ||
+    {}
+  const configured = env.PEARCUP_HIVERELAY_URL || 'https://pearcup-kawaii-relay.throbbing-limit-1abb.workers.dev'
+  const url = new URL(configured)
+  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('Invalid HiveRelay proxy origin')
+  return url.href.replace(/\/+$/, '')
+}
+
+async function proxyHiveRelayRequest (req, res) {
+  const fetch = require('bare-fetch')
+  const parsed = new URL(String(req.url || ''), 'http://pearcup.local')
+  const remotePath = parsed.pathname.slice(HIVERELAY_PROXY_PREFIX.length)
+  if (!HIVERELAY_ALLOWED_PATHS.has(remotePath)) return writeJsonError(res, 404, 'Relay route not found')
+
+  const method = String(req.method || 'GET').toUpperCase()
+  if (method !== 'GET' && method !== 'POST') return writeJsonError(res, 405, 'Method not allowed')
+  const headers = { accept: remotePath === '/api/swarm/events' ? 'text/event-stream' : 'application/json' }
+  const contentType = req.headers && req.headers['content-type']
+  const token = req.headers && req.headers['x-pear-token']
+  if (contentType) headers['content-type'] = String(contentType)
+  if (token) headers['x-pear-token'] = String(token)
+  const body = method === 'POST' ? await readRequestBody(req) : undefined
+  const target = hiveRelayOrigin() + remotePath + parsed.search
+  const response = await fetch(target, { method, headers, body })
+  const responseHeaders = {
+    'content-type': response.headers.get('content-type') || 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    'x-content-type-options': 'nosniff'
+  }
+  const retryAfter = response.headers.get('retry-after')
+  if (retryAfter) responseHeaders['retry-after'] = retryAfter
+  if (typeof res.writeHead === 'function') res.writeHead(response.status, responseHeaders)
+  else {
+    res.statusCode = response.status
+    if (typeof res.setHeader === 'function') for (const [key, value] of Object.entries(responseHeaders)) res.setHeader(key, value)
+  }
+
+  if (remotePath === '/api/swarm/events' && response.body && typeof response.body.getReader === 'function') {
+    const reader = response.body.getReader()
+    try {
+      while (true) {
+        const chunk = await reader.read()
+        if (!chunk || chunk.done) break
+        if (chunk.value && chunk.value.byteLength) {
+          res.write(Buffer.from(chunk.value))
+        }
+      }
+    } finally {
+      try { await reader.cancel() } catch (err) {}
+      res.end()
+    }
+    return
+  }
+
+  const bytes = response.body ? Buffer.from(await response.arrayBuffer()) : Buffer.alloc(0)
+  res.end(bytes)
+}
+
+function readRequestBody (req) {
+  return new Promise((resolve, reject) => {
+    const chunks = []
+    let size = 0
+    req.on('data', chunk => {
+      const value = Buffer.from(chunk)
+      size += value.length
+      if (size > 64 * 1024) {
+        reject(new Error('HiveRelay proxy request body is too large'))
+        try { req.destroy() } catch (err) {}
+        return
+      }
+      chunks.push(value)
+    })
+    req.on('end', () => resolve(chunks.length ? Buffer.concat(chunks) : undefined))
+    req.on('error', reject)
+  })
+}
+
+function writeJsonError (res, statusCode, message) {
+  const body = JSON.stringify({ error: message })
+  return writeResponse(res, statusCode, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    'content-length': String(Buffer.byteLength(body))
+  }, body)
 }
 
 function rendererRuntimeOptions () {

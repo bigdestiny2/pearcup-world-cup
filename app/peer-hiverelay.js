@@ -14,15 +14,18 @@
   const PROTOCOL = 'pearcup-sync-v2'
   const ENVELOPE_VERSION = 2
   const MAX_MESSAGE_BYTES = 12 * 1024
-  const MAX_PENDING = 64
+  const MAX_PENDING = 16
   const MAX_SEEN = 512
   const MAX_AGE_MS = 90 * 1000
   const ACK_AGE_MS = 30 * 1000
   const RESEND_MS = 1500
-  const MAX_ATTEMPTS = 12
+  const MIN_SEND_GAP_MS = 900
+  const MAX_ATTEMPTS = 6
+  const MAX_RATE_RETRIES = 3
   const MAX_CLOCK_SKEW_MS = 30 * 1000
 
   let identityPromise = null
+  const relaySessionPromises = new Map()
 
   function localHttpHost (host) {
     return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1'
@@ -41,13 +44,36 @@
     }
   }
 
+  function hasPearRuntime (rootObject) {
+    if (rootObject && rootObject.Pear) return true
+    // Pear injects its runtime object into the top renderer. Same-origin child
+    // frames (including the packaged two-client readiness guest) share the
+    // native HTTP bridge but do not receive their own `Pear` global.
+    try {
+      return Boolean(rootObject && rootObject.parent && rootObject.parent !== rootObject && rootObject.parent.Pear)
+    } catch (err) {
+      return false
+    }
+  }
+
   function relaySettings (rootObject = root) {
     const runtime = rootObject && rootObject.PearCupRuntimeSettingsValue
     const publicSettings = rootObject && rootObject.PearCupPublicRuntimeSettings
     const override = rootObject && rootObject.PearCupPeerNetOptions && rootObject.PearCupPeerNetOptions.hiveRelay
     const configured = override || (runtime && runtime.peerRelay) || (publicSettings && publicSettings.peerRelay)
     if (!configured || configured.enabled === false) return null
-    const relayUrl = normalizeRelayUrl(configured.relayUrl || configured.url)
+    let relayUrl = normalizeRelayUrl(configured.relayUrl || configured.url)
+    // Pear Runtime renderers cannot fetch arbitrary HTTPS origins directly.
+    // The native entrypoint exposes a narrow same-origin proxy for exactly the
+    // public HiveRelay routes used here; browser and PearBrowser builds keep
+    // calling the configured Cloudflare endpoint directly.
+    if (rootObject && hasPearRuntime(rootObject) && rootObject.location) {
+      try {
+        const proxy = new URL('/pearcup-hiverelay', rootObject.location.href)
+        const localHttp = proxy.protocol === 'http:' && localHttpHost(proxy.hostname)
+        if (proxy.protocol === 'https:' || localHttp) relayUrl = proxy.href.replace(/\/+$/, '')
+      } catch (err) {}
+    }
     if (!relayUrl) return null
     if (configured.service && configured.service !== 'outboxlog') return null
     return { relayUrl, service: 'outboxlog', protocol: configured.protocol || PROTOCOL }
@@ -232,7 +258,8 @@
     const peers = new Set()
     const pending = new Map()
     const seen = new Map()
-    const active = { token: '', channelId: '', relayUrl: '', eventSource: null, identity: null, closed: false, fallback: null, seq: 0, resendTimer: null }
+    const active = { token: '', channelId: '', relayUrl: '', eventSource: null, identity: null, closed: false, fallback: null, seq: 0, resendTimer: null, lastFlushAt: 0, backoffUntil: 0 }
+    const pendingByKey = new Map()
 
     function emit (message) {
       listeners.forEach(listener => { try { listener(message) } catch (err) {} })
@@ -251,7 +278,26 @@
 
     function endpoint (path) { return active.relayUrl + path }
 
-    async function request (path, init = {}) {
+    // OutboxLog replays remembered descriptors through synthetic `cache-*`
+    // sources. They are useful input for a late joiner, but they are not live
+    // channels and must never enter the recipient set or receive an ACK. Doing
+    // either writes another descriptor back into the replay log and creates a
+    // request-amplifying feedback loop on shared lobby/pool topics.
+    function isReplayPeer (peerId) {
+      return typeof peerId === 'string' && /^cache-[a-z0-9-]+$/i.test(peerId)
+    }
+
+    function wait (ms) {
+      return new Promise(resolve => rootObject.setTimeout(resolve, ms))
+    }
+
+    function retryAfterMs (response, attempt) {
+      let seconds = 0
+      try { seconds = Number(response && response.headers && response.headers.get('retry-after')) || 0 } catch (err) {}
+      return Math.min(15_000, Math.max(1_500, seconds * 1000 || 1500 * Math.pow(2, attempt)))
+    }
+
+    async function request (path, init = {}, attempt = 0) {
       const fetchFn = opts.fetch || rootObject.fetch
       if (typeof fetchFn !== 'function') throw new Error('fetch is unavailable')
       const headers = { ...(init.headers || {}) }
@@ -259,6 +305,13 @@
       const response = await fetchFn(endpoint(path), { ...init, headers })
       let body = null
       try { body = await response.json() } catch (err) {}
+      if (response.status === 429 && attempt < MAX_RATE_RETRIES && !active.closed) {
+        const delay = retryAfterMs(response, attempt)
+        active.backoffUntil = Math.max(active.backoffUntil, Date.now() + delay)
+        setStatus('backoff', `relay rate limit at ${path}; retrying in ${Math.ceil(delay / 1000)}s`)
+        await wait(delay)
+        return request(path, init, attempt + 1)
+      }
       if (!response.ok) throw new Error((body && body.error) || `HiveRelay request failed (${response.status})`)
       return body
     }
@@ -306,9 +359,12 @@
     }
 
     function flushPending () {
+      const now = Date.now()
+      if (now < active.backoffUntil || now - active.lastFlushAt < MIN_SEND_GAP_MS) return
       for (const entry of pending.values()) {
-        if (entry.frame.expiresAt < Date.now() || entry.attempts >= MAX_ATTEMPTS) {
+        if (entry.frame.expiresAt < now || entry.attempts >= MAX_ATTEMPTS) {
           pending.delete(entry.frame.id)
+          if (entry.key && pendingByKey.get(entry.key) === entry.frame.id) pendingByKey.delete(entry.key)
           continue
         }
         // A room host commonly announces before anyone has opened an invite.
@@ -316,7 +372,11 @@
         // reported a recipient channel.
         if (peers.size === 0) continue
         entry.attempts += 1
+        active.lastFlushAt = now
         broadcastFrame(entry.frame)
+        // Send at most one application frame per flush. This avoids a burst of
+        // stale presence frames when a peer returns after being offline.
+        break
       }
     }
 
@@ -343,24 +403,20 @@
       if (!(await verifyEnvelope(frame, rootObject))) return
       const wasSeen = rememberSeen(frame.id)
       if (frame.kind === 'ack') {
+        const entry = pending.get(frame.ack)
         pending.delete(frame.ack)
+        if (entry && entry.key && pendingByKey.get(entry.key) === frame.ack) pendingByKey.delete(entry.key)
         return
       }
-      acknowledge(peerId, frame.id).catch(() => {})
+      if (!isReplayPeer(peerId)) acknowledge(peerId, frame.id).catch(() => {})
       if (!wasSeen) emit(frame.body)
     }
 
-    function openEvents () {
-      const EventSourceCtor = opts.EventSource || rootObject.EventSource
-      if (typeof EventSourceCtor !== 'function') throw new Error('EventSource is unavailable')
-      const eventUrl = withQuery(endpoint('/api/swarm/events'), { channelId: active.channelId, token: active.token })
-      const source = new EventSourceCtor(eventUrl)
-      active.eventSource = source
-      source.onmessage = event => {
+    function handleRelayEvent (event) {
         let message
         try { message = JSON.parse(event.data) } catch (err) { return }
         if (!message || active.closed || active.fallback) return
-        if (message.type === 'peer' && message.peerId) {
+        if (message.type === 'peer' && message.peerId && !isReplayPeer(message.peerId)) {
           peers.add(message.peerId)
           flushPending()
         } else if (message.type === 'peer-leave' && message.peerId) {
@@ -371,9 +427,69 @@
           setStatus('reconnecting', 'relay stream closed')
         }
       }
-      source.onerror = () => {
+    function handleRelayError () {
         if (!active.closed && !active.fallback) setStatus('reconnecting', 'relay event stream reconnecting')
       }
+
+    // Pear Runtime's web view does not provide EventSource, but it does provide
+    // fetch() and a streaming response body. Consume the same SSE contract over
+    // that path so normal browsers, PearBrowser, and Pear Runtime stay on the
+    // shared HiveRelay transport instead of silently falling back locally.
+    function openFetchEvents (eventUrl) {
+      const fetchFn = opts.fetch || rootObject.fetch
+      if (typeof fetchFn !== 'function') throw new Error('fetch is unavailable for relay events')
+      const AbortCtor = rootObject.AbortController || (typeof AbortController === 'function' ? AbortController : null)
+      const controller = AbortCtor ? new AbortCtor() : null
+      let closed = false
+      active.eventSource = {
+        close () {
+          closed = true
+          try { if (controller) controller.abort() } catch (err) {}
+        }
+      }
+      ;(async () => {
+        try {
+          const response = await fetchFn(eventUrl, controller ? { signal: controller.signal } : {})
+          if (!response || !response.ok || !response.body || typeof response.body.getReader !== 'function') {
+            throw new Error('relay SSE streaming is unavailable')
+          }
+          const reader = response.body.getReader()
+          const decoder = decoderFor(rootObject)
+          let buffer = ''
+          while (!closed && !active.closed && !active.fallback) {
+            const chunk = await reader.read()
+            if (!chunk || chunk.done) break
+            buffer += decoder.decode(chunk.value, { stream: true })
+            let boundary
+            while ((boundary = buffer.search(/\r?\n\r?\n/)) >= 0) {
+              const block = buffer.slice(0, boundary)
+              buffer = buffer.slice(boundary).replace(/^\r?\n\r?\n/, '')
+              const data = block.split(/\r?\n/)
+                .filter(line => line.startsWith('data:'))
+                .map(line => line.slice(5).replace(/^ /, ''))
+                .join('\n')
+              if (data) handleRelayEvent({ data })
+            }
+          }
+          try { await reader.cancel() } catch (err) {}
+          if (!closed && !active.closed && !active.fallback) handleRelayError()
+        } catch (err) {
+          if (!closed && !active.closed && !active.fallback) handleRelayError()
+        }
+      })()
+    }
+
+    function openEvents () {
+      const eventUrl = withQuery(endpoint('/api/swarm/events'), { channelId: active.channelId, token: active.token })
+      const EventSourceCtor = opts.EventSource || rootObject.EventSource
+      if (typeof EventSourceCtor !== 'function') {
+        openFetchEvents(eventUrl)
+        return
+      }
+      const source = new EventSourceCtor(eventUrl)
+      active.eventSource = source
+      source.onmessage = handleRelayEvent
+      source.onerror = handleRelayError
     }
 
     function activateFallback (reason) {
@@ -400,14 +516,32 @@
         if (!configured || !configured.relayUrl || configured.service && configured.service !== 'outboxlog') throw new Error('HiveRelay is not configured')
         active.relayUrl = configured.relayUrl
         active.identity = await createIdentity(rootObject)
-        const tokenResponse = await request('/api/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: '{}'
-        })
-        if (!tokenResponse || typeof tokenResponse.token !== 'string' || !tokenResponse.token) throw new Error('HiveRelay did not issue a token')
-        active.token = tokenResponse.token
-        const status = await request('/api/bridge/status')
+        // A single page can open pools, lobby, watch, and match channels. They
+        // are one client session and OutboxLog tokens are valid across those
+        // channels, so perform one token/status handshake per relay origin.
+        // This prevents a route change (or Pear's two-client self-test) from
+        // bursting several identical token requests through the native proxy.
+        let sessionPromise = relaySessionPromises.get(active.relayUrl)
+        if (!sessionPromise) {
+          sessionPromise = (async () => {
+            const tokenResponse = await request('/api/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: '{}'
+            })
+            if (!tokenResponse || typeof tokenResponse.token !== 'string' || !tokenResponse.token) throw new Error('HiveRelay did not issue a token')
+            active.token = tokenResponse.token
+            const status = await request('/api/bridge/status')
+            return { token: tokenResponse.token, status }
+          })()
+          relaySessionPromises.set(active.relayUrl, sessionPromise)
+          sessionPromise.catch(() => {
+            if (relaySessionPromises.get(active.relayUrl) === sessionPromise) relaySessionPromises.delete(active.relayUrl)
+          })
+        }
+        const session = await sessionPromise
+        active.token = session.token
+        const status = session.status
         if (!status || status.ready !== true || status.service !== 'outboxlog') throw new Error('selected relay is not HiveRelay OutboxLog')
         const joined = await post('/api/swarm/join', {
           topicHex: await topicHex(topic, active.identity, rootObject),
@@ -456,8 +590,18 @@
           }
           if (!active.identity) throw new Error('HiveRelay identity did not initialize')
           const frame = await signFrame('data', message, '', MAX_AGE_MS)
-          pending.set(frame.id, { frame, attempts: 0 })
-          while (pending.size > MAX_PENDING) pending.delete(pending.keys().next().value)
+          const key = message && (message.t === 'hello' || message.t === 'presence')
+            ? `${message.t}:${String(message.room || topic)}:${String(message.sender || '')}`
+            : ''
+          if (key && pendingByKey.has(key)) pending.delete(pendingByKey.get(key))
+          pending.set(frame.id, { frame, attempts: 0, key })
+          if (key) pendingByKey.set(key, frame.id)
+          while (pending.size > MAX_PENDING) {
+            const oldest = pending.keys().next().value
+            const entry = pending.get(oldest)
+            pending.delete(oldest)
+            if (entry && entry.key && pendingByKey.get(entry.key) === oldest) pendingByKey.delete(entry.key)
+          }
           flushPending()
         }).catch(err => activateFallback(err && err.message ? err.message : 'could not sign relay frame'))
       },
@@ -470,6 +614,7 @@
         active.closed = true
         stopResendLoop()
         pending.clear()
+        pendingByKey.clear()
         peers.clear()
         try { if (active.eventSource) active.eventSource.close() } catch (err) {}
         if (active.channelId && active.token) post('/api/swarm/leave', { channelId: active.channelId }).catch(() => {})

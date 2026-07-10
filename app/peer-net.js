@@ -49,6 +49,16 @@
     }
   }
 
+  function setBackendStatus (status) {
+    const ds = root.document && root.document.documentElement && root.document.documentElement.dataset
+    if (ds) {
+      ds.pearcupPeerNetStatus = status && status.state ? String(status.state) : ''
+      if (status && status.detail) ds.pearcupPeerNetDetail = String(status.detail).slice(0, 240)
+      else delete ds.pearcupPeerNetDetail
+    }
+    setBackendLabel(status && status.backend ? status.backend : 'hiverelay-outboxlog-v2')
+  }
+
   function hasPearBrowserSwarm () {
     return Boolean(root.pear && root.pear.swarm && root.pear.swarm.v1 && typeof root.pear.swarm.v1.join === 'function')
   }
@@ -245,7 +255,7 @@
       return HiveRelay.createChannel(topic, {
         rootObject: root,
         fallback: () => createLegacyChannel(topic),
-        onStatus: status => setBackendLabel(status && status.backend ? status.backend : (HiveRelay.BACKEND || 'hiverelay-outboxlog-v2'))
+        onStatus: setBackendStatus
       })
     }
     return createLegacyChannel(topic)

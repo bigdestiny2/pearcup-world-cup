@@ -48,7 +48,10 @@ function normalizeBase (value) {
 async function issueToken () {
   const response = await fetch(base + '/api/token', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
   const body = await response.json().catch(() => null)
-  assert(response.ok && body?.token, 'relay did not issue a token')
+  assert(
+    response.ok && body?.token,
+    body?.error || `relay did not issue a token (${response.status}${response.headers.get('retry-after') ? `; retry-after ${response.headers.get('retry-after')}s` : ''})`
+  )
   return body.token
 }
 

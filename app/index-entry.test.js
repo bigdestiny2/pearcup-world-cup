@@ -85,6 +85,35 @@ test('Pear entry exposes only the safe renderer-runtime options route', () => {
   assert.equal(shouldServeRendererRuntimeOptions('/config/pearcup.runtime.json'), false)
 })
 
+test('Pear entry HiveRelay proxy is restricted to the exact public OutboxLog routes', () => {
+  const start = entrySource.indexOf("const HIVERELAY_PROXY_PREFIX = '/pearcup-hiverelay'")
+  const end = entrySource.indexOf('function hiveRelayOrigin', start)
+  assert.ok(start >= 0 && end > start, 'missing HiveRelay proxy allow-list')
+  const context = { URL }
+  vm.createContext(context)
+  vm.runInContext([
+    entrySource.slice(start, end),
+    'this.shouldProxyHiveRelay = shouldProxyHiveRelay'
+  ].join('\n'), context, { filename: 'pearcup-hiverelay-proxy-allowlist.js' })
+
+  for (const path of [
+    '/api/token',
+    '/api/bridge/status',
+    '/api/swarm/join',
+    '/api/swarm/send',
+    '/api/swarm/leave',
+    '/api/swarm/events?channelId=room&token=session'
+  ]) assert.equal(context.shouldProxyHiveRelay('/pearcup-hiverelay' + path), true, path)
+
+  for (const path of [
+    '/pearcup-hiverelay',
+    '/pearcup-hiverelay/api/admin/takedowns',
+    '/pearcup-hiverelay/api/swarm/send/extra',
+    '/pearcup-hiverelay/../config/pearcup.runtime.json',
+    '/config/pearcup.runtime.json'
+  ]) assert.equal(context.shouldProxyHiveRelay(path), false, path)
+})
+
 test('Pear entry normalizes IPC root file lookups to index.html', () => {
   const IPC = Symbol('ipc')
   const calls = []

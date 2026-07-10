@@ -79,6 +79,27 @@ function createOutboxLogFixture () {
         channels.set(channelId, { topic: payload.topicHex, source: null })
         return jsonResponse({ channelId, topicHex: payload.topicHex, protocol: payload.protocol, version: payload.version, tier: 'A' })
       }
+      if (path === '/api/swarm/events' && method === 'GET') {
+        const channelId = parsed.searchParams.get('channelId')
+        let source = null
+        const body = new ReadableStream({
+          start (controller) {
+            source = {
+              onmessage: event => controller.enqueue(new TextEncoder().encode(`data: ${event.data}\n\n`)),
+              closed: false,
+              close () {
+                if (this.closed) return
+                this.closed = true
+                leave(channelId)
+                try { controller.close() } catch {}
+              }
+            }
+            setTimeout(() => connect(channelId, source), 0)
+          },
+          cancel () { if (source) source.close() }
+        })
+        return { ok: true, status: 200, body, json: async () => null }
+      }
       if (path === '/api/swarm/send' && method === 'POST') {
         const payload = JSON.parse(init.body || '{}')
         const sender = channels.get(payload.channelId)
@@ -119,7 +140,7 @@ function createOutboxLogFixture () {
   }
 }
 
-function createClient (relay) {
+function createClient (relay, { fetchEvents = false } = {}) {
   const document = { documentElement: { dataset: {} } }
   const context = {
     console,
@@ -131,7 +152,7 @@ function createClient (relay) {
     btoa: globalThis.btoa,
     atob: globalThis.atob,
     fetch: relay.fetch,
-    EventSource: relay.EventSource,
+    ...(fetchEvents ? {} : { EventSource: relay.EventSource }),
     setTimeout,
     clearTimeout,
     setInterval,
@@ -186,6 +207,75 @@ test('HiveRelay transport delivers a signed queued message between isolated brow
   guestChannel.close()
 })
 
+test('HiveRelay replay descriptors never become live recipients or generate replay ACKs', async () => {
+  const relay = createOutboxLogFixture()
+  const host = createClient(relay)
+  const guest = createClient(relay)
+  const topic = host.context.PearCupPeerNet.GAME_TOPIC('relay-replay-room')
+  const hostChannel = host.context.PearCupPeerNet.createChannel(topic)
+  const guestChannel = guest.context.PearCupPeerNet.createChannel(topic)
+
+  await Promise.all([hostChannel.ready, guestChannel.ready])
+  hostChannel.send({ t: 'hello', room: 'relay-replay-room', sender: 'host' })
+  await waitFor(() => relay.calls.some(call => call.path === '/api/swarm/send'), 'initial descriptor delivery')
+  hostChannel.close()
+  guestChannel.close()
+  await new Promise(resolve => setTimeout(resolve, 30))
+
+  const sendsBeforeReplay = relay.calls.filter(call => call.path === '/api/swarm/send').length
+  const late = createClient(relay)
+  const lateChannel = late.context.PearCupPeerNet.createChannel(topic)
+  await lateChannel.ready
+  // If cache-* were mistaken for a live peer, replay processing would ACK the
+  // descriptor and this queued presence frame would also be sent to it.
+  lateChannel.send({ t: 'presence', room: 'relay-replay-room', sender: 'late' })
+  await new Promise(resolve => setTimeout(resolve, 80))
+
+  const replaySends = relay.calls.filter(call => call.path === '/api/swarm/send').slice(sendsBeforeReplay)
+  assert.equal(
+    replaySends.some(call => /^cache-/i.test(JSON.parse(call.body || '{}').peerId || '')),
+    false,
+    'replayed descriptors must never be acknowledged or targeted as live channels'
+  )
+  lateChannel.close()
+})
+
+test('HiveRelay fetch-based SSE path delivers between Pear Runtime clients without EventSource', async () => {
+  const relay = createOutboxLogFixture()
+  const host = createClient(relay, { fetchEvents: true })
+  const guest = createClient(relay, { fetchEvents: true })
+  const topic = host.context.PearCupPeerNet.GAME_TOPIC('runtime-fetch-sse-room')
+  const hostChannel = host.context.PearCupPeerNet.createChannel(topic)
+  const guestChannel = guest.context.PearCupPeerNet.createChannel(topic)
+  const received = []
+  guestChannel.onMessage(message => received.push(message))
+
+  await Promise.all([hostChannel.ready, guestChannel.ready])
+  hostChannel.send({ t: 'hello', room: 'runtime-fetch-sse-room', sender: 'native-host' })
+  await waitFor(() => received.length === 1, 'fetch SSE HiveRelay delivery')
+
+  assert.deepEqual(JSON.parse(JSON.stringify(received[0])), {
+    t: 'hello', room: 'runtime-fetch-sse-room', sender: 'native-host'
+  })
+  assert.ok(relay.calls.some(call => call.path === '/api/swarm/events' && call.method === 'GET'))
+  hostChannel.close()
+  guestChannel.close()
+})
+
+test('HiveRelay reuses one token and status handshake across an app session channels', async () => {
+  const relay = createOutboxLogFixture()
+  const client = createClient(relay)
+  const first = client.context.PearCupPeerNet.createChannel(client.context.PearCupPeerNet.GAME_TOPIC('session-one'))
+  const second = client.context.PearCupPeerNet.createChannel(client.context.PearCupPeerNet.WATCH_TOPIC('session-two'))
+  await Promise.all([first.ready, second.ready])
+
+  assert.equal(relay.calls.filter(call => call.path === '/api/token').length, 1)
+  assert.equal(relay.calls.filter(call => call.path === '/api/bridge/status').length, 1)
+  assert.equal(relay.calls.filter(call => call.path === '/api/swarm/join').length, 2)
+  first.close()
+  second.close()
+})
+
 test('HiveRelay settings reject credentialed or non-HTTPS public relay URLs', () => {
   const { context } = createClient(createOutboxLogFixture())
   const api = context.PearCupHiveRelay
@@ -193,6 +283,18 @@ test('HiveRelay settings reject credentialed or non-HTTPS public relay URLs', ()
   assert.equal(api.normalizeRelayUrl('https://token@relay.example.test'), '')
   assert.equal(api.normalizeRelayUrl('http://relay.example.test'), '')
   assert.equal(api.normalizeRelayUrl('http://127.0.0.1:8787'), 'http://127.0.0.1:8787')
+})
+
+test('same-origin child frames inside Pear Runtime use the native relay proxy', () => {
+  const { context } = createClient(createOutboxLogFixture())
+  const settings = context.PearCupHiveRelay.relaySettings({
+    location: { href: 'http://localhost:9190/?join=room#games' },
+    parent: { Pear: {} },
+    PearCupRuntimeSettingsValue: {
+      peerRelay: { enabled: true, relayUrl: 'https://outbox.pearcup.test', service: 'outboxlog' }
+    }
+  })
+  assert.equal(settings.relayUrl, 'http://localhost:9190/pearcup-hiverelay')
 })
 
 test('Games backend badge names the shared HiveRelay transport', () => {

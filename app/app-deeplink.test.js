@@ -297,6 +297,11 @@ test('boot gives friend invite deep links priority over hash startup views', () 
   assert.match(appSource, /if \(!tryJoinFriendInvite\(\)\) applyStartupView\(\)/)
 })
 
+test('runtime self-test guest isolates its friend match from background relay streams', () => {
+  assert.match(appSource, /if \(!isRuntimeSelfTestGuest\(\)\) startPoolSync\(\)/)
+  assert.match(appSource, /window\.PearCupLobby && !isRuntimeSelfTestGuest\(\)/)
+})
+
 test('watch party couches start with the real local watcher, not seeded spectators', () => {
   const context = createWatchParticipantHarness({ picks: { 'qf-1': 'be' } })
   const participants = JSON.parse(JSON.stringify(context.watchParticipants()))
