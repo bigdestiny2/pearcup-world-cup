@@ -5,7 +5,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const source = join(root, 'design', 'kawaii-app')
+const source = join(root, 'app')
 const args = parseArgs(process.argv.slice(2))
 const out = args.out
   ? resolve(args.out)

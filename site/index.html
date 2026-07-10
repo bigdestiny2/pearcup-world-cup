@@ -978,7 +978,7 @@
 <pre id="runCmds"><span class="c"># warm-up</span>
 <span class="p">npm</span> install -g pear
 <span class="p">git</span> clone https://github.com/bigdestiny2/pearcup-world-cup
-<span class="p">cd</span> pearcup-world-cup/design/kawaii-app && <span class="p">npm</span> install
+<span class="p">cd</span> pearcup-world-cup/app && <span class="p">npm</span> install
 
 <span class="c"># kickoff 🎉</span>
 <span class="g">pear run --dev .</span></pre>
@@ -1075,7 +1075,7 @@
   if (btn) btn.addEventListener('click', function(){
     var txt = ['npm install -g pear',
                'git clone https://github.com/bigdestiny2/pearcup-world-cup',
-               'cd pearcup-world-cup/design/kawaii-app && npm install',
+               'cd pearcup-world-cup/app && npm install',
                'pear run --dev .'].join('\n');
     function done(){ btn.textContent='Copied!'; setTimeout(function(){ btn.textContent='Copy'; },1600); }
     if (navigator.clipboard && navigator.clipboard.writeText) {

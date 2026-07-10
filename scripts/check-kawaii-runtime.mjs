@@ -5,7 +5,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const appRoot = join(root, 'design', 'kawaii-app')
+const appRoot = join(root, 'app')
 const errors = []
 
 const pkg = readJson('package.json')
@@ -16,10 +16,10 @@ if (pkg) {
 }
 const rootPkg = readRootJson('package.json')
 if (rootPkg) {
+  checkRootToolingOnly(rootPkg)
   checkRootLaunchScripts(rootPkg)
   checkRootReleaseHandoffScripts(rootPkg)
 }
-checkRootLegacyPearGuard()
 checkBootBundleFresh()
 checkRendererHtml()
 checkPearSmokeProbeIsolation()
@@ -33,9 +33,9 @@ if (errors.length > 0) {
 }
 
 function checkPackage (pkg) {
-  if (pkg.type !== 'commonjs') errors.push('design/kawaii-app package must stay commonjs')
-  if (pkg.main !== 'index.cjs') errors.push('design/kawaii-app package main must be index.cjs')
-  if (!pkg.pear) errors.push('design/kawaii-app package is missing pear config')
+  if (pkg.type !== 'commonjs') errors.push('app package must stay commonjs')
+  if (pkg.main !== 'index.cjs') errors.push('app package main must be index.cjs')
+  if (!pkg.pear) errors.push('app package is missing pear config')
   if (pkg.pear && pkg.pear.gui && pkg.pear.gui.main !== 'index.html') {
     errors.push('Pear GUI main must stay index.html')
   }
@@ -100,21 +100,21 @@ function checkStageIncludes (pkg) {
 function checkDependencies (pkg) {
   const deps = pkg.dependencies || {}
   for (const dep of ['pear-electron', 'pear-bridge', 'hyperswarm', 'hypercore-crypto', 'b4a']) {
-    if (!deps[dep]) errors.push(`design/kawaii-app dependencies missing ${dep}`)
+    if (!deps[dep]) errors.push(`app dependencies missing ${dep}`)
   }
 
   const modulesPath = join(appRoot, 'node_modules')
   if (!existsSync(modulesPath)) {
-    errors.push('design/kawaii-app/node_modules must exist for Pear staging')
+    errors.push('app/node_modules must exist for Pear staging')
     return
   }
 
   const stat = lstatSync(modulesPath)
-  if (stat.isSymbolicLink()) errors.push('design/kawaii-app/node_modules must be a real directory, not a symlink')
+  if (stat.isSymbolicLink()) errors.push('app/node_modules must be a real directory, not a symlink')
 
   for (const dep of ['pear-electron', 'pear-bridge', 'hyperswarm', 'hypercore-crypto', 'b4a']) {
     if (!existsSync(join(modulesPath, dep))) {
-      errors.push(`design/kawaii-app/node_modules is missing ${dep}`)
+      errors.push(`app/node_modules is missing ${dep}`)
     }
   }
 }
@@ -123,17 +123,23 @@ function checkRootLaunchScripts (pkg) {
   const scripts = pkg.scripts || {}
   for (const [name, expected] of Object.entries({
     'audit:pear-browser': 'node scripts/pear-browser-compat.mjs --canonical',
-    dev: 'cd design/kawaii-app && pear run --dev .',
-    'dev:devtools': 'cd design/kawaii-app && pear run --dev --devtools .',
-    'link:new': 'cd design/kawaii-app && pear touch',
-    stage: 'cd design/kawaii-app && pear stage "$PEAR_LINK" .',
-    release: 'cd design/kawaii-app && pear release "$PEAR_LINK"',
-    seed: 'cd design/kawaii-app && pear seed "$PEAR_LINK"'
+    dev: 'cd app && pear run --dev .',
+    'dev:devtools': 'cd app && pear run --dev --devtools .',
+    'link:new': 'cd app && pear touch',
+    stage: 'cd app && pear stage "$PEAR_LINK" .',
+    release: 'cd app && pear release "$PEAR_LINK"',
+    seed: 'cd app && pear seed "$PEAR_LINK"'
   })) {
     if (scripts[name] !== expected) {
-      errors.push(`root package script "${name}" must route to the canonical design/kawaii-app Pear build`)
+      errors.push(`root package script "${name}" must route to the canonical app Pear build`)
     }
   }
+}
+
+function checkRootToolingOnly (pkg) {
+  if (pkg.private !== true) errors.push('root package must remain private tooling')
+  if (pkg.pear) errors.push('root package must not define a second Pear app manifest')
+  if (pkg.main) errors.push('root package must not define a competing app entrypoint')
 }
 
 function checkRootReleaseHandoffScripts (pkg) {
@@ -148,20 +154,6 @@ function checkRootReleaseHandoffScripts (pkg) {
     if (scripts[name] !== command) {
       errors.push(`root package script "${name}" must keep the durable .pearcup-release/latest handoff path`)
     }
-  }
-}
-
-function checkRootLegacyPearGuard () {
-  const index = readRootText('index.cjs')
-  if (!index) return
-  if (!index.includes('PEARCUP_ALLOW_LEGACY_ROOT')) {
-    errors.push('root Pear entrypoint must require PEARCUP_ALLOW_LEGACY_ROOT before launching the legacy base app')
-  }
-  if (!index.includes('root Pear package is legacy and intentionally disabled')) {
-    errors.push('root Pear entrypoint must clearly refuse accidental legacy launches')
-  }
-  if (!index.includes('cd design/kawaii-app && pear run --dev .')) {
-    errors.push('root Pear entrypoint must point operators to the canonical design/kawaii-app launch command')
   }
 }
 
@@ -223,7 +215,7 @@ function checkPearSmokeProbeIsolation () {
     if (!source.includes(required)) errors.push(`Pear runtime smoke must configure boot probes through per-run env: ${required}`)
   }
   if (source.includes("join(appRoot, 'boot-probe.json')") || source.includes('writeFileSync(filePath') || source.includes('unlinkSync(filePath')) {
-    errors.push('Pear runtime smoke must not write shared design/kawaii-app/boot-probe.json; concurrent release checks race on shared config files')
+    errors.push('Pear runtime smoke must not write shared app/boot-probe.json; concurrent release checks race on shared config files')
   }
 }
 

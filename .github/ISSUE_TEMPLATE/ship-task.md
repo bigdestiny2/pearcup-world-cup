@@ -12,7 +12,7 @@ labels: ship
 <!-- User impact / blocker rationale. -->
 
 ## Where
-<!-- Files / modules in design/kawaii-app/. -->
+<!-- Files / modules in app/. -->
 
 ## Done when
 - [ ] Implemented

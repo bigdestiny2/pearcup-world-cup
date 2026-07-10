@@ -1,13 +1,13 @@
 # PearCup (Kawaii build) — staging & release
 
-This directory is a **self-contained Pear app** (its own `package.json` + `index.cjs`),
-kept separate from the repo's live `app/` so parallel work never collides. It bundles
-the Kawaii UI, live WC data relay, real P2P penalty matches, and watch-party sync.
+This directory is the repository's **only self-contained Pear app** (its own
+`package.json` + `index.cjs`). It bundles the Kawaii UI, live World Cup data
+relay, real P2P penalty matches, and watch-party sync.
 
 ## Current readiness snapshot
 - Local checked preview: `http://127.0.0.1:4186/` from `npm run serve:pearbrowser`.
 - Actual Pear runtime smoke: `npm run smoke:kawaii-pear-run` launches
-  `design/kawaii-app` with a temp store and fails on the prior fallback/script-wrapper
+  `app` with a temp store and fails on the prior fallback/script-wrapper
   boot errors. Its boot probe also requires the real renderer to report hydrated UI,
   32 country cards, generated avatar images, a hydrated profile chip, and visible
   P2P controllers for net/match/lobby/watch. A smoke-only runtime self-test then
@@ -57,7 +57,7 @@ the Kawaii UI, live WC data relay, real P2P penalty matches, and watch-party syn
 
 ## Run locally (dev)
 ```
-cd design/kawaii-app
+cd app
 pear run --dev .
 ```
 `node_modules` must be a REAL directory inside this app root (run `npm install` here) — a
@@ -88,7 +88,7 @@ app state:
 npm run smoke:kawaii-pear-run
 ```
 
-That launches `design/kawaii-app` with `pear run --tmp-store --no-ask --no-pre .`,
+That launches `app` with `pear run --tmp-store --no-ask --no-pre .`,
 watches for the previous failure signatures (`Unexpected token 'export'`,
 `/index.cjs+esm-wrap`, `Invalid filename: /`, fallback boot errors, missing modules),
 requires the boot-ready probe to prove P2P readiness plus hydrated UI/controller
@@ -287,7 +287,7 @@ bundle:
 
 ## Stage a new version
 ```
-cd design/kawaii-app
+cd app
 pear stage <link> .          # <link> from `pear touch`; we used the one above
 # add --no-pre to skip the electron GUI pre-bundle (that step needs network + a few min)
 ```

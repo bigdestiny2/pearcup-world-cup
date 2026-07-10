@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = parseArgs(process.argv.slice(2))
-const appRoot = args.appRoot ? resolve(args.appRoot) : join(root, 'design', 'kawaii-app')
+const appRoot = args.appRoot ? resolve(args.appRoot) : join(root, 'app')
 const smokeLabel = args.label || 'Kawaii Pear run smoke'
 const durationMs = Number(args.duration || 10_000)
 const pear = args.pear || 'pear'

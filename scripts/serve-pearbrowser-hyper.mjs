@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const appRoot = join(root, 'design', 'kawaii-app')
+const appRoot = join(root, 'app')
 const args = parseArgs(process.argv.slice(2))
 const host = args.host || '127.0.0.1'
 const requestedPort = Number(args.port || 4186)

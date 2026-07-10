@@ -47,21 +47,18 @@ function buildReport (receipt, dirty) {
   const shippedKawaiiDirty = []
   const excludedKawaiiDirty = []
   const releaseScriptDirty = []
-  const rootAppDirty = []
   const rootDirty = []
   const otherDirty = []
 
   for (const item of dirty) {
     const path = item.path
-    if (path.startsWith('design/kawaii-app/')) {
-      const relative = path.slice('design/kawaii-app/'.length)
+    if (path.startsWith('app/')) {
+      const relative = path.slice('app/'.length)
       if (bundleFiles.has(relative)) shippedKawaiiDirty.push(path)
       else excludedKawaiiDirty.push(path)
-    } else if (path.startsWith('scripts/') || path === 'package.json') {
+    } else if (path.startsWith('scripts/') || path === 'package.json' || path === 'package-lock.json') {
       releaseScriptDirty.push(path)
-    } else if (path.startsWith('app/')) {
-      rootAppDirty.push(path)
-    } else if (path === 'README.md') {
+    } else if (['README.md', 'CONTRIBUTING.md', 'CLAUDE.md'].includes(path) || path.startsWith('docs/')) {
       rootDirty.push(path)
     } else {
       otherDirty.push(path)
@@ -77,14 +74,12 @@ function buildReport (receipt, dirty) {
       shippedKawaiiDirty: shippedKawaiiDirty.length,
       excludedKawaiiDirty: excludedKawaiiDirty.length,
       releaseScriptDirty: releaseScriptDirty.length,
-      rootAppDirty: rootAppDirty.length,
       rootDirty: rootDirty.length,
       otherDirty: otherDirty.length
     },
     shippedKawaiiDirty,
     excludedKawaiiDirty,
     releaseScriptDirty,
-    rootAppDirty,
     rootDirty,
     otherDirty
   }

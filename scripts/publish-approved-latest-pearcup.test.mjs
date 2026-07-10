@@ -68,7 +68,7 @@ test('latest approved publish refuses stale source receipts', () => {
 test('latest approved publish refuses dirty source receipts', () => {
   const receipt = writeFixture({
     sourceDirty: true,
-    sourceGitStatus: ['M design/kawaii-app/app.js']
+    sourceGitStatus: ['M app/app.js']
   })
   const result = run(['--latest-receipt', receipt, '--print-resolved'])
 

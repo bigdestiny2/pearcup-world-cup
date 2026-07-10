@@ -85,7 +85,7 @@ test('latest friend-test recorder refuses dirty source receipts', () => {
   const dir = mkdtempSync(join(tmpdir(), 'pearcup-latest-friend-dirty-'))
   const receipt = writeFixture(dir, {
     sourceDirty: true,
-    sourceGitStatus: ['M design/kawaii-app/app.js']
+    sourceGitStatus: ['M app/app.js']
   })
 
   const result = run([

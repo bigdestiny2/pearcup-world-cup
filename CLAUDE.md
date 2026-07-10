@@ -1,52 +1,44 @@
 # PearCup — World Cup
 
-**This repo contains exactly one app: PearCup, in `design/kawaii-app/`.** It is the
-released, publicly judged Pear entry. Treat it as shipped code.
+**This repository contains exactly one product application: PearCup in `app/`.**
+It is the released, publicly judged Pear entry. Treat it as shipped code.
 
-## Do not develop Ultimate Sports here
+## Scope boundary
 
-Ultimate Sports lives in its own repository and its own checkout:
+Ultimate Sports is a different product in
+`github.com/bigdestiny2/ultimate-sports`. Do not add its code, bridge actions,
+assets, documentation, or tests here.
 
-```
-github.com/bigdestiny2/ultimate-sports
-~/Projects/pear-ecosystem/02-apps/ultimate-sports/platform/ultimate-sports/
-```
-
-It used to be vendored here at `platform/ultimate-sports/`. It was removed
-because work kept landing in whichever copy happened to be open, and the two
-copies silently diverged — repeatedly, in both directions. If you find yourself
-about to create `platform/` in this repo, stop: you are in the wrong tree.
-
-The only remaining seam is the worker bridge's `ultimateSports` action
-(`app/worker-bridge-protocol.js`). The handler is **injected** by the host —
-as a constructor argument, or as `PearCupUltimateSportsBridge` on the root
-object. It is never required from a sibling directory. With nothing injected it
-fails cleanly with `PEARCUP_ULTIMATE_SPORTS_BRIDGE_UNAVAILABLE`.
+Do not create alternate product trees such as `design/`, `platform/`,
+`prototype/`, `archive/`, or a second app directory. Git history is the archive.
 
 ## Layout
 
-- `design/kawaii-app/` — the app. Self-contained: own `package.json`, `index.cjs`,
-  P2P modules, and its own boot bundle. **Start here.**
-- `app/` — earlier base prototype. The QVAC/WDK hardening was ported from here
-  into the kawaii build.
+- `app/` — the only Pear app and only product source. It owns the Pear manifest,
+  renderer, worker boundary, P2P modules, assets, tests, and generated boot bundle.
 - `scripts/` — release gates, staging, publish helpers.
+- `docs/` — current architecture and operations documentation only.
+- `site/` — marketing website only; never copy runtime code or app assets from it.
+- Root `package.json` — private development/release tooling; it is not a Pear app.
 
 ## Gotchas
 
 - **The repo path contains a space** (`pear sports/`). `pear stage` fails on it
   with `ERR_INVALID_CONFIG` because `pear.pre` can't resolve the escaped path.
-  Stage from a space-free copy — see `design/kawaii-app/RELEASE.md`.
-- `design/kawaii-app/pearcup-boot.js` is **generated**. After touching any
+  Stage from a space-free copy — see `app/RELEASE.md`.
+- `app/pearcup-boot.js` is **generated**. After touching any
   renderer module, run `npm run build:kawaii-boot`.
-- `config/pearcup.runtime.json` holds live API credentials. It is gitignored in
-  both repos and must never be committed or copied between them by tooling.
+- `config/pearcup.runtime.json` is worker/operator-only and may contain custody
+  or provider secrets. `app/config/pearcup.runtime.json` is the renderer-safe
+  local QVAC configuration. Both are gitignored; never copy the worker file into
+  `app/`, stage it, log it, or expose it to the renderer.
 - The renderer persists chat/feed/profile to `localStorage`. New default copy
   won't appear until you `localStorage.clear()`.
 
 ## Checks
 
 ```
-npm test                     # 288 pass
-npm run test:kawaii-peer     # 61 pass
-npm run check:kawaii-runtime # boot bundle currency + runtime gate
+npm test
+npm run test:kawaii-peer
+npm run check:kawaii-runtime
 ```

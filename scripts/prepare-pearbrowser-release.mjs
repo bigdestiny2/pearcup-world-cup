@@ -99,11 +99,11 @@ const receipt = {
       `node scripts/smoke-published-pearbrowser-runtime.mjs --bundle ${bundle}`
     ],
     requiredCoverage: [
-      'design/kawaii-app/index-entry.test.js',
-      'design/kawaii-app/app-deeplink.test.js',
-      'design/kawaii-app/peer-match.test.js',
-      'design/kawaii-app/peer-net.test.js',
-      'design/kawaii-app/peer-preview-smoke.test.js',
+      'app/index-entry.test.js',
+      'app/app-deeplink.test.js',
+      'app/peer-match.test.js',
+      'app/peer-net.test.js',
+      'app/peer-preview-smoke.test.js',
       'scripts/record-friend-test-result.test.mjs',
       'scripts/record-latest-friend-test-result.test.mjs',
       'scripts/publish-approved-pearcup.test.mjs',

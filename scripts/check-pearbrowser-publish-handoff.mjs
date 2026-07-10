@@ -426,11 +426,11 @@ function validateVerification (verification) {
     errors.push('receipt verification must include Pear runtime smoke against the exact generated bundle')
   }
   for (const required of [
-    'design/kawaii-app/index-entry.test.js',
-    'design/kawaii-app/app-deeplink.test.js',
-    'design/kawaii-app/peer-match.test.js',
-    'design/kawaii-app/peer-net.test.js',
-    'design/kawaii-app/peer-preview-smoke.test.js',
+    'app/index-entry.test.js',
+    'app/app-deeplink.test.js',
+    'app/peer-match.test.js',
+    'app/peer-net.test.js',
+    'app/peer-preview-smoke.test.js',
     'scripts/record-friend-test-result.test.mjs',
     'scripts/record-latest-friend-test-result.test.mjs',
     'scripts/publish-approved-pearcup.test.mjs',
@@ -856,7 +856,7 @@ function validateSmokeContracts () {
 }
 
 function validateP2PSmokeCoverage () {
-  const smokePath = join(root, 'design', 'kawaii-app', 'peer-preview-smoke.test.js')
+  const smokePath = join(root, 'app', 'peer-preview-smoke.test.js')
   if (!existsSync(smokePath)) {
     errors.push('P2P preview/PearBrowser smoke test file is missing')
     return

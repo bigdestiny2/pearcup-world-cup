@@ -10,6 +10,13 @@
     }
   }
 
+  function runtimeEnvironment (provided) {
+    if (provided) return provided
+    if (typeof process !== 'undefined' && process.env) return process.env
+    if (root && root.Pear && root.Pear.config && root.Pear.config.env) return root.Pear.config.env
+    return {}
+  }
+
   function parseBool (value, fallback = false) {
     if (value == null || value === '') return fallback
     if (typeof value === 'boolean') return value
@@ -29,6 +36,33 @@
     if (value == null || value === '') return fallback
     const number = Number(value)
     return Number.isFinite(number) ? number : fallback
+  }
+
+  function normalizePublicRelayUrl (value) {
+    if (typeof value !== 'string' || value.trim() === '') return ''
+    try {
+      const url = new URL(value.trim())
+      const localHttp = url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]', '::1'].includes(url.hostname)
+      if (url.protocol !== 'https:' && !localHttp) return ''
+      if (url.username || url.password || !/\.json$/i.test(url.pathname)) return ''
+      url.hash = ''
+      return url.href
+    } catch {
+      return ''
+    }
+  }
+
+  function liveDataSettingsFrom ({ env = {}, config = {} } = {}) {
+    const configured = config.liveData || {}
+    const relayUrl = normalizePublicRelayUrl(env.PEARCUP_LIVE_DATA_RELAY_URL || configured.relayUrl)
+    if (!relayUrl) return null
+    const derivedOddsUrl = new URL('polymarket-odds.json', relayUrl).href
+    const oddsRelayUrl = normalizePublicRelayUrl(env.PEARCUP_POLYMARKET_ODDS_RELAY_URL || configured.oddsRelayUrl) || derivedOddsUrl
+    return {
+      relayUrl,
+      oddsRelayUrl,
+      pollMs: Math.max(15_000, Math.min(120_000, parseNumber(env.PEARCUP_LIVE_DATA_POLL_MS, parseNumber(configured.pollMs, 30_000))))
+    }
   }
 
   function clone (value) {
@@ -75,8 +109,20 @@
     if (preloadedModelId) settings.preloadedModelId = preloadedModelId
     settings.autoUnload = parseBool(env.PEARCUP_QVAC_AUTO_UNLOAD, parseBool(configured.autoUnload, true))
     settings.preflightLoadModel = parseBool(env.PEARCUP_QVAC_PREFLIGHT_LOAD_MODEL, parseBool(configured.preflightLoadModel, false))
-    if (configured.loadModelOptions) settings.loadModelOptions = configured.loadModelOptions
+    const loadModelOptions = { ...(configured.loadModelOptions || {}) }
+    const modelType = env.PEARCUP_QVAC_MODEL_TYPE || loadModelOptions.modelType
+    const contextSize = parseNumber(env.PEARCUP_QVAC_CONTEXT_SIZE, loadModelOptions.modelConfig && loadModelOptions.modelConfig.ctx_size)
+    if (modelType) loadModelOptions.modelType = modelType
+    if (contextSize != null) {
+      loadModelOptions.modelConfig = {
+        ...(loadModelOptions.modelConfig || {}),
+        ctx_size: contextSize
+      }
+    }
+    if (Object.keys(loadModelOptions).length > 0) settings.loadModelOptions = loadModelOptions
     if (configured.completionOptions) settings.completionOptions = configured.completionOptions
+    if (configured.refereeCompletionOptions) settings.refereeCompletionOptions = configured.refereeCompletionOptions
+    if (configured.commentaryCompletionOptions) settings.commentaryCompletionOptions = configured.commentaryCompletionOptions
     return settings
   }
 
@@ -299,12 +345,13 @@
   }
 
   function loadRuntimeSettings (opts = {}) {
-    const env = opts.env || (typeof process !== 'undefined' ? process.env : {})
+    const env = runtimeEnvironment(opts.env)
     const loaded = opts.config
       ? { config: opts.config, path: opts.configPath || null, loaded: true }
       : readJsonConfig({ ...opts, env })
     const qvac = qvacSettingsFrom({ env, config: loaded.config })
     const tetherWdk = tetherWdkSettingsFrom({ env, config: loaded.config })
+    const liveData = liveDataSettingsFrom({ env, config: loaded.config })
     const sdkPackages = {}
     if (qvac) sdkPackages.qvac = qvac
     if (tetherWdk) sdkPackages.tetherWdk = tetherWdk
@@ -315,7 +362,38 @@
         loaded: loaded.loaded
       },
       sdkPackages,
+      liveData,
       compliance: complianceSettingsFrom({ env, config: loaded.config })
+    }
+  }
+
+  // The renderer is deliberately allowed to receive only local QVAC settings.
+  // WDK seeds, payout routes, and live-money compliance decisions must stay in the
+  // host worker/KeyVault process rather than crossing into a browser context.
+  function loadRendererRuntimeSettings (opts = {}) {
+    const env = runtimeEnvironment(opts.env)
+    const config = opts.config || {}
+    const qvac = qvacSettingsFrom({ env, config })
+    const liveData = liveDataSettingsFrom({ env, config })
+    return toRendererRuntimeSettings({
+      source: { path: null, loaded: false },
+      sdkPackages: qvac ? { qvac } : {},
+      liveData
+    })
+  }
+
+  function toRendererRuntimeSettings (settings = {}) {
+    const qvac = settings.sdkPackages && settings.sdkPackages.qvac
+    return {
+      source: { ...(settings.source || {}), rendererSafe: true },
+      sdkPackages: qvac ? { qvac: clone(qvac) } : {},
+      liveData: settings.liveData ? clone(settings.liveData) : null,
+      compliance: {
+        realMoneyEnabled: false,
+        kycVerified: false,
+        jurisdictionAllowed: false,
+        responsiblePlayAccepted: false
+      }
     }
   }
 
@@ -341,18 +419,28 @@
     return settings
   }
 
+  function applyRendererRuntimeSettingsToRoot (rootObject = root, settings = loadRendererRuntimeSettings()) {
+    return applyRuntimeSettingsToRoot(rootObject, settings)
+  }
+
   const api = {
     DEFAULT_CONFIG_PATH,
+    runtimeEnvironment,
     parseBool,
     parseList,
+    normalizePublicRelayUrl,
+    liveDataSettingsFrom,
     readJsonConfig,
     createLiveRuntimeConfigTemplate,
     payoutRecipientCount,
     hasPayoutRecipientRoute,
     loadRuntimeSettings,
+    loadRendererRuntimeSettings,
+    toRendererRuntimeSettings,
     validateRuntimeSettings,
     redactRuntimeSettings,
-    applyRuntimeSettingsToRoot
+    applyRuntimeSettingsToRoot,
+    applyRendererRuntimeSettingsToRoot
   }
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api

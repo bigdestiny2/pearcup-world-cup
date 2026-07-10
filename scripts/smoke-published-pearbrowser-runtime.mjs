@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const sourceAppRoot = join(root, 'design', 'kawaii-app')
+const sourceAppRoot = join(root, 'app')
 const args = parseArgs(process.argv.slice(2))
 const bundle = resolveBundle(args)
 const duration = String(args.duration || 10_000)

@@ -1,4 +1,4 @@
-<!-- All changes target design/kawaii-app/ (the canonical build). See CONTRIBUTING.md. -->
+<!-- All changes target app/ (the canonical build). See CONTRIBUTING.md. -->
 
 ## What & why
 

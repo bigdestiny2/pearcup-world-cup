@@ -1,24 +1,18 @@
 # Contributing to PearCup
 
-## ⭐ Canonical worktree: `design/kawaii-app/`
+## ⭐ Canonical application: `app/`
 
-**All active development happens in `design/kawaii-app/`.** It is a self-contained Pear
+**All active development happens in `app/`.** It is a self-contained Pear
 app (its own `package.json` + `index.cjs`) and is the build that gets staged/released.
 
-`app/` is the earlier base prototype. The QVAC/WDK hardening still landing from the codex
-workstream should be **ported into `design/kawaii-app/`** (copy the logic modules only —
-`core.js`, `adapters.js`, `qvac-referee.js`, `tether-wdk-bridge.js`, `runtime-*.js`,
-`worker-*.js`, `settlement-*.js`, `sdk-runtime.js`, `storage-sim.js`, `transport-sim.js`).
-**Never** overwrite the Kawaii `app.js`, `styles.css`, `index.html`, or the `peer-*` /
-`swarm-worker` modules — those are the design build and have diverged intentionally.
-
-Deep reference (from the base app, still largely accurate): `docs/pearcup-full-technical-spec.md`
-and `docs/pear-runtime-boundary.md`.
+There is no prototype, base app, design copy, or vendored multi-sport tree. Make
+changes directly in `app/`; use Git history when older behavior needs to be
+inspected. `docs/pear-runtime-boundary.md` describes the current worker boundary.
 
 ## Dev quickstart
 
 ```sh
-cd design/kawaii-app
+cd app
 npm install                 # restores node_modules (git-ignored); REQUIRED before pear stage
 pear run --dev .            # launches the Pear (electron) desktop window with live local files
 ```
@@ -27,14 +21,14 @@ Fast UI iteration without the Pear runtime (plain browser, no P2P/hyperswarm —
 BroadcastChannel + sim data):
 
 ```sh
-python3 -m http.server 4180 --directory design/kawaii-app   # then open http://localhost:4180
+python3 -m http.server 4180 --directory app   # then open http://localhost:4180
 ```
 
 ## Architecture (Kawaii build)
 
 Loaded as classic `<script>`s in `index.html`, in order:
 
-1. **Runtime/logic layer** (shared with base app): `core.js` (deterministic penalty
+1. **Runtime/logic layer**: `core.js` (deterministic penalty
    resolver + hashing) → `adapters.js` → `qvac-referee.js`, `tether-wdk-bridge.js`,
    `sdk-runtime.js`, `runtime-settings.js`, `runtime-config.js` → `worker-sim.js`,
    `worker-client.js`, `worker-runtime.js` → `settlement-receipts.js`,
@@ -69,7 +63,7 @@ var so all three themes recolor. New tokens must be added to all three blocks.
 
 ## Pear packaging gotchas (learned the hard way — don't reintroduce)
 
-- **`node_modules` must be a real directory inside `design/kawaii-app/`** (run `npm install`
+- **`node_modules` must be a real directory inside `app/`** (run `npm install`
   there). A symlink pointing outside the app root breaks the `pear-electron` pre-step.
 - **`stage.ignore` must NOT list `/node_modules`** or the runtime deps never bundle and the
   app fails with `Cannot find module 'pear-electron'`.
@@ -81,7 +75,7 @@ var so all three themes recolor. New tokens must be added to all three blocks.
   `window.addEventListener('error', …)` paints errors into an on-screen bar as a safety net.
 
 ## Stage & release
-See `design/kawaii-app/RELEASE.md`. Short version (from `design/kawaii-app/`):
+See `app/RELEASE.md`. Short version (from `app/`):
 ```sh
 pear stage  <link> .        # full warmup bundles hyperswarm etc.
 pear release <link>         # publish (outward-facing — the maintainer runs this)
@@ -92,6 +86,9 @@ pear seed   <link>          # keep it fetchable (a "hiverelay" pin on an always-
 - No secrets in the repo. API keys (Higgsfield, Football-Data) come from **env vars only**
   (`gen-avatars.mjs`, `gen-assets.mjs`, `fetch-live.mjs`). Never commit a key or a real
   `config/pearcup.runtime.json`.
+- Root `config/pearcup.runtime.json` is worker/operator-only. The optional
+  `app/config/pearcup.runtime.json` must remain renderer-safe and QVAC-only;
+  never place WDK custody material or provider secrets inside the app tree.
 - Real-money settlement is gated off (`readiness.settlement.realMoneyEnabled === false`);
   the UI honestly shows "Demo results" until WDK leaves demo mode.
 

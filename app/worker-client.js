@@ -203,7 +203,8 @@
       null
   }
 
-  function createAutoWorkerClient ({ rootObject = root, local, bridge } = {}) {
+  function createAutoWorkerClient ({ rootObject = root, local, bridge, preferLocal = false } = {}) {
+    if (preferLocal && typeof local === 'function') return local()
     const detectedBridge = bridge || detectBridge(rootObject)
     if (detectedBridge) return createBridgeWorkerClient({ bridge: detectedBridge })
     if (typeof local === 'function') return local()

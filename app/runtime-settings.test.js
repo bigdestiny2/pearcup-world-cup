@@ -8,319 +8,125 @@ require('./tether-wdk-bridge.js')
 require('./sdk-runtime.js')
 const runtimeConfig = require('./runtime-config.js')
 
-test('runtime settings merge config file with env overrides and redact WDK seed', () => {
+test('QVAC settings use strict referee output separately from commentary output', () => {
+  const refereeCompletionOptions = {
+    temperature: 0,
+    responseFormat: {
+      type: 'json_schema',
+      json_schema: {
+        name: 'pearcup_referee_review',
+        strict: true,
+        schema: { type: 'object', additionalProperties: false }
+      }
+    }
+  }
+  const commentaryCompletionOptions = {
+    temperature: 0.2,
+    responseFormat: { type: 'json_object' }
+  }
   const settings = runtimeSettings.loadRuntimeSettings({
-    env: {
-      PEARCUP_WDK_SEED: 'env seed phrase',
-      PEARCUP_WDK_ASSETS: 'usdt-evm,btc',
-      PEARCUP_WDK_PAYOUT_ACCOUNT_INDEX: '4',
-      PEARCUP_WDK_DEFAULT_PAYOUT_ADDRESS: '0xdefaultwinner',
-      PEARCUP_WDK_BROADCAST_PAYOUTS: 'true',
-      PEARCUP_QVAC_PRELOADED_MODEL_ID: 'env-preloaded-referee-model',
-      PEARCUP_QVAC_PREFLIGHT_LOAD_MODEL: 'true',
-      PEARCUP_REAL_MONEY_ENABLED: 'true',
-      PEARCUP_KYC_VERIFIED: 'false'
-    },
+    env: {},
     config: {
       sdkPackages: {
         qvac: {
           enabled: true,
-          modelId: 'qvac-config-ref',
-          modelExport: 'LLAMA_3_2_1B_INST_Q4_0',
-          preloadedModelId: 'config-preloaded-referee-model'
-        },
-        tetherWdk: {
-          enabled: true,
-          seedPhrase: 'config seed phrase',
-          assets: ['usdt-evm'],
-          payoutRecipients: {
-            'user-captain': '0xcaptain'
-          },
-          quotePayouts: false
+          modelSrc: '/models/qwen.gguf',
+          refereeCompletionOptions,
+          commentaryCompletionOptions
         }
-      },
-      compliance: {
-        kycVerified: true,
-        jurisdictionAllowed: true,
-        responsiblePlayAccepted: true
       }
     }
   })
-  const redacted = runtimeSettings.redactRuntimeSettings(settings)
-
-  assert.equal(settings.sdkPackages.qvac.modelId, 'qvac-config-ref')
-  assert.equal(settings.sdkPackages.qvac.preloadedModelId, 'env-preloaded-referee-model')
-  assert.equal(settings.sdkPackages.qvac.preflightLoadModel, true)
-  assert.equal(settings.sdkPackages.tetherWdk.seedPhrase, 'env seed phrase')
-  assert.deepEqual(settings.sdkPackages.tetherWdk.assets, ['usdt-evm', 'btc'])
-  assert.equal(settings.sdkPackages.tetherWdk.payoutAccountIndex, 4)
-  assert.equal(settings.sdkPackages.tetherWdk.defaultPayoutAddress, '0xdefaultwinner')
-  assert.equal(settings.sdkPackages.tetherWdk.broadcastPayouts, true)
-  assert.equal(settings.sdkPackages.tetherWdk.quotePayouts, false)
-  assert.deepEqual(settings.sdkPackages.tetherWdk.payoutRecipients, {
-    'user-captain': '0xcaptain'
-  })
-  assert.equal(settings.compliance.realMoneyEnabled, true)
-  assert.equal(settings.compliance.kycVerified, false)
-  assert.equal(settings.compliance.jurisdictionAllowed, true)
-  assert.equal(redacted.sdkPackages.tetherWdk.seedPhrase, '[redacted]')
-  assert.equal(redacted.sdkPackages.tetherWdk.defaultPayoutAddress, '[redacted]')
-  assert.deepEqual(redacted.sdkPackages.tetherWdk.payoutRecipients, {
-    'user-captain': '[redacted]'
-  })
-})
-
-test('runtime settings can load explicit JSON config path', () => {
-  const settings = runtimeSettings.loadRuntimeSettings({
-    env: {},
-    configPath: '/tmp/pearcup-runtime.json',
-    readFile (path) {
-      assert.equal(path, '/tmp/pearcup-runtime.json')
-      return JSON.stringify({
-        sdkPackages: {
-          qvac: { enabled: true, modelSrc: 'qvac-src' },
-          tetherWdk: { enabled: true, seedPhrase: 'file seed phrase' }
-        }
-      })
-    },
-    resolvePath: path => path
-  })
-
-  assert.equal(settings.source.loaded, true)
-  assert.equal(settings.sdkPackages.qvac.modelSrc, 'qvac-src')
-  assert.equal(settings.sdkPackages.tetherWdk.seedPhrase, 'file seed phrase')
-})
-
-test('runtime config consumes PearCupRuntimeSettingsValue for package adapters and compliance', () => {
   const calls = []
   const rootObject = {
+    PearCupRuntimeSettingsValue: settings,
     PearCupSdkRuntime: {
       createQvacSdkRefereeAdapter (config) {
-        calls.push(['qvac', config.modelId])
-        return {
-          mode: 'sdk',
-          attestRound () {},
-          attestPoolSettlement () {}
-        }
+        calls.push(['referee', config.completionOptions])
+        return { mode: 'sdk', attestRound () {}, attestPoolSettlement () {} }
       },
-      createTetherWdkPackageAdapter (config) {
-        calls.push(['wdk', config.seedPhrase, config.payoutAccountIndex, config.defaultPayoutAddress])
-        return {
-          mode: 'sdk',
-          createGameEscrow () {},
-          releaseGameEscrow () {},
-          createEntryIntent () {},
-          confirmEntryIntent () {},
-          createPoolPayout () {}
-        }
+      createQvacSdkCommentaryAdapter (config) {
+        calls.push(['commentary', config.completionOptions])
+        return { mode: 'sdk', generateSegment () {} }
       }
-    },
-    PearCupRuntimeSettingsValue: runtimeSettings.loadRuntimeSettings({
-      config: {
-        sdkPackages: {
-          qvac: { enabled: true, modelId: 'settings-qvac-ref' },
-          tetherWdk: {
-            enabled: true,
-            seedPhrase: 'settings seed phrase',
-            payoutAccountIndex: 3,
-            defaultPayoutAddress: '0xsettingswinner'
-          }
-        },
-        compliance: {
-          realMoneyEnabled: true,
-          kycVerified: true,
-          jurisdictionAllowed: true,
-          responsiblePlayAccepted: true
-        }
-      },
-      env: {}
-    })
+    }
   }
 
   const runtime = runtimeConfig.createRuntimeConfig({ rootObject })
 
   assert.equal(runtime.mode.qvac, 'sdk')
-  assert.equal(runtime.mode.tetherWdk, 'sdk')
-  assert.equal(runtime.canUseRealMoney, true)
+  assert.equal(runtime.mode.qvacCommentary, 'sdk')
   assert.deepEqual(calls, [
-    ['qvac', 'settings-qvac-ref'],
-    ['wdk', 'settings seed phrase', 3, '0xsettingswinner']
+    ['referee', refereeCompletionOptions],
+    ['commentary', commentaryCompletionOptions]
   ])
 })
 
-test('runtime settings validate complete live config without leaking the WDK seed', () => {
-  const settings = runtimeSettings.loadRuntimeSettings({
-    env: {},
-    config: {
-      sdkPackages: {
-        qvac: {
-          enabled: true,
-          modelExport: 'LLAMA_3_2_1B_INST_Q4_0'
-        },
-        tetherWdk: {
-          enabled: true,
-          seedPhrase: 'valid live config seed phrase',
-          assets: ['usdt-evm'],
-          evmProvider: 'https://rpc.example.invalid',
-          defaultPayoutAddress: '0xlivewinner000000000000000000000000000000',
-          skipInitialBalanceProbe: false
-        }
-      },
-      compliance: {
-        realMoneyEnabled: true,
-        kycVerified: true,
-        jurisdictionAllowed: true,
-        responsiblePlayAccepted: true
-      }
-    }
-  })
-  const validation = runtimeSettings.validateRuntimeSettings(settings, { requireLive: true })
-
-  assert.equal(validation.ok, true)
-  assert.deepEqual(validation.errors, [])
-  assert.equal(validation.redactedSettings.sdkPackages.tetherWdk.seedPhrase, '[redacted]')
-  assert.equal(validation.redactedSettings.sdkPackages.tetherWdk.defaultPayoutAddress, '[redacted]')
-  assert.equal(JSON.stringify(validation).includes('valid live config seed phrase'), false)
-  assert.equal(JSON.stringify(validation).includes('0xlivewinner'), false)
-})
-
-test('runtime settings validation blocks unsafe live settlement config', () => {
-  const settings = runtimeSettings.loadRuntimeSettings({
-    env: {},
-    config: {
-      sdkPackages: {
-        qvac: {
-          enabled: true,
-          modelExport: 'LLAMA_3_2_1B_INST_Q4_0'
-        },
-        tetherWdk: {
-          enabled: true,
-          seedPhrase: 'seed without provider',
-          assets: ['usdt-evm'],
-          skipInitialBalanceProbe: true
-        }
-      },
-      compliance: {
-        realMoneyEnabled: true,
-        kycVerified: false,
-        jurisdictionAllowed: true,
-        responsiblePlayAccepted: false
-      }
-    }
-  })
-  const validation = runtimeSettings.validateRuntimeSettings(settings, { requireLive: true })
-  const labels = validation.errors.map(error => error.label).join('\n')
-
-  assert.equal(validation.ok, false)
-  assert.match(labels, /evmProvider/)
-  assert.match(labels, /Disable skipInitialBalanceProbe/)
-  assert.match(labels, /defaultPayoutAddress or payoutRecipients/)
-  assert.match(labels, /KYC/)
-  assert.match(labels, /responsible-play/)
-})
-
-test('runtime settings validation treats QVAC modelId as a label, not a loadable model source', () => {
-  const settings = runtimeSettings.loadRuntimeSettings({
-    env: {},
-    config: {
-      sdkPackages: {
-        qvac: {
-          enabled: true,
-          modelId: 'qvac-label-only'
-        },
-        tetherWdk: {
-          enabled: true,
-          seedPhrase: 'valid live config seed phrase',
-          assets: ['usdt-evm'],
-          evmProvider: 'https://rpc.example.invalid',
-          defaultPayoutAddress: '0xlivewinner000000000000000000000000000000',
-          skipInitialBalanceProbe: false
-        }
-      },
-      compliance: {
-        realMoneyEnabled: true,
-        kycVerified: true,
-        jurisdictionAllowed: true,
-        responsiblePlayAccepted: true
-      }
-    }
-  })
-  const validation = runtimeSettings.validateRuntimeSettings(settings, { requireLive: true })
-
-  assert.equal(settings.sdkPackages.qvac.modelId, 'qvac-label-only')
-  assert.equal(validation.ok, false)
-  assert.match(validation.errors.map(error => error.label).join('\n'), /modelSrc, modelExport, or preloadedModelId/)
-})
-
-test('runtime settings validation accepts a preloaded QVAC model id as the loadable model source', () => {
-  const settings = runtimeSettings.loadRuntimeSettings({
-    env: {},
-    config: {
-      sdkPackages: {
-        qvac: {
-          enabled: true,
-          modelId: 'qvac-label',
-          preloadedModelId: 'qvac-runtime-preloaded-model'
-        },
-        tetherWdk: {
-          enabled: true,
-          seedPhrase: 'valid live config seed phrase',
-          assets: ['usdt-evm'],
-          evmProvider: 'https://rpc.example.invalid',
-          defaultPayoutAddress: '0xlivewinner000000000000000000000000000000',
-          skipInitialBalanceProbe: false
-        }
-      },
-      compliance: {
-        realMoneyEnabled: true,
-        kycVerified: true,
-        jurisdictionAllowed: true,
-        responsiblePlayAccepted: true
-      }
-    }
-  })
-  const validation = runtimeSettings.validateRuntimeSettings(settings, { requireLive: true })
-
-  assert.equal(settings.sdkPackages.qvac.modelId, 'qvac-label')
-  assert.equal(settings.sdkPackages.qvac.preloadedModelId, 'qvac-runtime-preloaded-model')
-  assert.equal(validation.ok, true)
-})
-
-test('runtime settings do not enable QVAC from a label-only modelId unless explicitly requested', () => {
-  const settings = runtimeSettings.loadRuntimeSettings({
-    env: {},
-    config: {
-      sdkPackages: {
-        qvac: {
-          modelId: 'qvac-label-only'
-        }
-      }
-    }
-  })
-
-  assert.equal(settings.sdkPackages.qvac, undefined)
-})
-
-test('live runtime config template can be generated from env and redacted for output', () => {
-  const template = runtimeSettings.createLiveRuntimeConfigTemplate({
+test('renderer runtime settings accept local QVAC options but never expose WDK custody data', () => {
+  const rendererSettings = runtimeSettings.loadRendererRuntimeSettings({
     env: {
-      PEARCUP_QVAC_MODEL_EXPORT: 'LLAMA_3_2_1B_INST_Q4_0',
-      PEARCUP_QVAC_PRELOADED_MODEL_ID: 'template-preloaded-qvac-model',
-      PEARCUP_WDK_SEED: 'template seed phrase',
-      PEARCUP_EVM_PROVIDER: 'https://rpc.example.invalid',
+      PEARCUP_QVAC_ENABLED: 'true',
+      PEARCUP_QVAC_MODEL_SRC: '/models/local-qwen.gguf',
+      PEARCUP_QVAC_MODEL_TYPE: 'llamacpp-completion',
+      PEARCUP_QVAC_CONTEXT_SIZE: '2048',
+      PEARCUP_WDK_SEED: 'renderer-must-not-see-this',
       PEARCUP_REAL_MONEY_ENABLED: 'true'
     }
   })
-  const redacted = runtimeSettings.redactRuntimeSettings(template)
 
-  assert.equal(template.sdkPackages.qvac.enabled, true)
-  assert.equal(template.sdkPackages.qvac.preloadedModelId, 'template-preloaded-qvac-model')
-  assert.equal(template.sdkPackages.tetherWdk.enabled, true)
-  assert.equal(template.sdkPackages.tetherWdk.payoutAccountIndex, 0)
-  assert.equal(template.sdkPackages.tetherWdk.defaultPayoutAddress, '')
-  assert.deepEqual(template.sdkPackages.tetherWdk.payoutRecipients, {})
-  assert.equal(template.sdkPackages.tetherWdk.broadcastPayouts, false)
-  assert.equal(template.sdkPackages.tetherWdk.quotePayouts, true)
-  assert.equal(template.sdkPackages.tetherWdk.skipInitialBalanceProbe, false)
-  assert.equal(redacted.sdkPackages.tetherWdk.seedPhrase, '[redacted]')
+  assert.deepEqual(rendererSettings.sdkPackages.qvac.loadModelOptions, {
+    modelType: 'llamacpp-completion',
+    modelConfig: { ctx_size: 2048 }
+  })
+  assert.equal(rendererSettings.sdkPackages.tetherWdk, undefined)
+  assert.equal(rendererSettings.compliance.realMoneyEnabled, false)
+  assert.equal(JSON.stringify(rendererSettings).includes('renderer-must-not-see-this'), false)
+
+  const hostSettings = runtimeSettings.loadRuntimeSettings({
+    env: {},
+    config: {
+      sdkPackages: {
+        qvac: { enabled: true, modelSrc: '/models/local-qwen.gguf' },
+        tetherWdk: { enabled: true, seedPhrase: 'host-only-seed' }
+      },
+      compliance: { realMoneyEnabled: true }
+    }
+  })
+  const bridgedSettings = runtimeSettings.toRendererRuntimeSettings(hostSettings)
+
+  assert.equal(bridgedSettings.sdkPackages.qvac.modelSrc, '/models/local-qwen.gguf')
+  assert.equal(bridgedSettings.sdkPackages.tetherWdk, undefined)
+  assert.equal(bridgedSettings.compliance.realMoneyEnabled, false)
+  assert.equal(JSON.stringify(bridgedSettings).includes('host-only-seed'), false)
+})
+
+test('renderer settings application preserves a host-provided safe QVAC configuration', () => {
+  const hostSettings = runtimeSettings.toRendererRuntimeSettings({
+    sdkPackages: { qvac: { modelId: 'host-qvac' } }
+  })
+  const rootObject = { PearCupRuntimeSettingsValue: hostSettings }
+
+  assert.equal(rootObject.PearCupRuntimeSettingsValue.sdkPackages.qvac.modelId, 'host-qvac')
+  assert.equal(rootObject.PearCupRuntimeSettingsValue.sdkPackages.tetherWdk, undefined)
+})
+
+test('renderer settings expose only public HTTPS live-data relay locations', () => {
+  const hostSettings = runtimeSettings.loadRuntimeSettings({
+    env: { PEARCUP_LIVE_DATA_RELAY_URL: 'https://data.example.test/v1/live-match.json' },
+    config: {
+      sdkPackages: { tetherWdk: { enabled: true, seedPhrase: 'worker-only-seed' } },
+      liveData: { relayUrl: 'https://ignored.example/live-match.json', pollMs: 20_000 }
+    }
+  })
+  const rendererSettings = runtimeSettings.toRendererRuntimeSettings(hostSettings)
+
+  assert.deepEqual(rendererSettings.liveData, {
+    relayUrl: 'https://data.example.test/v1/live-match.json',
+    oddsRelayUrl: 'https://data.example.test/v1/polymarket-odds.json',
+    pollMs: 20_000
+  })
+  assert.equal(JSON.stringify(rendererSettings).includes('worker-only-seed'), false)
+  assert.equal(runtimeSettings.liveDataSettingsFrom({
+    env: { PEARCUP_LIVE_DATA_RELAY_URL: 'http://data.example.test/v1/live-match.json' }
+  }), null)
 })

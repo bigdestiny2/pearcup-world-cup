@@ -4,7 +4,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const appRoot = join(root, 'design', 'kawaii-app')
+const appRoot = join(root, 'app')
 const outPath = join(appRoot, 'pearcup-boot.js')
 const args = new Set(process.argv.slice(2))
 

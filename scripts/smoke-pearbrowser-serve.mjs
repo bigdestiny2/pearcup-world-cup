@@ -69,7 +69,7 @@ try {
 }
 
 function bumpSourceMtime () {
-  const filePath = join(root, 'design', 'kawaii-app', 'styles.css')
+  const filePath = join(root, 'app', 'styles.css')
   const stat = statSync(filePath)
   const next = new Date(Math.max(Date.now() + 2000, stat.mtimeMs + 2000))
   utimesSync(filePath, stat.atime, next)

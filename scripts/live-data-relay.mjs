@@ -302,7 +302,7 @@ export function createLiveDataRelay ({ config = relayConfig(), fetchImpl = globa
 }
 
 async function defaultOddsSnapshot (liveSnapshot) {
-  const { createSnapshot } = await import('../design/kawaii-app/fetch-polymarket-odds.mjs')
+  const { createSnapshot } = await import('../app/fetch-polymarket-odds.mjs')
   return createSnapshot({ liveSnapshot })
 }
 

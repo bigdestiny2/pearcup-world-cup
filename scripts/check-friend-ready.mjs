@@ -14,7 +14,7 @@ const errors = []
 
 runCheck('Kawaii Pear runtime package', 'scripts/check-kawaii-runtime.mjs')
 runCheck('Kawaii Pear runtime launch smoke', 'scripts/smoke-kawaii-pear-run.mjs')
-runNodeTest('Kawaii P2P preview and PearBrowser smoke', 'design/kawaii-app/peer-preview-smoke.test.js')
+runNodeTest('Kawaii P2P preview and PearBrowser smoke', 'app/peer-preview-smoke.test.js')
 if (builtBundle) runCheck('PearBrowser Hyper build', 'scripts/build-pearbrowser-hyper.mjs', ['--out', bundle])
 runCheck('PearBrowser Hyper smoke', 'scripts/smoke-pearbrowser-hyper.mjs', ['--bundle', bundle])
 

@@ -149,26 +149,6 @@
     })
   }
 
-  // Ultimate Sports ships from its own repo, so the bridge must be injected by the host.
-  function createUltimateSportsBridgeHandler ({ rootObject = root, handler } = {}) {
-    if (handler && typeof handler.handle === 'function') return handler
-    const exposed = rootObject && (
-      rootObject.PearCupUltimateSportsBridge ||
-      rootObject.__PEARCUP_ULTIMATE_SPORTS_BRIDGE__ ||
-      rootObject.UltimateSportsBridge
-    )
-    if (exposed && typeof exposed.handle === 'function') return exposed
-    const error = new Error('Ultimate sports bridge unavailable in this runtime')
-    error.code = 'PEARCUP_ULTIMATE_SPORTS_BRIDGE_UNAVAILABLE'
-    throw error
-  }
-
-  function normalizeUltimateSportsRequest (payload = {}) {
-    if (payload.request && typeof payload.request === 'object') return payload.request
-    if (payload.envelope && typeof payload.envelope === 'object') return payload.envelope
-    return payload
-  }
-
   function createPearWorkerBridgeProtocol ({
     settings,
     rootObject = root,
@@ -195,7 +175,6 @@
       activeService.status().settings
     ) || {}
     const dispatchCommand = createGuardedDispatcher({ service: activeService, harness })
-    let ultimateSportsHandler = null
 
     async function handleEnvelope (envelope) {
       try {
@@ -222,12 +201,6 @@
           const requestOpts = payload.opts || {}
           responseService = settlementServiceForRequest({ activeService, harness, opts: requestOpts })
           result = await responseService.settleBracketPoolWithReceipt(payload.payload || {}, requestOpts)
-        } else if (envelope.action === 'ultimateSports') {
-          ultimateSportsHandler = createUltimateSportsBridgeHandler({
-            rootObject,
-            handler: ultimateSportsHandler || payload.handler
-          })
-          result = ultimateSportsHandler.handle(normalizeUltimateSportsRequest(payload))
         } else {
           throw new Error(`Unsupported Pear worker bridge action: ${envelope.action}`)
         }
@@ -268,7 +241,6 @@
   const api = {
     protocolVersion,
     createPearWorkerBridgeProtocol,
-    createUltimateSportsBridgeHandler,
     redactWorkerValue,
     assertNoSecretLeak,
     envelopeWantsEvents

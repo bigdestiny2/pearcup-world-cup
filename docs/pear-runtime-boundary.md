@@ -1,10 +1,6 @@
 # Pear Runtime Boundary
 
-PearCup now lives under:
-
-```txt
-/Users/localllm/Projects/pear-ecosystem/02-apps/pearcup-world-cup
-```
+PearCup product code lives exclusively in `app/`.
 
 The current build is intentionally split between a polished browser/Pear
 renderer and deterministic local modules that can move into a Bare worker. Real
@@ -13,12 +9,12 @@ checks all pass.
 
 ## Current Launch Shape
 
-- `package.json` defines the Pear GUI app and points `pear.gui.main` at
-  `app/index.html`.
-- `index.cjs` boots `pear-electron` with `pear-bridge`, matching the local Pear
-  app pattern used elsewhere in `02-apps`.
+- `app/package.json` is the repository's only Pear manifest and points
+  `pear.gui.main` at `index.html`.
+- `app/index.cjs` boots `pear-electron` with `pear-bridge`.
 - `app/` contains the current renderer, deterministic domain logic, adapter
   gates, local event store, transport simulator, and tests.
+- Root `package.json` contains private development and release commands only.
 - `scripts/serve.mjs` serves the same renderer locally for browser checks.
 - `app/worker-runtime.js` is the Node/Pear-worker bootstrap for loading
   runtime settings, creating package-backed QVAC/WDK adapters, and exposing
