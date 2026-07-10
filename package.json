@@ -12,6 +12,7 @@
     "worker:live-data": "node scripts/live-data-relay.mjs",
     "test:live-data-relay": "node --test scripts/live-data-relay.test.mjs",
     "test:hiverelay-conformance": "node scripts/verify-hiverelay-conformance.mjs",
+    "test:hiverelay-endpoint": "node scripts/verify-hiverelay-endpoint.mjs",
     "preview": "node scripts/serve.mjs --port 4174",
     "try:preview": "node scripts/serve.mjs --port 4174",
     "preflight:sdk": "node scripts/preflight-sdk.mjs",

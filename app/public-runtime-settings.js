@@ -3,10 +3,15 @@
 (function attachPearCupPublicRuntimeSettings (root) {
   root.PearCupPublicRuntimeSettings = {
     liveData: null,
-    // Set only after the dedicated PearCup HiveRelay OutboxLog endpoint has
-    // passed `npm run test:hiverelay-conformance`. This is a public URL, never
-    // an operator token or a wallet credential.
-    peerRelay: null,
+    // Dedicated, verified HTTPS gateway for the PearCup OutboxLog relay. This
+    // is public routing metadata only: it never carries an operator token,
+    // wallet credential, or passkey assertion.
+    peerRelay: {
+      enabled: true,
+      relayUrl: 'https://pearcup-kawaii-relay.throbbing-limit-1abb.workers.dev',
+      service: 'outboxlog',
+      protocol: 'pearcup-sync-v2'
+    },
     // This public endpoint stores passkeys, linked public device keys, and
     // demo balances only. It contains no wallet or payment credentials.
     identity: { enabled: true, apiUrl: 'https://pearcup-kawaii-identity.throbbing-limit-1abb.workers.dev' }

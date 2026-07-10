@@ -44,19 +44,30 @@ browser with its passkey.
 
 ## HiveRelay boundary
 
-Cloudflare does not replace HiveRelay. The browser/Pear shared transport needs
-a dedicated, persistent HiveRelay OutboxLog origin with the documented token,
-status, join, send, leave, and SSE endpoints. Only after that endpoint passes
-`npm run test:hiverelay-conformance` should its public URL be placed in the
-Pages build's `peerRelay` setting. The relay transports signed, short-lived
-application frames; it must never receive passkey assertions, wallet data, or
-private device keys.
+Cloudflare does not replace HiveRelay. The browser/Pear shared transport uses a
+dedicated, persistent HiveRelay OutboxLog node behind the narrow HTTPS Worker
+gateway at `https://pearcup-kawaii-relay.throbbing-limit-1abb.workers.dev`.
+The gateway exposes only token, status, join, send, leave, and SSE routes; it
+is not a general proxy. The node admits the `pearcup` namespace and its relay
+port accepts traffic only from Cloudflare edge ranges.
+
+Verify the exact public endpoint before enabling it in a release:
+
+```bash
+PEARCUP_HIVERELAY_URL=https://pearcup-kawaii-relay.throbbing-limit-1abb.workers.dev \
+  npm run test:hiverelay-endpoint
+```
+
+The relay transports signed, short-lived application frames. It must never
+receive passkey assertions, wallet data, private device keys, operator tokens,
+or real-money payment authorization.
 
 ## Build and release
 
 1. Apply Worker migrations and deploy the identity Worker.
 2. Set `PEARCUP_IDENTITY_API_URL` to the Worker HTTPS origin.
-3. Run `npm run build:cloudflare-pages` and `npm run check:cloudflare-pages`.
+3. Set `PEARCUP_HIVERELAY_URL` to the verified HTTPS gateway, then run
+   `npm run build:cloudflare-pages` and `npm run check:cloudflare-pages`.
 4. Deploy `cloudflare/pages-dist` to the existing `pearcup-kawaii` Pages
    project.
 5. Test the exact Pages URL in a normal browser before enabling the dedicated

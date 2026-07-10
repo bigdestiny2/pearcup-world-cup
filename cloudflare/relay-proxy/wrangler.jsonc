@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pearcup-kawaii-relay",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-10",
+  "workers_dev": true,
+  "vars": {
+    "RELAY_ORIGIN": "http://172.86.76.209.nip.io:9100"
+  }
+}
