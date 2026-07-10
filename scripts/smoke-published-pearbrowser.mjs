@@ -356,11 +356,14 @@ function normalizeAppUrl (parsed) {
   } else if (parsed.url) {
     const raw = new URL(parsed.url)
     if (raw.protocol === 'hyper:') {
-      if (!/^[0-9a-f]{64}$/i.test(raw.hostname)) {
-        errors.push('hyper:// URL must contain a 64-hex Hyperdrive key host')
-        return null
-      }
-      url = new URL(`/app/${raw.hostname.toLowerCase()}/`, ensureTrailingSlash(gateway))
+    if (!/^[0-9a-f]{64}$/i.test(raw.hostname)) {
+      errors.push('hyper:// URL must contain a 64-hex Hyperdrive key host')
+      return null
+    }
+      // A public hyper:// link is fetched through PearBrowser's direct-drive
+      // proxy route. `/app/` is reserved for an already-installed local app
+      // and returns 404 for a freshly published catalogue drive.
+      url = new URL(`/hyper/${raw.hostname.toLowerCase()}/`, ensureTrailingSlash(gateway))
     } else if (raw.protocol === 'http:' || raw.protocol === 'https:') {
       url = raw
     } else {
@@ -414,7 +417,8 @@ function isLocalPreview4186 (url) {
 function usage () {
   console.error('Usage:')
   console.error('  node scripts/smoke-published-pearbrowser.mjs --url hyper://<64-hex-drive>/')
-  console.error('  node scripts/smoke-published-pearbrowser.mjs --url http://127.0.0.1:17208/app/<64-hex-drive>/')
+  console.error('  node scripts/smoke-published-pearbrowser.mjs --url hyper://<64-hex-drive>/')
+  console.error('  node scripts/smoke-published-pearbrowser.mjs --url http://127.0.0.1:17208/hyper/<64-hex-drive>/')
   console.error('  node scripts/smoke-published-pearbrowser.mjs --drive <64-hex-drive> [--gateway http://127.0.0.1:17208/]')
   console.error(`Repo: ${root}`)
 }

@@ -62,6 +62,17 @@ test('published smoke rejects localhost proxy invite links', async () => {
   }
 })
 
+test('published smoke maps public hyper URLs through PearBrowser\'s direct-drive route', async () => {
+  const server = await startFixtureServer({})
+  try {
+    const result = await runSmoke(server.gateway, ['--url', `hyper://${drive}/`])
+    assert.equal(result.status, 0, result.stderr)
+    assert.match(result.stdout, new RegExp(`/hyper/${drive}/`))
+  } finally {
+    await server.close()
+  }
+})
+
 test('published smoke rejects watch sync without same-room challenges', async () => {
   const server = await startFixtureServer({
     watchSyncJs: [
@@ -81,9 +92,9 @@ test('published smoke rejects watch sync without same-room challenges', async ()
   }
 })
 
-function runSmoke (gateway) {
+function runSmoke (gateway, targetArgs = ['--drive', drive]) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [script, '--drive', drive, '--gateway', gateway], {
+    const child = spawn(process.execPath, [script, ...targetArgs, '--gateway', gateway], {
       cwd: root,
       stdio: ['ignore', 'pipe', 'pipe']
     })
@@ -144,7 +155,7 @@ function startFixtureServer ({ indexHtml = validIndexHtml(), peerMatchJs = valid
       '// p2pBackendBadge assertP2PModulesReady pearcupP2pModules syncRuntimeScreenDiagnostics',
       '// pearcupActiveScreen pearcupAppBooted bootRuntimeDiagnostics profileChipReady',
       "// emitBootReadyMarker URLSearchParams(location.search) get('join') tryJoinFriendInvite",
-      '// pearcupPendingJoin completeProfileOnboarding peerMatch.join(code) Round of 32 AVATAR_PORTRAITS',
+      '// pearcupPendingJoin completeProfileOnboarding peerMatch.join(code) leaveGameToLobby Round of 32 AVATAR_PORTRAITS',
       '// avatars/p-aria.png avatars/p-tariq.png assets/mascot.png runBootRuntimeSelfTest',
       '// runtimeBracketEvidence Bracket board rendered Bracket route did not render generated avatar images',
       '// watchChallengePanel Watch route did not render the challenge panel',
@@ -182,7 +193,7 @@ function startFixtureServer ({ indexHtml = validIndexHtml(), peerMatchJs = valid
 
   const server = createServer((req, res) => {
     const requestUrl = new URL(req.url || '/', 'http://127.0.0.1')
-    const match = requestUrl.pathname.match(/^\/app\/[0-9a-f]{64}\/?(.*)$/i)
+    const match = requestUrl.pathname.match(/^\/(?:app|hyper)\/[0-9a-f]{64}\/?(.*)$/i)
     const key = match && match[1] ? match[1] : 'index.html'
     const file = files.get(key || 'index.html')
     if (!match || !file) {
