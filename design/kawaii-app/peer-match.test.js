@@ -142,7 +142,7 @@ function createDocument ({ baseHref } = {}) {
   }
 }
 
-function createClient ({ hub, peerId, name, team, href = 'http://127.0.0.1:4186/', baseHref = null }) {
+function createClient ({ hub, peerId, name, team, href = 'http://127.0.0.1:4186/', baseHref = null, pearAppLink = null }) {
   const document = createDocument({ baseHref })
   const toasts = []
   const views = []
@@ -156,6 +156,7 @@ function createClient ({ hub, peerId, name, team, href = 'http://127.0.0.1:4186/
     console,
     document,
     location: { href },
+    Pear: pearAppLink ? { config: { applink: pearAppLink } } : undefined,
     URL,
     navigator: {},
     setTimeout: browserSetTimeout,
@@ -290,6 +291,26 @@ test('Penalty Clash invite keeps localhost URL for plain preview fallback', () =
   assert.ok(modal)
   assert.match(modal.innerHTML, /http:\/\/127\.0\.0\.1:4186\/games\?join=room42/)
   assert.doesNotMatch(modal.innerHTML, /debug=1|#local/)
+})
+
+test('Penalty Clash invite uses the canonical Pear app link from the runtime bridge', () => {
+  const hub = createHub()
+  const appLink = 'pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo'
+  const host = createClient({
+    hub,
+    peerId: 'a-host',
+    name: 'Host',
+    team: 'br',
+    href: 'http://localhost:17208/',
+    pearAppLink: appLink
+  })
+
+  host.context.PearCupPeerMatch.host('room42')
+
+  const modal = host.document.querySelector('#peerModal')
+  assert.ok(modal)
+  assert.match(modal.innerHTML, /pear:\/\/ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo\/\?join=room42/)
+  assert.doesNotMatch(modal.innerHTML, /localhost:17208/)
 })
 
 test('Penalty Clash host and guest handshake into a peer match', async () => {

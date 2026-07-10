@@ -572,6 +572,9 @@ Object.assign(AVATAR_PORTRAITS, {
   freya: 'avatars/p-freya.png', santi: 'avatars/p-santi.png', kofi: 'avatars/p-kofi.png'
 })
 
+// Higgsfield portraits are the production avatar art. The selected team picks
+// a stable member of the generated pool for the current player, while named
+// opponents keep their authored portrait.
 const AVATAR_POOL = [
   'p-aria', 'p-rico', 'p-kenji', 'p-amara', 'p-luca', 'p-sofia', 'p-omar', 'p-nina',
   'p-diego', 'p-yuki', 'p-kwame', 'p-ingrid', 'p-rafa', 'p-mei', 'p-tariq', 'p-freya',
@@ -587,14 +590,8 @@ function avatarPortrait (name, team) {
   if (!team || !team.id) return AVATAR_PORTRAITS[String(name).toLowerCase()] || null
   const teamSpecific = AVATAR_PORTRAITS[`${name}-${team.id}`]
   if (teamSpecific) return teamSpecific
-  // The current user's own avatar must follow their chosen team. Named characters
-  // (friends/AI) keep their fixed portrait; the user ignores any name-only pin and
-  // draws from the illustrated avatar pool (hashed by team) so switching country
-  // shows a distinct, polished avatar — never the fallback line-art SVG.
   const selfName = (state && state.username) || 'captain'
   if (String(name) === String(selfName)) {
-    // Index by grid position so every run of 18 countries is unique and no two
-    // adjacent countries ever share an avatar (collisions land 18+ apart).
     const idx = teams.findIndex(t => t && t.id === team.id)
     return `avatars/${AVATAR_POOL[(idx >= 0 ? idx : hashString(team.id)) % AVATAR_POOL.length]}.png`
   }

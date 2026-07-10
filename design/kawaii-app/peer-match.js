@@ -353,9 +353,23 @@
     return null
   }
 
+  function pearLaunchBase () {
+    const pear = root.Pear || null
+    const app = pear && (pear.app || pear.config) || {}
+    for (const href of [app.applink, app.link]) {
+      try {
+        const url = new URL(String(href || ''))
+        if (url.protocol === 'pear:' && url.hostname) return `pear://${url.hostname}/`
+      } catch (e) {}
+    }
+    return null
+  }
+
   function inviteLink (code) {
     const hyperBase = hyperLaunchBase()
     if (hyperBase) return `${hyperBase}?join=${encodeURIComponent(code)}`
+    const pearBase = pearLaunchBase()
+    if (pearBase) return `${pearBase}?join=${encodeURIComponent(code)}`
     const url = new URL(location.href)
     url.search = ''
     url.hash = ''
