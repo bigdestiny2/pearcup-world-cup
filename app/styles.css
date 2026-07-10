@@ -3341,6 +3341,12 @@ h2 {
 .wallet-row strong.credit { color: var(--green-deep); }
 .wallet-row strong.debit { color: var(--pink-deep); }
 .wallet-note { margin: 12px 0 0; font-size: 12px; color: var(--muted); font-weight: 600; line-height: 1.4; }
+.identity-card { border: 1px solid rgba(111, 224, 200, .48); }
+.identity-status { margin: 2px 0 0; color: var(--muted); font: 800 15px var(--display); }
+.identity-status.is-linked { color: var(--green-deep); }
+.identity-pair-link { display: inline-flex; align-items: center; text-decoration: none; }
+.identity-pair-code { margin: 12px 0 0; color: var(--ink); font-size: 12px; font-weight: 650; line-height: 1.5; }
+.identity-pair-code strong { font-family: var(--mono); letter-spacing: .08em; color: var(--pink-deep); }
 
 @media (max-width: 640px) { .wallet-chip .wallet-amt { display: none; } }
 

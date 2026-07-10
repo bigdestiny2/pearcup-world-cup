@@ -25,6 +25,8 @@
     "audit:pear-release-scope": "node --check scripts/audit-pear-release-scope.mjs && node scripts/audit-pear-release-scope.mjs",
     "build:kawaii-boot": "node scripts/build-kawaii-boot.mjs",
     "build:pearbrowser": "node scripts/build-pearbrowser-hyper.mjs",
+    "build:cloudflare-pages": "node scripts/build-cloudflare-pages.mjs",
+    "check:cloudflare-pages": "node scripts/build-cloudflare-pages.mjs --check",
     "prepare:pearbrowser-release": "node --check scripts/prepare-pearbrowser-release.mjs && node scripts/prepare-pearbrowser-release.mjs",
     "prepare:pearbrowser-release:handoff": "node --check scripts/prepare-pearbrowser-release.mjs && node scripts/prepare-pearbrowser-release.mjs --out .pearcup-release/latest --force",
     "smoke:pearbrowser-hyper": "node scripts/smoke-pearbrowser-hyper.mjs",

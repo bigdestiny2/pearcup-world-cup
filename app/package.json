@@ -46,6 +46,7 @@
         "/sdk-runtime.js",
         "/app.js",
         "/peer-hiverelay.js",
+        "/pearcup-identity.js",
         "/peer-net.js",
         "/pool-sync.js",
         "/peer-match.js",

@@ -1,0 +1,21 @@
+{
+  "name": "pearcup-kawaii-identity",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Passkey and device-linking API for PearCup's browser and Pear clients.",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "npm run test && npx wrangler deploy --dry-run",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply pearcup-kawaii-identity --local",
+    "db:migrate": "wrangler d1 migrations apply pearcup-kawaii-identity --remote"
+  },
+  "dependencies": {
+    "@simplewebauthn/server": "^13.3.2"
+  },
+  "devDependencies": {
+    "wrangler": "^4.110.0"
+  }
+}

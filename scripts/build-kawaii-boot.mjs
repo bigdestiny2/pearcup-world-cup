@@ -23,6 +23,7 @@ const sourceFiles = [
   'worker-runtime.js',
   'settlement-service.js',
   'worker-client.js',
+  'pearcup-identity.js',
   'peer-hiverelay.js',
   'peer-net.js',
   'pool-sync.js',

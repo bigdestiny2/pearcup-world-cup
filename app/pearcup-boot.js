@@ -1,6 +1,6 @@
 // Generated PearCup renderer boot loader.
 // Regenerate with: npm run build:kawaii-boot
-// Sources: ./core.js, ./adapters.js, ./qvac-referee.js, ./tether-wdk-bridge.js, ./sdk-runtime.js, ./runtime-settings.js, ./runtime-config.js, ./settlement-receipts.js, ./worker-sim.js, ./storage-sim.js, ./transport-sim.js, ./worker-runtime.js, ./settlement-service.js, ./worker-client.js, ./peer-hiverelay.js, ./peer-net.js, ./pool-sync.js, ./peer-match.js, ./peer-lobby.js, ./watch-sync.js, ./watch-voice.js, ./app.js
+// Sources: ./core.js, ./adapters.js, ./qvac-referee.js, ./tether-wdk-bridge.js, ./sdk-runtime.js, ./runtime-settings.js, ./runtime-config.js, ./settlement-receipts.js, ./worker-sim.js, ./storage-sim.js, ./transport-sim.js, ./worker-runtime.js, ./settlement-service.js, ./worker-client.js, ./pearcup-identity.js, ./peer-hiverelay.js, ./peer-net.js, ./pool-sync.js, ./peer-match.js, ./peer-lobby.js, ./watch-sync.js, ./watch-voice.js, ./app.js
 // Evidence markers live in loaded scripts: PearCupHiveRelay, PearCupPeerNet, PearCupPoolSync, PearCupWorkerClient, PearCupSettlementService, PearCupWorkerSim, PearCupStorageSim, PearCupTransportSim, showOperatorLiveDataSettings, runBootRuntimeSelfTest, pearcup:runtime-self-test, runRuntimePeerHandshakeSelfTest, pearcupRuntimeSelfTestGuest
 (function bootPearCupRenderer (root) {
   if (root.__pearcupBootLoaderStarted) return
@@ -20,6 +20,7 @@
     "./worker-runtime.js",
     "./settlement-service.js",
     "./worker-client.js",
+    "./pearcup-identity.js",
     "./peer-hiverelay.js",
     "./peer-net.js",
     "./pool-sync.js",

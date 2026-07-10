@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pearcup-kawaii-identity",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "vars": {
+    "PEARCUP_RP_ID": "pearcup-kawaii.pages.dev",
+    "PEARCUP_RP_ORIGIN": "https://pearcup-kawaii.pages.dev",
+    "PEARCUP_RP_NAME": "PearCup"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pearcup-kawaii-identity",
+      "database_id": "5c908ab3-dfa8-4682-bc4f-d9602a88ddc0",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

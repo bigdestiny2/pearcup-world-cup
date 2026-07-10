@@ -830,6 +830,72 @@ function renderWalletManage () {
   const withdraw = $('#withdrawBtn'); if (withdraw) withdraw.addEventListener('click', withdrawWallet)
 }
 
+// Portable account identity is deliberately separate from Tether/WDK. It
+// synchronizes a player profile and demo balance between a browser and Pear
+// hosts; it never sends a wallet seed, deposit address, or payment authority.
+function portableIdentity () {
+  const identity = window.PearCupIdentity
+  return identity && typeof identity.status === 'function' ? identity : null
+}
+
+function applyPortableIdentity (account) {
+  if (!account || !validPersistentPlayerId(account.id)) return
+  const changed = state.playerId !== account.id
+  state.playerId = account.id
+  state.username = String(account.displayName || state.username || 'captain').slice(0, 18)
+  state.team = teams.some(team => team.id === account.team) ? account.team : state.team
+  persist()
+  if (changed) startPoolSync()
+  renderTeams()
+  renderProfile()
+  showToast('PearCup account linked on this device')
+}
+
+function renderIdentityManage () {
+  const el = $('#identityManage')
+  const identity = portableIdentity()
+  if (!el) return
+  if (!identity) { el.innerHTML = ''; return }
+  const info = identity.status()
+  if (!info.configured) { el.innerHTML = ''; return }
+  const pair = new URLSearchParams(location.search).get('pair')
+  const isPearHost = Boolean(window.Pear || (window.pear && window.pear.identity))
+  const linked = info.account
+  const deviceLink = info.pending
+  const safePair = pair && /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{10}$/i.test(pair) ? pair.toUpperCase() : ''
+  el.innerHTML = `
+    <div class="wallet-card identity-card">
+      <div class="wallet-top">
+        <div>
+          <p class="eyebrow">Portable profile</p>
+          <p class="identity-status ${linked ? 'is-linked' : ''}">${linked ? '● Linked across devices' : '○ This device is not linked'}</p>
+        </div>
+        <span class="wallet-badge ${linked ? 'is-live' : ''}">${linked ? 'Passkey protected' : 'Optional'}</span>
+      </div>
+      ${linked
+        ? `<p class="wallet-note">This install is playing as <strong>${escapeHtml(linked.displayName)}</strong>. Its account id and demo balance can follow you after a passkey approval; no Pear root identity or wallet credential is copied.</p>`
+        : `<p class="wallet-note">Use a passkey in the browser, then explicitly approve this Pear or browser install. This replaces anonymous local player ids without creating a wallet login.</p>`}
+      <div class="wallet-actions">
+        ${!linked && !isPearHost ? '<button class="primary-button" type="button" id="identityCreate">Create passkey</button><button class="secondary-button" type="button" id="identitySignIn">Use existing passkey</button>' : ''}
+        ${isPearHost && !linked ? '<button class="primary-button" type="button" id="identityStartLink">Link this Pear device</button>' : ''}
+        ${deviceLink ? `<a class="secondary-button identity-pair-link" href="${escapeHtml(deviceLink.pairUrl)}" target="_blank" rel="noopener">Open approval page</a><button class="primary-button" type="button" id="identityClaimLink">I approved it</button>` : ''}
+        ${safePair && linked ? '<button class="primary-button" type="button" id="identityApproveLink">Approve this device</button>' : ''}
+        ${linked ? '<button class="secondary-button" type="button" id="identityRefresh">Refresh profile</button>' : ''}
+      </div>
+      ${deviceLink ? `<p class="identity-pair-code">Link code: <strong>${escapeHtml(deviceLink.code)}</strong> · expires soon. Confirm the shown device name and fingerprint before approving.</p>` : ''}
+      ${info.error ? `<p class="livedata-result is-err">${escapeHtml(info.error)}</p>` : ''}
+    </div>`
+  const action = async (work) => {
+    try { const account = await work(); if (account && account.id) applyPortableIdentity(account); else renderIdentityManage() } catch (error) { showToast(error && error.message ? error.message : 'Identity action could not finish'); renderIdentityManage() }
+  }
+  const create = $('#identityCreate'); if (create) create.addEventListener('click', () => action(() => identity.enroll({ displayName: state.username, team: state.team })))
+  const signIn = $('#identitySignIn'); if (signIn) signIn.addEventListener('click', () => action(() => identity.signIn()))
+  const startLink = $('#identityStartLink'); if (startLink) startLink.addEventListener('click', () => action(() => identity.startDevicePairing()))
+  const claimLink = $('#identityClaimLink'); if (claimLink) claimLink.addEventListener('click', () => action(() => identity.claimDevicePairing()))
+  const approveLink = $('#identityApproveLink'); if (approveLink) approveLink.addEventListener('click', () => action(() => identity.approvePairing(safePair)))
+  const refresh = $('#identityRefresh'); if (refresh) refresh.addEventListener('click', () => action(async () => { const result = await identity.restore(); return result.account }))
+}
+
 function showOperatorLiveDataSettings () {
   try {
     const params = new URLSearchParams(location.search)
@@ -1023,6 +1089,7 @@ function renderProfile () {
   const name = state.username || 'captain'
   renderWalletChip()
   renderWalletManage()
+  renderIdentityManage()
   renderLiveDataSettings()
   renderThemeSwitcher()
 
@@ -5833,6 +5900,11 @@ function boot () {
   bindEvents()
   sendBootCheckpoint('boot:events-bound')
   hydrateStaticShell()
+  const identity = portableIdentity()
+  if (identity) identity.restore().then(result => {
+    if (result && result.account) applyPortableIdentity(result.account)
+    else renderIdentityManage()
+  }).catch(() => {})
   // If any runtime module was missing or the runtime config degraded to demo, say so
   // (non-blocking) — tells us the real cause without a console.
   if (bootIssues.length) { try { console.warn('PearCup boot issues:', bootIssues); showToast('Runtime note: ' + bootIssues.join(' · ')) } catch (e) {} }
