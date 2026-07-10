@@ -3,11 +3,13 @@
 // Uses Polymarket's public Gamma API for discovery and its public CLOB midpoint
 // endpoint for fresher prices when token IDs are available. It never reads a wallet,
 // creates an order, or exposes the renderer to a third-party origin.
-const LIVE_FILE = new URL('./live-match.json', import.meta.url)
-const OUTPUT_FILE = new URL('./polymarket-odds.json', import.meta.url)
 const GAMMA_SEARCH = 'https://gamma-api.polymarket.com/public-search'
 const CLOB_MIDPOINTS = 'https://clob.polymarket.com/midpoints'
-const REQUEST_TIMEOUT_MS = Math.max(2_000, Math.min(30_000, Number(process.env.POLYMARKET_REQUEST_TIMEOUT_MS) || 8_000))
+const REQUEST_TIMEOUT_MS = Math.max(2_000, Math.min(30_000, Number(
+  typeof process !== 'undefined' && process.env
+    ? process.env.POLYMARKET_REQUEST_TIMEOUT_MS
+    : ''
+) || 8_000))
 
 export function parseJsonList (value) {
   if (Array.isArray(value)) return value
@@ -278,17 +280,20 @@ export async function createSnapshot ({ liveSnapshot, now } = {}) {
 
 async function main () {
   const { readFile, writeFile } = await import('node:fs/promises')
-  const liveSnapshot = JSON.parse(await readFile(LIVE_FILE, 'utf8'))
+  const liveFile = new URL('./live-match.json', import.meta.url)
+  const outputFile = new URL('./polymarket-odds.json', import.meta.url)
+  const liveSnapshot = JSON.parse(await readFile(liveFile, 'utf8'))
   const next = await createFixtureOddsSnapshot({ liveSnapshot })
   let previous = null
-  try { previous = JSON.parse(await readFile(OUTPUT_FILE, 'utf8')) } catch {}
+  try { previous = JSON.parse(await readFile(outputFile, 'utf8')) } catch {}
   const snapshot = mergeLastKnownGoodOdds(previous, next)
-  await writeFile(OUTPUT_FILE, `${JSON.stringify(snapshot, null, 2)}\n`)
+  await writeFile(outputFile, `${JSON.stringify(snapshot, null, 2)}\n`)
   console.log(`wrote polymarket-odds.json: ${snapshot.status} · ${Object.keys(snapshot.matches || {}).length} fixtures`)
 }
 
 async function writeFailureSnapshot (error) {
   const { writeFile } = await import('node:fs/promises')
+  const outputFile = new URL('./polymarket-odds.json', import.meta.url)
   const snapshot = {
     schema: 'pearcup-polymarket-v2',
     provider: 'Polymarket',
@@ -297,7 +302,7 @@ async function writeFailureSnapshot (error) {
     matches: {},
     reason: 'The public Polymarket relay could not refresh this fixture.'
   }
-  await writeFile(OUTPUT_FILE, `${JSON.stringify(snapshot, null, 2)}\n`).catch(() => {})
+  await writeFile(outputFile, `${JSON.stringify(snapshot, null, 2)}\n`).catch(() => {})
   console.error('Polymarket odds relay failed:', error && error.message || error)
 }
 

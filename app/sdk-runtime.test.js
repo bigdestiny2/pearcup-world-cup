@@ -112,6 +112,31 @@ test('QVAC SDK completion client auto-unloads owned models after each referee ca
   ])
 })
 
+test('QVAC SDK completion client waits for stream teardown before auto-unload', async () => {
+  let rpcSettled = false
+  const client = sdkRuntime.createQvacSdkCompletionClient({
+    sdk: {
+      LLAMA_3_2_1B_INST_Q4_0: 'llama-test-model',
+      async loadModel () { return 'model-runtime-stream' },
+      completion () {
+        return {
+          tokenStream: (async function * () {
+            yield '{"ruling":"verified"}'
+            setTimeout(() => { rpcSettled = true }, 0)
+          })(),
+          final: Promise.resolve({ contentText: '{"ruling":"verified"}' })
+        }
+      },
+      async unloadModel () {
+        assert.equal(rpcSettled, true)
+      }
+    },
+    autoUnload: true
+  })
+
+  assert.match(await client.completeJson({ history: [] }), /verified/)
+})
+
 test('QVAC SDK completion client does not auto-unload externally preloaded models', async () => {
   const calls = []
   const client = sdkRuntime.createQvacSdkCompletionClient({

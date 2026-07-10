@@ -1,0 +1,17 @@
+name = "pearcup-live-data"
+main = "pearcup-live-data.mjs"
+compatibility_date = "2026-07-10"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[triggers]
+crons = ["*/1 * * * *"]
+
+[[kv_namespaces]]
+binding = "LIVE_DATA"
+id = "4db02bfe9ce04060800327ff582a3d6f"
+
+[vars]
+PUBLIC_CORS_ORIGINS = "*"
+MAX_STALE_SECONDS = "300"
+POLYMARKET_FIXTURE_LIMIT = "6"

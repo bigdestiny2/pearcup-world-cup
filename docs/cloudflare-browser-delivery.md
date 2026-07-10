@@ -68,9 +68,12 @@ or real-money payment authorization.
 2. Set `PEARCUP_IDENTITY_API_URL` to the Worker HTTPS origin.
 3. Set `PEARCUP_HIVERELAY_URL` to the verified HTTPS gateway, then run
    `npm run build:cloudflare-pages` and `npm run check:cloudflare-pages`.
-4. Deploy `cloudflare/pages-dist` to the existing `pearcup-kawaii` Pages
+4. Set `PEARCUP_LIVE_DATA_RELAY_URL` to the production
+   `.../v1/live-match.json` URL so scores and switchable Polymarket odds use the
+   mutable public feed.
+5. Deploy `cloudflare/pages-dist` to the existing `pearcup-kawaii` Pages
    project.
-5. Test the exact Pages URL in a normal browser before enabling the dedicated
+6. Test the exact Pages URL in a normal browser before enabling the dedicated
    HiveRelay public endpoint.
 
 No Cloudflare deployment in this project may create or modify `ieset.org`.

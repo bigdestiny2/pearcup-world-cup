@@ -16,6 +16,12 @@ The relay retains its last-known-good snapshot when Football-Data is temporarily
 unavailable. `/healthz` changes to `503` only when that snapshot is older than
 `MAX_STALE_SECONDS`.
 
+Production endpoint:
+
+- `https://pearcup-live-data.throbbing-limit-1abb.workers.dev/healthz`
+- `https://pearcup-live-data.throbbing-limit-1abb.workers.dev/v1/live-match.json`
+- `https://pearcup-live-data.throbbing-limit-1abb.workers.dev/v1/polymarket-odds.json`
+
 The odds endpoint is a `pearcup-polymarket-v2` registry keyed by the official
 Football-Data fixture ID. It refreshes the live fixture plus the next confirmed
 fixtures (six by default), keeps the last successful price per fixture on a

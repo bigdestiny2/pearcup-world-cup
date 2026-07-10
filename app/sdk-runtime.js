@@ -23,6 +23,17 @@
     return text
   }
 
+  async function collectCompletionText (result) {
+    if (!result || !result.tokenStream) return null
+    const text = await collectTokenStream(result.tokenStream)
+    // QVAC's token iterator can finish one turn before its underlying RPC
+    // stream unwinds. Await the canonical final result, then yield one event
+    // loop turn before an auto-unload is allowed to close the worker.
+    if (result.final && typeof result.final.then === 'function') await result.final
+    await new Promise(resolve => setTimeout(resolve, 1))
+    return text
+  }
+
   function createQvacSdkCompletionClient ({
     sdk,
     importModule = defaultImportModule,
@@ -72,7 +83,9 @@
           stream: true,
           ...completionOptions
         })
-        if (result && result.tokenStream) return collectTokenStream(result.tokenStream)
+        // Keep the try block open until the stream and RPC have fully settled;
+        // otherwise JavaScript runs the finally/auto-unload against a live RPC.
+        if (result && result.tokenStream) return await collectCompletionText(result)
         if (typeof result === 'string') return result
         if (result && typeof result.text === 'string') return result.text
         return result
