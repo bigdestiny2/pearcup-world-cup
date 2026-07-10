@@ -16,6 +16,10 @@ if (!args.receipt) errors.push('missing --receipt <pearcup-release-receipt.json>
 if (!args.sha) errors.push('missing --sha <expected bundleSha256>')
 if (args.sha && !/^[0-9a-f]{64}$/i.test(args.sha)) errors.push('--sha must be a 64-character hex bundle SHA')
 if (args.gateway) validateGateway(args.gateway)
+if (args.publish && args.verifyExisting) errors.push('--publish and --verify-existing cannot be used together')
+if (args.verifyExisting && !normalizePublishedUrl(args.verifyExisting)) {
+  errors.push('--verify-existing must be a hyper://<64-character-drive-key>/ URL')
+}
 
 const receiptPath = args.receipt ? resolve(args.receipt) : ''
 const receipt = receiptPath && existsSync(receiptPath) ? readReceipt(receiptPath) : null
@@ -34,8 +38,10 @@ if (errors.length > 0) {
 }
 
 const publishArgs = receipt.publishHandoff.args
-const publishCommand = `node ${publishArgs.map(arg => JSON.stringify(arg)).join(' ')}`
-const approvedPublishCommand = approvedWrapperPublishCommand(receiptPath, receipt.bundleSha256, args.gateway)
+const publishCommand = args.verifyExisting
+  ? `verify existing public drive ${normalizePublishedUrl(args.verifyExisting)}`
+  : `node ${publishArgs.map(arg => JSON.stringify(arg)).join(' ')}`
+const approvedPublishCommand = approvedWrapperPublishCommand(receiptPath, receipt.bundleSha256, args.gateway, args.verifyExisting)
 const postPublishSmokeCommand = `npm ${postPublishSmokeArgs('hyper://<drive-key>/').map(arg => JSON.stringify(arg)).join(' ')}`
 const localPublishedLinkProofCommand = publishedLinkProofCommand(receipt)
 const publishResultPath = publishResultReceiptPath(receipt, receiptPath)
@@ -50,13 +56,13 @@ const latestFriendTestRecordCommand = [
   '--notes "<what both sides observed>"'
 ].join(' ')
 
-if (args.publish && existsSync(publishResultPath) && !args.forceResult) {
+if ((args.publish || args.verifyExisting) && existsSync(publishResultPath) && !args.forceResult) {
   console.error('PearCup approved publish refused:')
   console.error(`- publish result receipt already exists: ${publishResultPath}; use --force-result to replace it intentionally`)
   process.exit(1)
 }
 
-if (!args.publish) {
+if (!args.publish && !args.verifyExisting) {
   console.log('PearCup approved publish dry-run passed')
   console.log(`receipt - ${receiptPath}`)
   console.log(`bundle - ${resolve(receipt.bundle)}`)
@@ -80,6 +86,34 @@ if (!args.publish) {
   console.log(`publish result receipt will be written to: ${publishResultPath}`)
   console.log('remote friend-test record command after publish:')
   console.log(latestFriendTestRecordCommand)
+  process.exit(0)
+}
+
+if (args.verifyExisting) {
+  const publishedUrl = normalizePublishedUrl(args.verifyExisting)
+  console.log('PearCup approved existing-drive verification starting')
+  console.log(`receipt - ${receiptPath}`)
+  console.log(`bundle sha256 - ${receipt.bundleSha256}`)
+  console.log(`existing published url - ${publishedUrl}`)
+  console.log('exact bundle published-gateway preflight - passed')
+  console.log('exact bundle Pear runtime preflight - passed')
+  console.log('post-publish smoke preflight - passed')
+  if (args.gateway) console.log('PearBrowser gateway reachability preflight - passed')
+
+  const publishReceipt = verifyPublishedDriveAndWriteReceipt({
+    receipt,
+    receiptPath,
+    publishResultPath,
+    publishedUrl,
+    publishOutput: `Existing public drive verification: ${publishedUrl}`,
+    localPublishedLinkProofCommand,
+    recoveredExistingDrive: true
+  })
+
+  console.log('PearCup approved existing-drive verification passed')
+  console.log(`publish result receipt - ${publishResultPath}`)
+  console.log('remote friend-test record command:')
+  console.log(publishReceipt.friendTest.recordCommand)
   process.exit(0)
 }
 
@@ -120,26 +154,14 @@ if (!publishedUrl) {
   process.exit(1)
 }
 
-console.log('PearCup approved publish post-smoke starting')
-console.log(`published url - ${publishedUrl}`)
-
-const smokeResult = spawnSync('npm', postPublishSmokeArgs(publishedUrl), {
-  cwd: root,
-  encoding: 'utf8'
-})
-if (smokeResult.stdout) process.stdout.write(smokeResult.stdout)
-if (smokeResult.stderr) process.stderr.write(smokeResult.stderr)
-if (smokeResult.error) throw smokeResult.error
-if (smokeResult.status !== 0) process.exit(smokeResult.status == null ? 1 : smokeResult.status)
-
-const publishReceipt = writePublishResultReceipt({
+const publishReceipt = verifyPublishedDriveAndWriteReceipt({
   receipt,
   receiptPath,
   publishResultPath,
   publishedUrl,
   publishOutput,
-  smokeOutput: [smokeResult.stdout, smokeResult.stderr].filter(Boolean).join('\n'),
-  localPublishedLinkProofCommand
+  localPublishedLinkProofCommand,
+  recoveredExistingDrive: false
 })
 
 console.log('PearCup approved publish verified')
@@ -147,6 +169,39 @@ console.log(`publish result receipt - ${publishResultPath}`)
 console.log('remote friend-test record command:')
 console.log(publishReceipt.friendTest.recordCommand)
 process.exit(0)
+
+function verifyPublishedDriveAndWriteReceipt ({
+  receipt,
+  receiptPath,
+  publishResultPath,
+  publishedUrl,
+  publishOutput,
+  localPublishedLinkProofCommand,
+  recoveredExistingDrive
+}) {
+  console.log('PearCup approved publish post-smoke starting')
+  console.log(`published url - ${publishedUrl}`)
+
+  const smokeResult = spawnSync('npm', postPublishSmokeArgs(publishedUrl), {
+    cwd: root,
+    encoding: 'utf8'
+  })
+  if (smokeResult.stdout) process.stdout.write(smokeResult.stdout)
+  if (smokeResult.stderr) process.stderr.write(smokeResult.stderr)
+  if (smokeResult.error) throw smokeResult.error
+  if (smokeResult.status !== 0) process.exit(smokeResult.status == null ? 1 : smokeResult.status)
+
+  return writePublishResultReceipt({
+    receipt,
+    receiptPath,
+    publishResultPath,
+    publishedUrl,
+    publishOutput,
+    smokeOutput: [smokeResult.stdout, smokeResult.stderr].filter(Boolean).join('\n'),
+    localPublishedLinkProofCommand,
+    recoveredExistingDrive
+  })
+}
 
 function validateReceipt (receipt, receiptPath) {
   const handoff = receipt.publishHandoff || {}
@@ -317,7 +372,8 @@ function writePublishResultReceipt ({
   publishedUrl,
   publishOutput,
   smokeOutput,
-  localPublishedLinkProofCommand
+  localPublishedLinkProofCommand,
+  recoveredExistingDrive
 }) {
   const driveKey = (String(publishedUrl).match(/^hyper:\/\/([0-9a-f]{64})\//i) || [])[1] || ''
   const postPublishCommand = `npm ${postPublishSmokeArgs(publishedUrl).map(arg => JSON.stringify(arg)).join(' ')}`
@@ -334,6 +390,7 @@ function writePublishResultReceipt ({
     bundleSha256: receipt.bundleSha256 || '',
     publishedUrl,
     driveKey,
+    recoveredExistingDrive: Boolean(recoveredExistingDrive),
     approvedPublishCommand,
     publishCommand,
     postPublishSmokeCommand: postPublishCommand,
@@ -372,7 +429,7 @@ function sourceDirtyLabel (receipt) {
   return receipt.sourceDirty ? 'yes' : 'no'
 }
 
-function approvedWrapperPublishCommand (receiptPath, bundleSha256, gateway) {
+function approvedWrapperPublishCommand (receiptPath, bundleSha256, gateway, verifyExisting) {
   const commandArgs = [
     resolve(root, 'scripts', 'publish-approved-pearcup.mjs'),
     '--receipt',
@@ -382,7 +439,8 @@ function approvedWrapperPublishCommand (receiptPath, bundleSha256, gateway) {
   ]
   if (gateway) commandArgs.push('--gateway', gateway)
   if (args.forceResult) commandArgs.push('--force-result')
-  commandArgs.push('--publish')
+  if (verifyExisting) commandArgs.push('--verify-existing', normalizePublishedUrl(verifyExisting))
+  else commandArgs.push('--publish')
   return `node ${commandArgs.map(arg => JSON.stringify(arg)).join(' ')}`
 }
 
@@ -396,7 +454,12 @@ function publishedLinkProofCommand (receipt) {
 }
 
 function extractPublishedUrl (text) {
-  const match = String(text || '').match(/hyper:\/\/([0-9a-f]{64})\//i)
+  const match = String(text || '').match(/hyper:\/\/([0-9a-f]{64})(?:\/|$)/i)
+  return match ? `hyper://${match[1].toLowerCase()}/` : ''
+}
+
+function normalizePublishedUrl (text) {
+  const match = String(text || '').trim().match(/^hyper:\/\/([0-9a-f]{64})(?:\/|$)/i)
   return match ? `hyper://${match[1].toLowerCase()}/` : ''
 }
 
@@ -421,7 +484,7 @@ function validateGateway (value) {
 }
 
 function parseArgs (argv) {
-  const parsed = { publish: false, forceResult: false }
+  const parsed = { publish: false, forceResult: false, verifyExisting: '' }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--receipt') parsed.receipt = argv[++i]
@@ -432,6 +495,8 @@ function parseArgs (argv) {
     else if (arg.startsWith('--gateway=')) parsed.gateway = arg.slice('--gateway='.length)
     else if (arg === '--publish') parsed.publish = true
     else if (arg === '--dry-run') parsed.publish = false
+    else if (arg === '--verify-existing') parsed.verifyExisting = argv[++i]
+    else if (arg.startsWith('--verify-existing=')) parsed.verifyExisting = arg.slice('--verify-existing='.length)
     else if (arg === '--force-result') parsed.forceResult = true
     else {
       errors.push(`unknown argument: ${arg}`)

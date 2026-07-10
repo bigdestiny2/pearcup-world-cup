@@ -63,6 +63,15 @@ test('approved publish wrapper protects publish result receipts from accidental 
   assert.match(source, /forceResult/)
 })
 
+test('approved publish wrapper can verify an already-public drive without publishing another one', () => {
+  const source = readFileSync(script, 'utf8')
+
+  assert.match(source, /--verify-existing/)
+  assert.match(source, /existing-drive verification starting/)
+  assert.match(source, /recoveredExistingDrive/)
+  assert.match(source, /--publish and --verify-existing cannot be used together/)
+})
+
 function run (args) {
   return spawnSync(process.execPath, [script, ...args], {
     cwd: root,
