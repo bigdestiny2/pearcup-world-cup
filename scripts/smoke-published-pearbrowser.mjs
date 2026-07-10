@@ -49,6 +49,7 @@ async function checkPublishedUrl (appUrl) {
   const app = await fetchText(new URL('./app.js', appUrl), 'published app.js')
   const peerHiveRelay = await fetchText(new URL('./peer-hiverelay.js', appUrl), 'published peer-hiverelay.js')
   const peerNet = await fetchText(new URL('./peer-net.js', appUrl), 'published peer-net.js')
+  const poolSync = await fetchText(new URL('./pool-sync.js', appUrl), 'published pool-sync.js')
   const peerMatch = await fetchText(new URL('./peer-match.js', appUrl), 'published peer-match.js')
   const peerLobby = await fetchText(new URL('./peer-lobby.js', appUrl), 'published peer-lobby.js')
   const watchSync = await fetchText(new URL('./watch-sync.js', appUrl), 'published watch-sync.js')
@@ -69,6 +70,7 @@ async function checkPublishedUrl (appUrl) {
   checkApp(app)
   checkPeerHiveRelay(peerHiveRelay)
   checkPeerNet(peerNet)
+  checkPoolSync(poolSync)
   checkPeerMatch(peerMatch)
   checkPeerLobby(peerLobby)
   checkWatchSync(watchSync)
@@ -86,7 +88,7 @@ function checkIndex (html, label) {
   if (!html.includes('./watch-sync.js')) errors.push(`${label} does not load ./watch-sync.js`)
   if (!html.includes('./app.js')) errors.push(`${label} does not load ./app.js`)
   checkFallbackContract(html, label)
-  for (const marker of ['pearcupPeerNetModule', 'pearcupPeerMatchModule', 'pearcupPeerLobbyModule', 'pearcupWatchSyncModule']) {
+  for (const marker of ['pearcupPeerNetModule', 'pearcupPoolSyncModule', 'pearcupPeerMatchModule', 'pearcupPeerLobbyModule', 'pearcupWatchSyncModule']) {
     if (!html.includes(marker)) errors.push(`${label} fallback does not require ${marker}`)
   }
   if (/<script\b[^>]*\btype=["']module["']/i.test(html)) errors.push(`${label} must not rely on module scripts`)
@@ -133,6 +135,7 @@ function checkBootLoader (bootLoader) {
     './worker-client.js',
     './peer-hiverelay.js',
     './peer-net.js',
+    './pool-sync.js',
     './peer-match.js',
     './peer-lobby.js',
     './watch-sync.js',
@@ -156,6 +159,14 @@ function checkBootLoader (bootLoader) {
     errors.push('published pearcup-boot.js does not include the hidden guest invite handshake self-test')
   }
   checkNoBareP2PControllerCalls(bootLoader, 'published pearcup-boot.js')
+}
+
+function checkPoolSync (poolSync) {
+  if (!poolSync) return
+  if (!poolSync.includes('pearcup.pool-ledger.v1')) errors.push('published pool-sync.js is missing the real-entry ledger protocol')
+  if (!poolSync.includes('DEMO_USDT')) errors.push('published pool-sync.js does not keep pool currency demo-only')
+  if (!poolSync.includes('pearcupPoolSyncModule')) errors.push('published pool-sync.js does not mark module readiness')
+  if (/\bexport\s+default\b/.test(poolSync)) errors.push('published pool-sync.js looks like an ESM wrapper')
 }
 
 function checkPeerHiveRelay (peerHiveRelay) {

@@ -93,7 +93,7 @@ async function assertServedRuntimeContract (url, label) {
   const index = await fetchText(new URL('/index.html', url), `${label} index.html`)
   const app = await fetchText(new URL('/app.js', url), `${label} app.js`)
   const styles = await fetchText(new URL('/styles.css', url), `${label} styles.css`)
-  if (!index.includes('pearcupPeerMatchModule') || !index.includes('pearcupWatchSyncModule')) {
+  if (!index.includes('pearcupPoolSyncModule') || !index.includes('pearcupPeerMatchModule') || !index.includes('pearcupWatchSyncModule')) {
     throw new Error(`${label} index fallback does not require every P2P readiness marker`)
   }
   for (const needle of ['runBootRuntimeSelfTest', 'runtimeBracketEvidence', 'Bracket board rendered', 'Bracket route did not render generated avatar images', 'runRuntimeHashRouteSelfTest', 'Same-document hash route changes did not activate Bracket, Games, and Watch', 'runRuntimePeerHandshakeSelfTest', 'pearcupRuntimeSelfTestGuest', 'pearcup:runtime-self-test', 'syncRuntimeScreenDiagnostics', 'pearcupActiveScreen', 'pearcupAppBooted', 'PearCupPeerMatch.host()', 'avatars/p-aria.png', 'avatars/p-tariq.png', 'assets/mascot.png']) {

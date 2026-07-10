@@ -2,7 +2,7 @@
 
 **A World Cup bracket, watch party, and prediction game — built on the [Pear runtime](https://docs.pears.com/), with signed HiveRelay sync for browser-to-Pear multiplayer. No account required.**
 
-Pick the knockout bracket, drop into a live watch room, and play real peer‑to‑peer penalty shootouts against friends — everything settles P2P over Holepunch, with a Tether WDK wallet and a QVAC trusted referee for fair, verifiable results.
+Pick the knockout bracket, drop into a live watch room, and play real peer‑to‑peer penalty shootouts against friends. Pool entries are shared P2P using demo USDT; the production WDK payout rail remains locked until it is separately approved and configured.
 
 ## ▶ Run it live on Pear
 
@@ -18,10 +18,10 @@ pear run pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo
 
 ## What's inside
 
-- **🏆 Bracket pools** — rolling round‑by‑round World Cup pools (Round of 32 → Final). Real 2026 knockout data; pick before each kickoff, scored against results.
+- **🏆 Bracket + match pools** — rolling World Cup pools with totals derived only from actual peer submissions. Entries use **demo USDT** and cannot create a payout.
 - **📺 Watch party** — a shared live match room with reactions, multilingual commentary, and a synced feed.
 - **🎮 P2P penalty minigame** — real peer‑to‑peer penalty shootouts (Penalty Clash) over the swarm, with matchmaking, invites, and hidden‑guest handshakes.
-- **💸 Real settlement rails** — Tether WDK for entries / escrow / payouts and a QVAC trusted referee for game rounds and pool settlement, with receipt hashes surfaced in the UI.
+- **💸 Safe money boundary** — the local demo wallet supports play testing; no pool entry sends wallet material, starts a WDK payment, or creates a cash payout. QVAC remains available for game evidence.
 - **🌐 Cross-platform multiplayer** — normal browsers, PearBrowser, and Pear Runtime can share signed `pearcup-sync-v2` rooms through a dedicated HiveRelay OutboxLog endpoint; direct Holepunch remains an optional fast path/fallback.
 
 ## Repository scope
@@ -75,7 +75,9 @@ npm run audit:launch     # QVAC / WDK / payout / compliance launch gates
 The renderer stays SDK-free; a Pear **worker bridge** owns the WDK / QVAC
 boundary. When configured, a generic HiveRelay OutboxLog endpoint provides
 signed, short-lived room transport for browser-to-Pear play; direct Holepunch
-is retained as an optional fast path. Real-money rails remain locked behind the
-existing SDK and compliance gates. See
+is retained as an optional fast path. The current pool UI is intentionally
+demo-only; its peer ledger is documented in
+[`docs/demo-pool-ledger.md`](docs/demo-pool-ledger.md). Real-money rails remain
+locked behind the existing SDK and compliance gates. See
 [`docs/pear-runtime-boundary.md`](docs/pear-runtime-boundary.md) and
 [`docs/hiverelay-pearcup-sync.md`](docs/hiverelay-pearcup-sync.md).

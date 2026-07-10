@@ -34,6 +34,7 @@
   function selfId () { return WS.self || (WS.self = Net.newPeerId()) }
   function selfName () { return (typeof state !== 'undefined' && state.username) || 'guest' }
   function selfTeam () { return (typeof state !== 'undefined' && state.team) || 'br' }
+  function selfPick () { return typeof root.currentWatchPick === 'function' ? root.currentWatchPick() : '' }
 
   function matchKey () {
     try {
@@ -62,7 +63,7 @@
   }
 
   function send (m) { if (WS.channel) WS.channel.send({ ...m, from: selfId() }) }
-  function ping () { send({ t: 'here', name: selfName(), team: selfTeam() }) }
+  function ping () { send({ t: 'here', name: selfName(), team: selfTeam(), pick: selfPick() }) }
 
   const screenShareListeners = new Set()
   const peerJoinListeners = new Set()
@@ -148,7 +149,8 @@
     return {
       peerId: m.from,
       name: m.name || 'guest',
-      team: m.team || 'br'
+      team: m.team || 'br',
+      pick: m.pick || ''
     }
   }
 

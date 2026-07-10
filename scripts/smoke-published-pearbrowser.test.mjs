@@ -134,6 +134,7 @@ function startFixtureServer ({ indexHtml = validIndexHtml(), peerHiveRelayJs = v
       './worker-client.js',
       './peer-hiverelay.js',
       './peer-net.js',
+      './pool-sync.js',
       './peer-match.js',
       './peer-lobby.js',
       './watch-sync.js',
@@ -143,6 +144,7 @@ function startFixtureServer ({ indexHtml = validIndexHtml(), peerHiveRelayJs = v
       'PearCupWorkerSim',
       'PearCupStorageSim',
       'PearCupTransportSim',
+      'PearCupPoolSync',
       'pearcup:runtime-self-test',
       'runBootRuntimeSelfTest',
       'runRuntimePeerHandshakeSelfTest',
@@ -170,6 +172,11 @@ function startFixtureServer ({ indexHtml = validIndexHtml(), peerHiveRelayJs = v
       'pearcup.peer-net.v1',
       'broadcast-channel',
       'pearcupPeerNetModule'
+    ].join('\n'), 'text/javascript; charset=utf-8')],
+    ['pool-sync.js', text([
+      'pearcup.pool-ledger.v1',
+      'DEMO_USDT',
+      'pearcupPoolSyncModule'
     ].join('\n'), 'text/javascript; charset=utf-8')],
     ['peer-hiverelay.js', text(peerHiveRelayJs, 'text/javascript; charset=utf-8')],
     ['peer-match.js', text(peerMatchJs, 'text/javascript; charset=utf-8')],
@@ -230,6 +237,7 @@ function validIndexHtml () {
     <script src="./pearcup-boot.js"></script>
     <script src="./peer-hiverelay.js"></script>
     <script src="./peer-net.js"></script>
+    <script src="./pool-sync.js"></script>
     <script src="./peer-match.js"></script>
     <script src="./peer-lobby.js"></script>
     <script src="./watch-sync.js"></script>
@@ -248,6 +256,7 @@ function validIndexHtml () {
       function sendBootProbe () {}
       function p2pModulesReady () { return window.pearcupP2pModules === 'ready' }
       var pearcupPeerNetModule = true
+      var pearcupPoolSyncModule = true
       var pearcupPeerMatchModule = true
       var pearcupPeerLobbyModule = true
       var pearcupWatchSyncModule = true

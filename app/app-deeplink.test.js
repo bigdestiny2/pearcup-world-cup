@@ -270,11 +270,11 @@ test('boot gives friend invite deep links priority over hash startup views', () 
   assert.match(appSource, /if \(!tryJoinFriendInvite\(\)\) applyStartupView\(\)/)
 })
 
-test('watch party couches follow the active live match instead of a fixed fixture', () => {
+test('watch party couches start with the real local watcher, not seeded spectators', () => {
   const context = createWatchParticipantHarness({ picks: { 'qf-1': 'be' } })
   const participants = JSON.parse(JSON.stringify(context.watchParticipants()))
 
-  assert.deepEqual(participants.map(person => person.pick), ['be', 'es', 'be', 'be', 'es', 'be'])
+  assert.deepEqual(participants.map(person => person.pick), ['be'])
   assert.equal(context.watchTeamId({ name: 'Spain' }, 'at'), 'es')
   assert.equal(context.watchTeamId({ name: 'Unknown team' }, 'be'), 'be')
 })
@@ -362,6 +362,7 @@ test('assertP2PModulesReady marks the app ready only when every P2P module is at
   const context = createP2PGuardHarness({
     globals: {
       PearCupPeerNet: {},
+      PearCupPoolSync: {},
       PearCupPeerMatch: {},
       PearCupLobby: {},
       PearCupWatchSync: {},
@@ -369,6 +370,7 @@ test('assertP2PModulesReady marks the app ready only when every P2P module is at
     },
     dataset: {
       pearcupPeerNetModule: 'ready',
+      pearcupPoolSyncModule: 'ready',
       pearcupPeerMatchModule: 'ready',
       pearcupPeerLobbyModule: 'ready',
       pearcupWatchSyncModule: 'ready',
@@ -385,12 +387,14 @@ test('assertP2PModulesReady fails closed when a P2P module did not attach', () =
   const context = createP2PGuardHarness({
     globals: {
       PearCupPeerNet: {},
+      PearCupPoolSync: {},
       PearCupLobby: {},
       PearCupWatchSync: {},
       PearCupWatchVoice: {}
     },
     dataset: {
       pearcupPeerNetModule: 'ready',
+      pearcupPoolSyncModule: 'ready',
       pearcupPeerLobbyModule: 'ready',
       pearcupWatchSyncModule: 'ready',
       pearcupWatchVoiceModule: 'ready'

@@ -313,7 +313,7 @@ function validateBootProbe (payload, bridgeEvents = []) {
     errors.push('runtime self-test did not render generated avatar images in Games')
   }
   if (selfTestPayload.inviteModalOpen !== true) errors.push('runtime self-test did not open the invite modal')
-  if (!/^[a-z0-9]{6}$/i.test(String(selfTestPayload.inviteCode || ''))) {
+  if (!/^[a-z0-9-]{6,32}$/i.test(String(selfTestPayload.inviteCode || ''))) {
     errors.push(`runtime self-test invite code was invalid: ${selfTestPayload.inviteCode || '(missing)'}`)
   }
   if (!/\?join=/.test(String(selfTestPayload.inviteLink || ''))) {

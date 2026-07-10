@@ -67,6 +67,7 @@ async function checkPreviewUrl (url) {
   const app = await fetchText(new URL('/app.js', base), 'app.js')
   const peerHiveRelay = await fetchText(new URL('/peer-hiverelay.js', base), 'peer-hiverelay.js')
   const peerNet = await fetchText(new URL('/peer-net.js', base), 'peer-net.js')
+  const poolSync = await fetchText(new URL('/pool-sync.js', base), 'pool-sync.js')
   const peerMatch = await fetchText(new URL('/peer-match.js', base), 'peer-match.js')
   const peerLobby = await fetchText(new URL('/peer-lobby.js', base), 'peer-lobby.js')
   const watchSync = await fetchText(new URL('/watch-sync.js', base), 'watch-sync.js')
@@ -86,13 +87,13 @@ async function checkPreviewUrl (url) {
     if (!index.includes('p2pModulesReady') || !index.includes('pearcupP2pModules')) {
       errors.push('preview index.html fallback can accept hydration without P2P readiness')
     }
-    for (const marker of ['pearcupPeerNetModule', 'pearcupPeerMatchModule', 'pearcupPeerLobbyModule', 'pearcupWatchSyncModule']) {
+    for (const marker of ['pearcupPeerNetModule', 'pearcupPoolSyncModule', 'pearcupPeerMatchModule', 'pearcupPeerLobbyModule', 'pearcupWatchSyncModule']) {
       if (!index.includes(marker)) errors.push(`preview index.html fallback does not require ${marker}`)
     }
     if (/<script\b[^>]*\btype=["']module["']/i.test(index)) errors.push('preview index.html must not rely on module scripts')
   }
   if (bootLoader) {
-    for (const ref of ['./peer-hiverelay.js', './peer-net.js', './peer-match.js', './peer-lobby.js', './watch-sync.js', './app.js']) {
+    for (const ref of ['./peer-hiverelay.js', './peer-net.js', './pool-sync.js', './peer-match.js', './peer-lobby.js', './watch-sync.js', './app.js']) {
       if (!bootLoader.includes(ref)) errors.push(`preview pearcup-boot.js does not load ${ref}`)
     }
     if (!bootLoader.includes('pearcup:runtime-self-test') || !bootLoader.includes('runBootRuntimeSelfTest')) {
@@ -127,6 +128,12 @@ async function checkPreviewUrl (url) {
     if (!peerNet.includes('broadcast-channel')) errors.push('preview peer-net.js is missing the plain-browser dev fallback')
     if (!peerNet.includes('pearcupPeerNetModule')) errors.push('preview peer-net.js does not mark module readiness')
     if (/\bexport\s+default\b/.test(peerNet)) errors.push('preview peer-net.js looks like an ESM wrapper')
+  }
+  if (poolSync) {
+    if (!poolSync.includes('pearcup.pool-ledger.v1')) errors.push('preview pool-sync.js is missing the real-entry ledger protocol')
+    if (!poolSync.includes('DEMO_USDT')) errors.push('preview pool-sync.js does not keep pool currency demo-only')
+    if (!poolSync.includes('pearcupPoolSyncModule')) errors.push('preview pool-sync.js does not mark module readiness')
+    if (/\bexport\s+default\b/.test(poolSync)) errors.push('preview pool-sync.js looks like an ESM wrapper')
   }
   if (peerHiveRelay) {
     if (!peerHiveRelay.includes('pearcup-sync-v2')) errors.push('preview peer-hiverelay.js is missing the PearCup cross-platform sync protocol')
@@ -215,6 +222,7 @@ function checkNoBareP2PControllerCalls (source, label) {
   for (const [globalName, methods] of [
     ['PearCupPeerMatch', ['host', 'join', 'promptJoin', 'onZone', 'isActive', 'leave', 'render', 'reset']],
     ['PearCupPeerNet', ['digest', 'createChannel', 'newPeerId', 'topicFor']],
+    ['PearCupPoolSync', ['start', 'submit', 'entriesFor']],
     ['PearCupLobby', ['join', 'renderList']],
     ['PearCupWatchSync', ['ensureRoom', 'bindReactionBar', 'updatePresence', 'broadcastChat']]
   ]) {

@@ -25,6 +25,7 @@ const sourceFiles = [
   'worker-client.js',
   'peer-hiverelay.js',
   'peer-net.js',
+  'pool-sync.js',
   'peer-match.js',
   'peer-lobby.js',
   'watch-sync.js',
@@ -57,6 +58,7 @@ function buildBundle () {
   const evidenceMarkers = [
     'PearCupHiveRelay',
     'PearCupPeerNet',
+    'PearCupPoolSync',
     'PearCupWorkerClient',
     'PearCupSettlementService',
     'PearCupWorkerSim',

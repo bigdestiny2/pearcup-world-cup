@@ -3419,6 +3419,10 @@ h2 {
 .entered-chip em { font-size: 11px; font-weight: 700; color: var(--muted); font-style: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 56px; }
 .entered-chip.is-you { background: linear-gradient(160deg, var(--card), #ffe9f4); box-shadow: 0 4px 0 var(--line); }
 .entered-chip.is-you em { color: var(--pink-deep); font-weight: 800; }
+.entered-empty-state { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; font-weight: 700; }
+.entered-empty-state .avatar-art { width: 44px; height: 52px; flex: 0 0 auto; }
+.entered-empty-state p { margin: 0; max-width: 310px; }
+.entered-empty-state strong { color: var(--ink); }
 
 .picks-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .picks-head .bracket-step { margin: 22px 2px 12px; }
@@ -3685,6 +3689,11 @@ h2 {
 /* lobby mascot */
 .lobby-mascot { width: clamp(66px, 14vw, 100px); height: auto; flex: 0 0 auto; align-self: center; filter: drop-shadow(0 8px 12px rgba(229,111,166,.25)); animation: mascotBob 3.6s ease-in-out infinite; }
 .lobby-hero-copy { flex: 1 1 220px; min-width: 0; }
+.lobby-you-ready { display: inline-flex; align-items: center; gap: 8px; min-width: max-content; padding: 7px 10px 7px 7px; border-radius: 18px; background: var(--surface); box-shadow: 0 4px 0 var(--surface-3); }
+.lobby-you-ready .avatar-art { width: 38px; height: 46px; flex: 0 0 auto; }
+.lobby-you-ready strong, .lobby-you-ready small { display: block; }
+.lobby-you-ready strong { color: var(--ink); font-size: 12px; }
+.lobby-you-ready small { color: var(--muted); font-size: 11px; font-weight: 700; margin-top: 2px; }
 @keyframes mascotBob { 50% { transform: translateY(-8px); } }
 
 /* pool tier badges */

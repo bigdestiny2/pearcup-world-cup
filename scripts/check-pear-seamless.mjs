@@ -132,6 +132,7 @@ async function checkLiveUrlMatchesBundle (rawUrl) {
     'app.js',
     'peer-hiverelay.js',
     'peer-net.js',
+    'pool-sync.js',
     'peer-match.js',
     'peer-lobby.js',
     'watch-sync.js',

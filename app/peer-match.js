@@ -437,7 +437,7 @@
       <p class="eyebrow">Penalty Clash · Friends</p>
       <h2 class="peer-title">Join a friend</h2>
       <p class="peer-sub">Enter the room code your friend shared.</p>
-      <input class="peer-input" id="peerJoinCode" placeholder="e.g. k7m2ph" autocomplete="off">
+      <input class="peer-input" id="peerJoinCode" placeholder="Paste the 26-character invite code" autocomplete="off">
       <div class="peer-actions">
         <button class="secondary-button" id="peerCancel" type="button">Cancel</button>
         <button class="primary-button" id="peerJoinGo" type="button">Join match</button>

@@ -53,6 +53,7 @@ function checkRequiredFiles () {
     'app.js',
     'peer-hiverelay.js',
     'peer-net.js',
+    'pool-sync.js',
     'peer-match.js',
     'peer-lobby.js',
     'watch-sync.js',
@@ -123,6 +124,7 @@ function checkRendererReferences () {
       './worker-client.js',
       './peer-hiverelay.js',
       './peer-net.js',
+      './pool-sync.js',
       './peer-match.js',
       './peer-lobby.js',
       './watch-sync.js',
@@ -133,7 +135,7 @@ function checkRendererReferences () {
   } else {
     if (!scriptRefs.includes('./peer-hiverelay.js')) errors.push('index.html must load ./peer-hiverelay.js')
     if (!scriptRefs.includes('./peer-net.js')) errors.push('index.html must load ./peer-net.js')
-    for (const ref of ['./peer-hiverelay.js', './peer-net.js', './peer-match.js', './peer-lobby.js', './watch-sync.js']) {
+    for (const ref of ['./peer-hiverelay.js', './peer-net.js', './pool-sync.js', './peer-match.js', './peer-lobby.js', './watch-sync.js']) {
       const refIndex = scriptRefs.indexOf(ref)
       if (refIndex < 0) errors.push(`index.html must load ${ref}`)
       else if (appIndex >= 0 && refIndex > appIndex) errors.push(`${ref} must load before ./app.js`)
@@ -161,6 +163,7 @@ function checkBootContract () {
   const boot = readText('pearcup-boot.js') || ''
   const peerHiveRelay = readText('peer-hiverelay.js') || ''
   const peerNet = readText('peer-net.js') || ''
+  const poolSync = readText('pool-sync.js') || ''
   const peerMatch = readText('peer-match.js') || ''
   const peerLobby = readText('peer-lobby.js') || ''
   const watchSync = readText('watch-sync.js') || ''
@@ -200,6 +203,7 @@ function checkBootContract () {
   assertText(boot, 'PearCupStorageSim', 'pearcup-boot.js must bundle settlement storage replay helpers')
   assertText(boot, 'PearCupTransportSim', 'pearcup-boot.js must bundle P2P settlement replay helpers')
   assertText(boot, 'PearCupHiveRelay', 'pearcup-boot.js must bundle HiveRelay browser transport')
+  assertText(boot, 'PearCupPoolSync', 'pearcup-boot.js must bundle real pool-entry sync')
   assertText(peerHiveRelay, 'pearcup-sync-v2', 'peer-hiverelay.js must use the PearCup cross-platform sync protocol')
   assertText(peerHiveRelay, '/api/swarm/events', 'peer-hiverelay.js must use HiveRelay swarm SSE')
   assertText(peerHiveRelay, 'Ed25519', 'peer-hiverelay.js must sign relay frames in the client')
@@ -209,6 +213,10 @@ function checkBootContract () {
   assertText(peerNet, 'broadcast-channel', 'peer-net.js keeps plain-browser dev fallback')
   assertText(peerNet, 'pearcupPeerNetModule', 'peer-net.js must mark module readiness')
   assertNotText(peerNet, /\bexport\s+default\b/, 'peer-net.js must not be an ESM wrapper')
+  assertText(poolSync, 'pearcup.pool-ledger.v1', 'pool-sync.js must use the real-entry ledger protocol')
+  assertText(poolSync, 'DEMO_USDT', 'pool-sync.js must keep pool currency as demo-only')
+  assertText(poolSync, 'pearcupPoolSyncModule', 'pool-sync.js must mark module readiness')
+  assertNotText(poolSync, /\bexport\s+default\b/, 'pool-sync.js must not be an ESM wrapper')
   assertText(peerMatch, 'pearcupPeerMatchModule', 'peer-match.js must mark module readiness')
   assertText(peerMatch, 'pearcupPeerMatchState', 'peer-match.js must expose DOM diagnostics for live match state')
   assertText(peerMatch, 'pearcupPeerMatchStarted', 'peer-match.js must expose started state for live friend-proof diagnostics')

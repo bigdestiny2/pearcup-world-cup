@@ -478,6 +478,7 @@
             p2pModules: d && d.pearcupP2pModules || null,
             modules: {
               net: d && d.pearcupPeerNetModule || null,
+              pool: d && d.pearcupPoolSyncModule || null,
               match: d && d.pearcupPeerMatchModule || null,
               lobby: d && d.pearcupPeerLobbyModule || null,
               watch: d && d.pearcupWatchSyncModule || null
@@ -738,6 +739,7 @@
           return d &&
             d.pearcupP2pModules === 'ready' &&
             d.pearcupPeerNetModule === 'ready' &&
+            d.pearcupPoolSyncModule === 'ready' &&
             d.pearcupPeerMatchModule === 'ready' &&
             d.pearcupPeerLobbyModule === 'ready' &&
             d.pearcupWatchSyncModule === 'ready'

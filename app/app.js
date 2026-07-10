@@ -133,29 +133,29 @@ let bracketRenderSequence = 0
 let gameRenderSequence = 0
 
 const pools = [
-  { tier: 10, entrants: 124, closes: '12h', max: 256, prize: '$1,240', heat: 'Open', rail: 'USDT demo' },
-  { tier: 25, entrants: 82, closes: '9h', max: 160, prize: '$2,050', heat: 'Hot', rail: 'USDT demo' },
-  { tier: 50, entrants: 38, closes: '7h', max: 96, prize: '$1,900', heat: 'Sharp', rail: 'USDT demo' },
-  { tier: 100, entrants: 19, closes: '5h', max: 64, prize: '$1,900', heat: 'Elite', rail: 'USDT demo' }
+  { tier: 10, max: 256, heat: 'Open' },
+  { tier: 25, max: 160, heat: 'Hot' },
+  { tier: 50, max: 96, heat: 'Sharp' },
+  { tier: 100, max: 64, heat: 'Elite' }
 ]
 
 const round32Matches = [
-  { id: 'r32-1', time: 'Sat, 06/28', status: 'FT', slots: ['ca', 'za'], score: [1, 0], sample: { ca: ['noah'], za: ['zola'] } },
-  { id: 'r32-2', time: 'Sun, 06/29', status: 'PEN 3-2', slots: ['ma', 'nl'], score: [1, 1], sample: { ma: ['youssef'], nl: ['daan'] } },
-  { id: 'r32-3', time: 'Sun, 06/29', status: 'FT', slots: ['br', 'jp'], score: [2, 1], sample: { br: ['lina', 'ash'], jp: ['ken'] } },
-  { id: 'r32-4', time: 'Mon, 06/30', status: 'FT', slots: ['no', 'ci'], score: [2, 1], sample: { no: ['vera', 'jo'], ci: ['paz'] } },
-  { id: 'r32-5', time: 'Sun, 06/29', status: 'PEN 4-3', slots: ['py', 'de'], score: [1, 1], sample: { py: ['santi'], de: ['fritz'] } },
-  { id: 'r32-6', time: 'Mon, 06/30', status: 'FT', slots: ['fr', 'se'], score: [3, 0], sample: { fr: ['cam'], se: ['ingrid'] } },
-  { id: 'r32-7', time: 'Mon, 06/30', status: 'FT', slots: ['mx', 'ec'], score: [2, 0], sample: { mx: ['milo'], ec: ['rio'] } },
-  { id: 'r32-8', time: 'Tue, 07/01', status: 'FT', slots: ['eng', 'cd'], score: [2, 1], sample: { eng: ['sasha'], cd: ['kito'] } },
-  { id: 'r32-9', time: 'Tue, 07/01', status: 'AET', slots: ['be', 'sn'], score: [3, 2], sample: { be: ['eline'], sn: ['amina'] } },
-  { id: 'r32-10', time: 'Tue, 07/01', status: 'FT', slots: ['us', 'ba'], score: [2, 0], sample: { us: ['maya'], ba: ['dado'] } },
-  { id: 'r32-11', time: 'Tue, 07/01', status: 'FT', slots: ['es', 'at'], score: [3, 0], sample: { es: ['sol'], at: ['finn'] } },
-  { id: 'r32-12', time: 'Tue, 07/01', status: 'FT', slots: ['pt', 'hr'], score: [2, 1], sample: { pt: ['ines'], hr: ['marko'] } },
-  { id: 'r32-13', time: 'Wed, 07/02', status: 'FT', slots: ['ch', 'dz'], score: [2, 0], sample: { ch: ['noa'], dz: ['samir'] } },
-  { id: 'r32-14', time: 'Wed, 07/02', status: 'PEN 2-4', slots: ['au', 'eg'], score: [1, 1], sample: { au: ['matilda'], eg: ['omar'] } },
-  { id: 'r32-15', time: 'Thu, 07/03', status: 'AET', slots: ['ar', 'cv'], score: [3, 2], sample: { ar: ['leo'], cv: ['sofia'] } },
-  { id: 'r32-16', time: 'Thu, 07/03', status: 'FT', slots: ['co', 'gh'], score: [1, 0], sample: { co: ['vale'], gh: ['kwame'] } }
+  { id: 'r32-1', time: 'Sat, 06/28', status: 'FT', slots: ['ca', 'za'], score: [1, 0] },
+  { id: 'r32-2', time: 'Sun, 06/29', status: 'PEN 3-2', slots: ['ma', 'nl'], score: [1, 1] },
+  { id: 'r32-3', time: 'Sun, 06/29', status: 'FT', slots: ['br', 'jp'], score: [2, 1] },
+  { id: 'r32-4', time: 'Mon, 06/30', status: 'FT', slots: ['no', 'ci'], score: [2, 1] },
+  { id: 'r32-5', time: 'Sun, 06/29', status: 'PEN 4-3', slots: ['py', 'de'], score: [1, 1] },
+  { id: 'r32-6', time: 'Mon, 06/30', status: 'FT', slots: ['fr', 'se'], score: [3, 0] },
+  { id: 'r32-7', time: 'Mon, 06/30', status: 'FT', slots: ['mx', 'ec'], score: [2, 0] },
+  { id: 'r32-8', time: 'Tue, 07/01', status: 'FT', slots: ['eng', 'cd'], score: [2, 1] },
+  { id: 'r32-9', time: 'Tue, 07/01', status: 'AET', slots: ['be', 'sn'], score: [3, 2] },
+  { id: 'r32-10', time: 'Tue, 07/01', status: 'FT', slots: ['us', 'ba'], score: [2, 0] },
+  { id: 'r32-11', time: 'Tue, 07/01', status: 'FT', slots: ['es', 'at'], score: [3, 0] },
+  { id: 'r32-12', time: 'Tue, 07/01', status: 'FT', slots: ['pt', 'hr'], score: [2, 1] },
+  { id: 'r32-13', time: 'Wed, 07/02', status: 'FT', slots: ['ch', 'dz'], score: [2, 0] },
+  { id: 'r32-14', time: 'Wed, 07/02', status: 'PEN 2-4', slots: ['au', 'eg'], score: [1, 1] },
+  { id: 'r32-15', time: 'Thu, 07/03', status: 'AET', slots: ['ar', 'cv'], score: [3, 2] },
+  { id: 'r32-16', time: 'Thu, 07/03', status: 'FT', slots: ['co', 'gh'], score: [1, 0] }
 ]
 
 const commentary = {
@@ -202,64 +202,8 @@ const liveTabs = [
 
 const homeFixtures = [
   { status: 'Fri, 07/10', title: 'Spain vs Belgium', detail: 'Quarter-final match room', live: false },
-  { status: 'Thu, 07/09', title: 'France vs Morocco', detail: '$50 pool closing', live: false },
+  { status: 'Thu, 07/09', title: 'France vs Morocco', detail: 'Match pool opens with real entries', live: false },
   { status: 'Sat, 07/11', title: 'Norway vs England', detail: 'Late room opening', live: false }
-]
-
-const leaders = [
-  { user: 'lina', team: 'br', score: '12/15', prize: '$812' },
-  { user: 'amara', team: 'ci', score: '12/15', prize: '$540' },
-  { user: 'vera', team: 'no', score: '11/15', prize: '$410' },
-  { user: 'diego', team: 'ar', score: '11/15', prize: '$305' },
-  { user: 'milo', team: 'mx', score: '10/15', prize: '$190' },
-  { user: 'kenji', team: 'jp', score: '10/15', prize: '$120' }
-]
-
-const gameRounds = [
-  {
-    shooter: 'captain',
-    shooterTeam: 'br',
-    keeper: 'vera',
-    keeperTeam: 'no',
-    aim: 'right-high',
-    dive: 'right-high',
-    power: 3,
-    curve: 1,
-    releaseTick: 42,
-    keeperTick: 43
-  },
-  {
-    shooter: 'vera',
-    shooterTeam: 'no',
-    keeper: 'captain',
-    keeperTeam: 'br',
-    aim: 'left-low',
-    dive: 'center-low',
-    power: 4,
-    curve: -1,
-    releaseTick: 39,
-    keeperTick: 41
-  },
-  {
-    shooter: 'captain',
-    shooterTeam: 'br',
-    keeper: 'milo',
-    keeperTeam: 'mx',
-    aim: 'center-high',
-    dive: 'left-high',
-    power: 4,
-    curve: 2,
-    releaseTick: 45,
-    keeperTick: 44
-  }
-]
-
-const gameLeaderboardRows = [
-  { user: 'captain', team: 'br', record: '4-1', trust: '99.2%' },
-  { user: 'freya', team: 'hr', record: '4-1', trust: '98.9%' },
-  { user: 'vera', team: 'no', record: '3-2', trust: '98.7%' },
-  { user: 'kwame', team: 'ci', record: '3-2', trust: '98.1%' },
-  { user: 'milo', team: 'mx', record: '3-2', trust: '97.9%' }
 ]
 
 const bracketLinks = [
@@ -299,6 +243,22 @@ if (typeof history !== 'undefined' && 'scrollRestoration' in history) history.sc
 const $ = (selector, root = document) => root.querySelector(selector)
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)]
 
+function newPersistentPlayerId () {
+  try {
+    const bytes = new Uint8Array(16)
+    const crypto = window.crypto || globalThis.crypto
+    if (crypto && typeof crypto.getRandomValues === 'function') {
+      crypto.getRandomValues(bytes)
+      return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
+    }
+  } catch (e) {}
+  return Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
+}
+
+function validPersistentPlayerId (value) {
+  return /^[a-f0-9]{32,128}$/i.test(String(value || ''))
+}
+
 function loadState () {
   const fallback = {
     view: 'onboarding',
@@ -318,6 +278,8 @@ function loadState () {
       pendingPayout: 120,
       ledger: [{ label: 'Welcome bonus', amount: 500, kind: 'credit' }]
     },
+    playerId: '',
+    poolLedger: [],
     enteredPools: {},
     enteredGamePools: {},
     selectedGamePool: '',
@@ -345,6 +307,8 @@ function loadState () {
       chat: saved.chat || defaultChat,
       payoutAddresses: { ...fallback.payoutAddresses, ...(saved.payoutAddresses || {}) },
       wallet: { ...fallback.wallet, ...(saved.wallet || {}) },
+      playerId: validPersistentPlayerId(saved.playerId) ? saved.playerId : newPersistentPlayerId(),
+      poolLedger: Array.isArray(saved.poolLedger) ? saved.poolLedger.slice(0, 512) : [],
       enteredPools: saved.enteredPools || {},
       enteredGamePools: saved.enteredGamePools || {},
       gamePoolDraft: { ...fallback.gamePoolDraft, ...(saved.gamePoolDraft || {}) },
@@ -411,6 +375,11 @@ function persist () {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   } catch {}
+}
+
+if (!validPersistentPlayerId(state.playerId)) {
+  state.playerId = newPersistentPlayerId()
+  persist()
 }
 
 function teamById (id) {
@@ -1438,23 +1407,24 @@ function renderHomeDashboard () {
     button.addEventListener('click', () => selectPolymarketMatch(button.dataset.polymarketFixture))
   })
 
+  const activePlayers = poolLedgerEntries().filter(entry => entry.kind === 'bracket').slice(0, 6)
   $('#leaderPanel').innerHTML = `
     <div class="rail-header">
       <p class="eyebrow">Bracket</p>
-      <strong>Leaders</strong>
+      <strong>Real entries</strong>
     </div>
     <div class="leader-list">
-      ${leaders.map((leader, index) => `
+      ${activePlayers.length ? activePlayers.map((entry, index) => `
         <div class="leader-row">
           <span class="leader-rank">${index + 1}</span>
-          ${avatarSvg(leader.user, teamById(leader.team), true)}
+          ${avatarSvg(entry.username, teamById(entry.teamId), true)}
           <div>
-            <strong>${escapeHtml(leader.user)}</strong>
-            <span>${leader.score} correct</span>
+            <strong>${escapeHtml(entry.playerId === state.playerId ? 'You' : entry.username)}</strong>
+            <span>${escapeHtml(teamById(entry.teamId).name)} · $${entry.tier} demo entry</span>
           </div>
-          <em>${leader.prize}</em>
+          <em>synced</em>
         </div>
-      `).join('')}
+      `).join('') : '<p class="live-copy">No bracket entries yet. The first player who enters appears here.</p>'}
     </div>
   `
   $('#signalPanel').innerHTML = renderSignalPanel()
@@ -1576,9 +1546,8 @@ function renderLivePanel (tab) {
   }
 
   if (tab === 'rooms') {
-    const peers = Math.max(1, Number(state.spectators || 1))
-    const roster = ['captain', 'amara', 'diego', 'kenji']
-    const rteams = ['br', 'ci', 'ar', 'jp']
+    const room = watchParticipants()
+    const peers = room.length
     return `
       <div class="room-dashboard">
         <article class="live-card room-card">
@@ -1588,7 +1557,7 @@ function renderLivePanel (tab) {
           </div>
           <p class="live-copy">${escapeHtml(snap.home.name)} vs ${escapeHtml(snap.away.name)} · ${escapeHtml(snap.status)}</p>
           <div class="room-preview-avatars">
-            ${roster.map((name, index) => avatarSvg(name === 'captain' ? (state.username || 'captain') : name, teamById(rteams[index]), true)).join('')}
+            ${room.map(person => avatarSvg(person.name, teamById(person.team), true)).join('')}
           </div>
           <button class="primary-button" type="button" data-view="watch">
             <span class="button-icon" aria-hidden="true">
@@ -1599,7 +1568,7 @@ function renderLivePanel (tab) {
         </article>
         <article class="live-card">
           <div class="metric-list">
-            <div><span>On the couch</span><strong>5 seated</strong></div>
+            <div><span>On the couch</span><strong>${peers} real watcher${peers === 1 ? '' : 's'}</strong></div>
             <div><span>Peers watching</span><strong>${peers}</strong></div>
             <div><span>Chat lines</span><strong>${(state.chat || []).length}</strong></div>
           </div>
@@ -1731,28 +1700,132 @@ function renderTeams () {
   })
 }
 
+function bracketPoolKey (tier) {
+  return `bracket:$${Number(tier)}`
+}
+
+function matchPoolKey (fixtureId, tier) {
+  return `match:${String(fixtureId)}:$${Number(tier)}`
+}
+
+function poolLedgerEntries () {
+  const sync = window.PearCupPoolSync
+  if (sync && typeof sync.entries === 'function') return sync.entries()
+  return Array.isArray(state.poolLedger) ? state.poolLedger : []
+}
+
+function entriesForPool (poolKey) {
+  return poolLedgerEntries().filter(entry => entry && entry.poolKey === poolKey)
+}
+
+function ownPoolEntry (poolKey) {
+  return entriesForPool(poolKey).find(entry => entry.playerId === state.playerId) || null
+}
+
+function bracketPoolMetrics (tier) {
+  const entries = entriesForPool(bracketPoolKey(tier))
+  return { entries, entrants: entries.length, prize: entries.length * Number(tier) }
+}
+
+function matchPoolMetrics (fixtureId, tier) {
+  const entries = entriesForPool(matchPoolKey(fixtureId, tier))
+  return { entries, entrants: entries.length, prize: entries.length * Number(tier) }
+}
+
+function restoreLegacyPoolEntries () {
+  const legacy = []
+  const existing = Array.isArray(state.poolLedger) ? state.poolLedger : []
+  const already = new Set(existing.map(entry => entry && entry.poolKey).filter(Boolean))
+  for (const tier of [10, 25, 50, 100]) {
+    if (!state.enteredPools || !state.enteredPools[tier]) continue
+    const poolKey = bracketPoolKey(tier)
+    if (already.has(poolKey)) continue
+    legacy.push({
+      v: 1,
+      entryId: newPersistentPlayerId(),
+      playerId: state.playerId,
+      username: state.username || 'captain',
+      teamId: state.team,
+      poolKey,
+      kind: 'bracket',
+      tier,
+      pick: '',
+      pickName: '',
+      currency: 'DEMO_USDT',
+      createdAt: Date.now()
+    })
+  }
+  for (const value of Object.values(state.enteredGamePools || {})) {
+    if (!value || !value.fixtureId || !value.tier || !value.pick || !value.pickName) continue
+    const poolKey = matchPoolKey(value.fixtureId, value.tier)
+    if (already.has(poolKey)) continue
+    legacy.push({
+      v: 1,
+      entryId: newPersistentPlayerId(),
+      playerId: state.playerId,
+      username: state.username || 'captain',
+      teamId: state.team,
+      poolKey,
+      kind: 'match',
+      tier: Number(value.tier),
+      pick: value.pick,
+      pickName: value.pickName,
+      currency: 'DEMO_USDT',
+      createdAt: Number(value.enteredAt) || Date.now()
+    })
+  }
+  if (legacy.length) {
+    state.poolLedger = [...existing, ...legacy]
+    persist()
+  }
+}
+
+let poolSyncRenderTimer = null
+function schedulePoolSyncRender () {
+  if (poolSyncRenderTimer) return
+  poolSyncRenderTimer = setTimeout(() => {
+    poolSyncRenderTimer = null
+    if (!document.documentElement.dataset.pearcupUiHydrated) return
+    if ($('#poolGrid')) renderPools()
+    if ($('#gamePoolGrid')) renderGamePools()
+    if (state.view === 'bracket') renderBracket()
+    if (state.view === 'home') renderHomeDashboard()
+  }, 60)
+}
+
+function startPoolSync () {
+  const sync = window.PearCupPoolSync
+  if (!sync || typeof sync.start !== 'function') return false
+  restoreLegacyPoolEntries()
+  sync.start({
+    playerId: state.playerId,
+    entries: state.poolLedger,
+    onChange: entries => {
+      state.poolLedger = entries
+      persist()
+      schedulePoolSyncRender()
+    }
+  })
+  return true
+}
+
 function renderPools () {
-  const sampleTeams = ['es', 'at', 'pt']
-  const railMode = serviceModeLabel(integrationRuntime.readiness.tetherWdk)
-  const railState = integrationRuntime.canUseRealMoney ? 'Live USDT' : `${railMode} locked`
   $('#poolGrid').innerHTML = pools.map(pool => `
     <article class="pool-card">
       <div class="pool-top">
         <div>
           <p class="stake">$${pool.tier} <span>entry</span></p>
-          <span class="rail-chip ${integrationRuntime.canUseRealMoney ? 'is-live' : 'is-locked'}">Tether WDK ${railState}</span>
+          <span class="rail-chip is-locked">Demo USDT · no cash payout</span>
         </div>
         <span class="pool-badge">${pool.heat}</span>
       </div>
       <div class="pool-meta">
-        <div><span>Prize pool</span><strong>${pool.prize}</strong></div>
-        <div><span>Entrants</span><strong>${pool.entrants}/${pool.max}</strong></div>
-        <div><span>Closes</span><strong>${pool.closes}</strong></div>
+        <div><span>Demo pool</span><strong>${fmtMoney(bracketPoolMetrics(pool.tier).prize)}</strong></div>
+        <div><span>Real entries</span><strong>${bracketPoolMetrics(pool.tier).entrants}/${pool.max}</strong></div>
+        <div><span>Locks</span><strong>At kickoff</strong></div>
       </div>
       <div class="pool-footer">
-        <div class="avatar-stack" aria-hidden="true">
-          ${sampleTeams.map((id, index) => avatarSvg(['lina', 'vera', 'milo'][index], teamById(id), true)).join('')}
-        </div>
+        <span class="live-copy">${bracketPoolMetrics(pool.tier).entrants ? 'Peer ledger synced' : 'No entries yet'}</span>
         <button class="primary-button" type="button" data-pool="${pool.tier}">
           <span class="button-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
@@ -1844,8 +1917,8 @@ function gamePoolEntryKey (fixtureId, tier) {
 }
 
 function gamePoolPrize (fixture, tier) {
-  const entrants = 24 + (hashString(`${fixture.id}-${tier}`) % 48)
-  return { entrants, prize: fmtMoney(Math.round(entrants * tier * 0.9)) }
+  const metrics = matchPoolMetrics(fixture.id, tier)
+  return { entrants: metrics.entrants, prize: fmtMoney(metrics.prize) }
 }
 
 function renderGamePools () {
@@ -1862,7 +1935,7 @@ function renderGamePools () {
     const pick = draft.matchId === fixture.id ? draft.pick : fixture.home.id
     const tier = draft.matchId === fixture.id && GAME_POOL_TIERS.includes(Number(draft.tier)) ? Number(draft.tier) : GAME_POOL_TIERS[1]
     const pool = gamePoolPrize(fixture, tier)
-    const entry = state.enteredGamePools && state.enteredGamePools[gamePoolEntryKey(fixture.id, tier)]
+    const entry = ownPoolEntry(matchPoolKey(fixture.id, tier))
     return `
       <article class="game-pool-card${isSelected ? ' is-selected' : ''}${fixture.live ? ' is-live' : ''}">
         <div class="game-pool-card-head">
@@ -1872,7 +1945,7 @@ function renderGamePools () {
         <div class="game-pool-teams">
           <strong>${fixture.home.flag} ${escapeHtml(fixture.home.name)}</strong><span>vs</span><strong>${fixture.away.flag} ${escapeHtml(fixture.away.name)}</strong>
         </div>
-        <div class="game-pool-meta"><span>${pool.entrants} players</span><strong>${pool.prize} pool</strong></div>
+        <div class="game-pool-meta"><span>${pool.entrants} player${pool.entrants === 1 ? '' : 's'}</span><strong>${pool.prize} pool</strong></div>
         <button class="secondary-button compact-action game-pool-open" type="button" data-game-pool-open="${escapeHtml(fixture.id)}">${isSelected ? 'Pool options' : 'Open pool'}</button>
         ${isSelected ? `
           <div class="game-pool-expander">
@@ -1888,7 +1961,7 @@ function renderGamePools () {
               <button class="primary-button compact-action" type="button" data-enter-game-pool="${escapeHtml(fixture.id)}"${fixture.locked || entry ? ' disabled' : ''}>${entry ? `✓ Picked ${escapeHtml(entry.pickName)}` : fixture.locked ? 'Final score locked' : `Enter $${tier} pool`}</button>
               <button class="secondary-button compact-action" type="button" data-watch-game-pool="${escapeHtml(fixture.id)}">Watch + trivia</button>
             </div>
-            <small>QVAC records the official-result evidence; demo entries stay locked to the local wallet until settlement rails are enabled.</small>
+            <small>Your demo-USDT entry is shared with connected peers. It never creates a cash payout or sends wallet data over P2P.</small>
           </div>` : ''}
       </article>`
   }).join('')
@@ -1934,16 +2007,38 @@ function enterGamePool (fixture) {
   const choice = [fixture.home, fixture.away].find(team => team.id === pick)
   if (!choice) { showToast('Choose a team in this match'); return }
   const key = gamePoolEntryKey(fixture.id, tier)
-  if (state.enteredGamePools[key]) { showToast(`You're already in the $${tier} ${fixture.home.name} vs ${fixture.away.name} pool`); return }
+  const poolKey = matchPoolKey(fixture.id, tier)
+  if (ownPoolEntry(poolKey)) { showToast(`You're already in the $${tier} ${fixture.home.name} vs ${fixture.away.name} pool`); return }
+  const sync = window.PearCupPoolSync
+  if (!sync || typeof sync.submit !== 'function') { showToast('Pool sync is still starting — try again in a moment'); return }
   if (!debitWallet(tier, `$${tier} ${fixture.home.name} vs ${fixture.away.name} pool`)) {
     showToast('Not enough balance — fund your wallet first')
     setView('onboarding')
     return
   }
-  state.enteredGamePools[key] = { fixtureId: fixture.id, tier, pick, pickName: choice.name, enteredAt: Date.now() }
+  let entry
+  try {
+    entry = sync.submit({
+      username: state.username || 'captain',
+      teamId: state.team,
+      poolKey,
+      kind: 'match',
+      tier,
+      pick,
+      pickName: choice.name
+    })
+  } catch (error) {
+    state.wallet.balance += tier
+    walletLog(`Pool entry refund — sync unavailable`, tier, 'credit')
+    persist()
+    refreshWallet()
+    showToast('Pool sync could not confirm that entry — your demo USDT was returned')
+    return
+  }
+  state.enteredGamePools[key] = { ...entry, fixtureId: fixture.id, tier, pick, pickName: choice.name, enteredAt: entry.createdAt }
   persist()
   renderGamePools()
-  showToast(`Picked ${choice.name} in the $${tier} match pool · QVAC evidence locks at kickoff`)
+  showToast(`Picked ${choice.name} in the $${tier} match pool · shared with real peers`)
 }
 
 function poolNamespace (poolId) {
@@ -2241,16 +2336,14 @@ function bindPayoutControls () {
 }
 
 async function resolveBracketSettlement (selectedPool) {
-  const poolId = `world-cup-${selectedPool.tier}`
-  const amount = selectedPool.tier
-  const entrants = [
-    { username: state.username || 'captain', userId: gameUserId(state.username || 'captain'), teamId: state.team },
-    { username: 'lina', userId: 'user-lina', teamId: 'br' },
-    { username: 'amara', userId: 'user-amara', teamId: 'ci' },
-    { username: 'diego', userId: 'user-diego', teamId: 'ar' },
-    { username: 'vera', userId: 'user-vera', teamId: 'no' },
-    { username: 'kenji', userId: 'user-kenji', teamId: 'jp' }
-  ]
+  // Kept as a compatibility seam for old integrations. Bracket pools now use
+  // the peer ledger above; this path is deliberately unavailable so it can
+  // never manufacture entrants or trigger a simulated WDK payout.
+  throw new Error('Bracket settlement is disabled in demo-entry mode')
+  /* c8 ignore next */
+  const poolId = ''
+  const amount = 0
+  const entrants = []
   const eventStore = PearCupStorageSim.createEventStore({
     backend: PearCupStorageSim.createMemoryBackend(),
     rootId: 'pearcup-demo',
@@ -2389,8 +2482,8 @@ function getPick (matchId) {
   return state.picks[matchId] || null
 }
 
-function makeMatch (id, time, status, slots, score = [null, null], sample = {}) {
-  return { id, time, status, slots, score, sample }
+function makeMatch (id, time, status, slots, score = [null, null]) {
+  return { id, time, status, slots, score }
 }
 
 // Rolling round-by-round pools: the tree advances on ACTUAL results, not the
@@ -2422,13 +2515,13 @@ function canPickMatch (match) {
 }
 
 function buildRounds () {
-  const round32 = round32Matches.map(match => makeMatch(match.id, match.time, match.status, match.slots, match.score, match.sample))
+  const round32 = round32Matches.map(match => makeMatch(match.id, match.time, match.status, match.slots, match.score))
   const byId = new Map(round32.map(m => [m.id, m]))
   const winOf = id => actualWinner(byId.get(id))
   const synth = (id, time) => {
     const from = feedersOf(id)
     const slots = [winOf(from[0]) || null, winOf(from[1]) || null]
-    const match = makeMatch(id, time, slots[0] && slots[1] ? 'Picks open' : 'TBD', slots, [null, null], {})
+    const match = makeMatch(id, time, slots[0] && slots[1] ? 'Picks open' : 'TBD', slots, [null, null])
     byId.set(id, match)
     return match
   }
@@ -2466,9 +2559,7 @@ function buildRounds () {
 }
 
 function ownersFor (match, teamId) {
-  const owners = [...(match.sample[teamId] || [])]
-  if (getPick(match.id) === teamId) owners.unshift(state.username || 'you')
-  return owners.slice(0, 2)
+  return getPick(match.id) === teamId ? ['You'] : []
 }
 
 function slotHint (match, index, roundsById) {
@@ -2523,7 +2614,8 @@ function renderPoolSelect () {
   const el = $('#bracketPoolSelect')
   if (!el) return
   el.innerHTML = pools.map(pool => {
-    const entered = !!state.enteredPools[pool.tier]
+    const metrics = bracketPoolMetrics(pool.tier)
+    const entered = !!ownPoolEntry(bracketPoolKey(pool.tier))
     const selected = pool.tier === state.selectedTier
     const affordable = state.wallet.balance >= pool.tier
     const cta = entered ? '✓ Entered' : selected ? (affordable ? `Enter · $${pool.tier}` : 'Fund to enter') : 'Select'
@@ -2533,7 +2625,7 @@ function renderPoolSelect () {
         <img class="pool-pick-badge" src="assets/${badge}.png" alt="">
         <span class="pool-pick-heat">${pool.heat}</span>
         <span class="pool-pick-fee">$${pool.tier}</span>
-        <span class="pool-pick-meta">${pool.prize} prize · ${pool.entrants} in</span>
+        <span class="pool-pick-meta">${fmtMoney(metrics.prize)} demo pool · ${metrics.entrants} real entries</span>
         <span class="pool-pick-cta${entered ? ' is-entered' : affordable ? '' : ' is-locked'}">${cta}</span>
       </button>`
   }).join('')
@@ -2548,113 +2640,115 @@ function renderPoolSelect () {
 
 function enterSelectedPool () {
   const tier = state.selectedTier
-  if (state.enteredPools[tier]) { showToast(`You're already in the $${tier} bracket`); return }
+  const poolKey = bracketPoolKey(tier)
+  if (ownPoolEntry(poolKey)) { showToast(`You're already in the $${tier} bracket`); return }
+  const definition = pools.find(pool => pool.tier === tier)
+  if (definition && bracketPoolMetrics(tier).entrants >= definition.max) {
+    showToast(`The $${tier} bracket is full`)
+    return
+  }
+  const sync = window.PearCupPoolSync
+  if (!sync || typeof sync.submit !== 'function') { showToast('Pool sync is still starting — try again in a moment'); return }
   if (!debitWallet(tier, `$${tier} bracket entry`)) {
     showToast('Not enough balance — fund your wallet first')
     setView('onboarding')
     return
   }
-  state.enteredPools[tier] = true
+  let entry
+  try {
+    entry = sync.submit({
+      username: state.username || 'captain',
+      teamId: state.team,
+      poolKey,
+      kind: 'bracket',
+      tier,
+      pick: '',
+      pickName: ''
+    })
+  } catch (error) {
+    state.wallet.balance += tier
+    walletLog('Bracket entry refund — sync unavailable', tier, 'credit')
+    persist()
+    refreshWallet()
+    showToast('Pool sync could not confirm that entry — your demo USDT was returned')
+    return
+  }
+  state.enteredPools[tier] = entry
   persist()
   renderBracket()
-  showToast(`Entered the $${tier} pool · ${fmtMoney(tier)} escrowed via WDK — picks stay open every round`)
+  showToast(`Entered the $${tier} pool · shared with real peers using demo USDT`)
 }
 
-function renderBracketEntrants (settlement) {
+function renderBracketEntrants () {
   const el = $('#bracketEntrants')
   if (!el) return
-  const ledger = settlement.entryLedger || []
-  const youIn = !!state.enteredPools[state.selectedTier]
-  const you = youIn
-    ? [{ username: state.username || 'captain', teamId: state.team, you: true }]
-    : []
-  const others = ledger.map(entry => ({ username: entry.entrant.username, teamId: entry.entrant.teamId }))
-  const everyone = [...you, ...others].slice(0, 14)
+  const entries = entriesForPool(bracketPoolKey(state.selectedTier))
+  const everyone = entries.slice(0, 14)
   const count = $('#enteredCount')
-  if (count) count.textContent = `· ${(settlement.entryCount || others.length) + (youIn ? 1 : 0)} in this pool`
+  if (count) count.textContent = `· ${entries.length} real entr${entries.length === 1 ? 'y' : 'ies'} in this pool`
   el.innerHTML = everyone.length
-    ? everyone.map(person => `
-        <span class="entered-chip${person.you ? ' is-you' : ''}">
-          ${avatarSvg(person.username, teamById(person.teamId), true)}
-          <em>${escapeHtml(person.you ? 'You' : person.username)}</em>
+    ? everyone.map(entry => `
+        <span class="entered-chip${entry.playerId === state.playerId ? ' is-you' : ''}">
+          ${avatarSvg(entry.username, teamById(entry.teamId), true)}
+          <em>${escapeHtml(entry.playerId === state.playerId ? 'You' : entry.username)}</em>
         </span>`).join('')
-    : '<p class="live-copy">No entries yet — be the first to enter this bracket.</p>'
+    : `<div class="entered-empty-state">
+        ${avatarSvg(state.username || 'captain', teamById(state.team), true)}
+        <p><strong>Your profile is ready.</strong> Choose a pool to make the first real entry.</p>
+      </div>`
 }
 
-function settlementStackAvailable () {
-  return Boolean(
-    PearCupWorkerSim &&
-    PearCupWorkerClient &&
-    PearCupStorageSim &&
-    PearCupTransportSim &&
-    PearCupSettlementService
-  )
-}
-
-function demoBracketEntrants () {
-  return [
-    { entrant: { username: 'lina', userId: 'user-lina', teamId: 'br' } },
-    { entrant: { username: 'amara', userId: 'user-amara', teamId: 'ci' } },
-    { entrant: { username: 'diego', userId: 'user-diego', teamId: 'ar' } },
-    { entrant: { username: 'vera', userId: 'user-vera', teamId: 'no' } },
-    { entrant: { username: 'kenji', userId: 'user-kenji', teamId: 'jp' } }
-  ]
-}
-
-function renderBracketDemoStats (selectedPool) {
-  const entered = !!state.enteredPools[selectedPool.tier]
+function renderBracketPoolStats (selectedPool) {
+  const metrics = bracketPoolMetrics(selectedPool.tier)
+  const entered = !!ownPoolEntry(bracketPoolKey(selectedPool.tier))
   const remaining = remainingPicks()
-  const status = integrationRuntime.readiness.settlement
   if ($('#bracketStats')) $('#bracketStats').innerHTML = `
     <article class="settlement-rail-card">
-      <div class="rail-header"><p class="eyebrow">Pool</p><strong>${selectedPool.prize}</strong></div>
+      <div class="rail-header"><p class="eyebrow">Demo pool</p><strong>${fmtMoney(metrics.prize)}</strong></div>
       <div class="settlement-kpis">
-        <div><span>Entrants</span><strong>${selectedPool.entrants}/${selectedPool.max}</strong></div>
+        <div><span>Real entries</span><strong>${metrics.entrants}/${selectedPool.max}</strong></div>
         <div><span>Your entry</span><strong>${entered ? 'Entered' : 'Open'}</strong></div>
         <div><span>Picks</span><strong>${remaining > 0 ? `${remaining} left` : 'Complete'}</strong></div>
       </div>
     </article>
     <article class="settlement-rail-card">
-      <div class="rail-header"><p class="eyebrow">Settlement</p><strong>${status.label}</strong></div>
-      <p class="live-copy">Demo entries are ready for tonight; real payouts stay locked until the worker settlement stack is explicitly enabled.</p>
+      <div class="rail-header"><p class="eyebrow">Entry ledger</p><strong>Peer synced</strong></div>
+      <p class="live-copy">Every count comes from an actual submitted entry. Demo USDT stays local to each player; cash settlement and payouts are disabled.</p>
     </article>`
 
   if ($('#bracketEntriesPanel')) $('#bracketEntriesPanel').innerHTML = `
     <article class="settlement-rail-card entry-ledger-card">
-      <div class="rail-header"><p class="eyebrow">Entries</p><strong>Pick'em pool</strong></div>
+      <div class="rail-header"><p class="eyebrow">Real entries</p><strong>Pick'em pool</strong></div>
       <div class="entry-ledger">
-        ${demoBracketEntrants().map(row => {
-          const team = teamById(row.entrant.teamId)
+        ${metrics.entries.length ? metrics.entries.map(entry => {
+          const team = teamById(entry.teamId)
           return `
             <div class="entry-ledger-row is-confirmed">
               <div class="entry-person">
-                ${avatarSvg(row.entrant.username, team, true)}
+                ${avatarSvg(entry.username, team, true)}
                 <div>
-                  <strong>${escapeHtml(row.entrant.username)}</strong>
-                  <span>${team.flag} ${escapeHtml(team.name)}</span>
+                  <strong>${escapeHtml(entry.playerId === state.playerId ? 'You' : entry.username)}</strong>
+                  <span>${team.flag} ${escapeHtml(team.name)} · ${entry.tier} demo USDT</span>
                 </div>
               </div>
-              <span class="rail-state is-confirmed">Ready</span>
+              <span class="rail-state is-confirmed">Synced</span>
             </div>`
-        }).join('')}
+        }).join('') : '<p class="live-copy">No real entries yet.</p>'}
       </div>
     </article>`
 
   if ($('#bracketAudit')) $('#bracketAudit').innerHTML = `
     <article class="settlement-rail-card">
-      <div class="rail-header"><p class="eyebrow">Audit</p><strong>P2P game mode ready</strong></div>
+      <div class="rail-header"><p class="eyebrow">Audit</p><strong>Demo-entry mode</strong></div>
       <div class="hash-list compact-hash">
-        <div><span>Prize gate</span><code>${status.status}</code></div>
-        <div><span>Payouts</span><code>disabled</code></div>
+        <div><span>Currency</span><code>DEMO_USDT</code></div>
+        <div><span>Payouts</span><code>disabled by design</code></div>
         <div><span>P2P modules</span><code>${document.documentElement.dataset.pearcupP2pModules || 'checking'}</code></div>
-        <div><span>Backend</span><code>${document.documentElement.dataset.pearcupPeerNet || 'detecting'}</code></div>
+        <div><span>Pool transport</span><code>${window.PearCupPoolSync && window.PearCupPoolSync.backend || 'detecting'}</code></div>
       </div>
     </article>`
 
-  renderBracketEntrants({
-    entryLedger: demoBracketEntrants(),
-    entryCount: selectedPool.entrants
-  })
+  renderBracketEntrants()
 }
 
 function matchStateClass (match) {
@@ -2745,10 +2839,9 @@ function renderRoundStrip (rounds) {
 }
 
 async function renderBracket () {
-  const renderId = ++bracketRenderSequence
+  ++bracketRenderSequence
   const selectedPool = pools.find(pool => pool.tier === state.selectedTier) || pools[1]
-  const wdk = integrationRuntime.readiness.tetherWdk
-  const entered = !!state.enteredPools[selectedPool.tier]
+  const entered = !!ownPoolEntry(bracketPoolKey(selectedPool.tier))
   $('#bracketTierLabel').textContent = `$${selectedPool.tier} pool${entered ? ' · entered' : ''}`
   renderPoolSelect()
   const rounds = buildRounds()
@@ -2762,89 +2855,9 @@ async function renderBracket () {
     steps[!entered ? 0 : remaining > 0 ? 2 : 2].classList.add('step-active')
     if (entered && remaining === 0) steps[2].classList.remove('step-active')
   }
-  const statsEl = $('#bracketStats')
-  if (statsEl) statsEl.innerHTML = '<p class="live-copy">Building WDK entry intents, QVAC attestation, and replay roots…</p>'
   renderRoundStrip(rounds)
   renderBracketBoard(rounds)
-
-  if (!settlementStackAvailable()) {
-    renderBracketDemoStats(selectedPool)
-    return
-  }
-
-  let settlement
-  try {
-    settlement = await resolveBracketSettlement(selectedPool)
-  } catch (err) {
-    if (renderId !== bracketRenderSequence) return
-    renderSettlementError($('#bracketStats'), err, 'Bracket settlement blocked')
-    return
-  }
-  if (renderId !== bracketRenderSequence) return
-
-  const processorPayout = settlement.payout && settlement.payout.processorPayout
-  const processorStatus = processorPayout
-    ? processorPayout.status
-    : settlement.payout && settlement.payout.status === 'prepared' ? 'prepared' : 'held'
-  const payoutPrepared = settlement.payout &&
-    settlement.payout.status === 'prepared' &&
-    processorStatus !== 'recipient-required'
-  const payoutStatus = payoutStatusMeta(processorStatus)
-  const grossPool = settlement.payout && settlement.payout.grossPool != null
-    ? `${settlement.payout.grossPool} ${settlement.payout.asset}`
-    : 'Held'
-  const splitAmount = settlement.payout && settlement.payout.amountEach != null
-    ? `${settlement.payout.amountEach} each`
-    : settlement.payout && settlement.payout.reason
-    ? 'Disputed'
-    : 'Pending'
-
-  if ($('#bracketStats')) $('#bracketStats').innerHTML = `
-    <article class="settlement-rail-card">
-      <div class="rail-header"><p class="eyebrow">Tether WDK</p><strong>${serviceModeLabel(wdk)} bracket rail</strong></div>
-      <div class="settlement-kpis">
-        <div><span>Confirmed entries</span><strong>${settlement.entryCount}</strong></div>
-        <div><span>Pending checks</span><strong>${settlement.pendingEntryChecks}</strong></div>
-        <div><span>Payout</span><strong>${payoutStatus.label}</strong></div>
-      </div>
-    </article>
-    <article class="settlement-rail-card">
-      <div class="rail-header"><p class="eyebrow">Pool</p><strong>${grossPool}</strong></div>
-      <div class="settlement-kpis single-row">
-        <div><span>Split</span><strong>${splitAmount}</strong></div>
-        <div><span>Events</span><strong>${settlement.storage.events}</strong></div>
-        <div><span>Replay</span><strong>${settlement.storage.replayMatched ? 'Matched' : 'Mismatch'}</strong></div>
-      </div>
-    </article>`
-
-  if ($('#bracketEntriesPanel')) $('#bracketEntriesPanel').innerHTML = `
-    <article class="settlement-rail-card entry-ledger-card">
-      <div class="rail-header"><p class="eyebrow">WDK entries</p><strong>Intent → reconcile → confirm</strong></div>
-      ${renderEntryLedger(settlement)}
-    </article>
-    <article class="settlement-rail-card payout-recipient-card">
-      <div class="rail-header"><p class="eyebrow">WDK payout</p><strong>${payoutPrepared ? 'Recipient quoted' : payoutStatus.label}</strong></div>
-      ${renderPayoutRecipients(settlement)}
-    </article>`
-
-  if ($('#bracketAudit')) $('#bracketAudit').innerHTML = `
-    <article class="settlement-rail-card">
-      <div class="rail-header"><p class="eyebrow">Audit</p><strong>${settlement.qvacAttestation.ruling === 'verified' ? 'QVAC verified' : 'QVAC disputed'}</strong></div>
-      <div class="hash-list compact-hash">
-        <div><span>Guard mode</span><code>${settlement.guardMode}</code></div>
-        <div><span>Prize gate</span><code>${settlement.settlementGate.status}</code></div>
-        <div><span>QVAC attestation</span><code>${settlement.qvacAttestation.attestationId}</code></div>
-        <div><span>Recipient declarations</span><code>${settlement.recipientDeclarationCount}</code></div>
-        <div><span>Receipt hash</span><code>${escapeHtml(settlement.settlementReceipt && settlement.settlementReceipt.receiptHash || 'pending')}</code></div>
-        <div><span>Receipt event</span><code>${escapeHtml(settlement.settlementReceiptEvent && settlement.settlementReceiptEvent.eventId || 'pending')}</code></div>
-        <div><span>Pool namespace</span><code>${settlement.storage.namespace}</code></div>
-        <div><span>Event root</span><code>${settlement.storage.eventRoot}</code></div>
-        <div><span>Replay root</span><code>${settlement.storage.replayRoot}</code></div>
-      </div>
-    </article>`
-
-  renderBracketEntrants(settlement)
-  bindPayoutControls()
+  renderBracketPoolStats(selectedPool)
   scheduleBracketConnectors()
 }
 
@@ -2933,15 +2946,24 @@ function watchParticipants () {
   const homeTeamId = watchTeamId(live && live.home, 'es')
   const awayTeamId = watchTeamId(live && live.away, 'be')
   const savedPick = Object.values(state.picks || {}).find(teamId => teamId === homeTeamId || teamId === awayTeamId)
-  const livePick = savedPick || homeTeamId
+  const livePick = savedPick || ''
+  const peers = typeof window !== 'undefined' && window.PearCupWatchSync && window.PearCupWatchSync._state && window.PearCupWatchSync._state.peers
+  const remote = peers && typeof peers.values === 'function' ? [...peers.values()] : []
   return [
-    { name: state.username || 'captain', pick: livePick, role: 'you' },
-    { name: 'lina', pick: homeTeamId, role: 'stream host' },
-    { name: 'amara', pick: awayTeamId, role: 'voice' },
-    { name: 'vera', pick: awayTeamId, role: 'voice' },
-    { name: 'diego', pick: homeTeamId, role: 'chat' },
-    { name: 'kwame', pick: awayTeamId, role: 'chat' }
+    { name: state.username || 'captain', team: state.team, pick: livePick, role: 'you' },
+    ...remote.map(peer => ({
+      name: peer.name || 'guest',
+      team: peer.team || 'br',
+      pick: peer.pick === homeTeamId || peer.pick === awayTeamId ? peer.pick : '',
+      role: 'watcher'
+    }))
   ]
+}
+
+function currentWatchPick () {
+  const live = feedState()
+  const sides = [watchTeamId(live && live.home, 'es'), watchTeamId(live && live.away, 'be')]
+  return Object.values(state.picks || {}).find(teamId => sides.includes(teamId)) || ''
 }
 
 // ==================== Live Watch Party ====================
@@ -3888,6 +3910,7 @@ function bindWatchVoice () {
 function renderWatch () {
   startLiveFeed()
   seedFeedEvents()
+  if (window.PearCupWatchSync) window.PearCupWatchSync.ensureRoom()
   renderPolymarketOdds()
   renderWatchStats(feedState())
   applyFeedTick(null, feedState())
@@ -3972,11 +3995,20 @@ function renderWatch () {
 }
 
 function currentGameRound () {
-  const round = gameRounds[state.gameRound % gameRounds.length]
-  const username = state.username || 'captain'
-  if (round.shooter === 'captain') return { ...round, shooter: username, shooterTeam: state.team }
-  if (round.keeper === 'captain') return { ...round, keeper: username, keeperTeam: state.team }
-  return round
+  const opponent = currentOpponent()
+  const zone = AIM_ZONES[state.gameRound % AIM_ZONES.length]
+  return {
+    shooter: state.username || 'captain',
+    shooterTeam: state.team,
+    keeper: opponent.name,
+    keeperTeam: opponent.team,
+    aim: zone,
+    dive: AIM_ZONES[(state.gameRound + 2) % AIM_ZONES.length],
+    power: 3,
+    curve: 0,
+    releaseTick: 42,
+    keeperTick: 44
+  }
 }
 
 function gameUserId (name) {
@@ -4238,28 +4270,16 @@ function overBarY () {
 // ---------------- Interactive Penalty Shootout ----------------
 const SHOOTOUT_TOTAL = 5
 const AIM_ZONES = ['left-high', 'center-high', 'right-high', 'left-low', 'center-low', 'right-low']
-const KEEPER_ROSTER = [
-  { name: 'vera', team: 'no' },
-  { name: 'milo', team: 'mx' },
-  { name: 'lina', team: 'no' },
-  { name: 'saki', team: 'jp' },
-  { name: 'dado', team: 'ci' }
-]
+// Solo practice is explicitly a system trainer, never a fabricated player or wager.
+function trainingOpponent () {
+  const team = teams.find(candidate => candidate.id !== state.team) || teams[0]
+  return { name: 'QVAC training keeper', team: team.id, record: '0-0', stake: 0, system: true }
+}
 
-// Players waiting in the lobby (sim now; real = peers announcing on the
-// `pearcup-penalty-lobby` hyperswarm topic).
-const LOBBY_PLAYERS = [
-  { name: 'Kaito', team: 'jp', record: '7-2', stake: 25, wait: '0:12' },
-  { name: 'Mateo', team: 'ar', record: '5-4', stake: 10, wait: '0:31' },
-  { name: 'Emre', team: 'ch', record: '9-1', stake: 50, wait: '0:04' },
-  { name: 'Zola', team: 'ci', record: '4-3', stake: 10, wait: '1:02' }
-]
-
-// The keeper for the whole shootout is the matched opponent (falls back to the roster).
+// The keeper for the whole shootout is a real matched peer, or the named training system.
 function currentOpponent () {
   if (state.match && state.match.opponent) return state.match.opponent
-  const pick = KEEPER_ROSTER[(state.shootout ? state.shootout.round : 0) % KEEPER_ROSTER.length]
-  return { name: pick.name, team: pick.team }
+  return trainingOpponent()
 }
 
 function sleep (ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
@@ -4301,9 +4321,9 @@ function kickEntropy (aim, dive, nonce) {
   return h >>> 0
 }
 
-// AI keeper skill from the opponent's lobby record (e.g. '9-1' → hard to beat).
+// The system trainer has a fixed, modest difficulty; real peers never use this model.
 function opponentDifficulty (pick) {
-  const rec = (pick && pick.record) || ((LOBBY_PLAYERS.find(p => p.name === (pick && pick.name)) || {}).record)
+  const rec = pick && pick.record
   if (!rec) return 0.34
   const parts = String(rec).split('-').map(Number)
   const w = parts[0]; const l = parts[1]
@@ -4693,25 +4713,41 @@ function endShootout () {
   showToast(win ? `You beat ${pick.name} ${so.you}–${so.opp}!` : draw ? `Level with ${pick.name} ${so.you}–${so.opp}` : `${pick.name} won ${so.opp}–${so.you}`)
 }
 
-function renderGameLeaderboard () {
-  $('#gameLeaderboard').innerHTML = `
+function liveGamePlayers () {
+  const peers = window.PearCupLobby && window.PearCupLobby._state && window.PearCupLobby._state.peers
+  const remote = peers && typeof peers.values === 'function' ? [...peers.values()] : []
+  const self = { peerId: state.playerId, name: state.username || 'captain', team: state.team, you: true }
+  const matchPeer = state.match && state.match.peer && state.match.opponent
+    ? [{ peerId: 'current-match', name: state.match.opponent.name, team: state.match.opponent.team }]
+    : []
+  const all = [self, ...matchPeer, ...remote]
+  return all.filter((player, index) => all.findIndex(candidate => candidate.peerId === player.peerId || (candidate.name === player.name && candidate.team === player.team)) === index).slice(0, 6)
+}
+
+function gameLeaderboardMarkup () {
+  const players = liveGamePlayers()
+  return `
     <div class="rail-header">
       <p class="eyebrow">Games</p>
-      <strong>${integrationRuntime.readiness.settlement.realMoneyEnabled ? 'Trusted results' : 'Demo results'}</strong>
+      <strong>Live players</strong>
     </div>
     <div class="leader-list">
-      ${gameLeaderboardRows.map((row, index) => `
+      ${players.length ? players.map((player, index) => `
         <div class="game-leader-row">
           <span class="leader-rank">${index + 1}</span>
-          ${avatarSvg(row.user === 'captain' ? (state.username || 'captain') : row.user, teamById(row.team), true)}
+          ${avatarSvg(player.name, teamById(player.team), true)}
           <div>
-            <strong>${escapeHtml(row.user === 'captain' ? (state.username || 'captain') : row.user)}</strong>
-            <span>${row.record} record</span>
+            <strong>${escapeHtml(player.you ? 'You' : player.name)}</strong>
+            <span>${teamById(player.team).flag} ${escapeHtml(teamById(player.team).name)}</span>
           </div>
-          <em>${row.trust}</em>
+          <em>${player.you ? 'ready' : 'live'}</em>
         </div>
-      `).join('')}
+      `).join('') : '<p class="live-copy">No live players yet — invite a friend to play.</p>'}
     </div>`
+}
+
+function renderGameLeaderboard () {
+  $('#gameLeaderboard').innerHTML = gameLeaderboardMarkup()
 }
 
 function renderGamePlaceholders () {
@@ -4805,7 +4841,11 @@ function renderGameLobby () {
         <h2 class="lobby-title">Find a match</h2>
         <p class="lobby-sub">Best-of-five Penalty Clash — you take 5 penalties and keep their 5. Outscore them for the win.</p>
       </div>
-      <button class="lobby-quick" id="quickMatchBtn" type="button">⚡ Practice vs AI</button>
+      <div class="lobby-you-ready" aria-label="Your player profile">
+        ${avatarSvg(state.username || 'captain', teamById(state.team), true)}
+        <span><strong>You’re ready</strong><small>${teamById(state.team).flag} ${escapeHtml(teamById(state.team).name)}</small></span>
+      </div>
+      <button class="lobby-quick" id="quickMatchBtn" type="button">⚡ Solo practice</button>
     </div>
 
     <div class="lobby-friend">
@@ -4823,23 +4863,9 @@ function renderGameLobby () {
     <p class="lobby-label">Players online <span class="lobby-live-badge"><i></i>live</span></p>
     <div class="lobby-list" id="lobbyLivePeers"></div>
 
-    <p class="lobby-label lobby-label-muted">AI opponents · practice free or stake up</p>
-    <div class="lobby-list">
-      ${LOBBY_PLAYERS.map((p, i) => `
-        <div class="lobby-card">
-          ${avatarSvg(p.name, teamById(p.team), true)}
-          <div class="lobby-info">
-            <strong>${escapeHtml(p.name)}</strong>
-            <span>${teamById(p.team).flag} ${p.record} record · ${opponentDifficulty(p) > 0.5 ? 'sharp' : 'steady'} keeper</span>
-          </div>
-          <div class="lobby-stake">$${p.stake}</div>
-          <button class="secondary-button compact-action lobby-challenge" data-lobby="${i}" type="button">Challenge</button>
-        </div>`).join('')}
-    </div>`
-  const practice = p => ({ ...p, stake: 0 })
+    <p class="lobby-label lobby-label-muted">Solo practice is free · all listed opponents above are live peers</p>`
   const quick = $('#quickMatchBtn')
-  if (quick) quick.addEventListener('click', () => startMatch(practice(LOBBY_PLAYERS[Math.floor(Math.random() * LOBBY_PLAYERS.length)])))
-  $$('#gameLobby .lobby-challenge').forEach(btn => btn.addEventListener('click', () => showStakeConfirm(LOBBY_PLAYERS[Number(btn.dataset.lobby)])))
+  if (quick) quick.addEventListener('click', () => startMatch(trainingOpponent()))
   const invite = $('#inviteFriendBtn')
   if (invite) invite.addEventListener('click', () => window.PearCupPeerMatch && window.PearCupPeerMatch.host())
   const joinFriend = $('#joinFriendBtn')
@@ -4847,37 +4873,6 @@ function renderGameLobby () {
   renderPeerBackendBadge()
   // Live matchmaking: announce on the lobby topic + render online peers.
   if (window.PearCupLobby) { window.PearCupLobby.join(); window.PearCupLobby.renderList() }
-}
-
-// Staked AI challenge: explicit consent before any wallet debit (practice stays free).
-function showStakeConfirm (player) {
-  const old = $('#stakeConfirm'); if (old) old.remove()
-  const stake = player.stake || 0
-  const ov = document.createElement('div')
-  ov.id = 'stakeConfirm'
-  ov.className = 'peer-modal'
-  ov.setAttribute('role', 'dialog')
-  ov.setAttribute('aria-modal', 'true')
-  ov.innerHTML = `
-    <div class="peer-modal-card">
-      <p class="eyebrow">Penalty Clash · Challenge</p>
-      <h2 class="peer-title">${escapeHtml(player.name)} puts up ${fmtMoney(stake)}</h2>
-      <p class="peer-sub">Match the stake and the winner takes ${fmtMoney(stake * 2)} — a draw refunds both. Or warm up for free.</p>
-      <div class="peer-actions">
-        <button class="secondary-button" id="stakePractice" type="button">Practice free</button>
-        <button class="primary-button" id="stakeAccept" type="button">Stake ${fmtMoney(stake)}</button>
-      </div>
-    </div>`
-  document.body.appendChild(ov)
-  requestAnimationFrame(() => ov.classList.add('is-open'))
-  const close = () => { document.removeEventListener('keydown', onKey); ov.classList.remove('is-open'); setTimeout(() => ov.remove(), 250) }
-  const onKey = e => { if (e.key === 'Escape') close() }
-  document.addEventListener('keydown', onKey)
-  ov.addEventListener('click', e => {
-    if (e.target === ov) { close(); return }
-    if (e.target.closest('#stakePractice')) { close(); startMatch({ ...player, stake: 0 }) }
-    if (e.target.closest('#stakeAccept')) { close(); startMatch(player) }
-  })
 }
 
 function startMatch (player, joined) {
@@ -5096,25 +5091,7 @@ function applyKickResult (result) {
     </div>
   `
 
-  $('#gameLeaderboard').innerHTML = `
-    <div class="rail-header">
-      <p class="eyebrow">Games</p>
-      <strong>${integrationRuntime.readiness.settlement.realMoneyEnabled ? 'Trusted results' : 'Demo results'}</strong>
-    </div>
-    <div class="leader-list">
-      ${gameLeaderboardRows.map((row, index) => `
-        <div class="game-leader-row">
-          <span class="leader-rank">${index + 1}</span>
-          ${avatarSvg(row.user === 'captain' ? (state.username || 'captain') : row.user, teamById(row.team), true)}
-          <div>
-            <strong>${escapeHtml(row.user === 'captain' ? (state.username || 'captain') : row.user)}</strong>
-            <span>${row.record} record</span>
-          </div>
-          <em>${row.trust}</em>
-        </div>
-      `).join('')}
-    </div>
-  `
+  $('#gameLeaderboard').innerHTML = gameLeaderboardMarkup()
   return result
 }
 
@@ -5281,6 +5258,7 @@ function assertP2PModulesReady () {
   if (typeof window === 'undefined' || !document.documentElement) return
   const required = [
     ['PearCupPeerNet', 'pearcupPeerNetModule'],
+    ['PearCupPoolSync', 'pearcupPoolSyncModule'],
     ['PearCupPeerMatch', 'pearcupPeerMatchModule'],
     ['PearCupLobby', 'pearcupPeerLobbyModule'],
     ['PearCupWatchSync', 'pearcupWatchSyncModule'],
@@ -5364,6 +5342,7 @@ function bootRuntimeDiagnostics () {
     },
     controllers: {
       peerNet: controllerReady(window.PearCupPeerNet, ['createChannel', 'newRoomCode', 'newPeerId']),
+      poolSync: controllerReady(window.PearCupPoolSync, ['start', 'submit', 'entriesFor']),
       peerMatch: controllerReady(window.PearCupPeerMatch, ['host', 'join', 'promptJoin', 'onZone']),
       peerLobby: controllerReady(window.PearCupLobby, ['join', 'renderList']),
       watchSync: controllerReady(window.PearCupWatchSync, ['ensureRoom', 'broadcastChat', 'react']),
@@ -5808,7 +5787,7 @@ async function runBootRuntimeSelfTest () {
     evidence.inviteCode = code ? code.textContent.trim() : ''
     evidence.inviteLink = link ? link.textContent.trim() : ''
     if (!modal) errors.push('Invite modal did not open')
-    if (!code || !/^[a-z0-9]{6}$/i.test(evidence.inviteCode)) errors.push('Invite modal did not show a room code')
+    if (!code || !/^[a-z0-9-]{6,32}$/i.test(evidence.inviteCode)) errors.push('Invite modal did not show a valid room code')
     if (!link || !/\?join=/.test(evidence.inviteLink)) errors.push('Invite link did not include ?join=')
     if (!peerState || peerState.active !== true || !peerState.code) errors.push('Peer match host state was not active')
     if (evidence.inviteCode && !errors.length) {
@@ -5849,6 +5828,7 @@ function boot () {
   bindCoreFallbackEvents()
   window.addEventListener('pearcup:p2p-backend', renderPeerBackendBadge)
   assertP2PModulesReady()
+  startPoolSync()
   sendBootCheckpoint('boot:p2p-ready')
   bindEvents()
   sendBootCheckpoint('boot:events-bound')
