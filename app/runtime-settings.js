@@ -52,6 +52,22 @@
     }
   }
 
+  // HiveRelay's OutboxLog endpoint is a public, token-gated transport origin;
+  // the token is issued per browser session by POST /api/token. It is not a
+  // credential and is safe to pass into the renderer alongside the URL.
+  function normalizePublicPeerRelayUrl (value) {
+    if (typeof value !== 'string' || value.trim() === '') return ''
+    try {
+      const url = new URL(value.trim())
+      const localHttp = url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]', '::1'].includes(url.hostname)
+      if ((url.protocol !== 'https:' && !localHttp) || url.username || url.password || url.search || url.hash) return ''
+      url.pathname = url.pathname.replace(/\/+$/, '') || '/'
+      return url.href.replace(/\/$/, '')
+    } catch {
+      return ''
+    }
+  }
+
   function liveDataSettingsFrom ({ env = {}, config = {} } = {}) {
     const configured = config.liveData || {}
     const relayUrl = normalizePublicRelayUrl(env.PEARCUP_LIVE_DATA_RELAY_URL || configured.relayUrl)
@@ -63,6 +79,20 @@
       oddsRelayUrl,
       pollMs: Math.max(15_000, Math.min(120_000, parseNumber(env.PEARCUP_LIVE_DATA_POLL_MS, parseNumber(configured.pollMs, 30_000))))
     }
+  }
+
+  function peerRelaySettingsFrom ({ env = {}, config = {} } = {}) {
+    const configured = config.peerRelay || config.hiveRelay || {}
+    const relayUrl = normalizePublicPeerRelayUrl(
+      env.PEARCUP_HIVERELAY_URL || env.PEARCUP_PEER_RELAY_URL || configured.relayUrl || configured.url
+    )
+    if (!relayUrl) return null
+    const enabled = parseBool(env.PEARCUP_HIVERELAY_ENABLED, parseBool(configured.enabled, true))
+    if (!enabled) return null
+    const service = configured.service || 'outboxlog'
+    if (service !== 'outboxlog') return null
+    const protocol = configured.protocol || 'pearcup-sync-v2'
+    return { relayUrl, service, protocol, enabled: true }
   }
 
   function clone (value) {
@@ -209,6 +239,12 @@
         kycVerified: parseBool(env.PEARCUP_KYC_VERIFIED, false),
         jurisdictionAllowed: parseBool(env.PEARCUP_JURISDICTION_ALLOWED, false),
         responsiblePlayAccepted: parseBool(env.PEARCUP_RESPONSIBLE_PLAY_ACCEPTED, false)
+      },
+      peerRelay: {
+        enabled: parseBool(env.PEARCUP_HIVERELAY_ENABLED, false),
+        relayUrl: env.PEARCUP_HIVERELAY_URL || env.PEARCUP_PEER_RELAY_URL || '',
+        service: 'outboxlog',
+        protocol: 'pearcup-sync-v2'
       }
     }
   }
@@ -352,6 +388,7 @@
     const qvac = qvacSettingsFrom({ env, config: loaded.config })
     const tetherWdk = tetherWdkSettingsFrom({ env, config: loaded.config })
     const liveData = liveDataSettingsFrom({ env, config: loaded.config })
+    const peerRelay = peerRelaySettingsFrom({ env, config: loaded.config })
     const sdkPackages = {}
     if (qvac) sdkPackages.qvac = qvac
     if (tetherWdk) sdkPackages.tetherWdk = tetherWdk
@@ -363,22 +400,26 @@
       },
       sdkPackages,
       liveData,
+      peerRelay,
       compliance: complianceSettingsFrom({ env, config: loaded.config })
     }
   }
 
-  // The renderer is deliberately allowed to receive only local QVAC settings.
-  // WDK seeds, payout routes, and live-money compliance decisions must stay in the
-  // host worker/KeyVault process rather than crossing into a browser context.
+  // The renderer is deliberately allowed to receive only local QVAC settings and
+  // public relay locations. WDK seeds, payout routes, and live-money compliance
+  // decisions must stay in the host worker/KeyVault process rather than crossing
+  // into a browser context.
   function loadRendererRuntimeSettings (opts = {}) {
     const env = runtimeEnvironment(opts.env)
     const config = opts.config || {}
     const qvac = qvacSettingsFrom({ env, config })
     const liveData = liveDataSettingsFrom({ env, config })
+    const peerRelay = peerRelaySettingsFrom({ env, config })
     return toRendererRuntimeSettings({
       source: { path: null, loaded: false },
       sdkPackages: qvac ? { qvac } : {},
-      liveData
+      liveData,
+      peerRelay
     })
   }
 
@@ -388,6 +429,7 @@
       source: { ...(settings.source || {}), rendererSafe: true },
       sdkPackages: qvac ? { qvac: clone(qvac) } : {},
       liveData: settings.liveData ? clone(settings.liveData) : null,
+      peerRelay: settings.peerRelay ? clone(settings.peerRelay) : null,
       compliance: {
         realMoneyEnabled: false,
         kycVerified: false,
@@ -416,9 +458,11 @@
   function applyRuntimeSettingsToRoot (rootObject = root, settings = loadRuntimeSettings()) {
     const publicSettings = rootObject && rootObject.PearCupPublicRuntimeSettings || {}
     const publicLiveData = liveDataSettingsFrom({ config: { liveData: publicSettings.liveData || null } })
+    const publicPeerRelay = peerRelaySettingsFrom({ config: { peerRelay: publicSettings.peerRelay || null } })
     const effective = {
       ...settings,
-      liveData: settings.liveData || publicLiveData || null
+      liveData: settings.liveData || publicLiveData || null,
+      peerRelay: settings.peerRelay || publicPeerRelay || null
     }
     rootObject.PearCupRuntimeSettingsValue = effective
     if (effective.compliance) rootObject.PearCupCompliance = effective.compliance
@@ -435,7 +479,9 @@
     parseBool,
     parseList,
     normalizePublicRelayUrl,
+    normalizePublicPeerRelayUrl,
     liveDataSettingsFrom,
+    peerRelaySettingsFrom,
     readJsonConfig,
     createLiveRuntimeConfigTemplate,
     payoutRecipientCount,

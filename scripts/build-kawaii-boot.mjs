@@ -23,6 +23,7 @@ const sourceFiles = [
   'worker-runtime.js',
   'settlement-service.js',
   'worker-client.js',
+  'peer-hiverelay.js',
   'peer-net.js',
   'peer-match.js',
   'peer-lobby.js',
@@ -54,6 +55,7 @@ if (args.has('--check')) {
 function buildBundle () {
   const refs = sourceFiles.map(file => `./${file}`)
   const evidenceMarkers = [
+    'PearCupHiveRelay',
     'PearCupPeerNet',
     'PearCupWorkerClient',
     'PearCupSettlementService',

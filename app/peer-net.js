@@ -2,9 +2,10 @@
 //
 // A minimal channel surface: { topic, backend, send(msg), onMessage(fn), close() }.
 // Backends are selected in production-first order:
-//   1. PearBrowser window.pear.swarm.v1, using drive-scoped Tier A subtopics.
-//   2. Optional Pear Runtime Bare worker hyperswarm, enabled only by explicit opt-in.
-//   3. BroadcastChannel for local preview and same-browser smoke tests.
+//   1. Configured HiveRelay OutboxLog (`pearcup-sync-v2`) for every host.
+//   2. PearBrowser window.pear.swarm.v1, using drive-scoped Tier A subtopics.
+//   3. Optional Pear Runtime Bare worker hyperswarm, enabled only by explicit opt-in.
+//   4. BroadcastChannel for local preview and same-browser smoke tests.
 //
 // The game/watch code stays transport-agnostic. Topic strings match the settlement
 // convention: pearcup:v1:game:<id>, pearcup:v1:watch:<id>.
@@ -201,7 +202,7 @@
   }
   function swarmSend (obj) { if (swarm.pipe) { try { swarm.pipe.write(JSON.stringify(obj) + '\n') } catch (e) {} } }
 
-  function createChannel (topic) {
+  function createLegacyChannel (topic) {
     // Prefer PearBrowser's native direct P2P bridge for hyper:// apps.
     if (hasPearBrowserSwarm()) return createPearBrowserSwarmChannel(topic)
 
@@ -234,17 +235,55 @@
     }
   }
 
+  function createChannel (topic) {
+    // HiveRelay is the one transport shared by a normal browser, PearBrowser,
+    // and Pear Runtime. It is deliberately opt-in through public runtime
+    // settings: a release cannot accidentally point friends at a relay.
+    const HiveRelay = root.PearCupHiveRelay
+    if (HiveRelay && typeof HiveRelay.isConfigured === 'function' && HiveRelay.isConfigured(root) && typeof HiveRelay.createChannel === 'function') {
+      setBackendLabel(HiveRelay.BACKEND || 'hiverelay-outboxlog-v2')
+      return HiveRelay.createChannel(topic, {
+        rootObject: root,
+        fallback: () => createLegacyChannel(topic),
+        onStatus: status => setBackendLabel(status && status.backend ? status.backend : (HiveRelay.BACKEND || 'hiverelay-outboxlog-v2'))
+      })
+    }
+    return createLegacyChannel(topic)
+  }
+
   // Short, human-shareable room code (invite link fragment).
   function newRoomCode () {
-    const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789'
+    // Friend-match invites are capabilities. Use 128 bits of randomness rather
+    // than a six-character code so a relay observer cannot feasibly enumerate
+    // active rooms. The alphabet avoids ambiguous characters when read aloud.
+    // Exactly 32 URL-safe, easy-to-read symbols for 5-bit encoding. The
+    // trailing dash avoids ambiguous 0/1/I/l/O characters.
+    const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789-'
+    const bytes = new Uint8Array(16)
+    const crypto = root.crypto || (typeof globalThis !== 'undefined' && globalThis.crypto)
+    if (crypto && typeof crypto.getRandomValues === 'function') crypto.getRandomValues(bytes)
+    else for (let i = 0; i < bytes.length; i++) bytes[i] = (Math.random() * 256) | 0
     let out = ''
-    // Deterministic-free randomness is fine for a room code (not security-critical).
-    for (let i = 0; i < 6; i++) out += alphabet[(Math.random() * alphabet.length) | 0]
+    let buffer = 0
+    let bits = 0
+    for (const byte of bytes) {
+      buffer = (buffer << 8) | byte
+      bits += 8
+      while (bits >= 5) {
+        bits -= 5
+        out += alphabet[(buffer >>> bits) & 31]
+      }
+    }
+    if (bits > 0) out += alphabet[(buffer << (5 - bits)) & 31]
     return out
   }
 
   function newPeerId () {
-    return `${Date.now().toString(36)}-${((Math.random() * 1e9) | 0).toString(36)}`
+    const bytes = new Uint8Array(16)
+    const crypto = root.crypto || (typeof globalThis !== 'undefined' && globalThis.crypto)
+    if (crypto && typeof crypto.getRandomValues === 'function') crypto.getRandomValues(bytes)
+    else for (let i = 0; i < bytes.length; i++) bytes[i] = (Math.random() * 256) | 0
+    return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
   }
 
   // djb2 string hash → hex. Used for commit-reveal (anti-peek in a friendly match).

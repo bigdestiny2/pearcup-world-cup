@@ -4727,6 +4727,7 @@ function renderGamePlaceholders () {
 
 function peerBackendInfo () {
   const backend = document.documentElement.dataset.pearcupPeerNet || ''
+  if (backend === 'hiverelay-outboxlog-v2') return { label: 'HiveRelay live sync', tone: 'is-online' }
   if (backend === 'pearbrowser-swarm-v1') return { label: 'P2P PearBrowser swarm', tone: 'is-online' }
   if (backend === 'hyperswarm') return { label: 'P2P Pear runtime', tone: 'is-online' }
   if (backend === 'broadcast-channel') return { label: 'Local preview P2P', tone: 'is-preview' }

@@ -130,6 +130,7 @@ async function checkLiveUrlMatchesBundle (rawUrl) {
     'index.html',
     'pearcup-boot.js',
     'app.js',
+    'peer-hiverelay.js',
     'peer-net.js',
     'peer-match.js',
     'peer-lobby.js',

@@ -101,6 +101,7 @@ const receipt = {
     requiredCoverage: [
       'app/index-entry.test.js',
       'app/app-deeplink.test.js',
+      'app/peer-hiverelay.test.js',
       'app/peer-match.test.js',
       'app/peer-net.test.js',
       'app/peer-preview-smoke.test.js',

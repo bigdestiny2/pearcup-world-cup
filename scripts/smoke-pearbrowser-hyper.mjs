@@ -51,6 +51,7 @@ function checkRequiredFiles () {
     'index.html',
     'styles.css',
     'app.js',
+    'peer-hiverelay.js',
     'peer-net.js',
     'peer-match.js',
     'peer-lobby.js',
@@ -120,6 +121,7 @@ function checkRendererReferences () {
       './worker-runtime.js',
       './settlement-service.js',
       './worker-client.js',
+      './peer-hiverelay.js',
       './peer-net.js',
       './peer-match.js',
       './peer-lobby.js',
@@ -129,8 +131,9 @@ function checkRendererReferences () {
       if (!bootLoader.includes(ref)) errors.push(`pearcup-boot.js must bundle ${ref}`)
     }
   } else {
+    if (!scriptRefs.includes('./peer-hiverelay.js')) errors.push('index.html must load ./peer-hiverelay.js')
     if (!scriptRefs.includes('./peer-net.js')) errors.push('index.html must load ./peer-net.js')
-    for (const ref of ['./peer-net.js', './peer-match.js', './peer-lobby.js', './watch-sync.js']) {
+    for (const ref of ['./peer-hiverelay.js', './peer-net.js', './peer-match.js', './peer-lobby.js', './watch-sync.js']) {
       const refIndex = scriptRefs.indexOf(ref)
       if (refIndex < 0) errors.push(`index.html must load ${ref}`)
       else if (appIndex >= 0 && refIndex > appIndex) errors.push(`${ref} must load before ./app.js`)
@@ -156,6 +159,7 @@ function checkBootContract () {
   const html = readText('index.html') || ''
   const app = readText('app.js') || ''
   const boot = readText('pearcup-boot.js') || ''
+  const peerHiveRelay = readText('peer-hiverelay.js') || ''
   const peerNet = readText('peer-net.js') || ''
   const peerMatch = readText('peer-match.js') || ''
   const peerLobby = readText('peer-lobby.js') || ''
@@ -195,6 +199,11 @@ function checkBootContract () {
   assertText(boot, 'PearCupWorkerSim', 'pearcup-boot.js must bundle the worker simulator')
   assertText(boot, 'PearCupStorageSim', 'pearcup-boot.js must bundle settlement storage replay helpers')
   assertText(boot, 'PearCupTransportSim', 'pearcup-boot.js must bundle P2P settlement replay helpers')
+  assertText(boot, 'PearCupHiveRelay', 'pearcup-boot.js must bundle HiveRelay browser transport')
+  assertText(peerHiveRelay, 'pearcup-sync-v2', 'peer-hiverelay.js must use the PearCup cross-platform sync protocol')
+  assertText(peerHiveRelay, '/api/swarm/events', 'peer-hiverelay.js must use HiveRelay swarm SSE')
+  assertText(peerHiveRelay, 'Ed25519', 'peer-hiverelay.js must sign relay frames in the client')
+  assertNotText(peerHiveRelay, /\bexport\s+default\b/, 'peer-hiverelay.js must not be an ESM wrapper')
   assertText(peerNet, 'pear.swarm.v1', 'peer-net.js probes PearBrowser swarm.v1')
   assertText(peerNet, 'pearcup.peer-net.v1', 'peer-net.js uses the PearCup peer protocol name')
   assertText(peerNet, 'broadcast-channel', 'peer-net.js keeps plain-browser dev fallback')

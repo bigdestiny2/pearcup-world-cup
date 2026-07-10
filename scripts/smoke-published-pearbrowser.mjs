@@ -47,6 +47,7 @@ async function checkPublishedUrl (appUrl) {
   const bootLoader = await fetchText(new URL('./pearcup-boot.js', appUrl), 'published pearcup-boot.js')
   const styles = await fetchText(new URL('./styles.css', appUrl), 'published styles.css')
   const app = await fetchText(new URL('./app.js', appUrl), 'published app.js')
+  const peerHiveRelay = await fetchText(new URL('./peer-hiverelay.js', appUrl), 'published peer-hiverelay.js')
   const peerNet = await fetchText(new URL('./peer-net.js', appUrl), 'published peer-net.js')
   const peerMatch = await fetchText(new URL('./peer-match.js', appUrl), 'published peer-match.js')
   const peerLobby = await fetchText(new URL('./peer-lobby.js', appUrl), 'published peer-lobby.js')
@@ -66,6 +67,7 @@ async function checkPublishedUrl (appUrl) {
   checkBootLoader(bootLoader)
   checkStyles(styles)
   checkApp(app)
+  checkPeerHiveRelay(peerHiveRelay)
   checkPeerNet(peerNet)
   checkPeerMatch(peerMatch)
   checkPeerLobby(peerLobby)
@@ -77,6 +79,7 @@ async function checkPublishedUrl (appUrl) {
 function checkIndex (html, label) {
   if (!html) return
   if (!html.includes('./pearcup-boot.js')) errors.push(`${label} does not load ./pearcup-boot.js`)
+  if (!html.includes('./peer-hiverelay.js')) errors.push(`${label} does not load ./peer-hiverelay.js`)
   if (!html.includes('./peer-net.js')) errors.push(`${label} does not load ./peer-net.js`)
   if (!html.includes('./peer-match.js')) errors.push(`${label} does not load ./peer-match.js`)
   if (!html.includes('./peer-lobby.js')) errors.push(`${label} does not load ./peer-lobby.js`)
@@ -89,7 +92,7 @@ function checkIndex (html, label) {
   if (/<script\b[^>]*\btype=["']module["']/i.test(html)) errors.push(`${label} must not rely on module scripts`)
   if (/\/index\.cjs(?:\+esm-wrap)?/.test(html)) errors.push(`${label} exposes /index.cjs or /index.cjs+esm-wrap`)
   const appIndex = html.indexOf('src="./app.js"')
-  for (const ref of ['src="./peer-net.js"', 'src="./peer-match.js"', 'src="./peer-lobby.js"', 'src="./watch-sync.js"']) {
+  for (const ref of ['src="./peer-hiverelay.js"', 'src="./peer-net.js"', 'src="./peer-match.js"', 'src="./peer-lobby.js"', 'src="./watch-sync.js"']) {
     const refIndex = html.indexOf(ref)
     if (refIndex >= 0 && appIndex >= 0 && refIndex > appIndex) errors.push(`${label} loads ${ref} after app.js`)
   }
@@ -128,6 +131,7 @@ function checkBootLoader (bootLoader) {
     './worker-runtime.js',
     './settlement-service.js',
     './worker-client.js',
+    './peer-hiverelay.js',
     './peer-net.js',
     './peer-match.js',
     './peer-lobby.js',
@@ -152,6 +156,14 @@ function checkBootLoader (bootLoader) {
     errors.push('published pearcup-boot.js does not include the hidden guest invite handshake self-test')
   }
   checkNoBareP2PControllerCalls(bootLoader, 'published pearcup-boot.js')
+}
+
+function checkPeerHiveRelay (peerHiveRelay) {
+  if (!peerHiveRelay) return
+  if (!peerHiveRelay.includes('pearcup-sync-v2')) errors.push('published peer-hiverelay.js is missing the PearCup cross-platform sync protocol')
+  if (!peerHiveRelay.includes('/api/swarm/events')) errors.push('published peer-hiverelay.js is missing HiveRelay swarm SSE transport')
+  if (!peerHiveRelay.includes('Ed25519')) errors.push('published peer-hiverelay.js does not sign relay frames')
+  if (/\bexport\s+default\b/.test(peerHiveRelay)) errors.push('published peer-hiverelay.js looks like an ESM wrapper')
 }
 
 function checkManifest (manifest) {

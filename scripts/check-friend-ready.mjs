@@ -65,6 +65,7 @@ async function checkPreviewUrl (url) {
   const bootLoader = await fetchText(new URL('/pearcup-boot.js', base), 'pearcup-boot.js')
   const styles = await fetchText(new URL('/styles.css', base), 'styles.css')
   const app = await fetchText(new URL('/app.js', base), 'app.js')
+  const peerHiveRelay = await fetchText(new URL('/peer-hiverelay.js', base), 'peer-hiverelay.js')
   const peerNet = await fetchText(new URL('/peer-net.js', base), 'peer-net.js')
   const peerMatch = await fetchText(new URL('/peer-match.js', base), 'peer-match.js')
   const peerLobby = await fetchText(new URL('/peer-lobby.js', base), 'peer-lobby.js')
@@ -91,7 +92,7 @@ async function checkPreviewUrl (url) {
     if (/<script\b[^>]*\btype=["']module["']/i.test(index)) errors.push('preview index.html must not rely on module scripts')
   }
   if (bootLoader) {
-    for (const ref of ['./peer-net.js', './peer-match.js', './peer-lobby.js', './watch-sync.js', './app.js']) {
+    for (const ref of ['./peer-hiverelay.js', './peer-net.js', './peer-match.js', './peer-lobby.js', './watch-sync.js', './app.js']) {
       if (!bootLoader.includes(ref)) errors.push(`preview pearcup-boot.js does not load ${ref}`)
     }
     if (!bootLoader.includes('pearcup:runtime-self-test') || !bootLoader.includes('runBootRuntimeSelfTest')) {
@@ -126,6 +127,12 @@ async function checkPreviewUrl (url) {
     if (!peerNet.includes('broadcast-channel')) errors.push('preview peer-net.js is missing the plain-browser dev fallback')
     if (!peerNet.includes('pearcupPeerNetModule')) errors.push('preview peer-net.js does not mark module readiness')
     if (/\bexport\s+default\b/.test(peerNet)) errors.push('preview peer-net.js looks like an ESM wrapper')
+  }
+  if (peerHiveRelay) {
+    if (!peerHiveRelay.includes('pearcup-sync-v2')) errors.push('preview peer-hiverelay.js is missing the PearCup cross-platform sync protocol')
+    if (!peerHiveRelay.includes('/api/swarm/events')) errors.push('preview peer-hiverelay.js is missing HiveRelay swarm SSE transport')
+    if (!peerHiveRelay.includes('Ed25519')) errors.push('preview peer-hiverelay.js does not sign relay frames')
+    if (/\bexport\s+default\b/.test(peerHiveRelay)) errors.push('preview peer-hiverelay.js looks like an ESM wrapper')
   }
   if (app && !app.includes('p2pBackendBadge')) {
     errors.push('preview app.js does not surface the active P2P backend')

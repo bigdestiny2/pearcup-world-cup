@@ -76,6 +76,7 @@ function checkStageIncludes (pkg) {
     '/styles.css',
     '/pearcup-boot.js',
     '/app.js',
+    '/peer-hiverelay.js',
     '/peer-net.js',
     '/peer-match.js',
     '/peer-lobby.js',
@@ -173,11 +174,11 @@ function checkRendererHtml () {
 
   if (bootIndex >= 0) {
     const bootLoader = readTextFile('pearcup-boot.js')
-    for (const ref of ['./sdk-runtime.js', './peer-net.js', './peer-match.js', './peer-lobby.js', './watch-sync.js', './watch-voice.js', './app.js']) {
+    for (const ref of ['./sdk-runtime.js', './peer-hiverelay.js', './peer-net.js', './peer-match.js', './peer-lobby.js', './watch-sync.js', './watch-voice.js', './app.js']) {
       if (!bootLoader.includes(ref)) errors.push(`pearcup-boot.js must load ${ref}`)
     }
   } else {
-    for (const ref of ['./peer-net.js', './peer-match.js', './peer-lobby.js', './watch-sync.js', './watch-voice.js']) {
+    for (const ref of ['./peer-hiverelay.js', './peer-net.js', './peer-match.js', './peer-lobby.js', './watch-sync.js', './watch-voice.js']) {
       const refIndex = scriptRefs.indexOf(ref)
       if (refIndex < 0) errors.push(`index.html must load ${ref}`)
       else if (appIndex >= 0 && refIndex > appIndex) {

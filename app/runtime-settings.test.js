@@ -131,6 +131,28 @@ test('renderer settings expose only public HTTPS live-data relay locations', () 
   }), null)
 })
 
+test('renderer settings expose a configured HiveRelay OutboxLog origin but never a credential', () => {
+  const hostSettings = runtimeSettings.loadRuntimeSettings({
+    env: { PEARCUP_HIVERELAY_URL: 'https://outbox.example.test/' },
+    config: {
+      peerRelay: { enabled: true, relayUrl: 'https://ignored.example.test', service: 'outboxlog', protocol: 'pearcup-sync-v2' },
+      sdkPackages: { tetherWdk: { enabled: true, seedPhrase: 'worker-only-seed' } }
+    }
+  })
+  const rendererSettings = runtimeSettings.toRendererRuntimeSettings(hostSettings)
+
+  assert.deepEqual(rendererSettings.peerRelay, {
+    enabled: true,
+    relayUrl: 'https://outbox.example.test',
+    service: 'outboxlog',
+    protocol: 'pearcup-sync-v2'
+  })
+  assert.equal(JSON.stringify(rendererSettings).includes('worker-only-seed'), false)
+  assert.equal(runtimeSettings.peerRelaySettingsFrom({
+    env: { PEARCUP_HIVERELAY_URL: 'https://secret@outbox.example.test' }
+  }), null)
+})
+
 test('public live-data settings fill a renderer-safe fallback without overriding a host relay', () => {
   const rootObject = {
     PearCupPublicRuntimeSettings: {
@@ -148,4 +170,23 @@ test('public live-data settings fill a renderer-safe fallback without overriding
     compliance: {}
   })
   assert.equal(hostApplied.liveData.relayUrl, 'https://host.example.test/v1/live-match.json')
+})
+
+test('public HiveRelay settings fill a renderer-safe fallback without overriding a host relay', () => {
+  const rootObject = {
+    PearCupPublicRuntimeSettings: {
+      peerRelay: { enabled: true, relayUrl: 'https://public-outbox.example.test', service: 'outboxlog' }
+    }
+  }
+  const applied = runtimeSettings.applyRuntimeSettingsToRoot(rootObject, {
+    source: { loaded: false }, sdkPackages: {}, liveData: null, peerRelay: null, compliance: {}
+  })
+  assert.equal(applied.peerRelay.relayUrl, 'https://public-outbox.example.test')
+
+  const hostApplied = runtimeSettings.applyRuntimeSettingsToRoot(rootObject, {
+    source: { loaded: true }, sdkPackages: {}, liveData: null,
+    peerRelay: { enabled: true, relayUrl: 'https://host-outbox.example.test', service: 'outboxlog', protocol: 'pearcup-sync-v2' },
+    compliance: {}
+  })
+  assert.equal(hostApplied.peerRelay.relayUrl, 'https://host-outbox.example.test')
 })

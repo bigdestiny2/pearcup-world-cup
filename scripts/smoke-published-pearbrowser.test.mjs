@@ -13,6 +13,7 @@ test('published smoke rejects fallback text without the boot-error banner contra
     indexHtml: `<!doctype html>
       <title>PearCup Prototype</title>
       <script src="./pearcup-boot.js"></script>
+      <script src="./peer-hiverelay.js"></script>
       <script src="./peer-net.js"></script>
       <script src="./peer-match.js"></script>
       <script src="./peer-lobby.js"></script>
@@ -115,7 +116,7 @@ function runSmoke (gateway, targetArgs = ['--drive', drive]) {
   })
 }
 
-function startFixtureServer ({ indexHtml = validIndexHtml(), peerMatchJs = validPeerMatchJs(), watchSyncJs = validWatchSyncJs() }) {
+function startFixtureServer ({ indexHtml = validIndexHtml(), peerHiveRelayJs = validPeerHiveRelayJs(), peerMatchJs = validPeerMatchJs(), watchSyncJs = validWatchSyncJs() }) {
   const files = new Map([
     ['index.html', text(indexHtml, 'text/html; charset=utf-8')],
     ['manifest.json', text(JSON.stringify({
@@ -131,6 +132,7 @@ function startFixtureServer ({ indexHtml = validIndexHtml(), peerMatchJs = valid
       './worker-runtime.js',
       './settlement-service.js',
       './worker-client.js',
+      './peer-hiverelay.js',
       './peer-net.js',
       './peer-match.js',
       './peer-lobby.js',
@@ -169,6 +171,7 @@ function startFixtureServer ({ indexHtml = validIndexHtml(), peerMatchJs = valid
       'broadcast-channel',
       'pearcupPeerNetModule'
     ].join('\n'), 'text/javascript; charset=utf-8')],
+    ['peer-hiverelay.js', text(peerHiveRelayJs, 'text/javascript; charset=utf-8')],
     ['peer-match.js', text(peerMatchJs, 'text/javascript; charset=utf-8')],
     ['peer-lobby.js', text([
       'PearCupPeerNet',
@@ -225,6 +228,7 @@ function validIndexHtml () {
   return `<!doctype html>
     <title>PearCup Prototype</title>
     <script src="./pearcup-boot.js"></script>
+    <script src="./peer-hiverelay.js"></script>
     <script src="./peer-net.js"></script>
     <script src="./peer-match.js"></script>
     <script src="./peer-lobby.js"></script>
@@ -264,6 +268,14 @@ function validPeerMatchJs () {
     'pearcupPeerMatchStarted',
     'hyperLaunchBase',
     'hyper://'
+  ].join('\n')
+}
+
+function validPeerHiveRelayJs () {
+  return [
+    'pearcup-sync-v2',
+    '/api/swarm/events',
+    'Ed25519'
   ].join('\n')
 }
 

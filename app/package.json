@@ -45,6 +45,7 @@
         "/storage-sim.js",
         "/sdk-runtime.js",
         "/app.js",
+        "/peer-hiverelay.js",
         "/peer-net.js",
         "/peer-match.js",
         "/peer-lobby.js",

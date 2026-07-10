@@ -29,6 +29,12 @@
     "jurisdictionAllowed": false,
     "responsiblePlayAccepted": false
   },
+  "peerRelay": {
+    "enabled": false,
+    "relayUrl": "https://outbox.pearcup.example",
+    "service": "outboxlog",
+    "protocol": "pearcup-sync-v2"
+  },
   "providers": {
     "higgsfield": {
       "keyId": "",

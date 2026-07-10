@@ -1,6 +1,6 @@
 # PearCup 🍐⚽
 
-**A peer‑to‑peer World Cup bracket, watch party, and prediction game — built on the [Pear runtime](https://docs.pears.com/). No servers, no sign‑up.**
+**A World Cup bracket, watch party, and prediction game — built on the [Pear runtime](https://docs.pears.com/), with signed HiveRelay sync for browser-to-Pear multiplayer. No account required.**
 
 Pick the knockout bracket, drop into a live watch room, and play real peer‑to‑peer penalty shootouts against friends — everything settles P2P over Holepunch, with a Tether WDK wallet and a QVAC trusted referee for fair, verifiable results.
 
@@ -22,7 +22,7 @@ pear run pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo
 - **📺 Watch party** — a shared live match room with reactions, multilingual commentary, and a synced feed.
 - **🎮 P2P penalty minigame** — real peer‑to‑peer penalty shootouts (Penalty Clash) over the swarm, with matchmaking, invites, and hidden‑guest handshakes.
 - **💸 Real settlement rails** — Tether WDK for entries / escrow / payouts and a QVAC trusted referee for game rounds and pool settlement, with receipt hashes surfaced in the UI.
-- **🌐 True P2P** — no backend. Presence, rooms, chat, and results converge over Holepunch topics through the Pear runtime.
+- **🌐 Cross-platform multiplayer** — normal browsers, PearBrowser, and Pear Runtime can share signed `pearcup-sync-v2` rooms through a dedicated HiveRelay OutboxLog endpoint; direct Holepunch remains an optional fast path/fallback.
 
 ## Repository scope
 
@@ -65,10 +65,17 @@ For a headless proof of the same host/guest handshake, run
 
 ```sh
 npm test                 # unit + P2P + deep-link tests
+npm run test:hiverelay-conformance # real local OutboxLog HTTP/SSE contract
 npm run check            # runtime, boot bundle, and Pear-compat checks
 npm run audit:launch     # QVAC / WDK / payout / compliance launch gates
 ```
 
 ## Architecture
 
-No backend. The renderer stays SDK‑free; a Pear **worker bridge** owns the P2P / WDK / QVAC boundary. Presence, rooms, chat, and settlement converge over Holepunch topics with append‑only event logs and replay roots, keeping real‑money rails locked until SDK and compliance gates are ready. See [`docs/pear-runtime-boundary.md`](docs/pear-runtime-boundary.md) for the renderer / worker / WDK / QVAC split.
+The renderer stays SDK-free; a Pear **worker bridge** owns the WDK / QVAC
+boundary. When configured, a generic HiveRelay OutboxLog endpoint provides
+signed, short-lived room transport for browser-to-Pear play; direct Holepunch
+is retained as an optional fast path. Real-money rails remain locked behind the
+existing SDK and compliance gates. See
+[`docs/pear-runtime-boundary.md`](docs/pear-runtime-boundary.md) and
+[`docs/hiverelay-pearcup-sync.md`](docs/hiverelay-pearcup-sync.md).
