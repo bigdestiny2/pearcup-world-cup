@@ -3,10 +3,6 @@
 // Uses Polymarket's public Gamma API for discovery and its public CLOB midpoint
 // endpoint for fresher prices when token IDs are available. It never reads a wallet,
 // creates an order, or exposes the renderer to a third-party origin.
-import { readFile, writeFile } from 'node:fs/promises'
-import { fileURLToPath } from 'node:url'
-import { resolve } from 'node:path'
-
 const LIVE_FILE = new URL('./live-match.json', import.meta.url)
 const OUTPUT_FILE = new URL('./polymarket-odds.json', import.meta.url)
 const GAMMA_SEARCH = 'https://gamma-api.polymarket.com/public-search'
@@ -32,12 +28,60 @@ function includesTeam (value, team) {
   return text(value).toLowerCase().includes(text(team).toLowerCase())
 }
 
-function activeMatchFromSnapshot (snapshot) {
-  const match = snapshot && snapshot.activeMatch || snapshot || {}
+export function matchFromSnapshot (snapshot) {
+  const match = snapshot || {}
   const home = text(match.homeTeam && (match.homeTeam.shortName || match.homeTeam.name) || match.home && match.home.name)
   const away = text(match.awayTeam && (match.awayTeam.shortName || match.awayTeam.name) || match.away && match.away.name)
   if (!home || !away) throw new Error('Live match snapshot is missing home or away team')
   return { id: match.id || null, home, away, stage: match.stage || null, utcDate: match.utcDate || null }
+}
+
+export function activeMatchFromSnapshot (snapshot) {
+  return matchFromSnapshot(snapshot && snapshot.activeMatch || snapshot || {})
+}
+
+function fixtureRank (match) {
+  const status = text(match && match.status).toUpperCase()
+  if (['IN_PLAY', 'LIVE', 'PAUSED'].includes(status)) return 0
+  if (['TIMED', 'SCHEDULED'].includes(status)) return 1
+  if (status === 'FINISHED') return 3
+  return 2
+}
+
+// The active fixture always comes first, followed by the next fixtures that have
+// both sides confirmed. This keeps public provider traffic bounded while letting
+// Home, Watch and Games switch among the same canonical fixture IDs.
+export function fixtureMatchesFromSnapshot (snapshot, { limit = 6 } = {}) {
+  const seen = new Set()
+  const active = snapshot && snapshot.activeMatch || null
+  const candidates = Array.isArray(snapshot && snapshot.matches) ? snapshot.matches : []
+  const normalizedActive = (() => { try { return active ? matchFromSnapshot(active) : null } catch { return null } })()
+  const activeKickoff = Date.parse(normalizedActive && normalizedActive.utcDate || '')
+  if (normalizedActive && normalizedActive.id != null) seen.add(String(normalizedActive.id))
+  const remaining = candidates
+    .filter(match => {
+      if (!match) return false
+      const kickoff = Date.parse(match.utcDate || '')
+      // Never backfill a future selector with historical fixtures merely because
+      // the upstream schedule still labels them TIMED. A currently live match is
+      // kept even if its kickoff precedes the selected active fixture.
+      return !Number.isFinite(activeKickoff) || !Number.isFinite(kickoff) || kickoff >= activeKickoff || fixtureRank(match) === 0
+    })
+    .sort((left, right) => {
+      const rank = fixtureRank(left) - fixtureRank(right)
+      return rank || Date.parse(left.utcDate || '') - Date.parse(right.utcDate || '')
+    })
+    .map(match => {
+      try { return matchFromSnapshot(match) } catch { return null }
+    })
+    .filter(match => {
+      const id = String(match && match.id || '')
+      if (!match || !id || seen.has(id)) return false
+      seen.add(id)
+      return true
+    })
+  const limitCount = Math.max(1, Math.min(12, Number(limit) || 6))
+  return [...(normalizedActive ? [normalizedActive] : []), ...remaining].slice(0, limitCount)
 }
 
 export function marketsFromSearch (payload = {}) {
@@ -160,35 +204,110 @@ export function buildOddsSnapshot ({ match, market, midpointMap = {}, fetchedAt 
   }
 }
 
-export async function createSnapshot ({ liveSnapshot, now } = {}) {
-  const match = activeMatchFromSnapshot(liveSnapshot)
-  const market = await findMarket(match)
-  const tokenIds = market ? parseJsonList(market.clobTokenIds).filter(Boolean) : []
-  const midpointMap = await midpointPrices(tokenIds)
-  return buildOddsSnapshot({ match, market, midpointMap, fetchedAt: now || new Date().toISOString() })
-}
-
-async function main () {
-  const liveSnapshot = JSON.parse(await readFile(LIVE_FILE, 'utf8'))
-  const snapshot = await createSnapshot({ liveSnapshot })
-  await writeFile(OUTPUT_FILE, `${JSON.stringify(snapshot, null, 2)}\n`)
-  console.log(`wrote polymarket-odds.json: ${snapshot.status}${snapshot.market ? ` · ${snapshot.market.question}` : ''}`)
-}
-
-async function writeFailureSnapshot (error) {
-  const snapshot = {
+function unavailableSnapshot (match, fetchedAt, reason) {
+  return {
     schema: 'pearcup-polymarket-v1',
     provider: 'Polymarket',
     status: 'unavailable',
-    fetchedAt: new Date().toISOString(),
+    fetchedAt,
+    match,
+    reason: reason || 'The public Polymarket relay could not refresh this fixture.'
+  }
+}
+
+async function createMatchSnapshot ({ match, fetchedAt }) {
+  const market = await findMarket(match)
+  const tokenIds = market ? parseJsonList(market.clobTokenIds).filter(Boolean) : []
+  const midpointMap = await midpointPrices(tokenIds)
+  return buildOddsSnapshot({ match, market, midpointMap, fetchedAt })
+}
+
+export function oddsEntries (snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return {}
+  if (snapshot.schema === 'pearcup-polymarket-v2' && snapshot.matches && typeof snapshot.matches === 'object') return snapshot.matches
+  const id = snapshot.match && snapshot.match.id
+  return id == null ? {} : { [String(id)]: snapshot }
+}
+
+// Preserve the previous successful price for a fixture if the newest provider
+// attempt fails. Its original fetchedAt stays intact so clients show it as stale
+// rather than falsely presenting it as a fresh price.
+export function mergeLastKnownGoodOdds (previous, next) {
+  const previousEntries = oddsEntries(previous)
+  const nextEntries = oddsEntries(next)
+  const matches = {}
+  for (const [id, snapshot] of Object.entries(nextEntries)) {
+    const prior = previousEntries[id]
+    matches[id] = snapshot && snapshot.status === 'ok'
+      ? snapshot
+      : prior && prior.status === 'ok'
+        ? prior
+        : snapshot
+  }
+  return {
+    ...next,
+    status: Object.values(matches).some(snapshot => snapshot && snapshot.status === 'ok') ? 'ok' : 'unavailable',
+    matches
+  }
+}
+
+export async function createFixtureOddsSnapshot ({ liveSnapshot, now, limit } = {}) {
+  const fetchedAt = now || new Date().toISOString()
+  const matches = fixtureMatchesFromSnapshot(liveSnapshot, { limit })
+  const entries = await Promise.all(matches.map(async match => {
+    try {
+      return [String(match.id), await createMatchSnapshot({ match, fetchedAt })]
+    } catch (error) {
+      return [String(match.id), unavailableSnapshot(match, fetchedAt)]
+    }
+  }))
+  const snapshots = Object.fromEntries(entries)
+  return {
+    schema: 'pearcup-polymarket-v2',
+    provider: 'Polymarket',
+    status: Object.values(snapshots).some(snapshot => snapshot.status === 'ok') ? 'ok' : 'unavailable',
+    generatedAt: fetchedAt,
+    matches: snapshots
+  }
+}
+
+export async function createSnapshot ({ liveSnapshot, now } = {}) {
+  const match = activeMatchFromSnapshot(liveSnapshot)
+  return createMatchSnapshot({ match, fetchedAt: now || new Date().toISOString() })
+}
+
+async function main () {
+  const { readFile, writeFile } = await import('node:fs/promises')
+  const liveSnapshot = JSON.parse(await readFile(LIVE_FILE, 'utf8'))
+  const next = await createFixtureOddsSnapshot({ liveSnapshot })
+  let previous = null
+  try { previous = JSON.parse(await readFile(OUTPUT_FILE, 'utf8')) } catch {}
+  const snapshot = mergeLastKnownGoodOdds(previous, next)
+  await writeFile(OUTPUT_FILE, `${JSON.stringify(snapshot, null, 2)}\n`)
+  console.log(`wrote polymarket-odds.json: ${snapshot.status} · ${Object.keys(snapshot.matches || {}).length} fixtures`)
+}
+
+async function writeFailureSnapshot (error) {
+  const { writeFile } = await import('node:fs/promises')
+  const snapshot = {
+    schema: 'pearcup-polymarket-v2',
+    provider: 'Polymarket',
+    status: 'unavailable',
+    generatedAt: new Date().toISOString(),
+    matches: {},
     reason: 'The public Polymarket relay could not refresh this fixture.'
   }
   await writeFile(OUTPUT_FILE, `${JSON.stringify(snapshot, null, 2)}\n`).catch(() => {})
   console.error('Polymarket odds relay failed:', error && error.message || error)
 }
 
-const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-if (isMain) {
+async function isNodeMain () {
+  if (typeof process === 'undefined' || !process.argv || !process.argv[1]) return false
+  const { pathToFileURL } = await import('node:url')
+  return pathToFileURL(process.argv[1]).href === import.meta.url
+}
+
+if (await isNodeMain()) {
   main().catch(async error => {
     await writeFailureSnapshot(error)
     process.exitCode = 1

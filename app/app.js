@@ -321,6 +321,7 @@ function loadState () {
     enteredPools: {},
     enteredGamePools: {},
     selectedGamePool: '',
+    selectedOddsMatchId: '',
     gamePoolDraft: { matchId: '', pick: '', tier: 10 },
     triviaScore: 0,
     liveConfig: { enabled: false, provider: 'football-data', apiKey: '', matchId: '', proxy: '', pollSec: 30 },
@@ -1096,15 +1097,25 @@ function renderHomeHero () {
 // never contacts a prediction-market API directly and this card is informational:
 // implied probabilities only, with no trade or wallet action attached.
 const POLYMARKET_RELAY_FILE = 'polymarket-odds.json'
-let polymarketOddsSnapshot = null
-let polymarketOddsFetchInFlight = null
+const POLYMARKET_REGISTRY_SCHEMA = 'pearcup-polymarket-v2'
+let polymarketOddsRegistry = null
+const polymarketOddsFetchInFlight = new Map()
+const polymarketOddsPending = new Set()
 
 function withRelayCacheBust (url) {
   return `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`
 }
 
-function polymarketRelayUrl () {
-  return productionLiveData ? productionLiveData.oddsRelayUrl : POLYMARKET_RELAY_FILE
+function polymarketRelayUrl (matchId = '') {
+  const base = productionLiveData ? productionLiveData.oddsRelayUrl : POLYMARKET_RELAY_FILE
+  if (!matchId) return base
+  try {
+    const url = new URL(base, window.location.href)
+    url.searchParams.set('matchId', String(matchId))
+    return url.href
+  } catch {
+    return base
+  }
 }
 
 function polymarketOddsAreStale (snapshot) {
@@ -1130,30 +1141,165 @@ function compactUsdc (value) {
   return `$${Math.round(number)}`
 }
 
+function polymarketRegistryEntries (registry = polymarketOddsRegistry) {
+  if (!registry || typeof registry !== 'object') return {}
+  if (registry.schema === POLYMARKET_REGISTRY_SCHEMA && registry.matches && typeof registry.matches === 'object') return registry.matches
+  const id = registry.match && registry.match.id
+  return id == null ? {} : { [String(id)]: registry }
+}
+
+function polymarketRegistryFromPayload (payload) {
+  if (!payload || typeof payload !== 'object') return null
+  if (payload.schema === POLYMARKET_REGISTRY_SCHEMA && payload.matches && typeof payload.matches === 'object') return payload
+  const id = payload.match && payload.match.id
+  if (payload.schema !== 'pearcup-polymarket-v1' || id == null) return null
+  return {
+    schema: POLYMARKET_REGISTRY_SCHEMA,
+    provider: payload.provider || 'Polymarket',
+    status: payload.status || 'unavailable',
+    generatedAt: payload.fetchedAt || new Date().toISOString(),
+    matches: { [String(id)]: payload }
+  }
+}
+
+function mergePolymarketRegistry (current, incoming) {
+  const matches = { ...polymarketRegistryEntries(current), ...polymarketRegistryEntries(incoming) }
+  return {
+    ...(incoming || {}),
+    schema: POLYMARKET_REGISTRY_SCHEMA,
+    provider: incoming && incoming.provider || current && current.provider || 'Polymarket',
+    status: Object.values(matches).some(snapshot => snapshot && snapshot.status === 'ok') ? 'ok' : 'unavailable',
+    generatedAt: incoming && (incoming.generatedAt || incoming.fetchedAt) || current && current.generatedAt || new Date().toISOString(),
+    matches
+  }
+}
+
+function polymarketFixtureFromMatch (match) {
+  if (!match || match.id == null) return null
+  const home = match.homeTeam || match.home || {}
+  const away = match.awayTeam || match.away || {}
+  const homeName = home.shortName || home.name || ''
+  const awayName = away.shortName || away.name || ''
+  if (!homeName || !awayName) return null
+  return { id: String(match.id), label: `${homeName} vs ${awayName}`, status: match.status || '', utcDate: match.utcDate || '' }
+}
+
+function polymarketFixtures () {
+  const fixtures = new Map()
+  const add = fixture => { if (fixture && !fixtures.has(fixture.id)) fixtures.set(fixture.id, fixture) }
+  let activeId = ''
+  let activeKickoff = 0
+  const indexedFixtureIds = new Set(Object.keys(polymarketRegistryEntries()))
+  try {
+    const st = feedState()
+    if (st && st.matchId && st.home && st.away) {
+      activeId = String(st.matchId)
+      activeKickoff = Date.parse(st.utcDate || '') || 0
+      add({ id: activeId, label: `${st.home.name} vs ${st.away.name}`, status: st.matchStatus || '', utcDate: st.utcDate || '' })
+    }
+    ;(Array.isArray(st && st.fixtures) ? st.fixtures : []).forEach(match => {
+      const fixture = polymarketFixtureFromMatch(match)
+      if (!fixture) return
+      const kickoff = Date.parse(fixture.utcDate || '') || 0
+      const isUpcoming = !activeKickoff || !kickoff || kickoff >= activeKickoff || /IN_PLAY|LIVE|PAUSED/.test(String(fixture.status || ''))
+      const shouldInclude = fixture.id === activeId || (indexedFixtureIds.size === 0 ? isUpcoming : indexedFixtureIds.has(fixture.id))
+      if (shouldInclude) add(fixture)
+    })
+  } catch {}
+  Object.entries(polymarketRegistryEntries()).forEach(([id, snapshot]) => {
+    const match = snapshot && snapshot.match || {}
+    if (match.home && match.away) add({ id: String(id), label: `${match.home} vs ${match.away}`, status: '', utcDate: match.utcDate || '' })
+  })
+  const ranked = [...fixtures.values()].sort((left, right) => {
+    const active = value => value.id === activeId ? 0 : 1
+    const live = value => /IN_PLAY|LIVE|PAUSED/.test(String(value.status || '')) ? 0 : 1
+    return active(left) - active(right) || live(left) - live(right) || Date.parse(left.utcDate || '') - Date.parse(right.utcDate || '')
+  })
+  const selected = String(state.selectedOddsMatchId || '')
+  const current = ranked.find(fixture => fixture.id === selected)
+  const bounded = ranked.slice(0, 6)
+  if (current && !bounded.some(fixture => fixture.id === current.id)) bounded.push(current)
+  return bounded
+}
+
+function selectedPolymarketMatchId () {
+  const fixtures = polymarketFixtures()
+  const configured = String(state.selectedOddsMatchId || '')
+  if (configured && fixtures.some(fixture => fixture.id === configured)) return configured
+  try {
+    const active = feedState()
+    if (active && active.matchId != null && fixtures.some(fixture => fixture.id === String(active.matchId))) return String(active.matchId)
+  } catch {}
+  return fixtures[0] && fixtures[0].id || ''
+}
+
+function selectPolymarketMatch (matchId, { refresh = true } = {}) {
+  const id = String(matchId || '')
+  if (!id) return
+  if (state.selectedOddsMatchId !== id) {
+    state.selectedOddsMatchId = id
+    persist()
+  }
+  renderPolymarketOdds()
+  if (refresh) void detectPolymarketOdds(id)
+}
+
 function polymarketOddsPanels () {
-  return [$('#polymarketOddsPanel'), $('#watchPolymarketOddsPanel')].filter(Boolean)
+  return [$('#polymarketOddsPanel'), $('#watchPolymarketOddsPanel'), $('#gamesPolymarketOddsPanel')].filter(Boolean)
+}
+
+function polymarketFixturePicker (selectedId) {
+  const fixtures = polymarketFixtures()
+  if (!fixtures.length) return ''
+  return `<label class="polymarket-picker"><span>Fixture</span><select data-polymarket-match aria-label="Choose fixture odds">
+    ${fixtures.map(fixture => `<option value="${escapeHtml(fixture.id)}"${fixture.id === selectedId ? ' selected' : ''}>${escapeHtml(fixture.label)}</option>`).join('')}
+  </select></label>`
+}
+
+function unavailablePolymarketFixture (matchId) {
+  const fixture = polymarketFixtures().find(item => item.id === String(matchId))
+  const [home = 'Home', away = 'Away'] = String(fixture && fixture.label || '').split(' vs ')
+  return {
+    schema: 'pearcup-polymarket-v1',
+    provider: 'Polymarket',
+    status: 'unavailable',
+    fetchedAt: new Date().toISOString(),
+    match: { id: String(matchId), home, away, utcDate: fixture && fixture.utcDate || null },
+    reason: 'No public Polymarket market is available for this fixture yet.'
+  }
 }
 
 function renderPolymarketOdds () {
   const panels = polymarketOddsPanels()
   if (!panels.length) return
   const render = markup => panels.forEach(panel => { panel.innerHTML = markup })
-  const snapshot = polymarketOddsSnapshot
+  const selectedId = selectedPolymarketMatchId()
+  const snapshot = polymarketRegistryEntries()[selectedId] || null
+  const picker = polymarketFixturePicker(selectedId)
+  const bindPicker = () => panels.forEach(panel => {
+    const pickerEl = $('[data-polymarket-match]', panel)
+    if (pickerEl) pickerEl.addEventListener('change', () => selectPolymarketMatch(pickerEl.value))
+  })
   if (!snapshot) {
     render(`
       <div class="rail-header"><p class="eyebrow">Polymarket</p><strong>Implied odds</strong></div>
+      ${picker}
       <p class="polymarket-note">Connecting to the public odds relay…</p>`)
+    bindPicker()
     return
   }
   if (snapshot.status !== 'ok' || !Array.isArray(snapshot.odds) || snapshot.odds.length < 2) {
     render(`
       <div class="rail-header"><p class="eyebrow">Polymarket</p><strong>Implied odds</strong></div>
+      ${picker}
       <p class="polymarket-note">${escapeHtml(snapshot.reason || 'No active public market is available for this fixture yet.')}</p>
       <small class="polymarket-disclaimer">Informational only · no wallet or trading connection</small>`)
+    bindPicker()
     return
   }
   const stale = polymarketOddsAreStale(snapshot)
-  const freshness = stale ? 'Stale' : 'Live'
+  const pending = polymarketOddsPending.has(selectedId)
+  const freshness = pending ? 'Updating' : stale ? 'Stale' : 'Live'
   const updated = snapshot.fetchedAt ? fmtTime(snapshot.fetchedAt) : ''
   const odds = snapshot.odds.slice(0, 3).map(odd => ({
     label: String(odd.outcome || 'Outcome'),
@@ -1164,8 +1310,9 @@ function renderPolymarketOdds () {
   render(`
     <div class="rail-header">
       <p class="eyebrow">Polymarket</p>
-      <strong>Implied odds <span class="polymarket-live ${stale ? 'is-stale' : ''}"><i></i>${freshness}</span></strong>
+      <strong>Implied odds <span class="polymarket-live ${stale || pending ? 'is-stale' : ''}"><i></i>${freshness}</span></strong>
     </div>
+    ${picker}
     <p class="polymarket-question">${escapeHtml(snapshot.market && snapshot.market.question || 'Match winner')}</p>
     <div class="polymarket-rows">
       ${odds.map((odd, index) => `
@@ -1179,28 +1326,44 @@ function renderPolymarketOdds () {
       ${destination ? `<a href="${escapeHtml(destination)}" target="_blank" rel="noreferrer">Market ↗</a>` : ''}
     </div>
     <small class="polymarket-disclaimer">Prices are market-implied probabilities, not advice.</small>`)
+  bindPicker()
 }
 
-async function detectPolymarketOdds () {
-  if (polymarketOddsFetchInFlight) return polymarketOddsFetchInFlight
-  polymarketOddsFetchInFlight = fetch(withRelayCacheBust(polymarketRelayUrl()), { cache: 'no-store' })
+async function detectPolymarketOdds (matchId = selectedPolymarketMatchId()) {
+  const id = String(matchId || '')
+  const key = id || '__registry__'
+  if (polymarketOddsFetchInFlight.has(key)) return polymarketOddsFetchInFlight.get(key)
+  polymarketOddsPending.add(id)
+  renderPolymarketOdds()
+  const request = fetch(withRelayCacheBust(polymarketRelayUrl(id)), { cache: 'no-store' })
     .then(response => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       return response.json()
     })
-    .then(snapshot => {
-      if (!snapshot || snapshot.schema !== 'pearcup-polymarket-v1') throw new Error('Unsupported Polymarket odds snapshot')
-      polymarketOddsSnapshot = snapshot
+    .then(payload => {
+      const incoming = polymarketRegistryFromPayload(payload)
+      if (!incoming) throw new Error('Unsupported Polymarket odds snapshot')
+      polymarketOddsRegistry = mergePolymarketRegistry(polymarketOddsRegistry, incoming)
       renderPolymarketOdds()
-      return snapshot
+      return incoming
     })
     .catch(() => {
       // Leave the prior snapshot on screen; it will be clearly labelled stale.
+      // A fixture outside the relay's bounded registry is an honest unavailable
+      // state, not an endless “connecting” spinner.
+      if (id && !polymarketRegistryEntries()[id]) {
+        polymarketOddsRegistry = mergePolymarketRegistry(polymarketOddsRegistry, polymarketRegistryFromPayload(unavailablePolymarketFixture(id)))
+      }
       renderPolymarketOdds()
       return null
     })
-    .finally(() => { polymarketOddsFetchInFlight = null })
-  return polymarketOddsFetchInFlight
+    .finally(() => {
+      polymarketOddsFetchInFlight.delete(key)
+      polymarketOddsPending.delete(id)
+      renderPolymarketOdds()
+    })
+  polymarketOddsFetchInFlight.set(key, request)
+  return request
 }
 
 function renderHomeDashboard () {
@@ -1220,6 +1383,7 @@ function renderHomeDashboard () {
   // First fixture card mirrors the live feed; the rest are the upcoming schedule.
   const snap = livePanelSnapshot()
   const liveFixture = {
+    oddsMatchId: snap.st && snap.st.matchId != null ? String(snap.st.matchId) : '',
     status: snap.status,
     title: snap.st && snap.st.hasScore === false
       ? `${snap.home.name} vs ${snap.away.name}`
@@ -1245,6 +1409,7 @@ function renderHomeDashboard () {
             ? 'FT'
             : fmtTime(match.utcDate) || 'Upcoming'
         return {
+          oddsMatchId: match.id != null ? String(match.id) : '',
           status,
           title: hasScore
             ? `${home.shortName || home.name || 'Home'} ${score.home ?? 0} - ${score.away ?? 0} ${away.shortName || away.name || 'Away'}`
@@ -1263,11 +1428,15 @@ function renderHomeDashboard () {
         <strong>${fixture.title}</strong>
         <small>${fixture.detail}</small>
       </div>
-      <button class="icon-button ${fixture.live ? 'is-live' : ''}" type="button" data-view="watch" aria-label="Open watch room">
+      <button class="icon-button ${fixture.live ? 'is-live' : ''}" type="button" data-view="watch"${fixture.oddsMatchId ? ` data-polymarket-fixture="${escapeHtml(fixture.oddsMatchId)}"` : ''} aria-label="Open watch room">
         <svg viewBox="0 0 24 24"><path d="${fixture.live ? 'M8 5v14l11-7Z' : 'M4 12h16M12 4v16'}"/></svg>
       </button>
     </div>
   `).join('')
+
+  $$('#homeFixtures [data-polymarket-fixture]').forEach(button => {
+    button.addEventListener('click', () => selectPolymarketMatch(button.dataset.polymarketFixture))
+  })
 
   $('#leaderPanel').innerHTML = `
     <div class="rail-header">
@@ -1633,6 +1802,7 @@ function gamePoolFixtures () {
   const primary = st && st.home && st.away
     ? [{
         id: matchPoolFixtureId(st.home, st.away, st.matchId || st.id),
+        oddsMatchId: st.matchId == null ? '' : String(st.matchId),
         home: liveTeamForPool(st.home, 'home'),
         away: liveTeamForPool(st.away, 'away'),
         status: matchStateLabel(st).txt,
@@ -1648,6 +1818,7 @@ function gamePoolFixtures () {
     const status = match.status || 'Scheduled'
     return {
       id: matchPoolFixtureId(home, away, match.id),
+      oddsMatchId: match.id == null ? '' : String(match.id),
       home,
       away,
       status: status === 'IN_PLAY' || status === 'LIVE' ? 'LIVE' : status === 'TIMED' ? 'Upcoming' : status,
@@ -1657,8 +1828,8 @@ function gamePoolFixtures () {
     }
   })
   const fallback = [
-    { id: 'match-fr-ma', home: teamById('fr'), away: teamById('ma'), status: 'Upcoming', live: false, locked: false, stage: 'Quarter-final' },
-    { id: 'match-no-eng', home: teamById('no'), away: teamById('eng'), status: 'Upcoming', live: false, locked: false, stage: 'Quarter-final' }
+    { id: 'match-fr-ma', oddsMatchId: '', home: teamById('fr'), away: teamById('ma'), status: 'Upcoming', live: false, locked: false, stage: 'Quarter-final' },
+    { id: 'match-no-eng', oddsMatchId: '', home: teamById('no'), away: teamById('eng'), status: 'Upcoming', live: false, locked: false, stage: 'Quarter-final' }
   ]
   const seen = new Set()
   return [...primary, ...fromRelay, ...fallback].filter(fixture => {
@@ -1729,6 +1900,7 @@ function renderGamePools () {
     state.selectedGamePool = matchId
     state.gamePoolDraft = { matchId, pick: fixture.home.id, tier: 10 }
     persist()
+    if (fixture.oddsMatchId) selectPolymarketMatch(fixture.oddsMatchId)
     renderGamePools()
   }))
   $$('#gamePoolGrid [data-game-pool-team]').forEach(button => button.addEventListener('click', () => {
@@ -1747,6 +1919,8 @@ function renderGamePools () {
   }))
   $$('#gamePoolGrid [data-watch-game-pool]').forEach(button => button.addEventListener('click', () => {
     state.selectedGamePool = button.dataset.watchGamePool
+    const fixture = fixtures.find(item => item.id === state.selectedGamePool)
+    if (fixture && fixture.oddsMatchId) selectPolymarketMatch(fixture.oddsMatchId)
     persist()
     setView('watch')
   }))
@@ -3216,6 +3390,9 @@ function startLiveFeed () {
 let watchTrivia = null
 let watchTriviaTimer = null
 let watchTriviaGenerating = false
+let watchTriviaRoundOrdinal = 0
+const watchTriviaPrefetch = new Map()
+const watchTriviaPrefetching = new Set()
 
 function clearWatchTriviaTimer () {
   if (watchTriviaTimer) clearTimeout(watchTriviaTimer)
@@ -3259,6 +3436,7 @@ function triviaInput () {
   return {
     matchId: match.id,
     language: state.language || 'EN',
+    roundOrdinal: watchTriviaRoundOrdinal++,
     match,
     recentEvents: (state.feedEvents || []).slice(0, 6).map((event, index) => ({
       eventId: `watch-${index}-${event.clock || 'now'}`,
@@ -3276,9 +3454,35 @@ function publicTriviaRound (round) {
     language: round.language,
     question: round.question,
     options: round.options,
+    category: round.category || null,
     modelId: round.modelId || null,
     hostId: round.hostId || null
   }
+}
+
+function triviaPrefetchKey (input) {
+  return `${input.matchId || 'unknown-match'}:${Math.max(0, Number(input.roundOrdinal) || 0)}`
+}
+
+function queueQvacTriviaSelection (input, commentary) {
+  if (!commentary || typeof commentary.generateTriviaRound !== 'function') return
+  const nextInput = { ...input, roundOrdinal: Math.max(0, Number(input.roundOrdinal) || 0) + 1 }
+  const key = triviaPrefetchKey(nextInput)
+  if (watchTriviaPrefetch.has(key) || watchTriviaPrefetching.has(key)) return
+  watchTriviaPrefetching.add(key)
+  // A local model is a refinement, never a dependency for the room. Start it after
+  // the verified round is visible; a slow or unavailable model cannot freeze trivia.
+  setTimeout(() => {
+    Promise.resolve(commentary.generateTriviaRound(nextInput))
+      .then(candidate => {
+        if (candidate && candidate.questionId) {
+          watchTriviaPrefetch.set(key, candidate)
+          if (watchTriviaPrefetch.size > 8) watchTriviaPrefetch.delete(watchTriviaPrefetch.keys().next().value)
+        }
+      })
+      .catch(err => console.warn('QVAC next-trivia selection unavailable; keeping verified local rotation', err))
+      .finally(() => watchTriviaPrefetching.delete(key))
+  }, 0)
 }
 
 function armWatchTriviaReveal () {
@@ -3293,28 +3497,28 @@ async function startWatchTrivia () {
   renderWatchTrivia()
   const input = triviaInput()
   const commentary = integrationRuntime.adapters && integrationRuntime.adapters.qvacCommentary
-  let round
-  try {
-    round = commentary && typeof commentary.generateTriviaRound === 'function'
-      ? await commentary.generateTriviaRound(input)
-      : fallbackTriviaRound(input)
-  } catch (err) {
-    console.warn('QVAC trivia generation failed; using grounded local round', err)
-    round = fallbackTriviaRound(input)
-  }
+  const prefetchKey = triviaPrefetchKey(input)
+  const prefetchedRound = watchTriviaPrefetch.get(prefetchKey)
+  if (prefetchedRound) watchTriviaPrefetch.delete(prefetchKey)
+  const verifiedFallback = fallbackTriviaRound(input)
+  const round = prefetchedRound || verifiedFallback
+  const usedQvacSelection = Boolean(prefetchedRound && prefetchedRound.questionId)
+  const roundCategory = round && round.category || verifiedFallback.category || 'football knowledge'
   const normalized = {
-    ...fallbackTriviaRound(input),
+    ...verifiedFallback,
     ...(round || {}),
-    options: Array.isArray(round && round.options) && round.options.length === 4 ? round.options : fallbackTriviaRound(input).options,
+    category: roundCategory,
+    options: Array.isArray(round && round.options) && round.options.length === 4 ? round.options : verifiedFallback.options,
     answerIndex: Number.isInteger(Number(round && round.answerIndex)) ? Number(round.answerIndex) : 0,
     hostId: selfPeerId(),
     answers: {},
     revealed: false,
-    source: commentary && commentary.mode === 'sdk' ? 'On-device QVAC' : 'Match-data fallback'
+    source: `${usedQvacSelection ? 'QVAC-selected' : 'Verified World Cup trivia'} · ${roundCategory}`
   }
   if (normalized.answerIndex < 0 || normalized.answerIndex > 3) normalized.answerIndex = 0
   watchTrivia = normalized
   watchTriviaGenerating = false
+  queueQvacTriviaSelection(input, commentary)
   armWatchTriviaReveal()
   if (window.PearCupWatchSync && typeof window.PearCupWatchSync.broadcastTrivia === 'function') {
     window.PearCupWatchSync.broadcastTrivia({ t: 'trivia:round', round: publicTriviaRound(watchTrivia) })
@@ -3369,7 +3573,13 @@ function bindTriviaSync () {
     if (!message || !message.t) return
     if (message.t === 'trivia:round' && message.round && Array.isArray(message.round.options)) {
       clearWatchTriviaTimer()
-      watchTrivia = { ...message.round, hostId: message.from, answers: {}, revealed: false, source: 'QVAC-powered room trivia' }
+      watchTrivia = {
+        ...message.round,
+        hostId: message.from,
+        answers: {},
+        revealed: false,
+        source: `QVAC-powered trivia · ${message.round.category || 'football knowledge'}`
+      }
       renderWatchTrivia()
       return
     }
@@ -3387,11 +3597,11 @@ function renderWatchTrivia () {
   if (!el) return
   const score = Number(state.triviaScore || 0)
   if (watchTriviaGenerating) {
-    el.innerHTML = `<div class="trivia-head"><div><p class="eyebrow">QVAC-powered trivia</p><strong>Grounding a live-data question…</strong></div><span class="trivia-score">${score} pts</span></div><p class="trivia-wait">Using the active match snapshot on device.</p>`
+    el.innerHTML = `<div class="trivia-head"><div><p class="eyebrow">QVAC-powered trivia</p><strong>Choosing a verified football question…</strong></div><span class="trivia-score">${score} pts</span></div><p class="trivia-wait">Mixing this fixture’s World Cup history with general football knowledge.</p>`
     return
   }
   if (!watchTrivia) {
-    el.innerHTML = `<div class="trivia-head"><div><p class="eyebrow">QVAC-powered trivia</p><strong>Play from the live match</strong></div><span class="trivia-score">${score} pts</span></div><p class="trivia-wait">One grounded question for everyone in the room. No odds and no invented stats.</p><button class="primary-button compact-action" id="startWatchTrivia" type="button">Start trivia</button>`
+    el.innerHTML = `<div class="trivia-head"><div><p class="eyebrow">QVAC-powered trivia</p><strong>World Cup history, made for this fixture</strong></div><span class="trivia-score">${score} pts</span></div><p class="trivia-wait">Relevant team history and general football knowledge — verified facts, never odds.</p><button class="primary-button compact-action" id="startWatchTrivia" type="button">Start trivia</button>`
     const start = $('#startWatchTrivia')
     if (start) start.addEventListener('click', startWatchTrivia)
     return
@@ -4719,6 +4929,7 @@ function restartShootout ({ blockActiveStake = false, message = 'New penalty sho
 async function renderGames () {
   const so = ensureShootout()
   ensureShootoutDom()
+  renderPolymarketOdds()
   // A live peer match owns its own turn loop.
   if (state.match && state.match.peer && window.PearCupPeerMatch) {
     const arena0 = document.querySelector('#games .game-arena')

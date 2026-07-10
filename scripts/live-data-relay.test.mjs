@@ -50,7 +50,13 @@ test('the public relay serves cacheable snapshots, odds, health, and CORS withou
       score: { fullTime: { home: null, away: null } }
     }] }),
     createOddsSnapshot: async () => ({
-      schema: 'pearcup-polymarket-v1', provider: 'Polymarket', status: 'ok', fetchedAt: NOW.toISOString(), odds: []
+      schema: 'pearcup-polymarket-v2', provider: 'Polymarket', status: 'ok', generatedAt: NOW.toISOString(),
+      matches: {
+        537384: {
+          schema: 'pearcup-polymarket-v1', provider: 'Polymarket', status: 'ok', fetchedAt: NOW.toISOString(),
+          match: { id: 537384, home: 'Spain', away: 'Belgium' }, odds: []
+        }
+      }
     })
   })
   t.after(() => relay.close())
@@ -71,6 +77,12 @@ test('the public relay serves cacheable snapshots, odds, health, and CORS withou
   assert.equal((await health.json()).status, 'ready')
   const odds = await fetch(`http://127.0.0.1:${port}/v1/polymarket-odds.json`)
   assert.equal(odds.status, 200)
+  assert.equal((await odds.json()).schema, 'pearcup-polymarket-v2')
+  const selectedOdds = await fetch(`http://127.0.0.1:${port}/v1/polymarket-odds.json?matchId=537384`)
+  assert.equal(selectedOdds.status, 200)
+  assert.equal((await selectedOdds.json()).match.id, 537384)
+  const missingOdds = await fetch(`http://127.0.0.1:${port}/v1/polymarket-odds.json?matchId=missing`)
+  assert.equal(missingOdds.status, 404)
 })
 
 test('relay config requires a deployment secret and clamps unsafe refresh intervals', () => {

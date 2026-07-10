@@ -4,7 +4,7 @@ const test = require('node:test')
 require('./core.js')
 const qvac = require('./qvac-referee.js')
 
-test('QVAC trivia fallback remains answerable from the active match snapshot', () => {
+test('QVAC trivia fallback selects reviewed World Cup history for the active fixture', () => {
   const input = {
     matchId: 'fixture-42',
     language: 'EN',
@@ -14,25 +14,37 @@ test('QVAC trivia fallback remains answerable from the active match snapshot', (
       stage: 'QUARTER_FINALS'
     }
   }
-  const fallback = qvac.triviaFallbackRound(input)
+  const fallback = qvac.triviaFallbackRound({ ...input, roundOrdinal: 0 })
   const round = qvac.createTriviaRound({ input, ...fallback, hostId: 'qvac-test' })
 
-  assert.equal(round.question, 'Which team is listed first for Spain vs Belgium?')
-  assert.deepEqual(round.options, ['Spain', 'Belgium', 'Winner of quarter finals', 'No team is listed'])
-  assert.equal(round.answerIndex, 0)
+  assert.match(round.question, /Spain/)
+  assert.ok(round.options.includes('2010') || round.options.includes('Netherlands'))
+  assert.ok(Number.isInteger(round.answerIndex))
+  assert.equal(round.category, 'Team World Cup history')
   assert.equal(round.matchId, 'fixture-42')
   assert.ok(round.triviaId)
+})
+
+test('QVAC trivia alternates fixture history with general football knowledge', () => {
+  const base = {
+    matchId: 'fixture-rotation',
+    match: { home: { name: 'Spain' }, away: { name: 'Belgium' } }
+  }
+
+  assert.ok(qvac.triviaCandidates({ ...base, roundOrdinal: 0 })[0].id.startsWith('spain-'))
+  assert.ok(qvac.triviaCandidates({ ...base, roundOrdinal: 1 })[0].id.startsWith('belgium-'))
+  assert.ok(qvac.triviaCandidates({ ...base, roundOrdinal: 3 })[0].id.startsWith('general-'))
 })
 
 test('QVAC trivia adapter normalizes model output into a four-option room round', async () => {
   const client = {
     async completeJson ({ history }) {
       assert.match(history[0].content, /watch-party trivia host/)
+      const prompt = JSON.parse(history[1].content)
+      assert.equal(prompt.task, 'select_verified_world_cup_watch_party_trivia')
+      assert.ok(prompt.candidates.some(candidate => candidate.id === 'spain-2010-first-title'))
       return JSON.stringify({
-        question: 'Which side is the home team?',
-        options: ['Spain', 'Belgium', 'Draw', 'TBD'],
-        answerIndex: 0,
-        explanation: 'Spain is shown as the home team in the supplied match snapshot.'
+        questionId: 'spain-2010-first-title'
       })
     }
   }
@@ -43,8 +55,9 @@ test('QVAC trivia adapter normalizes model output into a four-option room round'
     match: { home: { name: 'Spain' }, away: { name: 'Belgium' } }
   })
 
-  assert.equal(round.question, 'Which side is the home team?')
-  assert.deepEqual(round.options, ['Spain', 'Belgium', 'Draw', 'TBD'])
-  assert.equal(round.answerIndex, 0)
+  assert.equal(round.question, 'In which year did Spain win its first men’s World Cup?')
+  assert.deepEqual(round.options, ['1982', '1994', '2006', '2010'])
+  assert.equal(round.answerIndex, 3)
+  assert.equal(round.questionId, 'spain-2010-first-title')
   assert.equal(round.modelId, 'qvac-test-model')
 })

@@ -66,3 +66,30 @@ test('Polymarket relay reports unavailable rather than inventing odds for an unm
   assert.equal(snapshot.status, 'unavailable')
   assert.match(snapshot.reason, /No active Polymarket match market/)
 })
+
+test('Polymarket fixture registry indexes switchable official fixtures and retains last known good odds', async () => {
+  const { fixtureMatchesFromSnapshot, mergeLastKnownGoodOdds } = await oddsModule()
+  const fixtures = fixtureMatchesFromSnapshot({
+    activeMatch: { id: 1, status: 'TIMED', utcDate: '2026-07-10T19:00:00Z', homeTeam: { name: 'Spain' }, awayTeam: { name: 'Belgium' } },
+    matches: [
+      { id: 2, status: 'IN_PLAY', utcDate: '2026-07-10T17:00:00Z', homeTeam: { name: 'Norway' }, awayTeam: { name: 'England' } },
+      { id: 1, status: 'TIMED', utcDate: '2026-07-10T19:00:00Z', homeTeam: { name: 'Spain' }, awayTeam: { name: 'Belgium' } },
+      { id: 3, status: 'TIMED', utcDate: '2026-07-11T21:00:00Z', homeTeam: { name: 'Argentina' }, awayTeam: { name: 'Switzerland' } },
+      { id: 0, status: 'TIMED', utcDate: '2026-07-09T21:00:00Z', homeTeam: { name: 'Mexico' }, awayTeam: { name: 'Canada' } },
+      { id: 4, status: 'TIMED', utcDate: '2026-07-12T21:00:00Z', homeTeam: { name: 'France' }, awayTeam: { name: '' } }
+    ]
+  })
+  assert.deepEqual(fixtures.map(match => match.id), [1, 2, 3])
+
+  const previous = {
+    schema: 'pearcup-polymarket-v2', provider: 'Polymarket', generatedAt: '2026-07-10T10:00:00.000Z', status: 'ok',
+    matches: { 1: { schema: 'pearcup-polymarket-v1', status: 'ok', fetchedAt: '2026-07-10T10:00:00.000Z', match: { id: 1 }, odds: [{ outcome: 'Spain', probability: 0.5 }, { outcome: 'Belgium', probability: 0.3 }] } }
+  }
+  const next = {
+    schema: 'pearcup-polymarket-v2', provider: 'Polymarket', generatedAt: '2026-07-10T10:00:30.000Z', status: 'unavailable',
+    matches: { 1: { schema: 'pearcup-polymarket-v1', status: 'unavailable', fetchedAt: '2026-07-10T10:00:30.000Z', match: { id: 1 }, reason: 'provider timeout' } }
+  }
+  const merged = mergeLastKnownGoodOdds(previous, next)
+  assert.equal(merged.matches[1].status, 'ok')
+  assert.equal(merged.matches[1].fetchedAt, '2026-07-10T10:00:00.000Z')
+})

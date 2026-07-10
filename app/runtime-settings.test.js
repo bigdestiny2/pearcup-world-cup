@@ -130,3 +130,22 @@ test('renderer settings expose only public HTTPS live-data relay locations', () 
     env: { PEARCUP_LIVE_DATA_RELAY_URL: 'http://data.example.test/v1/live-match.json' }
   }), null)
 })
+
+test('public live-data settings fill a renderer-safe fallback without overriding a host relay', () => {
+  const rootObject = {
+    PearCupPublicRuntimeSettings: {
+      liveData: { relayUrl: 'https://live.example.test/v1/live-match.json', pollMs: 30_000 }
+    }
+  }
+  const applied = runtimeSettings.applyRuntimeSettingsToRoot(rootObject, {
+    source: { loaded: false }, sdkPackages: {}, liveData: null, compliance: {}
+  })
+  assert.equal(applied.liveData.relayUrl, 'https://live.example.test/v1/live-match.json')
+
+  const hostApplied = runtimeSettings.applyRuntimeSettingsToRoot(rootObject, {
+    source: { loaded: true }, sdkPackages: {},
+    liveData: { relayUrl: 'https://host.example.test/v1/live-match.json', oddsRelayUrl: 'https://host.example.test/v1/polymarket-odds.json', pollMs: 20_000 },
+    compliance: {}
+  })
+  assert.equal(hostApplied.liveData.relayUrl, 'https://host.example.test/v1/live-match.json')
+})

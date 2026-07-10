@@ -4441,6 +4441,10 @@ h2 {
 .polymarket-panel .rail-header { margin: 0; }
 .polymarket-panel .rail-header strong { display: inline-flex; align-items: center; gap: 7px; }
 .watch-polymarket-panel { margin: 0; }
+.game-polymarket-panel { margin: 0 0 14px; }
+.polymarket-picker { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; color: var(--muted); font-size: 10px; font-weight: 850; letter-spacing: .05em; text-transform: uppercase; }
+.polymarket-picker select { width: 100%; min-width: 0; padding: 8px 30px 8px 10px; border: 1px solid rgba(69, 112, 230, .28); border-radius: 10px; background: rgba(255, 255, 255, .92); color: var(--ink); font-family: var(--body); font-size: 12px; font-weight: 760; outline: none; }
+.polymarket-picker select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(69, 112, 230, .13); }
 .polymarket-live {
   display: inline-flex;
   align-items: center;

@@ -414,9 +414,15 @@
   }
 
   function applyRuntimeSettingsToRoot (rootObject = root, settings = loadRuntimeSettings()) {
-    rootObject.PearCupRuntimeSettingsValue = settings
-    if (settings.compliance) rootObject.PearCupCompliance = settings.compliance
-    return settings
+    const publicSettings = rootObject && rootObject.PearCupPublicRuntimeSettings || {}
+    const publicLiveData = liveDataSettingsFrom({ config: { liveData: publicSettings.liveData || null } })
+    const effective = {
+      ...settings,
+      liveData: settings.liveData || publicLiveData || null
+    }
+    rootObject.PearCupRuntimeSettingsValue = effective
+    if (effective.compliance) rootObject.PearCupCompliance = effective.compliance
+    return effective
   }
 
   function applyRendererRuntimeSettingsToRoot (rootObject = root, settings = loadRendererRuntimeSettings()) {

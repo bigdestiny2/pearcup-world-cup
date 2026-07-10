@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url'
 
 const FOOTBALL_MATCHES_URL = 'https://api.football-data.org/v4/competitions/WC/matches'
 const LIVE_SCHEMA = 'pearcup-live-v2'
-const ODDS_SCHEMA = 'pearcup-polymarket-v1'
+const ODDS_SCHEMA = 'pearcup-polymarket-v2'
 const MATCH_RANK = { IN_PLAY: 0, PAUSED: 0, LIVE: 0, TIMED: 1, SCHEDULED: 1, FINISHED: 2 }
 
 function integerInRange (value, fallback, minimum, maximum) {
@@ -141,8 +141,47 @@ function unavailableOddsSnapshot (now) {
     schema: ODDS_SCHEMA,
     provider: 'Polymarket',
     status: 'unavailable',
-    fetchedAt: now().toISOString(),
+    generatedAt: now().toISOString(),
+    matches: {},
     reason: 'The public Polymarket relay could not refresh this fixture.'
+  }
+}
+
+function oddsEntries (snapshot) {
+  if (!snapshot || typeof snapshot !== 'object') return {}
+  if (snapshot.schema === ODDS_SCHEMA && snapshot.matches && typeof snapshot.matches === 'object') return snapshot.matches
+  const id = snapshot.match && snapshot.match.id
+  return id == null ? {} : { [String(id)]: snapshot }
+}
+
+function normalizeOddsSnapshot (snapshot, generatedAt) {
+  if (snapshot && snapshot.schema === ODDS_SCHEMA && snapshot.matches && typeof snapshot.matches === 'object') return snapshot
+  const matches = oddsEntries(snapshot)
+  return {
+    schema: ODDS_SCHEMA,
+    provider: 'Polymarket',
+    status: Object.values(matches).some(entry => entry && entry.status === 'ok') ? 'ok' : 'unavailable',
+    generatedAt: generatedAt || snapshot && (snapshot.generatedAt || snapshot.fetchedAt) || new Date().toISOString(),
+    matches,
+    ...(snapshot && snapshot.reason ? { reason: snapshot.reason } : {})
+  }
+}
+
+function mergeLastKnownGoodOdds (previous, next) {
+  const prior = oddsEntries(previous)
+  const latest = oddsEntries(next)
+  const matches = {}
+  for (const [id, entry] of Object.entries(latest)) {
+    matches[id] = entry && entry.status === 'ok'
+      ? entry
+      : prior[id] && prior[id].status === 'ok'
+        ? prior[id]
+        : entry
+  }
+  return {
+    ...normalizeOddsSnapshot(next),
+    status: Object.values(matches).some(entry => entry && entry.status === 'ok') ? 'ok' : 'unavailable',
+    matches
   }
 }
 
@@ -163,7 +202,7 @@ export function createLiveDataRelay ({ config = relayConfig(), fetchImpl = globa
       liveSnapshot = cachedLive
       lastSuccessAt = cachedLive.generatedAt || null
     }
-    if (cachedOdds && cachedOdds.schema === ODDS_SCHEMA) oddsSnapshot = cachedOdds
+    if (cachedOdds) oddsSnapshot = normalizeOddsSnapshot(cachedOdds)
   }
 
   async function refresh () {
@@ -180,7 +219,7 @@ export function createLiveDataRelay ({ config = relayConfig(), fetchImpl = globa
         let nextOdds = oddsSnapshot
         if (config.polymarketEnabled && typeof createOddsSnapshot === 'function') {
           try {
-            nextOdds = await createOddsSnapshot(nextLive)
+            nextOdds = mergeLastKnownGoodOdds(oddsSnapshot, normalizeOddsSnapshot(await createOddsSnapshot(nextLive), nextLive.generatedAt))
           } catch (error) {
             nextOdds = oddsSnapshot || unavailableOddsSnapshot(now)
             log.warn(JSON.stringify({ event: 'polymarket-refresh-failed', message: safeMessage(error) }))
@@ -263,6 +302,16 @@ export function createLiveDataRelay ({ config = relayConfig(), fetchImpl = globa
         jsonResponse(request, response, 503, { error: 'snapshot_unavailable' }, { corsOrigins: config.corsOrigins })
         return
       }
+      const matchId = String(url.searchParams.get('matchId') || '').trim()
+      if (matchId) {
+        const match = oddsEntries(oddsSnapshot)[matchId]
+        if (!match) {
+          jsonResponse(request, response, 404, { error: 'match_not_found', matchId }, { corsOrigins: config.corsOrigins })
+          return
+        }
+        jsonResponse(request, response, 200, match, { cacheControl: 'public, max-age=5, stale-while-revalidate=55', corsOrigins: config.corsOrigins })
+        return
+      }
       jsonResponse(request, response, 200, oddsSnapshot, { cacheControl: 'public, max-age=5, stale-while-revalidate=55', corsOrigins: config.corsOrigins })
       return
     }
@@ -302,8 +351,8 @@ export function createLiveDataRelay ({ config = relayConfig(), fetchImpl = globa
 }
 
 async function defaultOddsSnapshot (liveSnapshot) {
-  const { createSnapshot } = await import('../app/fetch-polymarket-odds.mjs')
-  return createSnapshot({ liveSnapshot })
+  const { createFixtureOddsSnapshot } = await import('../app/fetch-polymarket-odds.mjs')
+  return createFixtureOddsSnapshot({ liveSnapshot })
 }
 
 async function main () {

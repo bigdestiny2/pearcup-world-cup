@@ -1,35 +1,113 @@
 {
-  "schema": "pearcup-polymarket-v1",
+  "schema": "pearcup-polymarket-v2",
   "provider": "Polymarket",
   "status": "ok",
-  "fetchedAt": "2026-07-09T21:44:15.764Z",
-  "match": {
-    "id": 537471,
-    "home": "Spain",
-    "away": "Belgium",
-    "stage": "QUARTER_FINALS",
-    "utcDate": "2026-07-10T22:00:00Z"
-  },
-  "market": {
-    "id": "2829166",
-    "question": "Will Spain vs. Belgium end in a draw?",
-    "slug": "fifwc-esp-bel-2026-07-10",
-    "url": "https://polymarket.com/event/fifwc-esp-bel-2026-07-10",
-    "volume": 131297.43213700003,
-    "liquidity": 1699824.02235
-  },
-  "odds": [
-    {
-      "outcome": "Yes",
-      "probability": 0.24375,
-      "tokenId": "113279756530825620298138806497651966059839483646018838321123245227908205380626",
-      "source": "clob-midpoint"
+  "generatedAt": "2026-07-10T13:06:49.365Z",
+  "matches": {
+    "537384": {
+      "schema": "pearcup-polymarket-v1",
+      "provider": "Polymarket",
+      "status": "ok",
+      "fetchedAt": "2026-07-10T13:06:49.365Z",
+      "match": {
+        "id": 537384,
+        "home": "Spain",
+        "away": "Belgium",
+        "stage": "QUARTER_FINALS",
+        "utcDate": "2026-07-10T19:00:00Z"
+      },
+      "market": {
+        "id": "2829166",
+        "question": "Will Spain vs. Belgium end in a draw?",
+        "slug": "fifwc-esp-bel-2026-07-10",
+        "url": "https://polymarket.com/event/fifwc-esp-bel-2026-07-10",
+        "volume": 676250.013061,
+        "liquidity": 3067246.985575
+      },
+      "odds": [
+        {
+          "outcome": "Yes",
+          "probability": 0.24125,
+          "tokenId": "113279756530825620298138806497651966059839483646018838321123245227908205380626",
+          "source": "clob-midpoint"
+        },
+        {
+          "outcome": "No",
+          "probability": 0.75875,
+          "tokenId": "100533732597910384520520523727003862960880903518570194460005280022003779358136",
+          "source": "clob-midpoint"
+        }
+      ]
     },
-    {
-      "outcome": "No",
-      "probability": 0.75625,
-      "tokenId": "100533732597910384520520523727003862960880903518570194460005280022003779358136",
-      "source": "clob-midpoint"
+    "537385": {
+      "schema": "pearcup-polymarket-v1",
+      "provider": "Polymarket",
+      "status": "ok",
+      "fetchedAt": "2026-07-10T13:06:49.365Z",
+      "match": {
+        "id": 537385,
+        "home": "Norway",
+        "away": "England",
+        "stage": "QUARTER_FINALS",
+        "utcDate": "2026-07-11T21:00:00Z"
+      },
+      "market": {
+        "id": "2815442",
+        "question": "Will Norway vs. England end in a draw?",
+        "slug": "fifwc-nor-eng-2026-07-11",
+        "url": "https://polymarket.com/event/fifwc-nor-eng-2026-07-11",
+        "volume": 243709.4954230001,
+        "liquidity": 1883455.4553
+      },
+      "odds": [
+        {
+          "outcome": "Yes",
+          "probability": 0.26125,
+          "tokenId": "69356014065023591601401540629477632179960561513202758818327214611100094905114",
+          "source": "clob-midpoint"
+        },
+        {
+          "outcome": "No",
+          "probability": 0.73875,
+          "tokenId": "90644986517887987614446310604591118401084407889758384980952157984643160622775",
+          "source": "clob-midpoint"
+        }
+      ]
+    },
+    "537386": {
+      "schema": "pearcup-polymarket-v1",
+      "provider": "Polymarket",
+      "status": "ok",
+      "fetchedAt": "2026-07-10T13:06:49.365Z",
+      "match": {
+        "id": 537386,
+        "home": "Argentina",
+        "away": "Switzerland",
+        "stage": "QUARTER_FINALS",
+        "utcDate": "2026-07-12T01:00:00Z"
+      },
+      "market": {
+        "id": "2844059",
+        "question": "Will Argentina vs. Switzerland end in a draw?",
+        "slug": "fifwc-arg-che-2026-07-11",
+        "url": "https://polymarket.com/event/fifwc-arg-che-2026-07-11",
+        "volume": 35534.392673999966,
+        "liquidity": 626335.0775
+      },
+      "odds": [
+        {
+          "outcome": "Yes",
+          "probability": 0.26875,
+          "tokenId": "77916360718126045401133554110154807394451430552706503353127448280368541580890",
+          "source": "clob-midpoint"
+        },
+        {
+          "outcome": "No",
+          "probability": 0.73125,
+          "tokenId": "64009965006448114503207737017699739681376644008518490517776127794675721082018",
+          "source": "clob-midpoint"
+        }
+      ]
     }
-  ]
+  }
 }
