@@ -465,13 +465,22 @@ test('Pear worker bridge protocol rejects unsupported envelopes without throwing
   await bridge.close()
 })
 
-test('Pear worker bridge protocol delegates optional ultimate sports requests', async () => {
+test('Pear worker bridge protocol delegates optional ultimate sports requests to an injected bridge', async () => {
   const bridge = bridgeProtocol.createPearWorkerBridgeProtocol({ requireLive: false })
+  const delegated = []
+  const handler = {
+    handle (request) {
+      delegated.push(request)
+      return { ok: true, result: { eventFits: [{ fitId: 'world-cup' }] } }
+    }
+  }
+
   const response = await bridge.request({
     protocol: bridgeProtocol.protocolVersion,
     requestId: 'req-ultimate-1',
     action: 'ultimateSports',
     payload: {
+      handler,
       request: {
         protocol: 'ultimate-sports-platform-v1',
         requestId: 'ultimate-catalog',
@@ -486,5 +495,30 @@ test('Pear worker bridge protocol delegates optional ultimate sports requests', 
   assert.equal(response.result.ok, true)
   assert.equal(response.result.result.eventFits.some(fit => fit.fitId === 'world-cup'), true)
   assert.equal(response.view.typeCounts.GameCommitmentSubmitted || 0, 0)
+
+  assert.equal(delegated.length, 1)
+  assert.equal(delegated[0].protocol, 'ultimate-sports-platform-v1')
+  assert.equal(delegated[0].action, 'catalog')
+  await bridge.close()
+})
+
+test('Pear worker bridge protocol reports ultimate sports unavailable when no bridge is injected', async () => {
+  const bridge = bridgeProtocol.createPearWorkerBridgeProtocol({ requireLive: false })
+  const response = await bridge.request({
+    protocol: bridgeProtocol.protocolVersion,
+    requestId: 'req-ultimate-missing',
+    action: 'ultimateSports',
+    payload: {
+      request: {
+        protocol: 'ultimate-sports-platform-v1',
+        requestId: 'ultimate-catalog',
+        action: 'catalog',
+        payload: {}
+      }
+    }
+  })
+
+  assert.equal(response.ok, false)
+  assert.equal(response.code, 'PEARCUP_ULTIMATE_SPORTS_BRIDGE_UNAVAILABLE')
   await bridge.close()
 })

@@ -6,12 +6,6 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "4180", "--directory", "design/kawaii-app"],
       "port": 4180
-    },
-    {
-      "name": "ultimate",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "4200", "--directory", "platform/ultimate-sports"],
-      "port": 4200
     }
   ]
 }

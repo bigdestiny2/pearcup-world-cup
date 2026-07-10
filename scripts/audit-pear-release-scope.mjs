@@ -48,7 +48,6 @@ function buildReport (receipt, dirty) {
   const excludedKawaiiDirty = []
   const releaseScriptDirty = []
   const rootAppDirty = []
-  const platformDirty = []
   const rootDirty = []
   const otherDirty = []
 
@@ -62,8 +61,6 @@ function buildReport (receipt, dirty) {
       releaseScriptDirty.push(path)
     } else if (path.startsWith('app/')) {
       rootAppDirty.push(path)
-    } else if (path.startsWith('platform/ultimate-sports/')) {
-      platformDirty.push(path)
     } else if (path === 'README.md') {
       rootDirty.push(path)
     } else {
@@ -81,7 +78,6 @@ function buildReport (receipt, dirty) {
       excludedKawaiiDirty: excludedKawaiiDirty.length,
       releaseScriptDirty: releaseScriptDirty.length,
       rootAppDirty: rootAppDirty.length,
-      platformDirty: platformDirty.length,
       rootDirty: rootDirty.length,
       otherDirty: otherDirty.length
     },
@@ -89,7 +85,6 @@ function buildReport (receipt, dirty) {
     excludedKawaiiDirty,
     releaseScriptDirty,
     rootAppDirty,
-    platformDirty,
     rootDirty,
     otherDirty
   }
