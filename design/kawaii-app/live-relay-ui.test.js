@@ -76,6 +76,47 @@ test('production relay selection overrides any locally saved provider key', asyn
   assert.equal(context.state.liveConfig.pollSec, 30)
 })
 
+test('a stale bundled fixture remains truthful schedule data instead of falling back to fake pitch data', async () => {
+  const calls = { start: 0 }
+  const context = {
+    Date,
+    state: { liveConfig: { enabled: false, apiKey: '', proxy: '' } },
+    productionLiveData: null,
+    RELAY_FILE: 'live-match.json',
+    withRelayCacheBust: value => value,
+    fetch: async () => ({
+      ok: true,
+      json: async () => ({
+        schema: 'pearcup-live-v2',
+        generatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+        activeMatch: { id: 537384, status: 'TIMED', utcDate: '2026-07-10T22:00:00Z' },
+        matches: []
+      })
+    }),
+    startLiveFeed: () => { calls.start += 1 },
+    document: { querySelector: () => null }
+  }
+  context.globalThis = context
+  vm.createContext(context)
+  vm.runInContext(detectRelaySource, context)
+  await context.detectLiveRelay()
+
+  assert.equal(calls.start, 1)
+  assert.equal(context.state.liveConfig.enabled, true)
+  assert.equal(context.state.liveConfig.proxy, 'live-match.json')
+  assert.equal(context.state.liveConfig.relayFresh, false)
+})
+
+test('watch UI uses the responsive data centre, team-matched Higgsfield portraits, and QVAC-powered product wording', () => {
+  assert.doesNotMatch(htmlSource, /class="pitch"/)
+  assert.match(htmlSource, /class="tv-liveboard is-loading"/)
+  assert.match(appSource, /const TEAM_AVATAR_PORTRAITS = \{/)
+  assert.match(appSource, /br: 'p-rafa', jp: 'p-omar'/)
+  assert.match(appSource, /<img src="\.\/\$\{escapeHtml\(portrait\)\}"/)
+  assert.match(appSource, /QVAC-powered trivia/)
+  assert.doesNotMatch(appSource, /Start QVAC round|Next QVAC round|QVAC watch trivia/)
+})
+
 test('CSP permits the keyless HTTPS relay and approved Football-Data crests only', () => {
   assert.match(htmlSource, /connect-src 'self' https: http:\/\/127\.0\.0\.1:\* http:\/\/localhost:\* pear:/)
   assert.match(htmlSource, /img-src 'self' data: blob: https:\/\/crests\.football-data\.org/)

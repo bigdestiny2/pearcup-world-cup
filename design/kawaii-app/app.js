@@ -178,11 +178,16 @@ const commentary = {
   ]
 }
 
-const defaultChat = [
-  { user: 'lina', text: 'Spain/Belgium quarter-final room is up. No fake score until the feed lands.', time: 'Today' },
-  { user: 'vera', text: 'France/Morocco pool is next on my list.', time: '20:00Z' },
-  { user: 'ash', text: 'Good, we are into the quarter-finals now.', time: 'QF' }
-]
+const defaultChat = []
+
+const DEMO_CHAT_MESSAGES = new Set([
+  'Spain/Austria room is up. No fake score until the feed lands.',
+  'Portugal/Croatia pool is next on my list.',
+  'Good, bracket is still Round of 32.',
+  'Spain/Belgium quarter-final room is up. No fake score until the feed lands.',
+  'France/Morocco pool is next on my list.',
+  'Good, we are into the quarter-finals now.'
+])
 
 const liveTabs = [
   { id: 'overview', label: 'Overview' },
@@ -196,15 +201,6 @@ const homeFixtures = [
   { status: 'Fri, 07/10', title: 'Spain vs Belgium', detail: 'Quarter-final match room', live: false },
   { status: 'Thu, 07/09', title: 'France vs Morocco', detail: '$50 pool closing', live: false },
   { status: 'Sat, 07/11', title: 'Norway vs England', detail: 'Late room opening', live: false }
-]
-
-const matchStats = [
-  ['Possession', '58%', '42%', 58],
-  ['Shots', '12', '6', 67],
-  ['xG', '1.82', '0.74', 71],
-  ['Pass accuracy', '89%', '81%', 62],
-  ['Corners', '5', '2', 71],
-  ['Saves', '1', '4', 20]
 ]
 
 const leaders = [
@@ -344,6 +340,9 @@ function loadState () {
       gamePoolDraft: { ...fallback.gamePoolDraft, ...(saved.gamePoolDraft || {}) },
       triviaScore: Number.isFinite(Number(saved.triviaScore)) ? Number(saved.triviaScore) : 0,
       liveConfig: { ...fallback.liveConfig, ...(saved.liveConfig || {}) }
+    }
+    if (merged.chat.length && merged.chat.every(message => DEMO_CHAT_MESSAGES.has(String(message && message.text || '')))) {
+      merged.chat = []
     }
     // A live peer match can't survive a reload (the connection is gone) — start in the lobby.
     if (merged.match && merged.match.peer) merged.match = null
@@ -493,11 +492,11 @@ function renderSignalPanel () {
     </div>
     <div class="signal-row">
       <span>Peers</span>
-      <strong>${state.spectators || 38}</strong>
+      <strong>${Math.max(1, Number(state.spectators || 1))}</strong>
     </div>
     <div class="signal-row">
-      <span>Core lag</span>
-      <strong>0.4s</strong>
+      <span>Room link</span>
+      <strong>${window.PearCupWatchSync ? 'Ready' : 'Local'}</strong>
     </div>
     <div class="signal-row">
       <span>Ref status</span>
@@ -572,14 +571,30 @@ Object.assign(AVATAR_PORTRAITS, {
   freya: 'avatars/p-freya.png', santi: 'avatars/p-santi.png', kofi: 'avatars/p-kofi.png'
 })
 
-// Higgsfield portraits are the production avatar art. The selected team picks
-// a stable member of the generated pool for the current player, while named
-// opponents keep their authored portrait.
+// Higgsfield portraits are the production avatar art. Each team is mapped to a
+// portrait whose authored jersey colour family matches that team's kit. The
+// visible team badge and colour frame provide the exact national identity.
 const AVATAR_POOL = [
   'p-aria', 'p-rico', 'p-kenji', 'p-amara', 'p-luca', 'p-sofia', 'p-omar', 'p-nina',
   'p-diego', 'p-yuki', 'p-kwame', 'p-ingrid', 'p-rafa', 'p-mei', 'p-tariq', 'p-freya',
   'p-santi', 'p-kofi'
 ]
+
+const TEAM_AVATAR_PORTRAITS = {
+  br: 'p-rafa', jp: 'p-omar', ci: 'p-kwame', no: 'p-aria',
+  mx: 'p-amara', ec: 'p-rico', eng: 'p-luca', cd: 'p-santi',
+  ch: 'p-omar', dz: 'p-amara', pt: 'p-mei', hr: 'p-omar',
+  es: 'p-mei', at: 'p-omar', fr: 'p-kenji', ar: 'p-diego',
+  us: 'p-ingrid', ca: 'p-aria', de: 'p-kofi', ma: 'p-tariq',
+  nl: 'p-kwame', sn: 'p-rafa', za: 'p-rafa', py: 'p-omar',
+  co: 'p-rico', gh: 'p-kofi', se: 'p-kenji', au: 'p-freya',
+  be: 'p-kofi', ba: 'p-ingrid', eg: 'p-omar', cv: 'p-kenji'
+}
+
+const NAMED_AVATAR_TEAMS = {
+  captain: 'br', vera: 'no', milo: 'mx', lina: 'no',
+  kaito: 'jp', mateo: 'ar', emre: 'ch', zola: 'ci'
+}
 
 function pooledPortrait (name, team) {
   const h = hashString(`${name}-${team && team.id ? team.id : ''}`)
@@ -588,14 +603,13 @@ function pooledPortrait (name, team) {
 
 function avatarPortrait (name, team) {
   if (!team || !team.id) return AVATAR_PORTRAITS[String(name).toLowerCase()] || null
-  const teamSpecific = AVATAR_PORTRAITS[`${name}-${team.id}`]
+  const key = String(name || '').toLowerCase()
+  const teamSpecific = AVATAR_PORTRAITS[`${key}-${team.id}`]
   if (teamSpecific) return teamSpecific
-  const selfName = (state && state.username) || 'captain'
-  if (String(name) === String(selfName)) {
-    const idx = teams.findIndex(t => t && t.id === team.id)
-    return `avatars/${AVATAR_POOL[(idx >= 0 ? idx : hashString(team.id)) % AVATAR_POOL.length]}.png`
-  }
-  return AVATAR_PORTRAITS[String(name).toLowerCase()] || pooledPortrait(name, team)
+  if (NAMED_AVATAR_TEAMS[key] === team.id && AVATAR_PORTRAITS[key]) return AVATAR_PORTRAITS[key]
+  const teamPortrait = TEAM_AVATAR_PORTRAITS[team.id]
+  if (teamPortrait) return `avatars/${teamPortrait}.png`
+  return AVATAR_PORTRAITS[key] || pooledPortrait(name, team)
 }
 
 // Pick a jersey base color that stays visible on light backgrounds:
@@ -610,156 +624,28 @@ function pickJerseyColor (colors) {
   return colors.find(c => !isNearWhite(c)) || colors[0]
 }
 
-const KAWAII_HAIR = ['#ff8fc0', '#b79bff', '#7cc4ff', '#ffd76b', '#8a5a3c', '#5a4a6b']
-const KAWAII_SKIN = ['#ffe6d3', '#ffd9c0', '#f0c09b', '#d9a17a', '#b97e58']
-
 function avatarSvg (name, team, compact = false) {
-  const seed = hashString(`${name}-${team.id}`)
   const scaleClass = compact ? 'compact-avatar' : 'showcase-avatar'
-  const prefix = `av-${compact ? 'sm' : 'lg'}-${team.id}-${seed}`.replace(/[^a-z0-9-]/gi, '')
   const jersey = pickJerseyColor(team.colors)
   const jerseyLight = mixHex(jersey, '#ffffff', 0.32)
-  const jerseyDeep = mixHex(jersey, '#3a1030', 0.28)
   const accent = team.colors.find(c => c !== jersey) || '#ff8fc0'
   const label = escapeHtml(initials(name))
-  const shoe = mixHex(accent, '#ff8fc0', 0.15)
-  const skin = KAWAII_SKIN[seed % KAWAII_SKIN.length]
-  const skinShade = mixHex(skin, '#e08a6a', 0.45)
   const ariaLabel = `${escapeHtml(name)} anime avatar wearing ${escapeHtml(team.name)} kit`
 
   const portrait = avatarPortrait(name, team)
   if (portrait) {
-    const pv = compact ? '10 10 180 180' : '0 0 200 200'
     return `
-    <svg class="avatar-art ${scaleClass}" viewBox="${pv}" role="img" aria-label="${ariaLabel}">
-      <defs><clipPath id="${prefix}-pc"><rect x="14" y="14" width="172" height="172" rx="46"/></clipPath></defs>
-      <rect x="10" y="10" width="180" height="180" rx="50" fill="${jerseyLight}"/>
-      <text x="100" y="113" text-anchor="middle" font-size="44" font-weight="900" fill="${jerseyDeep}" opacity="0.72" font-family="Arial, sans-serif">${label}</text>
-      <image href="${escapeHtml(portrait)}" x="14" y="14" width="172" height="172" clip-path="url(#${prefix}-pc)" preserveAspectRatio="xMidYMid slice"/>
-      <rect x="14" y="14" width="172" height="172" rx="46" fill="none" stroke="#ffffff" stroke-width="6"/>
-      <rect x="14" y="14" width="172" height="172" rx="46" fill="none" stroke="${jersey}" stroke-width="3" opacity="0.6"/>
-    </svg>`
+    <span class="avatar-art avatar-portrait ${scaleClass}" role="img" aria-label="${ariaLabel}" style="--avatar-primary:${escapeHtml(jersey)};--avatar-secondary:${escapeHtml(accent)};--avatar-soft:${escapeHtml(jerseyLight)}">
+      <img src="./${escapeHtml(portrait)}" alt="" decoding="async">
+      <span class="avatar-team-mark" aria-hidden="true">${team.flag}</span>
+    </span>`
   }
 
-  // ---- Seeded cosmetic traits (decorrelated so each user/team reads as a distinct character) ----
-  const hair = KAWAII_HAIR[Math.floor(seed / 3) % KAWAII_HAIR.length]
-  const hairDeep = mixHex(hair, '#5a2a4a', 0.35)
-  const hairLite = mixHex(hair, '#ffffff', 0.28)
-  const eyeColors = ['#6b4a2f', '#7a5aa0', '#3f7fbf', '#3fa07f', '#a0567f', '#c06a3a']
-  const eyeCol = eyeColors[Math.floor(seed / 19) % eyeColors.length]
-  const eyeDeep = mixHex(eyeCol, '#160b0c', 0.5)
-  const styleId = Math.floor(seed / 7) % 7
-  const eyeId = Math.floor(seed / 11) % 4
-  const mouthId = Math.floor(seed / 13) % 4
-  const accId = Math.floor(seed / 17) % 5
-  const jerseyNumber = String((seed % 89) + 10)
-  const hf = `url(#${prefix}-hair)`
-
-  const crown = `<path d="M44 76c-4-36 22-60 56-60s60 24 56 60c-6-16-16-22-24-18 2-8-3-14-10-14 1 7-4 12-10 12 2-9-6-16-12-16s-14 7-12 16c-6 0-11-5-10-12-7 0-12 6-10 14-8-4-18 2-24 18Z" fill="${hf}"/>`
-
-  // Hair drawn BEHIND the head (tails, length).
-  const hairBack = [
-    '',
-    `<path d="M42 78c-18 10-24 40-16 74 12-6 20-8 28-4-8-24-10-48-4-70Z" fill="${hairDeep}"/><path d="M158 78c18 10 24 40 16 74-12-6-20-8-28-4 8-24 10-48 4-70Z" fill="${hairDeep}"/>`,
-    `<path d="M150 66c34 6 42 44 26 82-8 20-22 26-30 18 16-30 16-70 4-100Z" fill="${hairDeep}"/>`,
-    '',
-    `<path d="M38 74c-8 42-6 78 4 100 8-2 14-2 20 2-2-42-2-82-4-108Z" fill="${hairDeep}"/><path d="M162 74c8 42 6 78-4 100-8-2-14-2-20 2 2-42 2-82 4-108Z" fill="${hairDeep}"/>`,
-    '',
-    ''
-  ][styleId]
-
-  // Hair drawn OVER the head (crown, bangs, buns).
-  const hairFront = [
-    `${crown}<circle cx="46" cy="66" r="16" fill="${hf}"/><circle cx="154" cy="66" r="16" fill="${hf}"/>`,
-    `${crown}<circle cx="40" cy="80" r="7" fill="${accent}"/><circle cx="160" cy="80" r="7" fill="${accent}"/>`,
-    `${crown}<circle cx="150" cy="64" r="7" fill="${accent}"/>`,
-    `<path d="M40 82c-6-26 6-38 14-30-2-16 8-24 16-14 0-16 12-22 20-10 4-16 16-18 22-4 2-16 16-18 22-4 8-12 20-6 20 10 8-8 20 0 14 18-12-8-28-10-44-10s-32 2-44 10Z" fill="${hf}"/>`,
-    `<path d="M46 74c0-34 24-56 54-56s54 22 54 56c-6-14-16-20-26-16-6-6-14-6-20 0-6-4-14-4-20 2-8-6-30-2-42 14Z" fill="${hf}"/><path d="M100 20v22" stroke="${hairDeep}" stroke-width="2.5" opacity="0.55" fill="none"/>`,
-    `${crown}<circle cx="70" cy="22" r="14" fill="${hf}"/><circle cx="130" cy="22" r="14" fill="${hf}"/><circle cx="70" cy="22" r="6" fill="${hairDeep}" opacity="0.4"/><circle cx="130" cy="22" r="6" fill="${hairDeep}" opacity="0.4"/>`,
-    `${crown}<circle cx="52" cy="52" r="12" fill="${hf}"/><circle cx="148" cy="52" r="12" fill="${hf}"/><circle cx="70" cy="34" r="12" fill="${hf}"/><circle cx="130" cy="34" r="12" fill="${hf}"/><circle cx="100" cy="27" r="13" fill="${hf}"/>`
-  ][styleId]
-
-  const shine = `<path d="M66 40q34-22 68 2" stroke="${hairLite}" stroke-width="4" opacity="0.5" fill="none" stroke-linecap="round"/>`
-
-  // Eyes.
-  const eyes = [
-    `<ellipse cx="76" cy="74" rx="13" ry="16" fill="#fff"/><ellipse cx="124" cy="74" rx="13" ry="16" fill="#fff"/>
-     <circle cx="77" cy="76" r="11" fill="${eyeCol}"/><circle cx="125" cy="76" r="11" fill="${eyeCol}"/>
-     <circle cx="77" cy="77" r="6" fill="${eyeDeep}"/><circle cx="125" cy="77" r="6" fill="${eyeDeep}"/>
-     <circle cx="81" cy="71" r="4" fill="#fff"/><circle cx="129" cy="71" r="4" fill="#fff"/>
-     <circle cx="73" cy="81" r="2" fill="#fff"/><circle cx="121" cy="81" r="2" fill="#fff"/>`,
-    `<path d="M66 79q10-13 20 0" stroke="${eyeDeep}" stroke-width="4" fill="none" stroke-linecap="round"/>
-     <path d="M114 79q10-13 20 0" stroke="${eyeDeep}" stroke-width="4" fill="none" stroke-linecap="round"/>`,
-    `<ellipse cx="76" cy="74" rx="13" ry="16" fill="#fff"/><circle cx="77" cy="76" r="11" fill="${eyeCol}"/><circle cx="77" cy="77" r="6" fill="${eyeDeep}"/><circle cx="81" cy="71" r="4" fill="#fff"/>
-     <path d="M114 80q10-13 20 0" stroke="${eyeDeep}" stroke-width="4" fill="none" stroke-linecap="round"/>`,
-    `<ellipse cx="76" cy="74" rx="14" ry="18" fill="#fff"/><ellipse cx="124" cy="74" rx="14" ry="18" fill="#fff"/>
-     <ellipse cx="77" cy="76" rx="11" ry="13" fill="${eyeCol}"/><ellipse cx="125" cy="76" rx="11" ry="13" fill="${eyeCol}"/>
-     <circle cx="77" cy="78" r="6" fill="${eyeDeep}"/><circle cx="125" cy="78" r="6" fill="${eyeDeep}"/>
-     <circle cx="80" cy="70" r="5" fill="#fff"/><circle cx="128" cy="70" r="5" fill="#fff"/>`
-  ][eyeId]
-
-  const brows = (eyeId === 0 || eyeId === 3)
-    ? `<path d="M64 58q12-6 22 0" stroke="${hairDeep}" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M114 58q12-6 22 0" stroke="${hairDeep}" stroke-width="3" fill="none" stroke-linecap="round"/>`
-    : ''
-
-  // Mouth.
-  const mouth = [
-    `<path d="M92 96q8 7 16 0" stroke="${skinShade}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`,
-    `<path d="M93 94q7 11 14 0Z" fill="#d16a7a"/><path d="M94 95q6 3 12 0" stroke="#fff" stroke-width="2" fill="none"/>`,
-    `<path d="M92 95q4 4 8 0 4 4 8 0" stroke="${skinShade}" stroke-width="3" fill="none" stroke-linecap="round"/>`,
-    `<ellipse cx="100" cy="97" rx="4" ry="5" fill="#d16a7a"/>`
-  ][mouthId]
-
-  // Accessory (headband / clip / cap / bow).
-  const accessory = [
-    '',
-    `<path d="M52 52q48-32 96 0" stroke="${accent}" stroke-width="8" fill="none" stroke-linecap="round"/>`,
-    `<g transform="translate(60 50)"><path d="M0 -8 2.4 -2.4 8 -2.4 3.4 1.4 5 7 0 3.4 -5 7 -3.4 1.4 -8 -2.4 -2.4 -2.4Z" fill="${mixHex(accent, '#ffffff', 0.12)}" stroke="#fff" stroke-width="0.8"/></g>`,
-    `<path d="M46 54c2-30 22-46 54-46s52 16 54 46c-30-12-78-12-108 0Z" fill="${jersey}"/><path d="M150 54c14-2 24 2 24 8 0 4-8 6-18 4Z" fill="${jerseyDeep}"/><path d="M46 54q54-16 108 0" stroke="${jerseyDeep}" stroke-width="2" opacity="0.5" fill="none"/>`,
-    `<g transform="translate(66 30)"><path d="M0 0 -12 -7 -12 7Z" fill="${accent}"/><path d="M0 0 12 -7 12 7Z" fill="${accent}"/><circle r="4" fill="${mixHex(accent, '#ffffff', 0.2)}"/></g>`
-  ][accId]
-
-  const viewBox = compact ? '24 4 152 168' : '0 0 200 250'
-
   return `
-    <svg class="avatar-art ${scaleClass}" viewBox="${viewBox}" role="img" aria-label="${ariaLabel}">
-      <defs>
-        <linearGradient id="${prefix}-kit" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stop-color="${jerseyLight}"/><stop offset="1" stop-color="${jersey}"/>
-        </linearGradient>
-        <radialGradient id="${prefix}-hair" cx="0.4" cy="0.25" r="0.95">
-          <stop offset="0" stop-color="${hairLite}"/><stop offset="1" stop-color="${hair}"/>
-        </radialGradient>
-      </defs>
-      <ellipse cx="100" cy="240" rx="50" ry="8" fill="#e56fa6" opacity="0.2"/>
-      <rect x="76" y="178" width="18" height="42" rx="9" fill="${jerseyDeep}"/>
-      <rect x="106" y="178" width="18" height="42" rx="9" fill="${jerseyDeep}"/>
-      <ellipse cx="82" cy="224" rx="15" ry="8" fill="${shoe}"/>
-      <ellipse cx="118" cy="224" rx="15" ry="8" fill="${shoe}"/>
-      <path d="M64 158c0-22 16-34 36-34s36 12 36 34l3 26c0 7-5 12-13 12H74c-8 0-13-5-13-12Z" fill="url(#${prefix}-kit)"/>
-      <circle cx="100" cy="150" r="15" fill="#ffffff" opacity="0.85"/>
-      <text x="100" y="188" text-anchor="middle" font-family="Arial Rounded MT Bold, Arial, sans-serif" font-weight="800" font-size="26" fill="#ffffff">${jerseyNumber}</text>
-      <rect x="48" y="152" width="17" height="38" rx="8.5" fill="url(#${prefix}-kit)"/>
-      <rect x="135" y="152" width="17" height="38" rx="8.5" fill="url(#${prefix}-kit)"/>
-      <circle cx="56" cy="192" r="10" fill="${skin}"/>
-      <circle cx="144" cy="192" r="10" fill="${skin}"/>
-      ${hairBack}
-      <rect x="90" y="106" width="20" height="18" rx="8" fill="${skinShade}"/>
-      <circle cx="100" cy="74" r="56" fill="${skin}"/>
-      <circle cx="44" cy="80" r="9" fill="${skinShade}"/>
-      <circle cx="156" cy="80" r="9" fill="${skinShade}"/>
-      ${hairFront}
-      ${shine}
-      ${accessory}
-      <ellipse cx="72" cy="86" rx="12" ry="8" fill="#ff9ec4" opacity="0.6"/>
-      <ellipse cx="128" cy="86" rx="12" ry="8" fill="#ff9ec4" opacity="0.6"/>
-      ${brows}
-      ${eyes}
-      ${mouth}
-      <path d="M132 132l12 4v14l-12-3Z" fill="#ffffff" opacity="0.9"/>
-      <text x="138" y="145" text-anchor="middle" font-size="11" font-family="Arial, sans-serif">${team.flag}</text>
-    </svg>
-  `
+    <span class="avatar-art avatar-fallback ${scaleClass}" role="img" aria-label="${ariaLabel}" style="--avatar-primary:${escapeHtml(jersey)};--avatar-secondary:${escapeHtml(accent)};--avatar-soft:${escapeHtml(jerseyLight)}">
+      <span class="avatar-fallback-initials">${label}</span>
+      <span class="avatar-team-mark" aria-hidden="true">${team.flag}</span>
+    </span>`
 }
 
 function showToast (message) {
@@ -1329,7 +1215,7 @@ function renderHomeDashboard () {
     title: snap.st && snap.st.hasScore === false
       ? `${snap.home.name} vs ${snap.away.name}`
       : `${snap.home.name} ${snap.home.goals} - ${snap.away.goals} ${snap.away.name}`,
-    detail: `${state.spectators || 38} peers watching`,
+    detail: `${Math.max(1, Number(state.spectators || 1))} peer${Number(state.spectators || 1) === 1 ? '' : 's'} in room`,
     live: true
   }
   // A v2 worker relay includes the surrounding schedule, so the home rail is live
@@ -1417,20 +1303,23 @@ function livePanelSnapshot () {
   return { st, live, home, away, status, events }
 }
 
-function renderMomentumChart (snap, lead, momentum) {
-  const clamp = value => Math.max(10, Math.min(96, value))
-  const diff = Math.abs(snap.home.goals - snap.away.goals)
-  const possession = snap.st && Number.isFinite(Number(snap.st.possession)) ? Number(snap.st.possession) : 55 + diff * 4
-  const leadBias = lead === snap.home ? possession - 50 : 50 - possession
-  const eventBoost = snap.events.slice(0, 6).reduce((boost, ev) => {
-    const weight = ev.type === 'goal' ? 12 : ev.type === 'shot' ? 7 : ev.type === 'corner' ? 5 : 3
-    return boost + (ev.team === lead.name ? weight : -weight / 2)
-  }, 0)
-  const base = [32, 38, 46, 43, 54, 61, 58, 69, 74, 71, 82, 78, 88, 92]
-  const values = base.map((value, index) => {
-    const progress = index / Math.max(1, base.length - 1)
-    return clamp(value + leadBias * 0.45 + eventBoost * 0.16 + momentum * 0.24 * progress)
-  })
+function renderMomentumChart (snap) {
+  const events = snap.events
+    .filter(event => event && event.team && !['preview', 'tick'].includes(event.type))
+    .slice(0, 12)
+    .reverse()
+  if (!events.length) {
+    return `<div class="momentum-empty"><span>◌</span><strong>No invented pressure curve</strong><p>This chart will build from verified goals, shots, saves, chances, and corners after kickoff.</p></div>`
+  }
+  const clamp = value => Math.max(8, Math.min(92, value))
+  const weights = { goal: 16, shot: 9, chance: 7, corner: 5, save: 4, poss: 2 }
+  let pressure = 50
+  const values = [pressure]
+  for (const event of events) {
+    const direction = String(event.team).toLowerCase() === String(snap.home.name).toLowerCase() ? 1 : -1
+    pressure = clamp(pressure + direction * (weights[event.type] || 3))
+    values.push(pressure)
+  }
   const width = 360
   const top = 22
   const bottom = 126
@@ -1448,10 +1337,12 @@ function renderMomentumChart (snap, lead, momentum) {
     const y = Number((bottom - (tick / 100) * chartHeight).toFixed(1))
     return `<line x1="${left}" y1="${y}" x2="${width - left}" y2="${y}"></line>`
   }).join('')
-  const bars = points.map((point, index) => index % 2 === 0
+  const bars = points.map((point, index) => index > 0
     ? `<rect class="momentum-band" x="${Number((point.x - 4).toFixed(1))}" y="${point.y}" width="8" height="${Number((bottom - point.y).toFixed(1))}" rx="4"></rect>`
     : '').join('')
-  const aria = `${lead.name} momentum plus ${momentum}, ${snap.home.name} ${snap.home.goals} to ${snap.away.goals} ${snap.away.name}`
+  const finalPressure = values[values.length - 1]
+  const pressureTeam = finalPressure >= 50 ? snap.home : snap.away
+  const aria = `Event pressure from ${events.length} verified match events currently favours ${pressureTeam.name}`
 
   return `
     <div class="momentum-chart" role="img" aria-label="${escapeHtml(aria)}">
@@ -1464,12 +1355,12 @@ function renderMomentumChart (snap, lead, momentum) {
           ${points.filter((_, index) => index % 3 === 1 || index === points.length - 1).map(point => `<circle cx="${point.x}" cy="${point.y}" r="4"></circle>`).join('')}
         </g>
         <text class="momentum-axis" x="${left}" y="16">Pressure</text>
-        <text class="momentum-axis is-right" x="${width - left}" y="16">${escapeHtml(lead.name)}</text>
+        <text class="momentum-axis is-right" x="${width - left}" y="16">Verified events</text>
       </svg>
     </div>
     <div class="momentum-meta">
       <span>${escapeHtml(snap.home.name)}</span>
-      <strong>+${momentum}</strong>
+      <strong>${events.length} event${events.length === 1 ? '' : 's'}</strong>
       <span>${escapeHtml(snap.away.name)}</span>
     </div>
   `
@@ -1480,16 +1371,14 @@ function renderLivePanel (tab) {
 
   if (tab === 'stats') {
     const st = snap.st
-    // Live football-data feed carries score but not possession/shots — fall back to a projection so the card isn't empty.
-    const poss = (st && st.possession && st.possession !== 50) ? st.possession : 54
-    const shots = (st && st.shots && (st.shots[0] || st.shots[1])) ? st.shots : [7, 4]
-    const shotShare = Math.round((shots[0] / Math.max(1, shots[0] + shots[1])) * 100)
-    const threat = (st && st.threat && st.threat !== 50) ? st.threat : 61
+    const score = st && st.hasScore ? `${snap.home.goals}–${snap.away.goals}` : 'Not started'
+    const kickoff = st && st.utcDate ? `${new Date(st.utcDate).toLocaleDateString([], { month: 'short', day: 'numeric' })} · ${fmtTime(st.utcDate)}` : 'To be confirmed'
+    const source = snap.live ? (st && st.dataFresh === false ? 'Saved provider snapshot' : 'Football-Data.org') : 'Preview only'
     const rows = [
-      ['Score', String(snap.home.goals), String(snap.away.goals), snap.home.goals + snap.away.goals ? Math.round((snap.home.goals / Math.max(1, snap.home.goals + snap.away.goals)) * 100) : 50],
-      ['Possession', `${poss}%`, `${100 - poss}%`, poss],
-      ['Shots', String(shots[0]), String(shots[1]), shotShare],
-      ['Attacking threat', threat > 66 ? 'High' : threat > 45 ? 'Medium' : 'Low', '', threat]
+      ['Score', score],
+      ['Kickoff', kickoff],
+      ['Round', stageLabel(st || {}) || 'World Cup'],
+      ['Source', source]
     ]
     return `
       <div class="live-stat-head">
@@ -1497,22 +1386,19 @@ function renderLivePanel (tab) {
         <span class="live-pill ${snap.live ? 'is-live' : ''}">${snap.live ? '<i></i>' : ''}${escapeHtml(snap.status)}</span>
       </div>
       <div class="live-stat-grid">
-        ${rows.map(([label, home, away, share]) => `
-          <article class="live-stat-card">
+        ${rows.map(([label, value]) => `
+          <article class="live-stat-card is-metadata">
             <span>${label}</span>
-            <div class="split-stat">
-              <strong>${escapeHtml(home)}</strong>
-              ${away ? `<em>${escapeHtml(away)}</em>` : ''}
-            </div>
-            <div class="meter"><i style="width:${share}%"></i></div>
+            <strong>${escapeHtml(value)}</strong>
           </article>
         `).join('')}
       </div>
+      ${st && !st.statsAvailable ? '<p class="data-availability-note">Possession, shots, and pressure appear only when the provider supplies them. PearCup does not fabricate missing match statistics.</p>' : ''}
     `
   }
 
   if (tab === 'rooms') {
-    const peers = state.spectators || 38
+    const peers = Math.max(1, Number(state.spectators || 1))
     const roster = ['captain', 'amara', 'diego', 'kenji']
     const rteams = ['br', 'ci', 'ar', 'jp']
     return `
@@ -1601,8 +1487,7 @@ function renderLivePanel (tab) {
 
   // Overview
   const lead = snap.home.goals >= snap.away.goals ? snap.home : snap.away
-  const diff = Math.abs(snap.home.goals - snap.away.goals)
-  const momentum = 6 + diff * 8
+  const verifiedEvents = snap.events.filter(event => event && event.team && !['preview', 'tick'].includes(event.type))
   const evText = ev => {
     const t = ev.type
     const verb = t === 'goal' ? 'find the net' : t === 'save' ? 'are denied by a save' : t === 'shot' ? 'threaten with a shot' : t === 'corner' ? 'win a corner' : `see a ${t}`
@@ -1617,9 +1502,9 @@ function renderLivePanel (tab) {
       <article class="live-card momentum-card">
         <div class="rail-header">
           <p class="eyebrow">Momentum</p>
-          <strong>${escapeHtml(lead.name)} +${momentum}</strong>
+          <strong>${verifiedEvents.length ? `${verifiedEvents.length} verified event${verifiedEvents.length === 1 ? '' : 's'}` : 'Awaiting kickoff'}</strong>
         </div>
-        ${renderMomentumChart(snap, lead, momentum)}
+        ${renderMomentumChart(snap)}
       </article>
       <article class="live-card timeline-card">
         <div class="rail-header">
@@ -2915,6 +2800,9 @@ function createSimLiveFeed () {
     fixtures: [],
     competition: { name: 'FIFA World Cup' }
   }
+  st.dataSource = 'preview'
+  st.dataFresh = false
+  st.statsAvailable = false
   const emit = ev => listeners.forEach(fn => fn(ev, st))
   function tick () {
     if (st.matchStatus === 'TIMED' || st.matchStatus === 'SCHEDULED') {
@@ -3024,7 +2912,8 @@ function createApiLiveFeed (config) {
     minute: 0,
     home: { name: 'Home', flag: '⚽', teamId: 'es', goals: 0 },
     away: { name: 'Away', flag: '⚽', teamId: 'at', goals: 0 },
-    possession: 50, shots: [0, 0], threat: 50, matchStatus: 'connecting'
+    possession: 50, shots: [0, 0], threat: 50, matchStatus: 'connecting',
+    dataSource: 'relay', dataFresh: config.relayFresh !== false, statsAvailable: false
   }
   const emit = ev => listeners.forEach(fn => fn(ev, st))
   async function poll () {
@@ -3034,6 +2923,8 @@ function createApiLiveFeed (config) {
       const prevHome = st.home.goals
       const prevTotal = st._total
       mapFeed(st, config.provider, data)
+      st.dataFresh = config.relayFresh !== false
+      st.relayGeneratedAt = config.relayGeneratedAt || st.generatedAt || null
       const total = st.home.goals + st.away.goals
       const clk = st.minute ? `${st.minute}'` : ''
       // First poll seeds the baseline (don't announce the existing score as new goals).
@@ -3064,10 +2955,13 @@ function feedState () { return activeFeed.state() }
 
 function seedFeedEvents () {
   if (!state.feedEvents || !state.feedEvents.length) {
+    const st = feedState()
+    const kickoff = st.utcDate ? fmtTime(st.utcDate) : 'TBC'
+    const round = stageLabel(st) || 'World Cup'
     state.feedEvents = [
-      { clock: 'Today', type: 'preview', team: 'Spain vs Belgium room is open.' },
-      { clock: '19:00Z', type: 'preview', team: 'Kickoff at SoFi Stadium.' },
-      { clock: 'R32', type: 'preview', team: 'Portugal vs Croatia and Switzerland vs Algeria follow later today.' }
+      { clock: 'Today', type: 'preview', team: `${st.home.name} vs ${st.away.name} room is open.` },
+      { clock: kickoff, type: 'preview', team: `Kickoff ${kickoff}. Live events will appear here from the provider relay.` },
+      { clock: round, type: 'preview', team: `${round} fixture data is loaded from the active match snapshot.` }
     ]
   }
 }
@@ -3122,29 +3016,55 @@ function renderLiveBoard (st) {
   if (!el) return
   const info = matchStateLabel(st)
   const scoreMid = st.hasScore ? `${st.home.goals}<span>–</span>${st.away.goals}` : '<span class="lb-vs">vs</span>'
-  const crest = url => url
-    ? `<span class="lb-crestwrap"><img class="lb-crest" src="${escapeHtml(url)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="lb-crest lb-crest-blank" style="display:none">⚽</span></span>`
-    : '<div class="lb-crest lb-crest-blank">⚽</div>'
+  const homeTeam = teamById(watchTeamId(st.home, 'es'))
+  const awayTeam = teamById(watchTeamId(st.away, 'be'))
+  const crest = (url, flag) => url
+    ? `<span class="lb-crestwrap"><img class="lb-crest" src="${escapeHtml(url)}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='grid'"><span class="lb-crest lb-crest-blank" style="display:none">${flag}</span></span>`
+    : `<div class="lb-crest lb-crest-blank">${flag}</div>`
+  const kickoff = st.utcDate ? `${new Date(st.utcDate).toLocaleDateString([], { month: 'short', day: 'numeric' })} · ${fmtTime(st.utcDate)}` : 'To be confirmed'
+  const round = stageLabel(st) || 'FIFA World Cup'
+  const isNow = ['IN_PLAY', 'LIVE', 'PAUSED'].includes(st.matchStatus)
+  const sourceLabel = isLiveApi()
+    ? st.dataFresh === false ? 'Saved fixture snapshot' : isNow ? 'Live provider feed' : 'Fixture feed connected'
+    : 'Preview mode'
+  const latestEvent = (state.feedEvents || []).find(event => event && event.type && !['preview', 'tick'].includes(event.type))
+  const eventText = latestEvent
+    ? `${latestEvent.clock || 'Now'} · ${commentaryLine(latestEvent.type, latestEvent.team, state.language || 'EN')}`
+    : isNow ? 'Waiting for the next verified match event…' : `Live event tracking starts when ${st.home.name} vs ${st.away.name} kicks off.`
+  el.className = `tv-liveboard ${isNow ? 'is-now' : 'is-scheduled'}`
   el.innerHTML = `
-    <div class="lb-comp">
-      ${st.competition && st.competition.emblem ? `<img class="lb-emblem" src="${escapeHtml(st.competition.emblem)}" alt="">` : ''}
-      <span>${escapeHtml((st.competition && st.competition.name) || 'FIFA World Cup')}${stageLabel(st) ? ' · ' + stageLabel(st) : ''}</span>
-    </div>
-    <div class="lb-teams">
-      <div class="lb-team">${crest(st.home.crest)}<strong>${escapeHtml(st.home.name)}</strong></div>
-      <div class="lb-score">${scoreMid}</div>
-      <div class="lb-team">${crest(st.away.crest)}<strong>${escapeHtml(st.away.name)}</strong></div>
-    </div>
-    <div class="lb-state ${info.cls}">${info.dot ? '<i></i>' : ''}${escapeHtml(info.txt)}</div>`
+    <div class="match-stage-shell">
+      <div class="lb-comp">
+        ${st.competition && st.competition.emblem ? `<img class="lb-emblem" src="${escapeHtml(st.competition.emblem)}" alt="">` : ''}
+        <span>${escapeHtml((st.competition && st.competition.name) || 'FIFA World Cup')} · ${escapeHtml(round)}</span>
+      </div>
+      <div class="lb-teams">
+        <div class="lb-team">${crest(st.home.crest, homeTeam.flag)}<strong>${escapeHtml(st.home.name)}</strong><small>Home</small></div>
+        <div class="lb-score"><span class="lb-state ${info.cls}">${info.dot ? '<i></i>' : ''}${escapeHtml(info.txt)}</span><strong>${scoreMid}</strong></div>
+        <div class="lb-team">${crest(st.away.crest, awayTeam.flag)}<strong>${escapeHtml(st.away.name)}</strong><small>Away</small></div>
+      </div>
+      <div class="lb-data-grid" aria-label="Match details">
+        <div><span>Kickoff</span><strong>${escapeHtml(kickoff)}</strong></div>
+        <div><span>Round</span><strong>${escapeHtml(round)}</strong></div>
+        <div><span>Source</span><strong>${escapeHtml(sourceLabel)}</strong></div>
+      </div>
+      <p class="lb-event">${escapeHtml(eventText)}</p>
+    </div>`
 }
 
 function renderLiveSource (st) {
   const el = $('#liveSource')
   if (!el) return
+  const isNow = ['IN_PLAY', 'LIVE', 'PAUSED'].includes(st.matchStatus)
+  const isProvider = isLiveApi()
+  const label = isProvider ? (st.dataFresh === false ? 'FIXTURE SNAPSHOT' : isNow ? 'LIVE DATA' : 'FIXTURE DATA') : 'PREVIEW MODE'
+  const source = isProvider
+    ? `Football-Data.org${st.relayGeneratedAt || st.lastUpdated ? ` · updated ${fmtTime(st.relayGeneratedAt || st.lastUpdated)}` : ''}`
+    : 'Waiting for the KeyVault-backed relay'
   el.innerHTML = `
-    <span class="ls-badge"><i></i>LIVE DATA</span>
-    <span class="ls-src">Football-Data.org${st.lastUpdated ? ` · updated ${fmtTime(st.lastUpdated)}` : ''}</span>
-    <button class="ls-refresh" id="liveRefresh" type="button">↻ Refresh</button>`
+    <span class="ls-badge ${st.dataFresh === false ? 'is-stale' : ''}">${isProvider && st.dataFresh !== false ? '<i></i>' : ''}${label}</span>
+    <span class="ls-src">${escapeHtml(source)}</span>
+    ${isProvider ? '<button class="ls-refresh" id="liveRefresh" type="button">↻ Refresh</button>' : ''}`
   const r = $('#liveRefresh')
   if (r) r.onclick = () => { if (activeFeed && activeFeed.poll) { activeFeed.poll(); showToast('Refreshing live data…') } }
 }
@@ -3152,12 +3072,13 @@ function renderLiveSource (st) {
 function renderWatchStats (st) {
   const el = $('#watchStats')
   if (!el) return
-  if (isLiveApi()) {
+  const scheduled = ['TIMED', 'SCHEDULED', 'connecting'].includes(st.matchStatus)
+  if (isLiveApi() || scheduled || !st.statsAvailable) {
     el.className = 'stats-strip is-live-meta'
     const chip = (label, val) => `<div class="live-meta"><span>${label}</span><strong>${escapeHtml(val || '—')}</strong></div>`
     el.innerHTML =
       chip('Status', matchStateLabel(st).txt) +
-      chip('Kickoff', fmtTime(st.utcDate)) +
+      chip('Kickoff', st.utcDate ? `${new Date(st.utcDate).toLocaleDateString([], { month: 'short', day: 'numeric' })} · ${fmtTime(st.utcDate)}` : 'TBC') +
       chip('Round', stageLabel(st))
     return
   }
@@ -3192,29 +3113,14 @@ function applyFeedTick (ev, st) {
     const key = `${st.home.name}|${st.away.name}`
     if (key !== lastLiveMatchKey) { lastLiveMatchKey = key; state.feedEvents = [] }
   }
-  const clockTxt = st.matchStatus === 'FINISHED' || st.minute >= 90
-    ? 'FT'
-    : st.minute ? `${st.minute}'`
-    : (st.matchStatus === 'IN_PLAY' || st.matchStatus === 'PAUSED' || st.matchStatus === 'LIVE') ? 'LIVE'
-    : st.matchStatus === 'TIMED' || st.matchStatus === 'SCHEDULED' ? 'Soon'
-    : `${st.minute || 0}'`
-  const clock = $('#tvClock'); if (clock) clock.textContent = clockTxt
-  const score = $('#tvScore'); if (score) score.textContent = st.hasScore === false
-    ? `${st.home.name} vs ${st.away.name}`
-    : `${st.home.name} ${st.home.goals} - ${st.away.goals} ${st.away.name}`
   const title = $('#watchTitle'); if (title) title.textContent = `${st.home.name} vs ${st.away.name}`
-  // Live vs simulated presentation: real API → rich scoreboard + source badge.
+  // The match centre always renders from feed state; it never substitutes a
+  // decorative fake pitch when provider data is stale or pre-match.
   const tv = document.querySelector('#watch .stadium-tv')
   const board = $('#tvLiveBoard'); const src = $('#liveSource')
-  if (isLiveApi()) {
-    if (tv) tv.classList.add('is-live')
-    if (board) { board.hidden = false; renderLiveBoard(st) }
-    if (src) { src.hidden = false; renderLiveSource(st) }
-  } else {
-    if (tv) tv.classList.remove('is-live')
-    if (board) board.hidden = true
-    if (src) src.hidden = true
-  }
+  if (tv) tv.classList.toggle('is-live', isLiveApi())
+  if (board) { board.hidden = false; renderLiveBoard(st) }
+  if (src) { src.hidden = false; renderLiveSource(st) }
   renderWatchStats(st)
   if (isLiveApi()) renderCommentaryFeed()
   // Only log real events with a team (skip API poll 'tick' refreshes).
@@ -3256,21 +3162,16 @@ async function detectLiveRelay () {
     const match = snapshot.activeMatch || snapshot
     const stamp = Date.parse(snapshot.generatedAt || match.lastUpdated || match.utcDate || 0) || 0
     const maximumAge = productionLiveData ? Math.max(120_000, productionLiveData.pollMs * 4) : 5 * 60 * 1000
-    if (stamp && Date.now() - stamp > maximumAge) {
-      if (cfg.enabled && cfg.proxy === relayUrl) {
-        state.liveConfig = { ...cfg, enabled: false, proxy: '' }
-        if (!productionLiveData) persist()
-        startLiveFeed()
-      }
-      return
-    }
+    const relayFresh = !stamp || Date.now() - stamp <= maximumAge
     state.liveConfig = {
       ...cfg,
       enabled: true,
       provider: 'football-data',
       apiKey: '',
       proxy: relayUrl,
-      pollSec: productionLiveData ? Math.max(15, Math.round(productionLiveData.pollMs / 1000)) : 30
+      pollSec: productionLiveData ? Math.max(15, Math.round(productionLiveData.pollMs / 1000)) : 30,
+      relayFresh,
+      relayGeneratedAt: snapshot.generatedAt || match.lastUpdated || null
     }
     startLiveFeed()
     if (document.querySelector('#watch')?.classList.contains('is-active')) renderWatch()
@@ -3400,7 +3301,7 @@ async function startWatchTrivia () {
     hostId: selfPeerId(),
     answers: {},
     revealed: false,
-    source: commentary && commentary.mode === 'sdk' ? 'QVAC on-device' : 'QVAC grounded fallback'
+    source: commentary && commentary.mode === 'sdk' ? 'On-device QVAC' : 'Match-data fallback'
   }
   if (normalized.answerIndex < 0 || normalized.answerIndex > 3) normalized.answerIndex = 0
   watchTrivia = normalized
@@ -3459,7 +3360,7 @@ function bindTriviaSync () {
     if (!message || !message.t) return
     if (message.t === 'trivia:round' && message.round && Array.isArray(message.round.options)) {
       clearWatchTriviaTimer()
-      watchTrivia = { ...message.round, hostId: message.from, answers: {}, revealed: false, source: 'QVAC room round' }
+      watchTrivia = { ...message.round, hostId: message.from, answers: {}, revealed: false, source: 'QVAC-powered room trivia' }
       renderWatchTrivia()
       return
     }
@@ -3477,11 +3378,11 @@ function renderWatchTrivia () {
   if (!el) return
   const score = Number(state.triviaScore || 0)
   if (watchTriviaGenerating) {
-    el.innerHTML = `<div class="trivia-head"><div><p class="eyebrow">QVAC watch trivia</p><strong>Building a grounded round…</strong></div><span class="trivia-score">${score} pts</span></div><p class="trivia-wait">Reading the active match snapshot on device.</p>`
+    el.innerHTML = `<div class="trivia-head"><div><p class="eyebrow">QVAC-powered trivia</p><strong>Grounding a live-data question…</strong></div><span class="trivia-score">${score} pts</span></div><p class="trivia-wait">Using the active match snapshot on device.</p>`
     return
   }
   if (!watchTrivia) {
-    el.innerHTML = `<div class="trivia-head"><div><p class="eyebrow">QVAC watch trivia</p><strong>Play from the live match</strong></div><span class="trivia-score">${score} pts</span></div><p class="trivia-wait">One friendly, grounded question for everyone in the room. No odds, no invented stats.</p><button class="primary-button compact-action" id="startWatchTrivia" type="button">Start QVAC round</button>`
+    el.innerHTML = `<div class="trivia-head"><div><p class="eyebrow">QVAC-powered trivia</p><strong>Play from the live match</strong></div><span class="trivia-score">${score} pts</span></div><p class="trivia-wait">One grounded question for everyone in the room. No odds and no invented stats.</p><button class="primary-button compact-action" id="startWatchTrivia" type="button">Start trivia</button>`
     const start = $('#startWatchTrivia')
     if (start) start.addEventListener('click', startWatchTrivia)
     return
@@ -3495,11 +3396,11 @@ function renderWatchTrivia () {
     return `<button class="trivia-option${isAnswer ? ' is-answer' : ''}${isCorrect ? ' is-correct' : ''}${isWrong ? ' is-wrong' : ''}" type="button" data-trivia-answer="${index}"${watchTrivia.revealed || watchTrivia.answer != null ? ' disabled' : ''}><b>${String.fromCharCode(65 + index)}</b><span>${escapeHtml(option)}</span>${isCorrect ? '<i>✓</i>' : ''}</button>`
   }).join('')
   el.innerHTML = `
-    <div class="trivia-head"><div><p class="eyebrow">QVAC watch trivia</p><strong>${escapeHtml(watchTrivia.source || 'QVAC room round')}</strong></div><span class="trivia-score">${score} pts</span></div>
+    <div class="trivia-head"><div><p class="eyebrow">QVAC-powered trivia</p><strong>${escapeHtml(watchTrivia.source || 'QVAC-powered room trivia')}</strong></div><span class="trivia-score">${score} pts</span></div>
     <p class="trivia-question">${escapeHtml(watchTrivia.question)}</p>
     <div class="trivia-options">${options}</div>
     ${watchTrivia.revealed ? `<p class="trivia-explanation">${escapeHtml(watchTrivia.explanation || 'Answer verified from the active match snapshot.')}</p>` : `<div class="trivia-foot"><span>${answerCount} answer${answerCount === 1 ? '' : 's'} in · reveal in 25s</span>${isHost ? '<button class="secondary-button compact-action" id="revealWatchTrivia" type="button">Reveal now</button>' : ''}</div>`}
-    ${watchTrivia.revealed && isHost ? '<button class="secondary-button compact-action" id="nextWatchTrivia" type="button">Next QVAC round</button>' : ''}`
+    ${watchTrivia.revealed && isHost ? '<button class="secondary-button compact-action" id="nextWatchTrivia" type="button">Next question</button>' : ''}`
   $$('#watchTrivia [data-trivia-answer]').forEach(button => button.addEventListener('click', () => answerWatchTrivia(Number(button.dataset.triviaAnswer))))
   const reveal = $('#revealWatchTrivia'); if (reveal) reveal.addEventListener('click', revealWatchTrivia)
   const next = $('#nextWatchTrivia'); if (next) next.addEventListener('click', startWatchTrivia)
@@ -3554,7 +3455,7 @@ function createPeerConnection (peerId, polite) {
       video.hidden = false
       video.play().catch(() => {})
     }
-    const pitch = $('#tvPitch'); if (pitch) pitch.style.opacity = '0'
+    const board = $('#tvLiveBoard'); if (board) board.style.opacity = '0'
     updateScreenShareBadge()
   }
   pc.onconnectionstatechange = () => {
@@ -3666,7 +3567,7 @@ async function startScreenShare () {
   }
   const video = $('#shareVideo')
   if (video) { video.muted = true; video.srcObject = shareStream; video.hidden = false; video.play().catch(() => {}) }
-  const pitch = $('#tvPitch'); if (pitch) pitch.style.opacity = '0'
+  const board = $('#tvLiveBoard'); if (board) board.style.opacity = '0'
   const btn = $('#shareScreenBtn'); if (btn) btn.classList.add('is-live')
   showToast('Sharing your screen to the room')
   const track = shareStream.getVideoTracks()[0]
@@ -3684,7 +3585,7 @@ function stopScreenShare () {
   stoppingScreenShare = true
   if (shareStream) { shareStream.getTracks().forEach(t => t.stop()); shareStream = null }
   const video = $('#shareVideo'); if (video) { video.muted = true; video.hidden = true; video.srcObject = null }
-  const pitch = $('#tvPitch'); if (pitch) pitch.style.opacity = ''
+  const board = $('#tvLiveBoard'); if (board) board.style.opacity = ''
   const btn = $('#shareScreenBtn'); if (btn) btn.classList.remove('is-live')
   if (window.PearCupWatchSync) window.PearCupWatchSync.broadcastScreen({ t: 'screen:stop' })
   closeScreenShareRtc()
@@ -5213,8 +5114,8 @@ function controllerReady (controller, methods) {
 }
 
 function bootRuntimeDiagnostics () {
-  const avatarImages = Array.from(document.querySelectorAll('svg.avatar-art image'))
-    .map(el => el.getAttribute('href') || '')
+  const avatarImages = Array.from(document.querySelectorAll('.avatar-art img'))
+    .map(el => el.getAttribute('src') || '')
     .filter(Boolean)
   const activeScreens = Array.from(document.querySelectorAll('.screen.is-active')).map(el => el.id)
   const ds = document.documentElement.dataset
@@ -5225,7 +5126,7 @@ function bootRuntimeDiagnostics () {
     routeButtons: Array.from(document.querySelectorAll('[data-view]')).map(el => el.getAttribute('data-view')).filter(Boolean),
     teamCards: document.querySelectorAll('#teamGrid .team-card').length,
     avatarImages: avatarImages.slice(0, 4),
-    profileChipReady: Boolean(document.querySelector('#profileChip svg.avatar-art')),
+    profileChipReady: Boolean(document.querySelector('#profileChip .avatar-art img')),
     integration: {
       qvacMode: integrationRuntime && integrationRuntime.mode && (integrationRuntime.mode.qvac || integrationRuntime.mode) || 'unknown',
       qvacCommentaryMode: integrationRuntime && integrationRuntime.mode && integrationRuntime.mode.qvacCommentary || 'unknown',
@@ -5380,7 +5281,7 @@ function runtimeSelfTestSnapshot (status, errors = [], extra = {}) {
   const modalCode = modal && modal.querySelector('.peer-code')
   const peerState = window.PearCupPeerMatch && window.PearCupPeerMatch._state
   const activeAvatarImages = active
-    ? Array.from(active.querySelectorAll('svg.avatar-art image')).map(el => el.getAttribute('href') || '').filter(Boolean).slice(0, 6)
+    ? Array.from(active.querySelectorAll('.avatar-art img')).map(el => el.getAttribute('src') || '').filter(Boolean).slice(0, 6)
     : []
   return {
     event: 'pearcup:runtime-self-test',
@@ -5543,7 +5444,7 @@ function runtimeBracketEvidence () {
     pickButtons: document.querySelectorAll('#bracketBoard [data-pick]').length,
     roundTitles: Array.from(document.querySelectorAll('#bracketBoard .round-title')).map(el => el.textContent.trim()),
     connectorPathLength: (document.querySelector('#bracketLines path') && document.querySelector('#bracketLines path').getAttribute('d') || '').length,
-    generatedAvatarImages: Array.from(document.querySelectorAll('#bracket svg.avatar-art image')).map(el => el.getAttribute('href') || '').filter(Boolean).slice(0, 8)
+    generatedAvatarImages: Array.from(document.querySelectorAll('#bracket .avatar-art img')).map(el => el.getAttribute('src') || '').filter(Boolean).slice(0, 8)
   }
 }
 
@@ -5560,8 +5461,8 @@ function runtimeHashRouteEvidence (view) {
     activeScreenDataset: document.documentElement.dataset.pearcupActiveScreen || null,
     activeNav: Array.from(document.querySelectorAll('.topnav button.is-active')).map(el => el.textContent.trim()),
     teamCards: document.querySelectorAll('#teamGrid .team-card').length,
-    profileChipReady: Boolean(document.querySelector('#profileChip svg.avatar-art')),
-    avatarPreviewReady: Boolean(avatarPreview && avatarPreview.querySelector('svg.avatar-art')),
+    profileChipReady: Boolean(document.querySelector('#profileChip .avatar-art img')),
+    avatarPreviewReady: Boolean(avatarPreview && avatarPreview.querySelector('.avatar-art img')),
     liveMenuButtons: document.querySelectorAll('#liveMenu button').length,
     liveDetailReady: Boolean(document.querySelector('#liveDetail') && document.querySelector('#liveDetail').textContent.trim()),
     poolCards: document.querySelectorAll('#poolGrid .pool-card').length,
@@ -5618,10 +5519,10 @@ async function runBootRuntimeSelfTest () {
     if (!window.PearCupPeerMatch || typeof window.PearCupPeerMatch.host !== 'function') errors.push('PearCupPeerMatch.host missing')
     setView('bracket')
     await waitForRuntimeCondition(() => {
-      const bracketAvatars = Array.from(document.querySelectorAll('#bracket svg.avatar-art image'))
+      const bracketAvatars = Array.from(document.querySelectorAll('#bracket .avatar-art img'))
       return document.documentElement.dataset.pearcupActiveScreen === 'bracket' &&
         document.querySelectorAll('#bracketBoard .bracket-match').length >= 31 &&
-        bracketAvatars.some(el => /avatars\//.test(el.getAttribute('href') || ''))
+        bracketAvatars.some(el => /avatars\//.test(el.getAttribute('src') || ''))
     }, 5000)
     evidence.bracket = runtimeBracketEvidence()
     if (evidence.bracket.activeScreen !== 'bracket') errors.push('Bracket route did not become active')
@@ -5673,7 +5574,7 @@ async function runBootRuntimeSelfTest () {
     if (!active || active.id !== 'games') errors.push('Games route did not become active')
     if (!document.querySelector('#inviteFriendBtn')) errors.push('Invite button did not render')
     if (!document.querySelector('img.lobby-mascot[src="assets/mascot.png"]')) errors.push('Lobby mascot did not render')
-    const avatarImages = Array.from(document.querySelectorAll('#games svg.avatar-art image')).map(el => el.getAttribute('href') || '')
+    const avatarImages = Array.from(document.querySelectorAll('#games .avatar-art img')).map(el => el.getAttribute('src') || '')
     if (!avatarImages.some(src => /avatars\//.test(src))) errors.push('Games view did not render generated avatar images')
     if (window.PearCupPeerMatch && typeof window.PearCupPeerMatch.host === 'function') {
       window.PearCupPeerMatch.host()
