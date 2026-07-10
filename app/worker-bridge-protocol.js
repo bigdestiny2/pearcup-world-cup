@@ -149,7 +149,8 @@
     })
   }
 
-  function createUltimateSportsBridgeHandler ({ rootObject = root, handler, platformOptions = {} } = {}) {
+  // Ultimate Sports ships from its own repo, so the bridge must be injected by the host.
+  function createUltimateSportsBridgeHandler ({ rootObject = root, handler } = {}) {
     if (handler && typeof handler.handle === 'function') return handler
     const exposed = rootObject && (
       rootObject.PearCupUltimateSportsBridge ||
@@ -157,21 +158,6 @@
       rootObject.UltimateSportsBridge
     )
     if (exposed && typeof exposed.handle === 'function') return exposed
-    if (typeof require !== 'undefined') {
-      try {
-        const ultimateBridge = require('../platform/ultimate-sports/src/bridge-protocol.js')
-        return ultimateBridge.createBridgeHandler({
-          platformOptions: {
-            peerId: 'pearcup-worker-ultimate',
-            ...platformOptions
-          }
-        })
-      } catch (err) {
-        const error = new Error(`Ultimate sports bridge unavailable: ${err.message}`)
-        error.code = 'PEARCUP_ULTIMATE_SPORTS_BRIDGE_UNAVAILABLE'
-        throw error
-      }
-    }
     const error = new Error('Ultimate sports bridge unavailable in this runtime')
     error.code = 'PEARCUP_ULTIMATE_SPORTS_BRIDGE_UNAVAILABLE'
     throw error
@@ -239,8 +225,7 @@
         } else if (envelope.action === 'ultimateSports') {
           ultimateSportsHandler = createUltimateSportsBridgeHandler({
             rootObject,
-            handler: ultimateSportsHandler || payload.handler,
-            platformOptions: payload.platformOptions || {}
+            handler: ultimateSportsHandler || payload.handler
           })
           result = ultimateSportsHandler.handle(normalizeUltimateSportsRequest(payload))
         } else {

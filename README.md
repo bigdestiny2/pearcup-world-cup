@@ -22,7 +22,7 @@ pear run pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo
 
 ## 🚀 Forked into Ultimate Sports
 
-PearCup started as a *World Cup* app. It's since been forked and generalized into **Ultimate Sports** — a **bracket‑picker + social prediction app for _any_ sport** — living in [`platform/ultimate-sports/`](platform/ultimate-sports/).
+PearCup started as a *World Cup* app. It's since been forked and generalized into **Ultimate Sports** — a **bracket‑picker + social prediction app for _any_ sport** — which now lives in its own repository: **[github.com/bigdestiny2/ultimate-sports](https://github.com/bigdestiny2/ultimate-sports)**.
 
 Where PearCup is one tournament, Ultimate Sports is a **multi‑sport P2P client**: an early‑internet‑style server browser where each "server" is a different sport or event —
 
@@ -33,12 +33,11 @@ Where PearCup is one tournament, Ultimate Sports is a **multi‑sport P2P client
 
 Twelve servers across ten categories, each with its own bracket / pick format, live watch rooms, a cross‑network **social feed** (Nostr / Bluesky / Mastodon), P2P mini‑games, and the same WDK + QVAC settlement spine. **Same P2P foundation — any sport.**
 
-> The two builds are kept **separate**: **PearCup** (`design/kawaii-app/`) is the released World Cup entry above; **Ultimate Sports** (`platform/ultimate-sports/`) is the multi‑sport evolution.
+> The two builds are kept in **separate repositories**: this repo is **PearCup** (`design/kawaii-app/`), the released World Cup entry above. **Ultimate Sports**, the multi‑sport evolution, is developed at **[bigdestiny2/ultimate-sports](https://github.com/bigdestiny2/ultimate-sports)**.
 
 ## Folder Map
 
 - **[`design/kawaii-app/`](design/kawaii-app/)** — **PearCup**, the released Pear app (self‑contained: own `package.json`, `index.cjs`, P2P modules). **Start here.**
-- **[`platform/ultimate-sports/`](platform/ultimate-sports/)** — **Ultimate Sports**, the multi‑sport bracket‑picker fork.
 - `app/` — earlier base prototype; QVAC / WDK hardening was ported from here into the kawaii build.
 - `docs/` — technical spec, Pear runtime boundary, and architecture notes.
 - `scripts/` — release gates, staging, and publish helpers.
