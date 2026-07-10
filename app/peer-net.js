@@ -251,13 +251,13 @@
     return createLegacyChannel(topic)
   }
 
-  // Short, human-shareable room code (invite link fragment).
+  // Human-shareable room code (invite link fragment). Twelve symbols carry
+  // roughly 60 bits of entropy: short enough to read or type, while still
+  // making casual room enumeration infeasible for a friendly demo match.
   function newRoomCode () {
-    // Friend-match invites are capabilities. Use 128 bits of randomness rather
-    // than a six-character code so a relay observer cannot feasibly enumerate
-    // active rooms. The alphabet avoids ambiguous characters when read aloud.
-    // Exactly 32 URL-safe, easy-to-read symbols for 5-bit encoding. The
-    // trailing dash avoids ambiguous 0/1/I/l/O characters.
+    // The alphabet avoids ambiguous characters when read aloud. Exactly 32
+    // URL-safe, easy-to-read symbols for 5-bit encoding; the trailing dash
+    // avoids ambiguous 0/1/I/l/O characters.
     const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789-'
     const bytes = new Uint8Array(16)
     const crypto = root.crypto || (typeof globalThis !== 'undefined' && globalThis.crypto)
@@ -269,13 +269,12 @@
     for (const byte of bytes) {
       buffer = (buffer << 8) | byte
       bits += 8
-      while (bits >= 5) {
+      while (bits >= 5 && out.length < 12) {
         bits -= 5
         out += alphabet[(buffer >>> bits) & 31]
       }
     }
-    if (bits > 0) out += alphabet[(buffer << (5 - bits)) & 31]
-    return out
+    return out.slice(0, 12)
   }
 
   function newPeerId () {

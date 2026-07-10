@@ -165,6 +165,8 @@ test('Pear wakeup links extract and sanitize room codes for native deep links', 
   assert.equal(harness.context.friendJoinCodeFromLink({ query: '?join=Room-42!!' }), 'room-42')
   assert.equal(harness.context.friendJoinCodeFromLink({ link: 'pear://pearcup/?join=Room-42!!' }), 'room-42')
   assert.equal(harness.context.friendJoinCodeFromLink({ linkData: { query: '?join=Room-42!!' } }), 'room-42')
+  assert.equal(harness.context.friendJoinCodeFromLink({ url: 'https://pearcup-kawaii.pages.dev/play/?join=Room-42!!' }), 'room-42')
+  assert.equal(harness.context.friendJoinCodeFromLink({ data: { args: ['--link', 'pear://pearcup/?join=Room-42!!'] } }), 'room-42')
 })
 
 test('Pear wakeup applies a room code through the same retryable join path', () => {

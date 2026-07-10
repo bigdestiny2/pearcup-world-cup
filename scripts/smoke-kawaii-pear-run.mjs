@@ -49,6 +49,12 @@ const allowedWarnings = [
 const pearLink = args.positionalLink && args.link
   ? `${pathToFileURL(join(pearLaunchRoot.path, 'index.html')).href}?join=${encodeURIComponent(new URL(args.link).searchParams.get('join') || '')}`
   : '.'
+// Pear's detached IPC carries the query from the positional app link. The
+// --link flag is only applied when starting a new process, so use a directory
+// file link with ?join= when waking an already-running local app.
+const wakeupLink = args.link
+  ? `${pathToFileURL(pearLaunchRoot.path).href}?join=${encodeURIComponent(new URL(args.link).searchParams.get('join') || '')}`
+  : null
 const pearArgs = ['run', '--dev']
 if (wakeStore) pearArgs.push('--store', wakeStore)
 else pearArgs.push('--tmp-store')
@@ -85,7 +91,7 @@ child.on('exit', (code, signal) => {
 
 if (args.link && wakeStore && !args.positionalLink) {
   setTimeout(() => {
-    const wake = spawn(pear, ['run', '--detached', '--store', wakeStore, '--no-ask', '--no-pre', '--link', args.link, pearLink], {
+    const wake = spawn(pear, ['run', '--detached', '--store', wakeStore, '--no-ask', '--no-pre', wakeupLink], {
       cwd: pearLaunchRoot.path,
       env: { ...process.env },
       stdio: ['ignore', 'pipe', 'pipe']

@@ -4857,26 +4857,26 @@ function pendingFriendJoinCode () {
   }
 }
 
-function friendJoinCodeFromLink (value) {
+function friendJoinCodeFromLink (value, depth = 0) {
   if (!value) return ''
+  if (depth > 5) return ''
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const fromItem = friendJoinCodeFromLink(item, depth + 1)
+      if (fromItem) return fromItem
+    }
+    return ''
+  }
   if (typeof value === 'object') {
-    if (typeof value.link === 'string') {
-      const fromLink = friendJoinCodeFromLink(value.link)
-      if (fromLink) return fromLink
+    for (const key of ['link', 'url', 'href', 'query', 'linkData', 'data', 'payload', 'args']) {
+      if (value[key] == null) continue
+      if (key === 'query' && typeof value.query === 'object') {
+        const queryValue = value.query.join || value.query.get && value.query.get('join')
+        if (queryValue) return String(queryValue).trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32)
+      }
+      const nested = friendJoinCodeFromLink(value[key], depth + 1)
+      if (nested) return nested
     }
-    if (typeof value.query === 'string') {
-      const fromQuery = friendJoinCodeFromLink(value.query)
-      if (fromQuery) return fromQuery
-    }
-    if (value.query && typeof value.query === 'object') {
-      const queryValue = value.query.join || value.query.get && value.query.get('join')
-      if (queryValue) return String(queryValue).trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32)
-    }
-    if (value.linkData && typeof value.linkData === 'object') {
-      const fromLinkData = friendJoinCodeFromLink(value.linkData)
-      if (fromLinkData) return fromLinkData
-    }
-    if (typeof value.href === 'string') return friendJoinCodeFromLink(value.href)
     return ''
   }
   const raw = String(value).trim()
@@ -4949,10 +4949,24 @@ function bindPearWakeups () {
   try {
     const stream = pearApi.wakeups(wakeup => {
       const code = friendJoinCodeFromLink(wakeup)
+      if (typeof sendBootProbeEvent === 'function') sendBootProbeEvent({
+        event: 'pearcup:wakeup-received',
+        status: code ? 'parsed' : 'ignored',
+        code: code || null,
+        keys: wakeup && typeof wakeup === 'object' ? Object.keys(wakeup).slice(0, 12) : []
+      })
       if (code) applyPearFriendWakeup(code)
     })
     window.__pearcupWakeupStream = stream || null
     sendBootProbeEvent({ event: 'pearcup:wakeup-listener', status: 'bound' })
+
+    // Pear's migration path exposes launch arguments on Pear.app.args. Some
+    // desktop shells deliver a protocol click there instead of through the
+    // wakeup message stream, so consume both surfaces during first boot.
+    const initialCode = friendJoinCodeFromLink(pearApi.app && pearApi.app.args)
+    if (initialCode && typeof setTimeout === 'function') {
+      setTimeout(() => applyPearFriendWakeup(initialCode), 0)
+    }
   } catch (e) {
     window.__pearcupWakeupsBound = false
     sendBootProbeEvent({ event: 'pearcup:wakeup-listener', status: 'error', detail: e && e.message ? e.message : String(e) })

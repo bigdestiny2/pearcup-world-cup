@@ -259,7 +259,7 @@ test('plain browser fallback routes same-origin BroadcastChannel messages', asyn
   guest.close()
 })
 
-test('friend room capabilities are URL-safe 128-bit codes', (t) => {
+test('friend room codes are short, URL-safe, and collision-resistant for friendly play', (t) => {
   const { api, restore } = loadPeerNet({
     pear: undefined,
     Pear: undefined,
@@ -272,8 +272,8 @@ test('friend room capabilities are URL-safe 128-bit codes', (t) => {
 
   const first = api.newRoomCode()
   const second = api.newRoomCode()
-  assert.match(first, /^[abcdefghjkmnpqrstuvwxyz23456789-]{26}$/)
-  assert.match(second, /^[abcdefghjkmnpqrstuvwxyz23456789-]{26}$/)
+  assert.match(first, /^[abcdefghjkmnpqrstuvwxyz23456789-]{12}$/)
+  assert.match(second, /^[abcdefghjkmnpqrstuvwxyz23456789-]{12}$/)
   assert.notEqual(first, second)
   assert.equal(first.includes('undefined'), false)
 })
