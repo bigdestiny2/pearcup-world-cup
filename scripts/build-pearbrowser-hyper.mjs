@@ -49,7 +49,7 @@ if (!existsSync(manifestPath)) {
     icon: '/assets/icon.png',
     entry: '/index.html',
     categories: ['games', 'sports'],
-    permissions: []
+    permissions: ['swarm.v1']
   }
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n')
 }

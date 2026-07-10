@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:* pear:; object-src 'none'; base-uri 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://crests.football-data.org; media-src 'self' blob:; connect-src 'self' https: http://127.0.0.1:* http://localhost:* pear:; object-src 'none'; base-uri 'none'">
     <title>PearCup Prototype</title>
     <link rel="icon" type="image/png" href="./assets/icon-256.png">
     <link rel="stylesheet" href="./styles.css">
@@ -197,6 +197,15 @@
                 </div>
               </div>
               <div class="pool-grid" id="poolGrid"></div>
+
+              <div class="section-heading compact game-pool-heading">
+                <div>
+                  <p class="eyebrow">Match pools</p>
+                  <h2>Pick one game</h2>
+                </div>
+                <span class="game-pool-live-label" id="gamePoolLiveLabel">Live fixture</span>
+              </div>
+              <div class="game-pool-grid" id="gamePoolGrid" aria-live="polite"></div>
             </div>
 
             <aside class="activity-rail">
@@ -205,6 +214,7 @@
                 <strong>Today</strong>
               </div>
               <div id="homeFixtures"></div>
+              <section class="polymarket-panel" id="polymarketOddsPanel" aria-label="Polymarket implied odds"></section>
               <div class="leader-panel" id="leaderPanel"></div>
               <div class="signal-panel" id="signalPanel">
                 <div class="rail-header">
@@ -338,6 +348,25 @@
                 </div>
               </div>
 
+              <section class="voice-panel" id="watchVoice" aria-label="P2P push-to-talk voice chat">
+                <div class="voice-panel-copy">
+                  <span class="voice-status-dot" aria-hidden="true"></span>
+                  <div>
+                    <p class="eyebrow">P2P voice</p>
+                    <strong id="voiceStatus" aria-live="polite">Voice is off</strong>
+                  </div>
+                </div>
+                <button class="voice-ptt" id="voicePtt" type="button" disabled aria-pressed="false" aria-describedby="voiceHint">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3ZM5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/></svg>
+                  <span>Hold to talk</span>
+                  <kbd>Space</kbd>
+                </button>
+                <p class="voice-hint" id="voiceHint">Join voice, then hold this button or Space to talk. Your microphone stays muted until you hold it.</p>
+                <div class="voice-audio-rack" id="voiceAudioRack" aria-hidden="true"></div>
+              </section>
+
+              <section class="trivia-panel" id="watchTrivia" aria-label="QVAC watch-party trivia"></section>
+
               <div class="live-source" id="liveSource" hidden></div>
               <div class="stats-strip" id="watchStats"></div>
 
@@ -353,6 +382,8 @@
                 <div class="language-tabs" id="languageTabs"></div>
                 <div class="commentary-feed" id="commentaryFeed"></div>
               </div>
+
+              <section class="polymarket-panel watch-polymarket-panel" id="watchPolymarketOddsPanel" aria-label="Polymarket implied odds"></section>
 
               <div class="chat-panel">
                 <div class="rail-header">

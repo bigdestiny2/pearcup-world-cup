@@ -49,7 +49,7 @@
     if (WS.topic === topic && WS.channel) { ping(); return }
     if (WS.channel) { try { WS.channel.close() } catch (e) {} }
     clearChallenges()
-    WS.peers.clear()
+    clearPeers('room-change')
     WS.topic = topic
     WS.channel = Net.createChannel(topic)
     WS.channel.onMessage(onMsg)
@@ -66,6 +66,20 @@
 
   const screenShareListeners = new Set()
   const peerJoinListeners = new Set()
+  const peerLeaveListeners = new Set()
+  const triviaListeners = new Set()
+  const voiceListeners = new Set()
+
+  function notifyPeerLeft (peerId, peer, reason) {
+    if (WS.screenSharer && WS.screenSharer.peerId === peerId) WS.screenSharer = null
+    peerLeaveListeners.forEach(fn => { try { fn(peerId, peer, reason) } catch (e) {} })
+  }
+
+  function clearPeers (reason) {
+    WS.peers.forEach((peer, peerId) => notifyPeerLeft(peerId, peer, reason))
+    WS.peers.clear()
+  }
+
   function onScreenShareMsg (m) {
     const peer = WS.peers.get(m.from)
     const name = peer ? peer.name : (m.name || 'A watcher')
@@ -84,9 +98,33 @@
         if (isNew) peerJoinListeners.forEach(fn => { try { fn(m.from, peerFromMessage(m)) } catch (e) {} })
         updatePresence(); break
       }
-      case 'bye': WS.peers.delete(m.from); clearPeerChallenges(m.from); updatePresence(); break
+      case 'bye': {
+        const peer = WS.peers.get(m.from)
+        WS.peers.delete(m.from)
+        clearPeerChallenges(m.from)
+        notifyPeerLeft(m.from, peer, 'bye')
+        updatePresence()
+        break
+      }
       case 'chat': receiveChat(m); break
       case 'react': floatReaction(m.emoji); break
+      case 'trivia:round':
+      case 'trivia:answer':
+      case 'trivia:reveal':
+      case 'trivia:clear':
+        triviaListeners.forEach(fn => { try { fn(m) } catch (e) {} })
+        break
+      case 'voice:ready':
+      case 'voice:state':
+      case 'voice:leave':
+      case 'voice:offer':
+      case 'voice:answer':
+      case 'voice:ice':
+        // SDP/ICE can be sensitive, so this layer only forwards targeted frames
+        // to the intended watcher. Audio itself never travels through this swarm
+        // channel; WebRTC carries the encrypted media stream directly.
+        if (!m.to || m.to === selfId()) voiceListeners.forEach(fn => { try { fn(m, WS.peers.get(m.from)) } catch (e) {} })
+        break
       case 'challenge':
         if (m.to === selfId()) receiveChallenge(m)
         break
@@ -131,6 +169,11 @@
   function broadcastScreen (msg) { send({ ...msg, name: selfName() }) }
   function onScreenShare (fn) { screenShareListeners.add(fn); return () => screenShareListeners.delete(fn) }
   function onPeerJoined (fn) { peerJoinListeners.add(fn); return () => peerJoinListeners.delete(fn) }
+  function onPeerLeft (fn) { peerLeaveListeners.add(fn); return () => peerLeaveListeners.delete(fn) }
+  function broadcastTrivia (msg) { send({ ...msg, name: selfName(), team: selfTeam() }) }
+  function onTrivia (fn) { triviaListeners.add(fn); return () => triviaListeners.delete(fn) }
+  function broadcastVoice (msg) { send({ ...msg, name: selfName(), team: selfTeam() }) }
+  function onVoice (fn) { voiceListeners.add(fn); return () => voiceListeners.delete(fn) }
   function screenShareState () {
     return {
       sharing: Boolean(WS.screenSharer),
@@ -360,7 +403,9 @@
     send({ t: 'bye' })
     if (WS.channel) { try { WS.channel.close() } catch (e) {} }
     clearChallenges()
-    WS.channel = null; WS.topic = null; WS.peers.clear()
+    if (WS.heartbeat) { clearInterval(WS.heartbeat); WS.heartbeat = null }
+    clearPeers('leave')
+    WS.channel = null; WS.topic = null
   }
 
   function bindReactionBar () {
@@ -373,6 +418,6 @@
     })
   }
 
-  root.PearCupWatchSync = { ensureRoom, broadcastChat, react, bindReactionBar, updatePresence, renderChallengeList, challenge, acceptChallenge, declineChallenge, leave, peerCount: () => WS.peers.size + 1, broadcastScreen, onScreenShare, onPeerJoined, screenShareState, _state: WS }
+  root.PearCupWatchSync = { ensureRoom, broadcastChat, react, bindReactionBar, updatePresence, renderChallengeList, challenge, acceptChallenge, declineChallenge, leave, peerCount: () => WS.peers.size + 1, broadcastScreen, onScreenShare, onPeerJoined, onPeerLeft, screenShareState, broadcastTrivia, onTrivia, broadcastVoice, onVoice, _state: WS }
   markModule('ready')
 })(typeof window !== 'undefined' ? window : globalThis)

@@ -79,6 +79,14 @@
     const sdkFactory = sdkFactoryFor(rootObject)
     const qvacConfig = normalizePackageConfig(sdkPackages && sdkPackages.qvac)
     const tetherConfig = normalizePackageConfig(sdkPackages && (sdkPackages.tetherWdk || sdkPackages.tetherWDK))
+    const refereeQvacConfig = qvacConfig && {
+      ...qvacConfig,
+      completionOptions: qvacConfig.refereeCompletionOptions || qvacConfig.completionOptions
+    }
+    const commentaryQvacConfig = qvacConfig && {
+      ...qvacConfig,
+      completionOptions: qvacConfig.commentaryCompletionOptions || qvacConfig.completionOptions
+    }
     const adapters = {}
 
     if (
@@ -87,7 +95,7 @@
       typeof sdkFactory.createQvacSdkRefereeAdapter === 'function'
     ) {
       adapters.qvac = {
-        client: sdkFactory.createQvacSdkRefereeAdapter(qvacConfig),
+        client: sdkFactory.createQvacSdkRefereeAdapter(refereeQvacConfig),
         detected: { name: '@qvac/sdk', source: 'package:@qvac/sdk' }
       }
     }
@@ -98,7 +106,7 @@
       typeof sdkFactory.createQvacSdkCommentaryAdapter === 'function'
     ) {
       adapters.qvacCommentary = {
-        client: sdkFactory.createQvacSdkCommentaryAdapter(qvacConfig),
+        client: sdkFactory.createQvacSdkCommentaryAdapter(commentaryQvacConfig),
         detected: { name: '@qvac/sdk', source: 'package:@qvac/sdk' }
       }
     }

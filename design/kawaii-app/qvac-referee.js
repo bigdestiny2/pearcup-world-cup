@@ -156,6 +156,91 @@
     ]
   }
 
+  // Watch-party trivia deliberately has a narrower evidence boundary than open-ended
+  // sports trivia. Every question must be answerable from the active match snapshot so
+  // a local QVAC model cannot invent player history, injuries, or betting advice.
+  function triviaFallbackRound (input = {}) {
+    const match = input.match || input.currentStats || {}
+    const home = String(match.home && match.home.name || input.homeTeam || 'the home team')
+    const away = String(match.away && match.away.name || input.awayTeam || 'the away team')
+    const stage = String(match.stage || input.stage || 'this match').replace(/_/g, ' ').toLowerCase()
+    return {
+      question: `Which team is listed first for ${home} vs ${away}?`,
+      options: [home, away, `Winner of ${stage}`, 'No team is listed'],
+      answerIndex: 0,
+      explanation: `${home} is the home side in the active match snapshot.`
+    }
+  }
+
+  function normalizeTriviaRound (input, fallbackInput = {}) {
+    const parsed = extractJsonObject(input)
+    const fallback = triviaFallbackRound(fallbackInput)
+    const question = typeof parsed.question === 'string' && parsed.question.trim()
+      ? parsed.question.trim().slice(0, 220)
+      : fallback.question
+    const rawOptions = Array.isArray(parsed.options)
+      ? parsed.options.filter(option => typeof option === 'string' && option.trim()).map(option => option.trim().slice(0, 90))
+      : []
+    const options = rawOptions.length === 4 ? rawOptions : fallback.options
+    let answerIndex = Number(parsed.answerIndex)
+    if (!Number.isInteger(answerIndex) && typeof parsed.answer === 'string') answerIndex = options.indexOf(parsed.answer)
+    if (!Number.isInteger(answerIndex) || answerIndex < 0 || answerIndex >= options.length) answerIndex = fallback.answerIndex
+    const explanation = typeof parsed.explanation === 'string' && parsed.explanation.trim()
+      ? parsed.explanation.trim().slice(0, 260)
+      : fallback.explanation
+    return { question, options, answerIndex, explanation }
+  }
+
+  function triviaPrompt (input = {}) {
+    return [
+      {
+        role: 'system',
+        content: [
+          'You are the QVAC watch-party trivia host for PearCup.',
+          'Create one friendly four-option trivia question using only the supplied active-match facts.',
+          'Never ask about betting, odds, player history, injuries, or any fact absent from the snapshot.',
+          'Return strict JSON: {"question":"...","options":["...","...","...","..."],"answerIndex":0,"explanation":"short grounded explanation"}.',
+          'answerIndex must be an integer from 0 to 3.'
+        ].join(' ')
+      },
+      {
+        role: 'user',
+        content: core.canonicalJson({
+          task: 'generate_grounded_watch_party_trivia',
+          requiredEvidence: ['match'],
+          language: normalizeLanguage(input.language),
+          match: input.match || input.currentStats || {},
+          recentEvents: input.recentEvents || []
+        })
+      }
+    ]
+  }
+
+  function createTriviaRound ({
+    input = {},
+    question,
+    options,
+    answerIndex,
+    explanation,
+    modelId = null,
+    hostId = 'qvac-trivia'
+  } = {}) {
+    const normalized = normalizeTriviaRound({ question, options, answerIndex, explanation }, input)
+    const match = input.match || input.currentStats || {}
+    const payload = {
+      matchId: input.matchId || match.id || 'unknown-match',
+      language: normalizeLanguage(input.language),
+      question: normalized.question,
+      options: normalized.options,
+      answerIndex: normalized.answerIndex,
+      explanation: normalized.explanation,
+      modelId,
+      hostId,
+      sourceHash: core.deterministicHash({ match, recentEvents: input.recentEvents || [] })
+    }
+    return { triviaId: core.deterministicHash(payload), ...payload }
+  }
+
   function createCommentarySegment ({
     input = {},
     text,
@@ -329,6 +414,16 @@
           }
         ], modelId)
         return commentarySummary(input, normalizeCommentaryOutput(raw, input))
+      },
+      async generateTriviaRound (input = {}) {
+        const raw = await runCompletion(client, triviaPrompt(input), modelId)
+        const trivia = normalizeTriviaRound(raw, input)
+        return createTriviaRound({
+          input,
+          ...trivia,
+          modelId,
+          hostId: commentatorId
+        })
       }
     }
   }
@@ -342,6 +437,10 @@
     normalizeCommentaryOutput,
     commentaryPrompt,
     createCommentarySegment,
+    triviaFallbackRound,
+    normalizeTriviaRound,
+    triviaPrompt,
+    createTriviaRound,
     roundReviewPrompt,
     poolReviewPrompt
   }

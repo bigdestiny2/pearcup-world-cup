@@ -209,7 +209,38 @@ function startLiveMatchRelayIfConfigured () {
   setInterval(run, intervalMs)
 }
 
+// Polymarket market discovery and public prices need no key. The child writes a
+// same-origin snapshot that the renderer can read without a wallet or third-party
+// network permission. It is intentionally separate from the football-data relay so
+// odds continue refreshing when a staged live-match snapshot is already present.
+function startPolymarketOddsRelay () {
+  const script = path.join(__dirname, 'fetch-polymarket-odds.mjs')
+  function run () {
+    const child = spawn(process.execPath, [script], {
+      env: process.env,
+      cwd: __dirname,
+      stdio: ['ignore', 'pipe', 'pipe']
+    })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.on('data', data => { stdout += data })
+    child.stderr.on('data', data => { stderr += data })
+    child.on('error', err => {
+      if (console && console.warn) console.warn('Polymarket odds relay spawn error:', err && err.message)
+    })
+    child.on('exit', code => {
+      if (code !== 0 && console && console.warn) {
+        console.warn('Polymarket odds relay exited', code, stderr.trim() || stdout.trim())
+      }
+    })
+  }
+  run()
+  const intervalMs = Number(process.env.PEARCUP_POLYMARKET_INTERVAL_MS) || 30_000
+  setInterval(run, intervalMs)
+}
+
 if (require.main === module) {
   startPearCupWorkerBridge()
   startLiveMatchRelayIfConfigured()
+  startPolymarketOddsRelay()
 }

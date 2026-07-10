@@ -63,12 +63,45 @@ function optionalModule (name) {
 }
 const PearCupCore = needModule('PearCupCore')
 const PearCupAdapters = needModule('PearCupAdapters')
+const PearCupRuntimeSettings = optionalModule('PearCupRuntimeSettings')
 const PearCupRuntimeConfig = needModule('PearCupRuntimeConfig')
 const PearCupWorkerSim = optionalModule('PearCupWorkerSim')
 const PearCupWorkerClient = optionalModule('PearCupWorkerClient')
 const PearCupTransportSim = optionalModule('PearCupTransportSim')
 const PearCupStorageSim = optionalModule('PearCupStorageSim')
 const PearCupSettlementService = optionalModule('PearCupSettlementService')
+
+// The renderer may use a local QVAC model, but it must never receive Tether WDK
+// custody data. Runtime settings therefore expose only the safe QVAC lane here;
+// payments stay exclusively in the KeyVault-backed Pear worker.
+try {
+  if (!window.PearCupRuntimeSettingsValue && PearCupRuntimeSettings && typeof PearCupRuntimeSettings.applyRendererRuntimeSettingsToRoot === 'function') {
+    PearCupRuntimeSettings.applyRendererRuntimeSettingsToRoot(window)
+  }
+} catch (error) {
+  bootIssues.push('renderer runtime settings failed: ' + (error && error.message ? error.message : String(error)))
+}
+
+// This is deliberately a public, keyless configuration. The football provider
+// credential stays in the deployed relay worker; invalid or non-HTTPS values are
+// ignored so a staged app cannot be tricked into fetching a credentialed origin.
+function runtimeLiveDataRelay () {
+  const configured = window.PearCupRuntimeSettingsValue && window.PearCupRuntimeSettingsValue.liveData
+  if (!configured || typeof configured.relayUrl !== 'string') return null
+  try {
+    const relay = new URL(configured.relayUrl)
+    const localHttp = relay.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]', '::1'].includes(relay.hostname)
+    if ((relay.protocol !== 'https:' && !localHttp) || relay.username || relay.password || !/\.json$/i.test(relay.pathname)) return null
+    const candidateOdds = configured.oddsRelayUrl || new URL('polymarket-odds.json', relay).href
+    const odds = new URL(candidateOdds)
+    if ((odds.protocol !== 'https:' && !localHttp) || odds.username || odds.password || !/\.json$/i.test(odds.pathname)) return null
+    const pollMs = Math.max(15_000, Math.min(120_000, Number(configured.pollMs) || 30_000))
+    return { relayUrl: relay.href, oddsRelayUrl: odds.href, pollMs }
+  } catch {
+    return null
+  }
+}
+const productionLiveData = runtimeLiveDataRelay()
 
 // Correctly-shaped demo runtime used when the real runtime config can't initialize.
 const DEMO_RUNTIME = {
@@ -287,6 +320,10 @@ function loadState () {
       ledger: [{ label: 'Welcome bonus', amount: 500, kind: 'credit' }]
     },
     enteredPools: {},
+    enteredGamePools: {},
+    selectedGamePool: '',
+    gamePoolDraft: { matchId: '', pick: '', tier: 10 },
+    triviaScore: 0,
     liveConfig: { enabled: false, provider: 'football-data', apiKey: '', matchId: '', proxy: '', pollSec: 30 },
     theme: 'kawaii',
     themeChosen: false,
@@ -303,10 +340,16 @@ function loadState () {
       payoutAddresses: { ...fallback.payoutAddresses, ...(saved.payoutAddresses || {}) },
       wallet: { ...fallback.wallet, ...(saved.wallet || {}) },
       enteredPools: saved.enteredPools || {},
+      enteredGamePools: saved.enteredGamePools || {},
+      gamePoolDraft: { ...fallback.gamePoolDraft, ...(saved.gamePoolDraft || {}) },
+      triviaScore: Number.isFinite(Number(saved.triviaScore)) ? Number(saved.triviaScore) : 0,
       liveConfig: { ...fallback.liveConfig, ...(saved.liveConfig || {}) }
     }
     // A live peer match can't survive a reload (the connection is gone) — start in the lobby.
     if (merged.match && merged.match.peer) merged.match = null
+    // Voice capture and room presence are deliberately never resumed from storage.
+    // A fresh page needs a new explicit user gesture before it can touch a mic.
+    merged.voice = false
     merged.picks = normalizeBracketPicks(merged.picks)
     return merged
   } catch {
@@ -824,6 +867,7 @@ function renderView (view) {
   if (view === 'home') {
     renderHomeDashboard()
     renderPools()
+    renderGamePools()
     return
   }
   if (view === 'bracket') {
@@ -855,11 +899,10 @@ function fundWallet (amount) {
   persist(); refreshWallet(); showToast(`Added ${fmtMoney(amount)} to your wallet`)
 }
 function withdrawWallet () {
-  const amount = state.wallet.balance
-  if (amount <= 0) { showToast('Nothing to withdraw'); return }
-  state.wallet.balance = 0
-  walletLog('Withdraw to payout address', amount, 'debit')
-  persist(); refreshWallet(); showToast(`Withdrawing ${fmtMoney(amount)} to your address`)
+  // Never mutate the visible balance to imitate a withdrawal. A real request must
+  // be created by the KeyVault-backed WDK worker, quote/broadcast only after the
+  // recipient route and live-compliance gates have been verified.
+  showToast('Withdrawals are locked until the worker-backed WDK rail is configured')
 }
 function collectPayouts () {
   const amount = state.wallet.pendingPayout || 0
@@ -901,11 +944,15 @@ function renderWalletManage () {
         <span class="wallet-badge ${w.pendingPayout > 0 ? 'is-live' : ''}">${w.pendingPayout > 0 ? `${fmtMoney(w.pendingPayout)} to collect` : 'All collected'}</span>
       </div>
       <div class="wallet-actions">
-        <button class="primary-button" type="button" data-fund="50">+ Fund 50</button>
-        <button class="secondary-button" type="button" data-fund="100">+ 100</button>
-        <button class="secondary-button" type="button" data-fund="250">+ 250</button>
+        <button class="primary-button" type="button" data-fund="50">+ Demo 50</button>
+        <button class="secondary-button" type="button" data-fund="100">+ Demo 100</button>
+        <button class="secondary-button" type="button" data-fund="250">+ Demo 250</button>
         <button class="primary-button wallet-collect" type="button" id="collectPayoutBtn"${w.pendingPayout > 0 ? '' : ' disabled'}>Collect payouts</button>
-        <button class="secondary-button" type="button" id="withdrawBtn">Withdraw</button>
+        <button class="secondary-button" type="button" id="withdrawBtn" disabled>Withdraw · locked</button>
+      </div>
+      <div class="wallet-rail-status" role="status">
+        <span class="rail-chip is-locked">Tether WDK locked</span>
+        <p><strong>Deposit QR unavailable.</strong> A fresh USDT receive address and QR are created only by the KeyVault-backed worker after the WDK rail, recipient routing, and compliance checks are live.</p>
       </div>
       <div class="wallet-ledger">
         ${(w.ledger || []).map(row => `
@@ -914,7 +961,7 @@ function renderWalletManage () {
             <strong class="${row.kind}">${row.kind === 'credit' ? '+' : '−'}${escapeHtml(fmtMoney(row.amount))}</strong>
           </div>`).join('')}
       </div>
-      <p class="wallet-note">Demo balance. Real funding/withdrawal routes through the Tether WDK deposit &amp; payout rails. Shared across brackets, games, and payouts.</p>
+      <p class="wallet-note">Demo balance shared across brackets, games, and payouts. It is not a deposit balance and cannot be withdrawn.</p>
     </div>`
   $$('#walletManage [data-fund]').forEach(b => b.addEventListener('click', () => fundWallet(Number(b.dataset.fund))))
   const collect = $('#collectPayoutBtn'); if (collect) collect.addEventListener('click', collectPayouts)
@@ -936,6 +983,19 @@ function renderLiveDataSettings () {
   if (!el) return
   if (!showOperatorLiveDataSettings()) {
     el.innerHTML = ''
+    return
+  }
+  if (productionLiveData) {
+    el.innerHTML = `
+      <div class="wallet-card livedata-card">
+        <div class="wallet-top">
+          <div>
+            <p class="eyebrow">Live match data</p>
+            <p class="livedata-status is-on">● Production relay connected</p>
+          </div>
+        </div>
+        <p class="wallet-note">This release reads public cached snapshots from ${escapeHtml(new URL(productionLiveData.relayUrl).host)}. The Football-Data credential is held only by the relay worker and cannot be entered or stored in this app.</p>
+      </div>`
     return
   }
   const c = state.liveConfig
@@ -1140,10 +1200,122 @@ function renderHomeHero () {
   if (stateEl) { stateEl.textContent = snap.status; stateEl.className = snap.live && st && /IN_PLAY|LIVE|PAUSED/.test(st.matchStatus) ? 'is-live' : '' }
 }
 
+// Polymarket stays behind the same-origin worker relay as match data. The renderer
+// never contacts a prediction-market API directly and this card is informational:
+// implied probabilities only, with no trade or wallet action attached.
+const POLYMARKET_RELAY_FILE = 'polymarket-odds.json'
+let polymarketOddsSnapshot = null
+let polymarketOddsFetchInFlight = null
+
+function withRelayCacheBust (url) {
+  return `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`
+}
+
+function polymarketRelayUrl () {
+  return productionLiveData ? productionLiveData.oddsRelayUrl : POLYMARKET_RELAY_FILE
+}
+
+function polymarketOddsAreStale (snapshot) {
+  if (!snapshot || snapshot.status !== 'ok' || !snapshot.fetchedAt) return false
+  const timestamp = Date.parse(snapshot.fetchedAt)
+  return !timestamp || Date.now() - timestamp > 2 * 60 * 1000
+}
+
+function polymarketMarketUrl (value) {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && url.hostname === 'polymarket.com' ? url.href : ''
+  } catch {
+    return ''
+  }
+}
+
+function compactUsdc (value) {
+  const number = Number(value)
+  if (!Number.isFinite(number) || number <= 0) return ''
+  if (number >= 1000000) return `$${(number / 1000000).toFixed(1)}m`
+  if (number >= 1000) return `$${Math.round(number / 1000)}k`
+  return `$${Math.round(number)}`
+}
+
+function polymarketOddsPanels () {
+  return [$('#polymarketOddsPanel'), $('#watchPolymarketOddsPanel')].filter(Boolean)
+}
+
+function renderPolymarketOdds () {
+  const panels = polymarketOddsPanels()
+  if (!panels.length) return
+  const render = markup => panels.forEach(panel => { panel.innerHTML = markup })
+  const snapshot = polymarketOddsSnapshot
+  if (!snapshot) {
+    render(`
+      <div class="rail-header"><p class="eyebrow">Polymarket</p><strong>Implied odds</strong></div>
+      <p class="polymarket-note">Connecting to the public odds relay…</p>`)
+    return
+  }
+  if (snapshot.status !== 'ok' || !Array.isArray(snapshot.odds) || snapshot.odds.length < 2) {
+    render(`
+      <div class="rail-header"><p class="eyebrow">Polymarket</p><strong>Implied odds</strong></div>
+      <p class="polymarket-note">${escapeHtml(snapshot.reason || 'No active public market is available for this fixture yet.')}</p>
+      <small class="polymarket-disclaimer">Informational only · no wallet or trading connection</small>`)
+    return
+  }
+  const stale = polymarketOddsAreStale(snapshot)
+  const freshness = stale ? 'Stale' : 'Live'
+  const updated = snapshot.fetchedAt ? fmtTime(snapshot.fetchedAt) : ''
+  const odds = snapshot.odds.slice(0, 3).map(odd => ({
+    label: String(odd.outcome || 'Outcome'),
+    probability: Math.max(0, Math.min(1, Number(odd.probability) || 0))
+  }))
+  const destination = polymarketMarketUrl(snapshot.market && snapshot.market.url)
+  const marketMeta = compactUsdc(snapshot.market && snapshot.market.volume)
+  render(`
+    <div class="rail-header">
+      <p class="eyebrow">Polymarket</p>
+      <strong>Implied odds <span class="polymarket-live ${stale ? 'is-stale' : ''}"><i></i>${freshness}</span></strong>
+    </div>
+    <p class="polymarket-question">${escapeHtml(snapshot.market && snapshot.market.question || 'Match winner')}</p>
+    <div class="polymarket-rows">
+      ${odds.map((odd, index) => `
+        <div class="polymarket-row ${index === 0 ? 'is-leading' : ''}">
+          <div><span>${escapeHtml(odd.label)}</span><strong>${Math.round(odd.probability * 100)}%</strong></div>
+          <i><b style="width:${Math.round(odd.probability * 100)}%"></b></i>
+        </div>`).join('')}
+    </div>
+    <div class="polymarket-foot">
+      <span>${updated ? `Updated ${escapeHtml(updated)}` : 'Public market data'}${marketMeta ? ` · ${marketMeta} volume` : ''}</span>
+      ${destination ? `<a href="${escapeHtml(destination)}" target="_blank" rel="noreferrer">Market ↗</a>` : ''}
+    </div>
+    <small class="polymarket-disclaimer">Prices are market-implied probabilities, not advice.</small>`)
+}
+
+async function detectPolymarketOdds () {
+  if (polymarketOddsFetchInFlight) return polymarketOddsFetchInFlight
+  polymarketOddsFetchInFlight = fetch(withRelayCacheBust(polymarketRelayUrl()), { cache: 'no-store' })
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      return response.json()
+    })
+    .then(snapshot => {
+      if (!snapshot || snapshot.schema !== 'pearcup-polymarket-v1') throw new Error('Unsupported Polymarket odds snapshot')
+      polymarketOddsSnapshot = snapshot
+      renderPolymarketOdds()
+      return snapshot
+    })
+    .catch(() => {
+      // Leave the prior snapshot on screen; it will be clearly labelled stale.
+      renderPolymarketOdds()
+      return null
+    })
+    .finally(() => { polymarketOddsFetchInFlight = null })
+  return polymarketOddsFetchInFlight
+}
+
 function renderHomeDashboard () {
   const activeTab = liveTabs.some(tab => tab.id === state.liveTab) ? state.liveTab : 'overview'
   state.liveTab = activeTab
   renderHomeHero()
+  renderPolymarketOdds()
 
   $('#liveMenu').innerHTML = liveTabs.map(tab => `
     <button type="button" class="${tab.id === activeTab ? 'is-active' : ''}" data-live-tab="${tab.id}">
@@ -1163,7 +1335,35 @@ function renderHomeDashboard () {
     detail: `${state.spectators || 38} peers watching`,
     live: true
   }
-  const fixtureList = [liveFixture, ...homeFixtures.filter(f => !f.live)]
+  // A v2 worker relay includes the surrounding schedule, so the home rail is live
+  // beyond the one match currently open in the watch room. Keep the curated fixtures
+  // only as an offline fallback.
+  const relayedFixtures = Array.isArray(snap.st && snap.st.fixtures)
+    ? snap.st.fixtures
+      .filter(match => String(match.id || '') !== String(snap.st && snap.st.matchId || ''))
+      .slice(0, 3)
+      .map(match => {
+        const home = match.homeTeam || match.home || {}
+        const away = match.awayTeam || match.away || {}
+        const score = match.score && (match.score.fullTime || match.score.regularTime) || {}
+        const hasScore = score.home != null || score.away != null
+        const status = match.status === 'IN_PLAY' || match.status === 'LIVE'
+          ? 'LIVE'
+          : match.status === 'FINISHED'
+            ? 'FT'
+            : fmtTime(match.utcDate) || 'Upcoming'
+        return {
+          status,
+          title: hasScore
+            ? `${home.shortName || home.name || 'Home'} ${score.home ?? 0} - ${score.away ?? 0} ${away.shortName || away.name || 'Away'}`
+            : `${home.shortName || home.name || 'Home'} vs ${away.shortName || away.name || 'Away'}`,
+          detail: stageLabel(match) || 'World Cup fixture',
+          live: status === 'LIVE'
+        }
+      })
+      .filter(fixture => !/^Home vs Away$/.test(fixture.title))
+    : []
+  const fixtureList = [liveFixture, ...(relayedFixtures.length ? relayedFixtures : homeFixtures.filter(f => !f.live))]
   $('#homeFixtures').innerHTML = fixtureList.map(fixture => `
     <div class="mini-fixture ${fixture.live ? 'is-current' : ''}">
       <div>
@@ -1511,6 +1711,174 @@ function renderPools () {
       setView('bracket')
     })
   })
+}
+
+// A bracket entry follows the whole tournament. A match pool is intentionally much
+// smaller: choose one side of one fixture, lock at kickoff, and let the official live
+// result settle that one pick. Keeping these entries in a separate namespace avoids
+// accidentally treating a single-game selection as a full-bracket entry.
+const GAME_POOL_TIERS = [5, 10, 25]
+
+function liveTeamForPool (side, fallbackId) {
+  const name = String(side && side.name || '')
+  const known = teams.find(team => team.name.toLowerCase() === name.toLowerCase())
+  if (known) return known
+  return {
+    id: fallbackId || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'team',
+    name: name || 'TBD',
+    flag: side && side.flag || '⚽',
+    colors: ['#3fc4a8', '#ffffff', '#3564ba']
+  }
+}
+
+function matchPoolFixtureId (home, away, hint) {
+  if (hint != null && String(hint)) return `match-${String(hint)}`
+  return `match-${String(home && home.name || 'home').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${String(away && away.name || 'away').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+}
+
+function gamePoolFixtures () {
+  let st = null
+  try { st = feedState() } catch (e) {}
+  const primary = st && st.home && st.away
+    ? [{
+        id: matchPoolFixtureId(st.home, st.away, st.matchId || st.id),
+        home: liveTeamForPool(st.home, 'home'),
+        away: liveTeamForPool(st.away, 'away'),
+        status: matchStateLabel(st).txt,
+        live: Boolean(st.matchStatus && /IN_PLAY|LIVE|PAUSED/.test(st.matchStatus)),
+        locked: st.matchStatus === 'FINISHED',
+        stage: stageLabel(st) || 'World Cup'
+      }]
+    : []
+  const relayed = Array.isArray(st && st.fixtures) ? st.fixtures : []
+  const fromRelay = relayed.map(match => {
+    const home = liveTeamForPool(match.homeTeam || match.home || {}, 'home')
+    const away = liveTeamForPool(match.awayTeam || match.away || {}, 'away')
+    const status = match.status || 'Scheduled'
+    return {
+      id: matchPoolFixtureId(home, away, match.id),
+      home,
+      away,
+      status: status === 'IN_PLAY' || status === 'LIVE' ? 'LIVE' : status === 'TIMED' ? 'Upcoming' : status,
+      live: /IN_PLAY|LIVE|PAUSED/.test(status),
+      locked: status === 'FINISHED',
+      stage: stageLabel(match) || 'World Cup'
+    }
+  })
+  const fallback = [
+    { id: 'match-fr-ma', home: teamById('fr'), away: teamById('ma'), status: 'Upcoming', live: false, locked: false, stage: 'Quarter-final' },
+    { id: 'match-no-eng', home: teamById('no'), away: teamById('eng'), status: 'Upcoming', live: false, locked: false, stage: 'Quarter-final' }
+  ]
+  const seen = new Set()
+  return [...primary, ...fromRelay, ...fallback].filter(fixture => {
+    if (!fixture.home || !fixture.away || seen.has(fixture.id)) return false
+    seen.add(fixture.id)
+    return true
+  }).slice(0, 3)
+}
+
+function gamePoolEntryKey (fixtureId, tier) {
+  return `${fixtureId}:$${tier}`
+}
+
+function gamePoolPrize (fixture, tier) {
+  const entrants = 24 + (hashString(`${fixture.id}-${tier}`) % 48)
+  return { entrants, prize: fmtMoney(Math.round(entrants * tier * 0.9)) }
+}
+
+function renderGamePools () {
+  const el = $('#gamePoolGrid')
+  if (!el) return
+  const fixtures = gamePoolFixtures()
+  if (!fixtures.some(fixture => fixture.id === state.selectedGamePool)) state.selectedGamePool = fixtures[0] && fixtures[0].id || ''
+  const selected = state.selectedGamePool
+  const liveLabel = $('#gamePoolLiveLabel')
+  if (liveLabel) liveLabel.textContent = fixtures.some(fixture => fixture.live) ? '● Live data' : 'Official fixture feed'
+  el.innerHTML = fixtures.map(fixture => {
+    const isSelected = fixture.id === selected
+    const draft = state.gamePoolDraft || {}
+    const pick = draft.matchId === fixture.id ? draft.pick : fixture.home.id
+    const tier = draft.matchId === fixture.id && GAME_POOL_TIERS.includes(Number(draft.tier)) ? Number(draft.tier) : GAME_POOL_TIERS[1]
+    const pool = gamePoolPrize(fixture, tier)
+    const entry = state.enteredGamePools && state.enteredGamePools[gamePoolEntryKey(fixture.id, tier)]
+    return `
+      <article class="game-pool-card${isSelected ? ' is-selected' : ''}${fixture.live ? ' is-live' : ''}">
+        <div class="game-pool-card-head">
+          <span class="game-pool-state${fixture.live ? ' is-live' : ''}">${fixture.live ? '<i></i>LIVE' : escapeHtml(fixture.status)}</span>
+          <span>${escapeHtml(fixture.stage)}</span>
+        </div>
+        <div class="game-pool-teams">
+          <strong>${fixture.home.flag} ${escapeHtml(fixture.home.name)}</strong><span>vs</span><strong>${fixture.away.flag} ${escapeHtml(fixture.away.name)}</strong>
+        </div>
+        <div class="game-pool-meta"><span>${pool.entrants} players</span><strong>${pool.prize} pool</strong></div>
+        <button class="secondary-button compact-action game-pool-open" type="button" data-game-pool-open="${escapeHtml(fixture.id)}">${isSelected ? 'Pool options' : 'Open pool'}</button>
+        ${isSelected ? `
+          <div class="game-pool-expander">
+            <p>Pick a winner, then choose your stake.</p>
+            <div class="game-pool-picks" role="group" aria-label="Pick winner">
+              <button class="game-pool-team${pick === fixture.home.id ? ' is-picked' : ''}" type="button" data-game-pool-team="${escapeHtml(fixture.home.id)}" data-game-pool-match="${escapeHtml(fixture.id)}">${fixture.home.flag} ${escapeHtml(fixture.home.name)}</button>
+              <button class="game-pool-team${pick === fixture.away.id ? ' is-picked' : ''}" type="button" data-game-pool-team="${escapeHtml(fixture.away.id)}" data-game-pool-match="${escapeHtml(fixture.id)}">${fixture.away.flag} ${escapeHtml(fixture.away.name)}</button>
+            </div>
+            <div class="game-pool-stakes" role="group" aria-label="Choose stake">
+              ${GAME_POOL_TIERS.map(value => `<button class="game-pool-stake${tier === value ? ' is-picked' : ''}" type="button" data-game-pool-tier="${value}" data-game-pool-match="${escapeHtml(fixture.id)}">$${value}</button>`).join('')}
+            </div>
+            <div class="game-pool-actions">
+              <button class="primary-button compact-action" type="button" data-enter-game-pool="${escapeHtml(fixture.id)}"${fixture.locked || entry ? ' disabled' : ''}>${entry ? `✓ Picked ${escapeHtml(entry.pickName)}` : fixture.locked ? 'Final score locked' : `Enter $${tier} pool`}</button>
+              <button class="secondary-button compact-action" type="button" data-watch-game-pool="${escapeHtml(fixture.id)}">Watch + trivia</button>
+            </div>
+            <small>QVAC records the official-result evidence; demo entries stay locked to the local wallet until settlement rails are enabled.</small>
+          </div>` : ''}
+      </article>`
+  }).join('')
+
+  $$('#gamePoolGrid [data-game-pool-open]').forEach(button => button.addEventListener('click', () => {
+    const matchId = button.dataset.gamePoolOpen
+    const fixture = fixtures.find(item => item.id === matchId)
+    if (!fixture) return
+    state.selectedGamePool = matchId
+    state.gamePoolDraft = { matchId, pick: fixture.home.id, tier: 10 }
+    persist()
+    renderGamePools()
+  }))
+  $$('#gamePoolGrid [data-game-pool-team]').forEach(button => button.addEventListener('click', () => {
+    state.gamePoolDraft = { ...(state.gamePoolDraft || {}), matchId: button.dataset.gamePoolMatch, pick: button.dataset.gamePoolTeam }
+    persist()
+    renderGamePools()
+  }))
+  $$('#gamePoolGrid [data-game-pool-tier]').forEach(button => button.addEventListener('click', () => {
+    state.gamePoolDraft = { ...(state.gamePoolDraft || {}), matchId: button.dataset.gamePoolMatch, tier: Number(button.dataset.gamePoolTier) }
+    persist()
+    renderGamePools()
+  }))
+  $$('#gamePoolGrid [data-enter-game-pool]').forEach(button => button.addEventListener('click', () => {
+    const fixture = fixtures.find(item => item.id === button.dataset.enterGamePool)
+    if (fixture) enterGamePool(fixture)
+  }))
+  $$('#gamePoolGrid [data-watch-game-pool]').forEach(button => button.addEventListener('click', () => {
+    state.selectedGamePool = button.dataset.watchGamePool
+    persist()
+    setView('watch')
+  }))
+}
+
+function enterGamePool (fixture) {
+  const draft = state.gamePoolDraft || {}
+  const tier = draft.matchId === fixture.id && GAME_POOL_TIERS.includes(Number(draft.tier)) ? Number(draft.tier) : 10
+  const pick = draft.matchId === fixture.id && draft.pick ? draft.pick : fixture.home.id
+  if (!GAME_POOL_TIERS.includes(tier) || !pick) { showToast('Choose a winner and stake first'); return }
+  const choice = [fixture.home, fixture.away].find(team => team.id === pick)
+  if (!choice) { showToast('Choose a team in this match'); return }
+  const key = gamePoolEntryKey(fixture.id, tier)
+  if (state.enteredGamePools[key]) { showToast(`You're already in the $${tier} ${fixture.home.name} vs ${fixture.away.name} pool`); return }
+  if (!debitWallet(tier, `$${tier} ${fixture.home.name} vs ${fixture.away.name} pool`)) {
+    showToast('Not enough balance — fund your wallet first')
+    setView('onboarding')
+    return
+  }
+  state.enteredGamePools[key] = { fixtureId: fixture.id, tier, pick, pickName: choice.name, enteredAt: Date.now() }
+  persist()
+  renderGamePools()
+  showToast(`Picked ${choice.name} in the $${tier} match pool · QVAC evidence locks at kickoff`)
 }
 
 function poolNamespace (poolId) {
@@ -2489,15 +2857,25 @@ function clearDownstream (matchId) {
   for (const id of seen) delete state.picks[id]
 }
 
+function watchTeamId (liveTeam, fallback) {
+  const name = String(liveTeam && liveTeam.name || '').trim().toLowerCase()
+  const match = teams.find(team => team.name.toLowerCase() === name)
+  return match ? match.id : fallback
+}
+
 function watchParticipants () {
-  const livePick = ['es', 'at'].includes(state.picks['r32-11']) ? state.picks['r32-11'] : 'es'
+  const live = feedState()
+  const homeTeamId = watchTeamId(live && live.home, 'es')
+  const awayTeamId = watchTeamId(live && live.away, 'be')
+  const savedPick = Object.values(state.picks || {}).find(teamId => teamId === homeTeamId || teamId === awayTeamId)
+  const livePick = savedPick || homeTeamId
   return [
     { name: state.username || 'captain', pick: livePick, role: 'you' },
-    { name: 'lina', pick: 'es', role: 'stream host' },
-    { name: 'amara', pick: 'at', role: 'voice' },
-    { name: 'vera', pick: 'at', role: 'voice' },
-    { name: 'diego', pick: 'es', role: 'chat' },
-    { name: 'kwame', pick: 'at', role: 'chat' }
+    { name: 'lina', pick: homeTeamId, role: 'stream host' },
+    { name: 'amara', pick: awayTeamId, role: 'voice' },
+    { name: 'vera', pick: awayTeamId, role: 'voice' },
+    { name: 'diego', pick: homeTeamId, role: 'chat' },
+    { name: 'kwame', pick: awayTeamId, role: 'chat' }
   ]
 }
 
@@ -2526,6 +2904,7 @@ function createSimLiveFeed () {
   const listeners = new Set()
   let timer = null
   const st = {
+    matchId: 'world-cup-spain-belgium',
     minute: 0,
     home: { name: 'Spain', flag: '🇪🇸', teamId: 'es', goals: 0 },
     away: { name: 'Belgium', flag: '🇧🇪', teamId: 'be', goals: 0 },
@@ -2536,6 +2915,7 @@ function createSimLiveFeed () {
     matchStatus: 'TIMED',
     utcDate: '2026-07-10T22:00:00Z',
     stage: 'QUARTER_FINALS',
+    fixtures: [],
     competition: { name: 'FIFA World Cup' }
   }
   const emit = ev => listeners.forEach(fn => fn(ev, st))
@@ -2570,8 +2950,14 @@ function createSimLiveFeed () {
 // a CORS `proxy` prefix in the Live-data settings.
 function mapFeed (st, provider, data) {
   if (provider === 'football-data') {
-    const m = Array.isArray(data.matches) ? data.matches[0] : data
+    // The worker relay ships a v2 snapshot (`activeMatch` plus the full fixture
+    // list). Direct Football-Data responses remain supported for operator testing.
+    const snapshot = data && data.activeMatch ? data : null
+    const m = snapshot ? snapshot.activeMatch : (Array.isArray(data.matches) ? data.matches[0] : data)
     if (!m) throw new Error('No live match found')
+    st.matchId = m.id || null
+    st.fixtures = snapshot && Array.isArray(snapshot.matches) ? snapshot.matches : (Array.isArray(data.matches) ? data.matches : [])
+    st.generatedAt = snapshot && snapshot.generatedAt || null
     st.home.name = m.homeTeam.shortName || m.homeTeam.name || 'Home'
     st.away.name = m.awayTeam.shortName || m.awayTeam.name || 'Away'
     st.home.tla = m.homeTeam.tla || ''
@@ -2600,6 +2986,8 @@ function mapFeed (st, provider, data) {
     st.away.goals = r.goals.away ?? 0
     st.minute = (r.fixture.status && r.fixture.status.elapsed) ?? st.minute
     st.matchStatus = r.fixture.status && r.fixture.status.short || 'LIVE'
+    st.matchId = r.fixture && r.fixture.id || null
+    st.fixtures = data.response || []
   }
   st.home.flag = st.home.flag || '⚽'
   st.away.flag = st.away.flag || '⚽'
@@ -2843,6 +3231,7 @@ function applyFeedTick (ev, st) {
   // Keep the Home dashboard live too (hero/fixtures/timeline/stats reflect the same feed).
   if (document.querySelector('#home')?.classList.contains('is-active') && $('#liveDetail')) {
     renderHomeDashboard()
+    renderGamePools()
   }
   // Watch room key follows the current match — re-join if it changed (e.g. sim → live).
   if (window.PearCupWatchSync && document.querySelector('#watch')?.classList.contains('is-active')) {
@@ -2850,34 +3239,42 @@ function applyFeedTick (ev, st) {
   }
 }
 
-// Same-origin relay file a Pear worker / fetch-live.mjs writes. When present it
-// IS the production live path (no CORS, no key in the browser).
+// A release can receive an HTTPS relay URL from the Pear host's renderer-safe
+// settings. During local development, the staged same-origin fixture remains a
+// fallback. Neither path sends a provider key to the browser.
 const RELAY_FILE = 'live-match.json'
 function isRelay (proxy) { return /\.json(\?|$)/.test(proxy || '') }
 
-// Auto-detect the relay: if live-match.json is being written (real match data),
-// switch the Watch feed to it automatically — no manual settings needed.
+// Auto-detect the relay and switch the Watch feed without any per-user API-key
+// settings. A configured production relay always wins over local storage.
 async function detectLiveRelay () {
   const cfg = state.liveConfig || {}
-  if (cfg.apiKey && cfg.enabled) return           // an explicit API/proxy config wins
+  const relayUrl = productionLiveData ? productionLiveData.relayUrl : RELAY_FILE
+  if (!productionLiveData && cfg.apiKey && cfg.enabled) return
   try {
-    const res = await fetch(`${RELAY_FILE}?t=${Date.now()}`, { cache: 'no-store' })
+    const res = await fetch(withRelayCacheBust(relayUrl), { cache: 'no-store' })
     if (!res.ok) return
-    const m = await res.json()                     // ensure it parses
-    // Staleness guard: the packaged app ships whatever snapshot was staged. A finished
-    // match whose data is >12h old is yesterday's news — don't present it as live.
-    const stamp = Date.parse(m.lastUpdated || m.utcDate || 0) || 0
-    const finished = (m.status || '') === 'FINISHED'
-    if (finished && Date.now() - stamp > 12 * 3600 * 1000) {
-      // Also unwind a previously auto-enabled relay so persisted configs go stale-safe.
-      if (cfg.enabled && isRelay(cfg.proxy)) {
+    const snapshot = await res.json()
+    if (!snapshot || snapshot.schema !== 'pearcup-live-v2') throw new Error('Unsupported live relay snapshot')
+    const match = snapshot.activeMatch || snapshot
+    const stamp = Date.parse(snapshot.generatedAt || match.lastUpdated || match.utcDate || 0) || 0
+    const maximumAge = productionLiveData ? Math.max(120_000, productionLiveData.pollMs * 4) : 5 * 60 * 1000
+    if (stamp && Date.now() - stamp > maximumAge) {
+      if (cfg.enabled && cfg.proxy === relayUrl) {
         state.liveConfig = { ...cfg, enabled: false, proxy: '' }
-        persist()
+        if (!productionLiveData) persist()
         startLiveFeed()
       }
       return
     }
-    state.liveConfig = { ...cfg, enabled: true, proxy: RELAY_FILE }
+    state.liveConfig = {
+      ...cfg,
+      enabled: true,
+      provider: 'football-data',
+      apiKey: '',
+      proxy: relayUrl,
+      pollSec: productionLiveData ? Math.max(15, Math.round(productionLiveData.pollMs / 1000)) : 30
+    }
     startLiveFeed()
     if (document.querySelector('#watch')?.classList.contains('is-active')) renderWatch()
   } catch { /* no relay yet — stay on the simulated feed */ }
@@ -2905,11 +3302,220 @@ function startLiveFeed () {
   activeFeed.start()
 }
 
+// ---- QVAC watch-party trivia -------------------------------------------------
+// The host keeps the answer locally until reveal. Peers receive only the question
+// and options, then a signed-in-the-room reveal event; this makes the mini-game work
+// over the existing watch topic without leaking the answer in the initial broadcast.
+let watchTrivia = null
+let watchTriviaTimer = null
+let watchTriviaGenerating = false
+
+function clearWatchTriviaTimer () {
+  if (watchTriviaTimer) clearTimeout(watchTriviaTimer)
+  watchTriviaTimer = null
+}
+
+function triviaMatchEvidence () {
+  const st = feedState()
+  return {
+    id: st.matchId || `${st.home && st.home.name || 'home'}-${st.away && st.away.name || 'away'}`,
+    home: { name: st.home && st.home.name, goals: st.home && st.home.goals },
+    away: { name: st.away && st.away.name, goals: st.away && st.away.goals },
+    stage: stageLabel(st) || '',
+    status: matchStateLabel(st).txt,
+    score: { home: st.home && st.home.goals, away: st.away && st.away.goals }
+  }
+}
+
+function fallbackTriviaRound (input) {
+  if (window.PearCupQvacReferee && typeof window.PearCupQvacReferee.createTriviaRound === 'function') {
+    return window.PearCupQvacReferee.createTriviaRound({ input, hostId: 'qvac-local-fallback' })
+  }
+  const match = input.match || {}
+  const home = match.home && match.home.name || 'Home'
+  const away = match.away && match.away.name || 'Away'
+  const payload = {
+    matchId: input.matchId,
+    language: input.language,
+    question: `Which team is listed first for ${home} vs ${away}?`,
+    options: [home, away, 'Both teams', 'No team'],
+    answerIndex: 0,
+    explanation: `${home} is the home side in the active match snapshot.`,
+    modelId: 'local-fallback',
+    hostId: 'qvac-local-fallback'
+  }
+  return { triviaId: PearCupCore.deterministicHash(payload), ...payload }
+}
+
+function triviaInput () {
+  const match = triviaMatchEvidence()
+  return {
+    matchId: match.id,
+    language: state.language || 'EN',
+    match,
+    recentEvents: (state.feedEvents || []).slice(0, 6).map((event, index) => ({
+      eventId: `watch-${index}-${event.clock || 'now'}`,
+      type: event.type,
+      team: event.team,
+      clock: event.clock
+    }))
+  }
+}
+
+function publicTriviaRound (round) {
+  return {
+    triviaId: round.triviaId,
+    matchId: round.matchId,
+    language: round.language,
+    question: round.question,
+    options: round.options,
+    modelId: round.modelId || null,
+    hostId: round.hostId || null
+  }
+}
+
+function armWatchTriviaReveal () {
+  clearWatchTriviaTimer()
+  if (!watchTrivia || watchTrivia.hostId !== selfPeerId() || watchTrivia.revealed) return
+  watchTriviaTimer = setTimeout(revealWatchTrivia, 25000)
+}
+
+async function startWatchTrivia () {
+  if (watchTriviaGenerating) return
+  watchTriviaGenerating = true
+  renderWatchTrivia()
+  const input = triviaInput()
+  const commentary = integrationRuntime.adapters && integrationRuntime.adapters.qvacCommentary
+  let round
+  try {
+    round = commentary && typeof commentary.generateTriviaRound === 'function'
+      ? await commentary.generateTriviaRound(input)
+      : fallbackTriviaRound(input)
+  } catch (err) {
+    console.warn('QVAC trivia generation failed; using grounded local round', err)
+    round = fallbackTriviaRound(input)
+  }
+  const normalized = {
+    ...fallbackTriviaRound(input),
+    ...(round || {}),
+    options: Array.isArray(round && round.options) && round.options.length === 4 ? round.options : fallbackTriviaRound(input).options,
+    answerIndex: Number.isInteger(Number(round && round.answerIndex)) ? Number(round.answerIndex) : 0,
+    hostId: selfPeerId(),
+    answers: {},
+    revealed: false,
+    source: commentary && commentary.mode === 'sdk' ? 'QVAC on-device' : 'QVAC grounded fallback'
+  }
+  if (normalized.answerIndex < 0 || normalized.answerIndex > 3) normalized.answerIndex = 0
+  watchTrivia = normalized
+  watchTriviaGenerating = false
+  armWatchTriviaReveal()
+  if (window.PearCupWatchSync && typeof window.PearCupWatchSync.broadcastTrivia === 'function') {
+    window.PearCupWatchSync.broadcastTrivia({ t: 'trivia:round', round: publicTriviaRound(watchTrivia) })
+  }
+  renderWatchTrivia()
+}
+
+function answerWatchTrivia (answerIndex) {
+  if (!watchTrivia || watchTrivia.revealed || watchTrivia.answer != null) return
+  if (!Number.isInteger(answerIndex) || answerIndex < 0 || answerIndex > 3) return
+  watchTrivia.answer = answerIndex
+  const self = selfPeerId()
+  watchTrivia.answers = { ...(watchTrivia.answers || {}), [self]: answerIndex }
+  if (window.PearCupWatchSync && typeof window.PearCupWatchSync.broadcastTrivia === 'function') {
+    window.PearCupWatchSync.broadcastTrivia({ t: 'trivia:answer', triviaId: watchTrivia.triviaId, answerIndex })
+  }
+  renderWatchTrivia()
+}
+
+function applyTriviaReveal (correctIndex, explanation) {
+  if (!watchTrivia || watchTrivia.revealed) return
+  watchTrivia.revealed = true
+  watchTrivia.correctIndex = correctIndex
+  if (explanation) watchTrivia.explanation = explanation
+  clearWatchTriviaTimer()
+  if (watchTrivia.answer === correctIndex && !watchTrivia.scored) {
+    watchTrivia.scored = true
+    state.triviaScore = Number(state.triviaScore || 0) + 1
+    persist()
+    showToast('Correct! +1 watch-party trivia point')
+  }
+  renderWatchTrivia()
+}
+
+function revealWatchTrivia () {
+  if (!watchTrivia || watchTrivia.revealed || watchTrivia.hostId !== selfPeerId()) return
+  applyTriviaReveal(watchTrivia.answerIndex, watchTrivia.explanation)
+  if (window.PearCupWatchSync && typeof window.PearCupWatchSync.broadcastTrivia === 'function') {
+    window.PearCupWatchSync.broadcastTrivia({
+      t: 'trivia:reveal',
+      triviaId: watchTrivia.triviaId,
+      correctIndex: watchTrivia.answerIndex,
+      explanation: watchTrivia.explanation
+    })
+  }
+}
+
+function bindTriviaSync () {
+  if (!window.PearCupWatchSync || window.PearCupWatchSync._triviaBound || typeof window.PearCupWatchSync.onTrivia !== 'function') return
+  window.PearCupWatchSync._triviaBound = true
+  window.PearCupWatchSync.onTrivia(message => {
+    if (!message || !message.t) return
+    if (message.t === 'trivia:round' && message.round && Array.isArray(message.round.options)) {
+      clearWatchTriviaTimer()
+      watchTrivia = { ...message.round, hostId: message.from, answers: {}, revealed: false, source: 'QVAC room round' }
+      renderWatchTrivia()
+      return
+    }
+    if (!watchTrivia || message.triviaId !== watchTrivia.triviaId) return
+    if (message.t === 'trivia:answer') {
+      watchTrivia.answers = { ...(watchTrivia.answers || {}), [message.from]: message.answerIndex }
+      renderWatchTrivia()
+    }
+    if (message.t === 'trivia:reveal') applyTriviaReveal(message.correctIndex, message.explanation)
+  })
+}
+
+function renderWatchTrivia () {
+  const el = $('#watchTrivia')
+  if (!el) return
+  const score = Number(state.triviaScore || 0)
+  if (watchTriviaGenerating) {
+    el.innerHTML = `<div class="trivia-head"><div><p class="eyebrow">QVAC watch trivia</p><strong>Building a grounded round…</strong></div><span class="trivia-score">${score} pts</span></div><p class="trivia-wait">Reading the active match snapshot on device.</p>`
+    return
+  }
+  if (!watchTrivia) {
+    el.innerHTML = `<div class="trivia-head"><div><p class="eyebrow">QVAC watch trivia</p><strong>Play from the live match</strong></div><span class="trivia-score">${score} pts</span></div><p class="trivia-wait">One friendly, grounded question for everyone in the room. No odds, no invented stats.</p><button class="primary-button compact-action" id="startWatchTrivia" type="button">Start QVAC round</button>`
+    const start = $('#startWatchTrivia')
+    if (start) start.addEventListener('click', startWatchTrivia)
+    return
+  }
+  const isHost = watchTrivia.hostId === selfPeerId()
+  const answerCount = Object.keys(watchTrivia.answers || {}).length
+  const options = watchTrivia.options.map((option, index) => {
+    const isAnswer = watchTrivia.answer === index
+    const isCorrect = watchTrivia.revealed && watchTrivia.correctIndex === index
+    const isWrong = watchTrivia.revealed && isAnswer && !isCorrect
+    return `<button class="trivia-option${isAnswer ? ' is-answer' : ''}${isCorrect ? ' is-correct' : ''}${isWrong ? ' is-wrong' : ''}" type="button" data-trivia-answer="${index}"${watchTrivia.revealed || watchTrivia.answer != null ? ' disabled' : ''}><b>${String.fromCharCode(65 + index)}</b><span>${escapeHtml(option)}</span>${isCorrect ? '<i>✓</i>' : ''}</button>`
+  }).join('')
+  el.innerHTML = `
+    <div class="trivia-head"><div><p class="eyebrow">QVAC watch trivia</p><strong>${escapeHtml(watchTrivia.source || 'QVAC room round')}</strong></div><span class="trivia-score">${score} pts</span></div>
+    <p class="trivia-question">${escapeHtml(watchTrivia.question)}</p>
+    <div class="trivia-options">${options}</div>
+    ${watchTrivia.revealed ? `<p class="trivia-explanation">${escapeHtml(watchTrivia.explanation || 'Answer verified from the active match snapshot.')}</p>` : `<div class="trivia-foot"><span>${answerCount} answer${answerCount === 1 ? '' : 's'} in · reveal in 25s</span>${isHost ? '<button class="secondary-button compact-action" id="revealWatchTrivia" type="button">Reveal now</button>' : ''}</div>`}
+    ${watchTrivia.revealed && isHost ? '<button class="secondary-button compact-action" id="nextWatchTrivia" type="button">Next QVAC round</button>' : ''}`
+  $$('#watchTrivia [data-trivia-answer]').forEach(button => button.addEventListener('click', () => answerWatchTrivia(Number(button.dataset.triviaAnswer))))
+  const reveal = $('#revealWatchTrivia'); if (reveal) reveal.addEventListener('click', revealWatchTrivia)
+  const next = $('#nextWatchTrivia'); if (next) next.addEventListener('click', startWatchTrivia)
+}
+
 // ---- Screen share (real getDisplayMedia capture + WebRTC relay over the watch topic) ----
 let shareStream = null
 let screenShareRtc = null
+let stoppingScreenShare = false
 const RTC_CONFIG = {
-  iceServers: [
+  // A deployment can inject authenticated TURN servers as `PearCupIceServers`.
+  // Public STUN keeps local/Pear peers working without ever shipping credentials.
+  iceServers: Array.isArray(window.PearCupIceServers) && window.PearCupIceServers.length ? window.PearCupIceServers : [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' }
   ]
@@ -2946,6 +3552,8 @@ function createPeerConnection (peerId, polite) {
     const video = $('#shareVideo')
     if (video && ev.streams && ev.streams[0]) {
       video.srcObject = ev.streams[0]
+      // Local previews must be muted to prevent feedback; remote viewers must not.
+      video.muted = false
       video.hidden = false
       video.play().catch(() => {})
     }
@@ -3012,8 +3620,9 @@ function updateScreenShareBadge () {
   const n = Math.max(0, realSpectatorCount() - 1)
   const rtcCount = screenShareRtc ? screenShareRtc.peers.size : 0
   if (shareStream) {
+    const audio = shareStream.getAudioTracks().length ? ' · audio on' : ''
     badge.hidden = false
-    badge.innerHTML = `<i></i>You are sharing your screen · ${n} peer${n === 1 ? '' : 's'} in room${rtcCount ? ` · ${rtcCount} relay connected` : ''}`
+    badge.innerHTML = `<i></i>You are sharing your screen${audio} · ${n} peer${n === 1 ? '' : 's'} in room${rtcCount ? ` · ${rtcCount} relay connected` : ''}`
   } else if (sharer && sharer.sharing) {
     badge.hidden = false
     badge.innerHTML = `<i></i>${escapeHtml(sharer.sharerName || 'A watcher')} is sharing their screen`
@@ -3040,16 +3649,26 @@ function bindScreenShareSignaling () {
   })
 }
 async function startScreenShare () {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia || typeof window.RTCPeerConnection !== 'function') {
     showToast('Screen share needs the Pear runtime / a supported browser')
     return
   }
   bindScreenShareSignaling()
   try {
-    shareStream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false })
-  } catch (err) { showToast('Screen share cancelled'); return }
+    shareStream = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: { ideal: 30, max: 30 } },
+      audio: true,
+      systemAudio: 'include',
+      selfBrowserSurface: 'exclude',
+      surfaceSwitching: 'include'
+    })
+  } catch (err) {
+    const denied = err && (err.name === 'NotAllowedError' || err.name === 'SecurityError')
+    showToast(denied ? 'Screen share permission was not granted' : 'Screen share cancelled')
+    return
+  }
   const video = $('#shareVideo')
-  if (video) { video.srcObject = shareStream; video.hidden = false; video.play().catch(() => {}) }
+  if (video) { video.muted = true; video.srcObject = shareStream; video.hidden = false; video.play().catch(() => {}) }
   const pitch = $('#tvPitch'); if (pitch) pitch.style.opacity = '0'
   const btn = $('#shareScreenBtn'); if (btn) btn.classList.add('is-live')
   showToast('Sharing your screen to the room')
@@ -3064,13 +3683,16 @@ async function startScreenShare () {
   updateScreenShareBadge()
 }
 function stopScreenShare () {
+  if (stoppingScreenShare) return
+  stoppingScreenShare = true
   if (shareStream) { shareStream.getTracks().forEach(t => t.stop()); shareStream = null }
-  const video = $('#shareVideo'); if (video) { video.hidden = true; video.srcObject = null }
+  const video = $('#shareVideo'); if (video) { video.muted = true; video.hidden = true; video.srcObject = null }
   const pitch = $('#tvPitch'); if (pitch) pitch.style.opacity = ''
   const btn = $('#shareScreenBtn'); if (btn) btn.classList.remove('is-live')
   if (window.PearCupWatchSync) window.PearCupWatchSync.broadcastScreen({ t: 'screen:stop' })
   closeScreenShareRtc()
   updateScreenShareBadge()
+  stoppingScreenShare = false
 }
 function toggleScreenShare () { shareStream ? stopScreenShare() : startScreenShare() }
 
@@ -3124,13 +3746,41 @@ function startSpectatorSim () {
 }
 function stopSpectatorSim () { if (spectatorTimer) { clearInterval(spectatorTimer); spectatorTimer = null } }
 
+function bindWatchVoice () {
+  const voice = window.PearCupWatchVoice
+  if (!voice) {
+    const button = $('#voiceToggle')
+    if (button) button.classList.toggle('is-live', state.voice)
+    return
+  }
+  if (!voice._appStateBound && typeof voice.onStateChange === 'function') {
+    voice._appStateBound = true
+    voice.onStateChange(next => {
+      const enabled = Boolean(next && next.enabled)
+      if (state.voice !== enabled) {
+        state.voice = enabled
+        persist()
+      }
+    })
+  }
+  if (typeof voice.bind === 'function') voice.bind()
+  if (typeof voice.setEnabled === 'function') voice.setEnabled(Boolean(state.voice), { silent: true })
+  if (typeof voice.render === 'function') voice.render()
+}
+
 function renderWatch () {
   startLiveFeed()
   seedFeedEvents()
+  renderPolymarketOdds()
   renderWatchStats(feedState())
   applyFeedTick(null, feedState())
   const room = watchParticipants()
-  const grouped = ['es', 'at'].map(teamId => {
+  const live = feedState()
+  const watchTeamIds = [
+    watchTeamId(live && live.home, 'es'),
+    watchTeamId(live && live.away, 'be')
+  ]
+  const grouped = watchTeamIds.map(teamId => {
     const picked = room.filter(person => person.pick === teamId)
     return { team: teamById(teamId), picked }
   })
@@ -3192,15 +3842,16 @@ function renderWatch () {
   `).join('')
     : '<p class="chat-empty">Quiet in here — say something to the room! 💬</p>'
 
-  $('#voiceToggle').classList.toggle('is-live', state.voice)
-
   // Join the shared watch room for this match (chat + reactions + presence sync).
   if (window.PearCupWatchSync) {
     window.PearCupWatchSync.ensureRoom()
     window.PearCupWatchSync.bindReactionBar()
     window.PearCupWatchSync.updatePresence()
     if (typeof window.PearCupWatchSync.renderChallengeList === 'function') window.PearCupWatchSync.renderChallengeList()
+    bindTriviaSync()
   }
+  bindWatchVoice()
+  renderWatchTrivia()
 }
 
 function currentGameRound () {
@@ -4449,10 +5100,14 @@ function bindEvents () {
   sendBootCheckpoint('bindEvents:bracket')
 
   $('#voiceToggle').addEventListener('click', () => {
+    if (window.PearCupWatchVoice && typeof window.PearCupWatchVoice.toggle === 'function') {
+      window.PearCupWatchVoice.toggle()
+      return
+    }
     state.voice = !state.voice
     persist()
     $('#voiceToggle').classList.toggle('is-live', state.voice)
-    showToast(state.voice ? 'Voice chat unmuted' : 'Voice chat muted')
+    showToast(state.voice ? 'Voice chat ready' : 'Voice chat off')
   })
 
   $('#shareScreenBtn').addEventListener('click', toggleScreenShare)
@@ -4509,7 +5164,8 @@ function assertP2PModulesReady () {
     ['PearCupPeerNet', 'pearcupPeerNetModule'],
     ['PearCupPeerMatch', 'pearcupPeerMatchModule'],
     ['PearCupLobby', 'pearcupPeerLobbyModule'],
-    ['PearCupWatchSync', 'pearcupWatchSyncModule']
+    ['PearCupWatchSync', 'pearcupWatchSyncModule'],
+    ['PearCupWatchVoice', 'pearcupWatchVoiceModule']
   ]
   const missing = []
   for (const [globalName, datasetName] of required) {
@@ -4573,6 +5229,13 @@ function bootRuntimeDiagnostics () {
     teamCards: document.querySelectorAll('#teamGrid .team-card').length,
     avatarImages: avatarImages.slice(0, 4),
     profileChipReady: Boolean(document.querySelector('#profileChip svg.avatar-art')),
+    integration: {
+      qvacMode: integrationRuntime && integrationRuntime.mode && (integrationRuntime.mode.qvac || integrationRuntime.mode) || 'unknown',
+      qvacCommentaryMode: integrationRuntime && integrationRuntime.mode && integrationRuntime.mode.qvacCommentary || 'unknown',
+      tetherWdkMode: integrationRuntime && integrationRuntime.mode && (integrationRuntime.mode.tetherWdk || integrationRuntime.mode) || 'unknown',
+      settlementStatus: integrationRuntime && integrationRuntime.readiness && integrationRuntime.readiness.settlement && integrationRuntime.readiness.settlement.status || 'unknown',
+      realMoneyEnabled: Boolean(integrationRuntime && integrationRuntime.canUseRealMoney)
+    },
     peerMatchDataset: {
       state: ds.pearcupPeerMatchState || null,
       active: ds.pearcupPeerMatchActive || null,
@@ -4584,7 +5247,8 @@ function bootRuntimeDiagnostics () {
       peerNet: controllerReady(window.PearCupPeerNet, ['createChannel', 'newRoomCode', 'newPeerId']),
       peerMatch: controllerReady(window.PearCupPeerMatch, ['host', 'join', 'promptJoin', 'onZone']),
       peerLobby: controllerReady(window.PearCupLobby, ['join', 'renderList']),
-      watchSync: controllerReady(window.PearCupWatchSync, ['ensureRoom', 'broadcastChat', 'react'])
+      watchSync: controllerReady(window.PearCupWatchSync, ['ensureRoom', 'broadcastChat', 'react']),
+      watchVoice: controllerReady(window.PearCupWatchVoice, ['bind', 'toggle', 'pressStart', 'pressEnd'])
     }
   }
 }
@@ -4612,7 +5276,8 @@ function sendBootReadyProbe (backend) {
       net: ds.pearcupPeerNetModule || null,
       match: ds.pearcupPeerMatchModule || null,
       lobby: ds.pearcupPeerLobbyModule || null,
-      watch: ds.pearcupWatchSyncModule || null
+      watch: ds.pearcupWatchSyncModule || null,
+      voice: ds.pearcupWatchVoiceModule || null
     },
     screens: Array.from(document.querySelectorAll('.screen.is-active')).map(el => el.id),
     runtime: bootRuntimeDiagnostics()
@@ -5084,7 +5749,11 @@ function boot () {
   window.addEventListener('resize', scheduleBracketConnectors)
   // Auto-detect a worker-relayed live-match.json feed (no browser CORS).
   detectLiveRelay()
-  setInterval(detectLiveRelay, 60_000)
+  setInterval(detectLiveRelay, productionLiveData ? productionLiveData.pollMs : 60_000)
+  // Public Polymarket prices arrive through the same keyless relay boundary as
+  // match data; the renderer never contacts Polymarket's trading APIs directly.
+  detectPolymarketOdds()
+  setInterval(detectPolymarketOdds, productionLiveData ? productionLiveData.pollMs : 30_000)
 }
 
 function hydrateStaticShell () {

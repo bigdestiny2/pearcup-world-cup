@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
-import { existsSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -14,6 +15,7 @@ const pear = args.pear || 'pear'
 
 if (!existsSync(appRoot)) throw new Error(`Pear app root does not exist: ${appRoot}`)
 
+const pearLaunchRoot = preparePearLaunchRoot(appRoot)
 const bootProbe = await createBootProbe()
 
 const fatalPatterns = [
@@ -42,7 +44,7 @@ const allowedWarnings = [
 ]
 
 const child = spawn(pear, ['run', '--dev', '--tmp-store', '--no-ask', '--no-pre', '.'], {
-  cwd: appRoot,
+  cwd: pearLaunchRoot.path,
   env: {
     ...process.env,
     PEARCUP_TRACE_BRIDGE: '1',
@@ -77,6 +79,7 @@ if (!exited) {
   await waitForExit(child, 3_000)
 }
 await bootProbe.close()
+pearLaunchRoot.cleanup()
 
 const bridgeProbeEvents = extractBridgeProbeEvents(output)
 const bootProbeErrors = validateBootProbe(bootProbe.received, bridgeProbeEvents)
@@ -233,6 +236,16 @@ function validateBootProbe (payload, bridgeEvents = []) {
   for (const view of ['onboarding', 'home', 'bracket', 'watch', 'games']) {
     if (!routeButtons.includes(view)) errors.push(`boot probe did not report the ${view} route button`)
   }
+  const expectedQvacMode = process.env.PEARCUP_EXPECT_QVAC_MODE
+  if (expectedQvacMode) {
+    const integration = runtime.integration || {}
+    if (integration.qvacMode !== expectedQvacMode) {
+      errors.push(`boot probe QVAC mode was ${integration.qvacMode || '(missing)'}, expected ${expectedQvacMode}`)
+    }
+    if (integration.realMoneyEnabled !== false) {
+      errors.push('boot probe enabled real-money settlement while checking QVAC')
+    }
+  }
 
   const selfTestPayload = events.filter(event => event && event.event === 'pearcup:runtime-self-test').pop()
   if (!selfTestPayload) {
@@ -356,6 +369,23 @@ function waitForExit (proc, ms) {
 
 function dedupe (items) {
   return [...new Set(items)]
+}
+
+function preparePearLaunchRoot (sourceRoot) {
+  // Pear currently treats a space in the project path as a URL-encoded filename
+  // (`pear%20sports`), then fails its package-root check before the renderer starts.
+  // The smoke must validate the app rather than the checkout's directory spelling.
+  if (!/\s/.test(sourceRoot)) {
+    return { path: sourceRoot, cleanup: () => {} }
+  }
+
+  const tempRoot = mkdtempSync(join(tmpdir(), 'pearcup-kawaii-pear-smoke-'))
+  const copiedAppRoot = join(tempRoot, 'app')
+  cpSync(sourceRoot, copiedAppRoot, { recursive: true, dereference: true })
+  return {
+    path: copiedAppRoot,
+    cleanup: () => rmSync(tempRoot, { recursive: true, force: true })
+  }
 }
 
 function parseArgs (argv) {

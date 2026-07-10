@@ -633,3 +633,80 @@ test('PearBrowser swarm watch sync relays screen share state', async () => {
   host.context.PearCupWatchSync.leave()
   guest.context.PearCupWatchSync.leave()
 })
+
+test('PearBrowser swarm watch sync relays PTT voice state and keeps SDP targeted', async () => {
+  const swarm = createPearBrowserSwarmHub()
+  const host = createClient({ pear: swarm.pear, name: 'Host', team: 'br' })
+  const guest = createClient({ pear: swarm.pear, name: 'Guest', team: 'jp' })
+  const observer = createClient({ pear: swarm.pear, name: 'Observer', team: 'no' })
+  const guestEvents = []
+  const observerEvents = []
+  guest.context.PearCupWatchSync.onVoice(message => guestEvents.push(message))
+  observer.context.PearCupWatchSync.onVoice(message => observerEvents.push(message))
+
+  host.context.PearCupWatchSync.ensureRoom()
+  guest.context.PearCupWatchSync.ensureRoom()
+  observer.context.PearCupWatchSync.ensureRoom()
+  await waitFor(() => {
+    return host.context.PearCupWatchSync.peerCount() === 3 &&
+      guest.context.PearCupWatchSync.peerCount() === 3 &&
+      observer.context.PearCupWatchSync.peerCount() === 3
+  }, 'three-peer voice room presence')
+
+  host.context.PearCupWatchSync.broadcastVoice({ t: 'voice:state', status: 'speaking', ptt: true })
+  await waitFor(() => guestEvents.some(message => message.t === 'voice:state' && message.status === 'speaking'), 'PTT speaking state delivery')
+  await waitFor(() => observerEvents.some(message => message.t === 'voice:state' && message.status === 'speaking'), 'observer PTT state delivery')
+  const speaking = guestEvents.find(message => message.t === 'voice:state' && message.status === 'speaking')
+  assert.equal(speaking.from, host.context.PearCupWatchSync._state.self)
+  assert.equal(speaking.ptt, true)
+
+  const guestPeerId = [...host.context.PearCupWatchSync._state.peers.entries()]
+    .find(([, peer]) => peer.name === 'Guest')[0]
+  host.context.PearCupWatchSync.broadcastVoice({
+    t: 'voice:offer',
+    to: guestPeerId,
+    description: { type: 'offer', sdp: 'v=0\r\na=ice-ufrag:ptt\r\n' }
+  })
+  await waitFor(() => guestEvents.some(message => message.t === 'voice:offer'), 'targeted voice offer delivery')
+  assert.equal(guestEvents.find(message => message.t === 'voice:offer').to, guestPeerId)
+  assert.equal(observerEvents.some(message => message.t === 'voice:offer'), false)
+
+  host.context.PearCupWatchSync.broadcastVoice({ t: 'voice:state', status: 'idle', ptt: true })
+  await waitFor(() => guestEvents.some(message => message.t === 'voice:state' && message.status === 'idle'), 'PTT release state delivery')
+
+  host.context.PearCupWatchSync.leave()
+  guest.context.PearCupWatchSync.leave()
+  observer.context.PearCupWatchSync.leave()
+})
+
+test('PearBrowser swarm watch sync relays trivia question, answer, and reveal without leaking the answer', async () => {
+  const swarm = createPearBrowserSwarmHub()
+  const host = createClient({ pear: swarm.pear, name: 'Host', team: 'br' })
+  const guest = createClient({ pear: swarm.pear, name: 'Guest', team: 'jp' })
+  const hostEvents = []
+  const guestEvents = []
+  host.context.PearCupWatchSync.onTrivia(message => hostEvents.push(message))
+  guest.context.PearCupWatchSync.onTrivia(message => guestEvents.push(message))
+
+  host.context.PearCupWatchSync.ensureRoom()
+  guest.context.PearCupWatchSync.ensureRoom()
+  await waitFor(() => host.context.PearCupWatchSync.peerCount() === 2 && guest.context.PearCupWatchSync.peerCount() === 2, 'trivia room presence')
+
+  host.context.PearCupWatchSync.broadcastTrivia({
+    t: 'trivia:round',
+    round: { triviaId: 'qvac-round-1', question: 'Who is home?', options: ['Brazil', 'Norway', 'Both', 'TBD'] }
+  })
+  await waitFor(() => guestEvents.some(message => message.t === 'trivia:round'), 'trivia round delivery')
+  const round = guestEvents.find(message => message.t === 'trivia:round').round
+  assert.equal(round.answerIndex, undefined)
+  assert.deepEqual(JSON.parse(JSON.stringify(round.options)), ['Brazil', 'Norway', 'Both', 'TBD'])
+
+  guest.context.PearCupWatchSync.broadcastTrivia({ t: 'trivia:answer', triviaId: 'qvac-round-1', answerIndex: 0 })
+  await waitFor(() => hostEvents.some(message => message.t === 'trivia:answer'), 'trivia answer delivery')
+
+  host.context.PearCupWatchSync.broadcastTrivia({ t: 'trivia:reveal', triviaId: 'qvac-round-1', correctIndex: 0, explanation: 'Brazil is the home side.' })
+  await waitFor(() => guestEvents.some(message => message.t === 'trivia:reveal'), 'trivia reveal delivery')
+
+  host.context.PearCupWatchSync.leave()
+  guest.context.PearCupWatchSync.leave()
+})

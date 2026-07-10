@@ -24,6 +24,7 @@ function createBridgeHarness () {
     'this.normalizeRootRendererUrl = normalizeRootRendererUrl',
     'this.shouldServeRawClassicScript = shouldServeRawClassicScript',
     'this.shouldServeBootProbe = shouldServeBootProbe'
+    , 'this.shouldServeRendererRuntimeOptions = shouldServeRendererRuntimeOptions'
   ].join('\n'), context, { filename: 'pearcup-entry-bridge-functions.js' })
   return context
 }
@@ -74,6 +75,14 @@ test('Pear entry consumes bridge boot probes without renderer file lookups', () 
   assert.equal(shouldServeBootProbe('/boot-probe-hit.gif'), true)
   assert.equal(shouldServeBootProbe('/boot-probe-hit.gif?payload=%7B%7D'), true)
   assert.equal(shouldServeBootProbe('/index.html'), false)
+})
+
+test('Pear entry exposes only the safe renderer-runtime options route', () => {
+  const { shouldServeRendererRuntimeOptions } = createBridgeHarness()
+
+  assert.equal(shouldServeRendererRuntimeOptions('/pearcup-runtime-options.json'), true)
+  assert.equal(shouldServeRendererRuntimeOptions('/pearcup-runtime-options.json?cache=1'), true)
+  assert.equal(shouldServeRendererRuntimeOptions('/config/pearcup.runtime.json'), false)
 })
 
 test('Pear entry normalizes IPC root file lookups to index.html', () => {

@@ -1,0 +1,83 @@
+const assert = require('node:assert/strict')
+const { readFileSync } = require('node:fs')
+const { join } = require('node:path')
+const test = require('node:test')
+const vm = require('node:vm')
+
+const appSource = readFileSync(join(__dirname, 'app.js'), 'utf8')
+const htmlSource = readFileSync(join(__dirname, 'index.html'), 'utf8')
+
+function sourceBetween (startMarker, endMarker) {
+  const start = appSource.indexOf(startMarker)
+  const end = appSource.indexOf(endMarker, start + startMarker.length)
+  assert.notEqual(start, -1, `missing ${startMarker}`)
+  assert.notEqual(end, -1, `missing ${endMarker}`)
+  return appSource.slice(start, end)
+}
+
+const runtimeRelaySource = sourceBetween('function runtimeLiveDataRelay', 'const productionLiveData')
+const detectRelaySource = sourceBetween('async function detectLiveRelay', 'function startLiveFeed')
+
+test('only HTTPS or loopback live relay URLs can reach the renderer', () => {
+  const context = {
+    URL,
+    Number,
+    window: {
+      PearCupRuntimeSettingsValue: {
+        liveData: { relayUrl: 'https://data.example.test/v1/live-match.json', pollMs: 20_000 }
+      }
+    }
+  }
+  context.globalThis = context
+  vm.createContext(context)
+  vm.runInContext(runtimeRelaySource, context)
+  assert.deepEqual({ ...context.runtimeLiveDataRelay() }, {
+    relayUrl: 'https://data.example.test/v1/live-match.json',
+    oddsRelayUrl: 'https://data.example.test/v1/polymarket-odds.json',
+    pollMs: 20_000
+  })
+
+  context.window.PearCupRuntimeSettingsValue.liveData.relayUrl = 'http://data.example.test/v1/live-match.json'
+  assert.equal(context.runtimeLiveDataRelay(), null)
+})
+
+test('production relay selection overrides any locally saved provider key', async () => {
+  const calls = { fetch: [], start: 0, render: 0 }
+  const context = {
+    Date,
+    state: { liveConfig: { enabled: true, apiKey: 'must-not-be-used', proxy: 'https://wrong.example/live-match.json' } },
+    productionLiveData: { relayUrl: 'https://data.example.test/v1/live-match.json', pollMs: 30_000 },
+    RELAY_FILE: 'live-match.json',
+    withRelayCacheBust: value => value,
+    fetch: async url => {
+      calls.fetch.push(url)
+      return {
+        ok: true,
+        json: async () => ({
+          schema: 'pearcup-live-v2',
+          generatedAt: new Date().toISOString(),
+          activeMatch: { id: 537384, status: 'TIMED', utcDate: '2026-07-10T22:00:00Z' },
+          matches: []
+        })
+      }
+    },
+    startLiveFeed: () => { calls.start += 1 },
+    document: { querySelector: () => null }
+  }
+  context.globalThis = context
+  vm.createContext(context)
+  vm.runInContext(detectRelaySource, context)
+  await context.detectLiveRelay()
+
+  assert.deepEqual(calls.fetch, ['https://data.example.test/v1/live-match.json'])
+  assert.equal(calls.start, 1)
+  assert.equal(context.state.liveConfig.apiKey, '')
+  assert.equal(context.state.liveConfig.proxy, 'https://data.example.test/v1/live-match.json')
+  assert.equal(context.state.liveConfig.pollSec, 30)
+})
+
+test('CSP permits the keyless HTTPS relay and approved Football-Data crests only', () => {
+  assert.match(htmlSource, /connect-src 'self' https: http:\/\/127\.0\.0\.1:\* http:\/\/localhost:\* pear:/)
+  assert.match(htmlSource, /img-src 'self' data: blob: https:\/\/crests\.football-data\.org/)
+  assert.match(htmlSource, /script-src 'self' 'unsafe-inline' 'unsafe-eval'/)
+})

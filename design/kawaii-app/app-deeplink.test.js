@@ -23,6 +23,7 @@ const deepLinkSource = [
 const startupViewSource = sliceFunctionBlock('normalizeStartupView', 'syncRuntimeScreenDiagnostics')
 const runtimeDiagnosticsSource = sliceFunctionBlock('syncRuntimeScreenDiagnostics', 'setView')
 const p2pGuardSource = sliceFunctionBlock('assertP2PModulesReady', 'boot')
+const watchParticipantSource = sliceFunctionBlock('watchTeamId', 'createSimLiveFeed')
 const bootProbeConfigSource = appSource.slice(
   appSource.indexOf('let bootProbeConfigPromise'),
   appSource.indexOf('function runtimeSelfTestSnapshot')
@@ -102,6 +103,24 @@ function createStartupViewHarness ({ hash = '', view = 'onboarding' } = {}) {
   vm.createContext(context)
   vm.runInContext(startupViewSource, context, { filename: 'app-startup-view-functions.js' })
   return { calls, context }
+}
+
+function createWatchParticipantHarness ({ home = 'Spain', away = 'Belgium', picks = {} } = {}) {
+  const context = {
+    Object,
+    String,
+    teams: [
+      { id: 'es', name: 'Spain' },
+      { id: 'be', name: 'Belgium' },
+      { id: 'at', name: 'Austria' }
+    ],
+    state: { username: 'captain', picks },
+    feedState: () => ({ home: { name: home }, away: { name: away } })
+  }
+  context.globalThis = context
+  vm.createContext(context)
+  vm.runInContext(watchParticipantSource, context, { filename: 'app-watch-participants.js' })
+  return context
 }
 
 function createBootProbeConfigHarness ({ search = '', fetchConfig = null, env = {} } = {}) {
@@ -251,6 +270,15 @@ test('boot gives friend invite deep links priority over hash startup views', () 
   assert.match(appSource, /if \(!tryJoinFriendInvite\(\)\) applyStartupView\(\)/)
 })
 
+test('watch party couches follow the active live match instead of a fixed fixture', () => {
+  const context = createWatchParticipantHarness({ picks: { 'qf-1': 'be' } })
+  const participants = JSON.parse(JSON.stringify(context.watchParticipants()))
+
+  assert.deepEqual(participants.map(person => person.pick), ['be', 'es', 'be', 'be', 'es', 'be'])
+  assert.equal(context.watchTeamId({ name: 'Spain' }, 'at'), 'es')
+  assert.equal(context.watchTeamId({ name: 'Unknown team' }, 'be'), 'be')
+})
+
 test('renderGameLobby friend buttons use the window-scoped peer controller', () => {
   assert.match(appSource, /window\.PearCupPeerMatch && window\.PearCupPeerMatch\.host\(\)/)
   assert.match(appSource, /window\.PearCupPeerMatch && window\.PearCupPeerMatch\.promptJoin\(\)/)
@@ -336,13 +364,15 @@ test('assertP2PModulesReady marks the app ready only when every P2P module is at
       PearCupPeerNet: {},
       PearCupPeerMatch: {},
       PearCupLobby: {},
-      PearCupWatchSync: {}
+      PearCupWatchSync: {},
+      PearCupWatchVoice: {}
     },
     dataset: {
       pearcupPeerNetModule: 'ready',
       pearcupPeerMatchModule: 'ready',
       pearcupPeerLobbyModule: 'ready',
-      pearcupWatchSyncModule: 'ready'
+      pearcupWatchSyncModule: 'ready',
+      pearcupWatchVoiceModule: 'ready'
     }
   })
 
@@ -356,12 +386,14 @@ test('assertP2PModulesReady fails closed when a P2P module did not attach', () =
     globals: {
       PearCupPeerNet: {},
       PearCupLobby: {},
-      PearCupWatchSync: {}
+      PearCupWatchSync: {},
+      PearCupWatchVoice: {}
     },
     dataset: {
       pearcupPeerNetModule: 'ready',
       pearcupPeerLobbyModule: 'ready',
-      pearcupWatchSyncModule: 'ready'
+      pearcupWatchSyncModule: 'ready',
+      pearcupWatchVoiceModule: 'ready'
     }
   })
 

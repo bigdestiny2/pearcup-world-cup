@@ -143,6 +143,22 @@
           status: 'held',
           rail
         }
+      },
+      generateTriviaRound (input = {}) {
+        const match = input.match || input.currentStats || {}
+        const home = String(match.home && match.home.name || input.homeTeam || 'the home team')
+        const away = String(match.away && match.away.name || input.awayTeam || 'the away team')
+        const payload = {
+          matchId: input.matchId || match.id || 'unknown-match',
+          language: normalizeLanguage(input.language),
+          question: `Which team is listed first for ${home} vs ${away}?`,
+          options: [home, away, 'Both teams', 'No team'],
+          answerIndex: 0,
+          explanation: `${home} is the home side in the synced active-match snapshot.`,
+          modelId: 'demo-grounded-trivia',
+          hostId: commentatorId
+        }
+        return { triviaId: core.deterministicHash(payload), ...payload }
       }
     }
   }
@@ -165,6 +181,10 @@
       summarizeWindow (input) {
         if (typeof sdk.summarizeWindow === 'function') return sdk.summarizeWindow(input)
         return createDemoQvacCommentaryAdapter({ commentatorId: id }).summarizeWindow(input)
+      },
+      generateTriviaRound (input) {
+        if (typeof sdk.generateTriviaRound === 'function') return sdk.generateTriviaRound(input)
+        return createDemoQvacCommentaryAdapter({ commentatorId: id }).generateTriviaRound(input)
       }
     }
   }

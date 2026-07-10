@@ -37,21 +37,37 @@ async function get (url) {
 
 const rank = { IN_PLAY: 0, PAUSED: 0, LIVE: 0, TIMED: 1, SCHEDULED: 1, FINISHED: 2 }
 
-async function pickMatch () {
-  if (process.env.MATCH_ID) return get(`https://api.football-data.org/v4/matches/${process.env.MATCH_ID}`)
-  const live = await get(`${base}?status=LIVE`)
-  if (live.matches && live.matches.length) return live.matches[0]
-  const all = await get(base)
-  const ms = all.matches || []
-  // else: most recent finished, or soonest upcoming
-  const sorted = ms.sort((a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3) || new Date(a.utcDate) - new Date(b.utcDate))
+function pickMatch (matches) {
+  const sorted = [...matches].sort((a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3) || new Date(a.utcDate) - new Date(b.utcDate))
   return sorted[0]
 }
 
-const m = await pickMatch()
-// Cache crests + competition emblem locally and rewrite to relative paths.
-if (m.homeTeam) m.homeTeam.crest = await cacheImg(m.homeTeam.crest)
-if (m.awayTeam) m.awayTeam.crest = await cacheImg(m.awayTeam.crest)
-if (m.competition) m.competition.emblem = await cacheImg(m.competition.emblem)
-await writeFile(new URL('./live-match.json', import.meta.url), JSON.stringify(m, null, 2))
-console.log('wrote live-match.json:', m.id, m.status, m.homeTeam?.shortName, JSON.stringify(m.score?.fullTime), m.awayTeam?.shortName)
+const all = await get(base)
+const matches = Array.isArray(all.matches) ? all.matches : []
+const forced = process.env.MATCH_ID
+  ? await get(`https://api.football-data.org/v4/matches/${process.env.MATCH_ID}`)
+  : null
+const m = forced || pickMatch(matches)
+if (!m) throw new Error('No World Cup match found')
+if (forced && !matches.some(match => String(match.id) === String(m.id))) matches.unshift(m)
+
+// Cache only the nearby fixtures' art so the browser stays fully same-origin while
+// retaining the complete score/schedule feed for fixture and match-pool cards.
+const cacheTargets = matches
+  .sort((a, b) => (rank[a.status] ?? 3) - (rank[b.status] ?? 3) || new Date(a.utcDate) - new Date(b.utcDate))
+  .slice(0, 12)
+await Promise.all(cacheTargets.map(async match => {
+  if (match.homeTeam) match.homeTeam.crest = await cacheImg(match.homeTeam.crest)
+  if (match.awayTeam) match.awayTeam.crest = await cacheImg(match.awayTeam.crest)
+  if (match.competition) match.competition.emblem = await cacheImg(match.competition.emblem)
+}))
+
+const snapshot = {
+  schema: 'pearcup-live-v2',
+  provider: 'football-data.org',
+  generatedAt: new Date().toISOString(),
+  activeMatch: m,
+  matches
+}
+await writeFile(new URL('./live-match.json', import.meta.url), JSON.stringify(snapshot, null, 2))
+console.log('wrote live-match.json:', m.id, m.status, m.homeTeam?.shortName, JSON.stringify(m.score?.fullTime), m.awayTeam?.shortName, `(${matches.length} fixtures)`)

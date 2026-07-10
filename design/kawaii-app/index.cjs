@@ -27,6 +27,10 @@ function patchPearBridgeRootRequests () {
             'content-length': '0'
           }, '')
         }
+        if (shouldServeRendererRuntimeOptions(req.url)) {
+          tracePearBridge('runtime-options', originalUrl, req.url)
+          return writeJsonResponse(res, rendererRuntimeOptions())
+        }
         tracePearBridge('http', originalUrl, req.url)
       }
       return handler(req, res)
@@ -110,6 +114,46 @@ function shouldServeRawClassicScript (protocol, type, url) {
 function shouldServeBootProbe (url) {
   const path = String(url || '').split('?')[0].split('#')[0]
   return path === '/boot-probe-hit.gif'
+}
+
+function shouldServeRendererRuntimeOptions (url) {
+  const path = String(url || '').split('?')[0].split('#')[0]
+  return path === '/pearcup-runtime-options.json'
+}
+
+function rendererRuntimeOptions () {
+  const fallback = {
+    source: { path: null, loaded: false, rendererSafe: true },
+    sdkPackages: {},
+    compliance: {
+      realMoneyEnabled: false,
+      kycVerified: false,
+      jurisdictionAllowed: false,
+      responsiblePlayAccepted: false
+    }
+  }
+  try {
+    const runtimeSettings = require('./runtime-settings.js')
+    if (!runtimeSettings || typeof runtimeSettings.loadRuntimeSettings !== 'function' || typeof runtimeSettings.toRendererRuntimeSettings !== 'function') {
+      return fallback
+    }
+    // This code runs in the Pear host process. The returned object is explicitly
+    // QVAC-only; the WDK seed and all payout information stay in this process.
+    const settings = runtimeSettings.toRendererRuntimeSettings(runtimeSettings.loadRuntimeSettings())
+    tracePearBridge('runtime-options-state', '', settings.sdkPackages && settings.sdkPackages.qvac ? 'qvac-configured' : 'qvac-unconfigured')
+    return settings
+  } catch (err) {
+    return fallback
+  }
+}
+
+function writeJsonResponse (res, value) {
+  const body = JSON.stringify(value)
+  return writeResponse(res, 200, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+    'content-length': String(Buffer.byteLength(body))
+  }, body)
 }
 
 function writeResponse (res, statusCode, headers, body) {

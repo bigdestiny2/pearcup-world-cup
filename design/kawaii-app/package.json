@@ -48,11 +48,16 @@
         "/peer-match.js",
         "/peer-lobby.js",
         "/watch-sync.js",
+        "/watch-voice.js",
         "/swarm-worker.cjs",
+        "/fetch-live.mjs",
+        "/fetch-polymarket-odds.mjs",
+        "/manifest.json",
         "/assets",
         "/avatars",
         "/crests",
-        "/live-match.json"
+        "/live-match.json",
+        "/polymarket-odds.json"
       ],
       "ignore": [
         "/.git",

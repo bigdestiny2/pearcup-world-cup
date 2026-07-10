@@ -1,10 +1,15 @@
 {
   "name": "PearCup",
   "version": "0.1.0",
-  "description": "World Cup bracket pools, watch parties, and Penalty Clash mini matches for PearBrowser.",
+  "description": "World Cup bracket pools, live watch parties, and peer-to-peer Penalty Clash matches.",
   "author": "PearCup",
   "icon": "/assets/icon.png",
   "entry": "/index.html",
-  "categories": ["games", "sports"],
-  "permissions": ["swarm.v1"]
+  "categories": [
+    "games",
+    "sports"
+  ],
+  "permissions": [
+    "swarm.v1"
+  ]
 }
