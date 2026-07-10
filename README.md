@@ -12,6 +12,10 @@ pear run pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo
 
 **Production link:** `pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo` — seeded / HiveRelay‑pinned, shipping the **live 2026 World Cup knockout bracket**, the watch party, and the P2P penalty minigame. No Pear yet? Grab it at [pears.com](https://docs.pears.com/), or run it [locally](#run-locally).
 
+[▶ Watch the 2:20 demo](site/assets/demo.mp4) · [View the press kit](site/assets/press/) · [Open the marketing site](https://pearcup-kawaii.pages.dev)
+
+![PearCup current match-day home screen](site/assets/shots/current-home.jpg)
+
 ## What's inside
 
 - **🏆 Bracket pools** — rolling round‑by‑round World Cup pools (Round of 32 → Final). Real 2026 knockout data; pick before each kickoff, scored against results.
@@ -45,6 +49,17 @@ pear run --dev .     # Pear desktop window with live local files
 From the repo root, `npm run dev`, `npm run stage`, `npm run release`, and
 `npm run seed` all route to this same canonical build. The root package is
 private tooling and deliberately has no second Pear manifest.
+
+## See multiplayer by yourself
+
+1. Open PearCup and choose **Games → Invite a friend**.
+2. Copy the generated `pear://…?join=<room>` invitation.
+3. In a second terminal, run `pear run '<copied invitation>'`.
+4. The second Pear window joins as the guest; accept the challenge and play the
+   mirrored best-of-five Penalty Clash.
+
+For a headless proof of the same host/guest handshake, run
+`npm run smoke:kawaii-p2p-preview`.
 
 ## Test
 
