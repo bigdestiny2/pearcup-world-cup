@@ -38,6 +38,24 @@
     return Number.isFinite(number) ? number : fallback
   }
 
+  // A browser can never import the native QVAC SDK (it requires Node/Bare and
+  // native llama.cpp addons).  The supported browser seam is QVAC's local
+  // OpenAI-compatible HTTP server.  Keep this origin loopback-only so match
+  // evidence never gets sent to an arbitrary remote endpoint by a public build.
+  function normalizeQvacBrowserBaseUrl (value) {
+    if (typeof value !== 'string' || value.trim() === '') return ''
+    try {
+      const url = new URL(value.trim())
+      const localHttp = url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]', '::1'].includes(url.hostname)
+      if (!localHttp || url.username || url.password || url.search || url.hash) return ''
+      url.pathname = ('/' + url.pathname.replace(/^\/+|\/+$/g, '')).replace(/\/+$/, '') || '/v1'
+      if (!url.pathname.endsWith('/v1')) url.pathname += '/v1'
+      return url.href.replace(/\/+$/, '')
+    } catch {
+      return ''
+    }
+  }
+
   function normalizePublicRelayUrl (value) {
     if (typeof value !== 'string' || value.trim() === '') return ''
     try {
@@ -153,6 +171,24 @@
     if (configured.completionOptions) settings.completionOptions = configured.completionOptions
     if (configured.refereeCompletionOptions) settings.refereeCompletionOptions = configured.refereeCompletionOptions
     if (configured.commentaryCompletionOptions) settings.commentaryCompletionOptions = configured.commentaryCompletionOptions
+    const browserConfigured = configured.browserHttp && typeof configured.browserHttp === 'object' ? configured.browserHttp : {}
+    const browserEnabled = parseBool(
+      env.PEARCUP_QVAC_BROWSER_HTTP_ENABLED,
+      parseBool(browserConfigured.enabled, false)
+    )
+    if (browserEnabled) {
+      const baseUrl = normalizeQvacBrowserBaseUrl(
+        env.PEARCUP_QVAC_BROWSER_BASE_URL || browserConfigured.baseUrl || 'http://127.0.0.1:11435/v1'
+      )
+      if (baseUrl) {
+        settings.browserHttp = {
+          enabled: true,
+          baseUrl,
+          model: String(env.PEARCUP_QVAC_BROWSER_MODEL || browserConfigured.model || modelId || 'qvac-kawaii-qwen3-1.7b'),
+          timeoutMs: Math.max(5_000, Math.min(300_000, parseNumber(env.PEARCUP_QVAC_BROWSER_TIMEOUT_MS, parseNumber(browserConfigured.timeoutMs, 120_000))))
+        }
+      }
+    }
     return settings
   }
 
@@ -425,9 +461,22 @@
 
   function toRendererRuntimeSettings (settings = {}) {
     const qvac = settings.sdkPackages && settings.sdkPackages.qvac
+    const browserHttp = qvac && qvac.browserHttp && qvac.browserHttp.enabled === true
+      ? {
+          enabled: true,
+          baseUrl: normalizeQvacBrowserBaseUrl(qvac.browserHttp.baseUrl),
+          model: String(qvac.browserHttp.model || qvac.modelId || 'qvac-kawaii-qwen3-1.7b'),
+          timeoutMs: Math.max(5_000, Math.min(300_000, Number(qvac.browserHttp.timeoutMs) || 120_000))
+        }
+      : null
+    const rendererQvac = qvac ? clone(qvac) : null
+    if (rendererQvac) {
+      if (browserHttp && browserHttp.baseUrl) rendererQvac.browserHttp = browserHttp
+      else delete rendererQvac.browserHttp
+    }
     return {
       source: { ...(settings.source || {}), rendererSafe: true },
-      sdkPackages: qvac ? { qvac: clone(qvac) } : {},
+      sdkPackages: rendererQvac ? { qvac: rendererQvac } : {},
       liveData: settings.liveData ? clone(settings.liveData) : null,
       peerRelay: settings.peerRelay ? clone(settings.peerRelay) : null,
       compliance: {

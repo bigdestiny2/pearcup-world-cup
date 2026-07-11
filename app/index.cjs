@@ -281,6 +281,12 @@ function rendererRuntimeOptions () {
       hostSettings = fallback
     }
     const settings = runtimeSettings.toRendererRuntimeSettings(hostSettings)
+    // The Pear renderer uses the native QVAC SDK through the packaged
+    // runtime/worker.  Keep the loopback HTTP bridge for PearBrowser and
+    // ordinary browsers only; it must never shadow the native adapter here.
+    if (settings.sdkPackages && settings.sdkPackages.qvac && settings.sdkPackages.qvac.browserHttp) {
+      delete settings.sdkPackages.qvac.browserHttp
+    }
     tracePearBridge('runtime-options-state', '', settings.sdkPackages && settings.sdkPackages.qvac ? 'qvac-configured' : 'qvac-unconfigured')
     return settings
   } catch (err) {

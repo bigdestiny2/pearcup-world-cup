@@ -50,6 +50,7 @@ function checkRequiredFiles () {
     'manifest.json',
     'index.html',
     'styles.css',
+    'pearcup-runtime-options.json',
     'app.js',
     'peer-hiverelay.js',
     'peer-net.js',
@@ -168,6 +169,7 @@ function checkBootContract () {
   const peerLobby = readText('peer-lobby.js') || ''
   const watchSync = readText('watch-sync.js') || ''
   const styles = readText('styles.css') || ''
+  const runtimeOptions = readJson('pearcup-runtime-options.json')
 
   checkFallbackContract(html)
   assertText(html, './pearcup-boot.js', 'index.html loads the PearCup boot bundle')
@@ -227,6 +229,15 @@ function checkBootContract () {
   assertText(watchSync, 'pearcupWatchSyncModule', 'watch-sync.js must mark module readiness')
   assertText(styles, "url('assets/stadium-bg.png')", 'styles.css references the Penalty Clash stadium art')
   assertText(styles, "url('assets/ball.png')", 'styles.css references the Penalty Clash ball art')
+  if (!runtimeOptions || !runtimeOptions.sdkPackages || !runtimeOptions.sdkPackages.qvac || !runtimeOptions.sdkPackages.qvac.browserHttp) {
+    errors.push('pearcup-runtime-options.json must expose the safe loopback QVAC browser bridge')
+  } else {
+    const browserQvac = runtimeOptions.sdkPackages.qvac.browserHttp
+    if (browserQvac.enabled !== true) errors.push('QVAC browser bridge must be enabled in the PearBrowser payload')
+    if (!/^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?\/v1$/i.test(browserQvac.baseUrl || '')) {
+      errors.push('QVAC browser bridge must use a loopback /v1 endpoint')
+    }
+  }
 }
 
 function checkFallbackContract (html) {

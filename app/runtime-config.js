@@ -88,8 +88,50 @@
       completionOptions: qvacConfig.commentaryCompletionOptions || qvacConfig.completionOptions
     }
     const adapters = {}
+    const isBrowserRenderer = Boolean(rootObject && rootObject.document && rootObject.window)
+
+    // In a normal browser/PearBrowser build the renderer receives the safe
+    // loopback HTTP lane.  Native Pear strips this field in index.cjs so it
+    // continues to use the in-process @qvac/sdk adapter instead.
+    if (
+      qvacConfig &&
+      isBrowserRenderer &&
+      qvacConfig.browserHttp &&
+      qvacConfig.browserHttp.enabled === true &&
+      qvacRefereeFactory &&
+      sdkFactory &&
+      typeof sdkFactory.createQvacBrowserHttpCompletionClient === 'function'
+    ) {
+      const browserRefereeClient = sdkFactory.createQvacBrowserHttpCompletionClient({
+        browserHttp: qvacConfig.browserHttp,
+        completionOptions: qvacConfig.refereeCompletionOptions || qvacConfig.completionOptions
+      })
+      const browserReferee = qvacRefereeFactory.createQvacCompletionRefereeAdapter({
+        client: browserRefereeClient,
+        modelId: qvacConfig.modelId || qvacConfig.browserHttp.model || 'qvac-kawaii-qwen3-1.7b',
+        refereeId: qvacConfig.refereeId || 'qvac-browser-referee'
+      })
+      const browserCommentaryClient = sdkFactory.createQvacBrowserHttpCompletionClient({
+        browserHttp: qvacConfig.browserHttp,
+        completionOptions: qvacConfig.commentaryCompletionOptions || qvacConfig.completionOptions
+      })
+      const browserCommentary = qvacRefereeFactory.createQvacCompletionCommentaryAdapter({
+        client: browserCommentaryClient,
+        modelId: qvacConfig.modelId || qvacConfig.browserHttp.model || 'qvac-kawaii-qwen3-1.7b',
+        commentatorId: qvacConfig.commentatorId || 'qvac-browser-commentary'
+      })
+      adapters.qvac = {
+        client: browserReferee,
+        detected: { name: 'QVAC local HTTP', source: 'qvac:local-http' }
+      }
+      adapters.qvacCommentary = {
+        client: browserCommentary,
+        detected: { name: 'QVAC local HTTP', source: 'qvac:local-http' }
+      }
+    }
 
     if (
+      !adapters.qvac &&
       qvacConfig &&
       sdkFactory &&
       typeof sdkFactory.createQvacSdkRefereeAdapter === 'function'
@@ -101,6 +143,7 @@
     }
 
     if (
+      !adapters.qvacCommentary &&
       qvacConfig &&
       sdkFactory &&
       typeof sdkFactory.createQvacSdkCommentaryAdapter === 'function'

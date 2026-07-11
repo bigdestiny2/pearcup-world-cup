@@ -32,6 +32,7 @@
         "/qvac-referee.js",
         "/tether-wdk-bridge.js",
         "/runtime-settings.js",
+        "/pearcup-runtime-options.json",
         "/config/pearcup.runtime.json",
         "/public-runtime-settings.js",
         "/runtime-config.js",

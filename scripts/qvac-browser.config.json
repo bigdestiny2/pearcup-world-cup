@@ -1,0 +1,14 @@
+{
+  "serve": {
+    "models": {
+      "qvac-kawaii-qwen3-1.7b": {
+        "model": "QWEN3_1_7B_INST_Q4",
+        "default": true,
+        "preload": true,
+        "config": {
+          "ctx_size": 2048
+        }
+      }
+    }
+  }
+}

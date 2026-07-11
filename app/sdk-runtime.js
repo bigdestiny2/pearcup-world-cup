@@ -113,6 +113,88 @@
     }
   }
 
+  // Browser/PearBrowser bridge for native QVAC.  The browser cannot import
+  // @qvac/sdk directly because that package targets Node, Bare, and Expo and
+  // loads native llama.cpp addons.  QVAC's local OpenAI-compatible server is
+  // still native/local inference; this client only transports the prompt over
+  // loopback and never sends it to a hosted model.
+  function createQvacBrowserHttpCompletionClient ({
+    browserHttp = {},
+    completionOptions = {},
+    fetchImpl = typeof fetch === 'function' ? fetch : null
+  } = {}) {
+    const baseUrl = String(browserHttp.baseUrl || 'http://127.0.0.1:11435/v1').replace(/\/+$/, '')
+    const model = String(browserHttp.model || 'qvac-kawaii-qwen3-1.7b')
+    const timeoutMs = Math.max(5_000, Math.min(300_000, Number(browserHttp.timeoutMs) || 120_000))
+
+    function endpoint (path) {
+      return `${baseUrl}/${String(path || '').replace(/^\/+/, '')}`
+    }
+
+    async function request (path, init = {}) {
+      if (typeof fetchImpl !== 'function') throw new Error('fetch is required for the QVAC browser bridge')
+      const controller = typeof AbortController === 'function' ? new AbortController() : null
+      const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null
+      try {
+        const response = await fetchImpl(endpoint(path), {
+          ...init,
+          signal: controller ? controller.signal : init.signal
+        })
+        const text = await response.text()
+        let payload = null
+        try { payload = text ? JSON.parse(text) : null } catch {}
+        if (!response.ok) {
+          const detail = payload && payload.error && (payload.error.message || payload.error)
+          throw new Error(`QVAC browser HTTP ${response.status}${detail ? `: ${detail}` : ''}`)
+        }
+        return payload
+      } finally {
+        if (timer) clearTimeout(timer)
+      }
+    }
+
+    async function completeJson ({ history, modelId, completionOptions: requestOptions } = {}) {
+      const generationOptions = { ...(completionOptions || {}), ...(requestOptions || {}) }
+      // The native SDK uses camelCase while QVAC's OpenAI-compatible server
+      // follows the wire-format snake_case spelling.
+      if (generationOptions.responseFormat && !generationOptions.response_format) {
+        generationOptions.response_format = generationOptions.responseFormat
+        delete generationOptions.responseFormat
+      }
+      const payload = await request('chat/completions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({
+          model: modelId || model,
+          messages: Array.isArray(history) ? history : [],
+          stream: false,
+          ...generationOptions
+        })
+      })
+      const choice = payload && Array.isArray(payload.choices) ? payload.choices[0] : null
+      const content = choice && choice.message && choice.message.content != null
+        ? choice.message.content
+        : choice && choice.text != null
+          ? choice.text
+          : payload
+      return typeof content === 'string' ? content : content
+    }
+
+    return {
+      type: 'qvac-browser-http-completion-client',
+      model,
+      baseUrl,
+      completeJson,
+      async probe () {
+        return request('models', { headers: { accept: 'application/json' } })
+      },
+      async close () {},
+      async status () {
+        return { transport: 'loopback-http', baseUrl, model, timeoutMs }
+      }
+    }
+  }
+
   function createQvacSdkRefereeAdapter (opts = {}) {
     if (!qvacRefereeFactory || typeof qvacRefereeFactory.createQvacCompletionRefereeAdapter !== 'function') {
       throw new Error('PearCupQvacReferee is required for QVAC SDK adapter creation')
@@ -492,6 +574,7 @@
 
   const api = {
     createQvacSdkCompletionClient,
+    createQvacBrowserHttpCompletionClient,
     createQvacSdkRefereeAdapter,
     createQvacSdkCommentaryAdapter,
     createTetherWdkPackageProcessor,
