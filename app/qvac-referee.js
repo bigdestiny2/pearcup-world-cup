@@ -483,6 +483,351 @@
     return { ...selected, category: selected.category || (selected.id && selected.id.startsWith('general-') ? 'General football knowledge' : 'Team World Cup history') }
   }
 
+  // Football expert analysis follows the same trust boundary as commentary and
+  // trivia: QVAC may interpret an evidence packet, but it must not manufacture
+  // player availability, form, xG, weather, or market information. The fallback
+  // below is deliberately useful with the small live relay snapshot we have
+  // today, while clearly labelling every parameter the relay did not supply.
+  const FOOTBALL_ANALYSIS_METHODS = ['Win by goals', 'Win after extra time', 'Win on penalties', 'Draw']
+
+  function footballTeam (value, fallbackName) {
+    if (typeof value === 'string') return { name: value.trim() || fallbackName, id: null }
+    const source = value && typeof value === 'object' ? value : {}
+    return {
+      name: String(source.name || source.shortName || source.tla || fallbackName).trim() || fallbackName,
+      id: source.teamId || source.id || source.tla || null
+    }
+  }
+
+  function finiteNumber (value) {
+    if (value === null || value === undefined || value === '') return null
+    const number = Number(value)
+    return Number.isFinite(number) ? number : null
+  }
+
+  function footballContext (input = {}) {
+    const match = input.match || input.fixture || {}
+    const home = footballTeam(match.home || match.homeTeam || input.home, 'Home')
+    const away = footballTeam(match.away || match.awayTeam || input.away, 'Away')
+    const score = match.score && (match.score.fullTime || match.score.regularTime || match.score) || input.score || {}
+    const stats = input.currentStats || input.stats || {}
+    const shots = stats.shots && !Array.isArray(stats.shots)
+      ? [finiteNumber(stats.shots.home), finiteNumber(stats.shots.away)]
+      : Array.isArray(stats.shots) ? [finiteNumber(stats.shots[0]), finiteNumber(stats.shots[1])] : [null, null]
+    const odds = Array.isArray(input.odds) ? input.odds.filter(Boolean).slice(0, 3).map(odd => ({
+      outcome: String(odd.outcome || odd.label || '').trim(),
+      probability: Math.max(0, Math.min(1, finiteNumber(odd.probability) || 0))
+    })).filter(odd => odd.outcome) : []
+    const recentForm = input.recentForm || match.recentForm || {}
+    const availability = input.availability || match.availability || input.injuries || {}
+    const environment = input.environment || match.environment || {}
+    return {
+      matchId: input.matchId || match.id || 'unknown-match',
+      home,
+      away,
+      status: String(input.status || match.status || match.matchStatus || 'SCHEDULED'),
+      stage: String(input.stage || match.stage || ''),
+      utcDate: match.utcDate || input.utcDate || null,
+      venue: match.venue || input.venue || environment.venue || null,
+      competition: match.competition && (match.competition.name || match.competition) || input.competition || null,
+      score: { home: finiteNumber(score.home), away: finiteNumber(score.away) },
+      minute: finiteNumber(stats.minute || match.minute || input.minute),
+      possession: finiteNumber(stats.possession),
+      shots,
+      threat: finiteNumber(stats.threat),
+      recentEvents: Array.isArray(input.recentEvents) ? input.recentEvents.slice(0, 8) : [],
+      recentForm,
+      strengthOfSchedule: input.strengthOfSchedule || match.strengthOfSchedule || {},
+      availability,
+      environment,
+      tacticalMetrics: input.tacticalMetrics || match.tacticalMetrics || stats.tacticalMetrics || {},
+      odds,
+      source: input.source || (input.dataSource === 'relay' ? 'Football-Data.org relay' : 'active match snapshot')
+    }
+  }
+
+  function formSummary (value) {
+    if (Array.isArray(value)) {
+      const letters = value.slice(0, 6).map(item => {
+        const text = String(item && item.result || item || '').trim().toUpperCase()
+        return text === 'W' || text === 'WIN' ? 'W' : text === 'D' || text === 'DRAW' ? 'D' : text === 'L' || text === 'LOSS' ? 'L' : '?'
+      })
+      return letters.length ? letters.join(' · ') : 'Not supplied by relay'
+    }
+    if (value && typeof value === 'object') {
+      const results = Array.isArray(value.results) ? value.results : Array.isArray(value.lastThree) ? value.lastThree : null
+      if (results) return formSummary(results)
+    }
+    return 'Not supplied by relay'
+  }
+
+  function formPoints (value) {
+    const summary = formSummary(value)
+    if (summary === 'Not supplied by relay') return null
+    return summary.split(' · ').reduce((total, result) => total + (result === 'W' ? 3 : result === 'D' ? 1 : 0), 0)
+  }
+
+  function describeAvailability (value) {
+    if (Array.isArray(value) && value.length) return value.slice(0, 4).map(item => typeof item === 'string' ? item : item && (item.name || item.status)).filter(Boolean).join(', ')
+    if (value && typeof value === 'object') {
+      if (Array.isArray(value.unavailable) && value.unavailable.length) return `Unavailable: ${describeAvailability(value.unavailable)}`
+      if (typeof value.summary === 'string' && value.summary.trim()) return value.summary.trim()
+    }
+    return 'Not supplied by relay'
+  }
+
+  function describeObject (value) {
+    if (typeof value === 'string' && value.trim()) return value.trim()
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+    if (Array.isArray(value) && value.length) return value.map(item => typeof item === 'string' ? item : item && (item.name || item.label || item.value)).filter(Boolean).join(', ')
+    if (value && typeof value === 'object') {
+      const summary = value.summary || value.label || value.value
+      if (typeof summary === 'string' && summary.trim()) return summary.trim()
+    }
+    return 'Not supplied by relay'
+  }
+
+  function normalizePercent (value, fallback = 0) {
+    const number = finiteNumber(value)
+    return Math.max(0, Math.min(100, number == null ? fallback : number))
+  }
+
+  function normalizeProbabilityTriplet (value, fallback) {
+    const source = value && typeof value === 'object' ? value : {}
+    const home = normalizePercent(source.home, fallback.home)
+    const draw = normalizePercent(source.draw, fallback.draw)
+    const away = normalizePercent(source.away, fallback.away)
+    const total = home + draw + away || 100
+    return {
+      home: Math.round(home / total * 100),
+      draw: Math.round(draw / total * 100),
+      away: Math.max(0, 100 - Math.round(home / total * 100) - Math.round(draw / total * 100))
+    }
+  }
+
+  function footballProbabilities (context) {
+    const homeName = context.home.name.toLowerCase()
+    const awayName = context.away.name.toLowerCase()
+    const market = { home: null, draw: null, away: null }
+    for (const odd of context.odds) {
+      const label = odd.outcome.toLowerCase()
+      if (label === homeName || label.includes(homeName) || label === 'home') market.home = odd.probability * 100
+      else if (label === awayName || label.includes(awayName) || label === 'away') market.away = odd.probability * 100
+      else if (label === 'draw' || label === 'tie') market.draw = odd.probability * 100
+    }
+    const hasMarket = Object.values(market).some(value => value != null)
+    const base = hasMarket ? {
+      home: market.home == null ? 34 : market.home,
+      draw: market.draw == null ? 28 : market.draw,
+      away: market.away == null ? 34 : market.away
+    } : { home: 36, draw: 32, away: 32 }
+    const homeForm = formPoints(context.recentForm.home)
+    const awayForm = formPoints(context.recentForm.away)
+    if (!hasMarket && homeForm != null && awayForm != null) {
+      const formAdjustment = Math.max(-8, Math.min(8, (homeForm - awayForm) * 1.5))
+      base.home += formAdjustment
+      base.away -= formAdjustment
+    }
+    if (!hasMarket && context.possession != null) {
+      const possessionAdjustment = Math.max(-5, Math.min(5, (context.possession - 50) * 0.15))
+      base.home += possessionAdjustment
+      base.away -= possessionAdjustment
+    }
+    if (!hasMarket && context.shots[0] != null && context.shots[1] != null) {
+      const shotAdjustment = Math.max(-5, Math.min(5, (context.shots[0] - context.shots[1]) * 1.2))
+      base.home += shotAdjustment
+      base.away -= shotAdjustment
+    }
+    return normalizeProbabilityTriplet(base, { home: 36, draw: 32, away: 32 })
+  }
+
+  function footballPrediction (context, probabilities) {
+    const homeGoals = context.score.home
+    const awayGoals = context.score.away
+    const finished = context.status === 'FINISHED' || context.status === 'FT'
+    if (finished && homeGoals != null && awayGoals != null && homeGoals !== awayGoals) {
+      const homeWinner = homeGoals > awayGoals
+      return {
+        winner: homeWinner ? context.home.name : context.away.name,
+        method: 'Win by goals',
+        target: 'Full time',
+        confidence: 100,
+        rationale: `The verified relay records a ${homeGoals}–${awayGoals} final score.`
+      }
+    }
+    if (finished && homeGoals != null && awayGoals != null) {
+      return { winner: 'Draw', method: 'Draw', target: 'Full time', confidence: 100, rationale: `The verified relay records a ${homeGoals}–${awayGoals} draw.` }
+    }
+    const winner = probabilities.home >= probabilities.away && probabilities.home >= probabilities.draw
+      ? context.home.name
+      : probabilities.away >= probabilities.home && probabilities.away >= probabilities.draw ? context.away.name : 'Draw'
+    const confidence = winner === context.home.name ? probabilities.home : winner === context.away.name ? probabilities.away : probabilities.draw
+    const knockout = /FINAL|SEMI|QUARTER|LAST_16|LAST_32|KNOCKOUT/i.test(context.stage)
+    return {
+      winner,
+      method: winner === 'Draw' ? 'Draw' : knockout ? 'Win after extra time' : 'Win by goals',
+      target: winner === 'Draw' ? 'Goes to full time' : knockout ? '90 minutes; extra time if required' : 'Goes to full time',
+      confidence: Math.round(Math.max(1, Math.min(99, confidence))),
+      rationale: context.odds.length
+        ? 'Public market-implied probabilities are included as context only; they are not a betting instruction.'
+        : 'Prediction is based only on the verified match snapshot; unavailable form, lineup, and tactical fields remain unmodelled.'
+    }
+  }
+
+  function footballAnalysisFallback (input = {}) {
+    const context = footballContext(input)
+    const probabilities = footballProbabilities(context)
+    const homeForm = formSummary(context.recentForm.home)
+    const awayForm = formSummary(context.recentForm.away)
+    const homePossession = context.possession == null ? 'Not supplied by relay' : `${Math.round(context.possession)}% in the current snapshot`
+    const awayPossession = context.possession == null ? 'Not supplied by relay' : `${Math.round(100 - context.possession)}% in the current snapshot`
+    const homeShots = context.shots[0] == null ? 'Not supplied by relay' : `${context.shots[0]} recorded`
+    const awayShots = context.shots[1] == null ? 'Not supplied by relay' : `${context.shots[1]} recorded`
+    const marketLine = context.odds.length
+      ? context.odds.map(odd => `${odd.outcome}: ${Math.round(odd.probability * 100)}%`).join(' · ')
+      : 'No public market snapshot supplied'
+    const sources = [context.source]
+    if (context.recentEvents.length) sources.push('Synced watch-room events')
+    if (context.odds.length) sources.push('Polymarket public odds relay')
+    const coverageScore = Math.min(1, sources.length / 4)
+    const coverage = {
+      label: coverageScore >= 0.75 ? 'Multi-signal snapshot' : 'Limited relay coverage',
+      score: Math.round(coverageScore * 100),
+      sources
+    }
+    const statsAdvantageHome = context.possession != null || context.shots[0] != null
+      ? [`Current relay signals: ${homePossession} possession, ${homeShots} shots.`]
+      : ['No verified tactical edge is present in the supplied relay snapshot.']
+    const statsAdvantageAway = context.possession != null || context.shots[1] != null
+      ? [`Current relay signals: ${awayPossession} possession, ${awayShots} shots.`]
+      : ['No verified tactical edge is present in the supplied relay snapshot.']
+    const stageText = context.stage ? `Competition stage: ${context.stage.replace(/_/g, ' ').toLowerCase()}.` : 'Competition stage: Not supplied by relay.'
+    const venueText = context.venue ? `Venue: ${context.venue}.` : 'Venue, altitude, weather, travel, and time-zone displacement: Not supplied by relay.'
+    const progression = [
+      { phase: '0–30', probabilities, tacticalPlan: 'Open with the verified pre-match signal; do not invent a pressing or line-height profile.', adjustment: 'No lineup, form, or xG adjustment supplied.' },
+      { phase: '31–60', probabilities, tacticalPlan: 'Re-weight only observed score, possession, shots, and relay events.', adjustment: context.recentEvents.length ? 'Recent synced events are eligible for a small momentum adjustment.' : 'No new event evidence supplied.' },
+      { phase: '61–90', probabilities, tacticalPlan: 'Treat game state and fatigue as unknown unless the relay exposes them.', adjustment: 'Cardio decay, substitutions, and defensive errors: Not supplied by relay.' },
+      { phase: 'Extra time (if required)', probabilities, tacticalPlan: /FINAL|SEMI|QUARTER|LAST_16|LAST_32|KNOCKOUT/i.test(context.stage) ? 'Knockout continuation is possible; no extra-time performance history is supplied.' : 'N/A for the supplied competition stage.', adjustment: 'Penalty-taking and extra-time data: Not supplied by relay.' }
+    ].map(row => ({ ...row, probabilities: normalizeProbabilityTriplet(row.probabilities, probabilities) }))
+    const prediction = footballPrediction(context, probabilities)
+    const analysis = {
+      matchId: context.matchId,
+      homeTeam: context.home.name,
+      awayTeam: context.away.name,
+      coverage,
+      parameterMatrix: [
+        { label: 'Recent form · last 24 months / 3 matches', home: homeForm, away: awayForm, status: homeForm === 'Not supplied by relay' && awayForm === 'Not supplied by relay' ? 'not supplied' : 'partial' },
+        { label: 'Strength of schedule', home: describeObject(context.strengthOfSchedule.home), away: describeObject(context.strengthOfSchedule.away), status: 'not supplied' },
+        { label: 'Tactical signals', home: `${homePossession} · ${homeShots}`, away: `${awayPossession} · ${awayShots}`, status: context.possession != null || context.shots.some(value => value != null) ? 'partial' : 'not supplied' },
+        { label: 'Lineup / availability', home: describeAvailability(context.availability.home), away: describeAvailability(context.availability.away), status: 'not supplied' },
+        { label: 'Environment', home: venueText, away: venueText, status: context.venue ? 'partial' : 'not supplied' },
+        { label: 'Market context · informational only', home: marketLine, away: marketLine, status: context.odds.length ? 'verified' : 'not supplied' }
+      ],
+      tacticalFriction: {
+        homeAdvantages: statsAdvantageHome,
+        awayAdvantages: statsAdvantageAway
+      },
+      structuralXFactors: [stageText, venueText, 'Age curve, travel load, weather, injuries, set-piece rates, goalkeeper form, xG, and strength of schedule are not supplied by the live relay unless shown above.'],
+      progression,
+      prediction,
+      explainer: 'QVAC weighs only verified recent form, opponent strength, tactical signals, availability, environment, and public-market context that arrive in the relay. Missing fields lower confidence; Polymarket is informational, not advice.',
+      modelId: null,
+      source: 'QVAC verified local fallback'
+    }
+    analysis.analysisId = core.deterministicHash({ ...analysis, modelId: null })
+    return analysis
+  }
+
+  function footballAnalysisPrompt (input = {}) {
+    const context = footballContext(input)
+    return [
+      {
+        role: 'system',
+        content: [
+          'You are QVAC Expert Football Analysis for PearCup watch rooms.',
+          'Produce a clinical, data-grounded match preview/prediction using only the supplied evidence packet.',
+          'Prioritize the last 24 months or last three matches when those fields are present; older information is secondary trajectory context.',
+          'Evaluate tactical friction: possession, pressing, transition, shot quality, xG, set pieces, defensive line, goalkeeper, and opponent matchup.',
+          'Evaluate structural and environmental factors: stage, venue, altitude, weather, travel, rest, age curve, weight-cut is not applicable to football and must be omitted, lineup availability, and tournament pressure.',
+          'Use four chronological football phases: 0–30, 31–60, 61–90, and extra time if required. Do not call them MMA rounds.',
+          'Never infer or invent a player, injury, metric, venue condition, market price, or historical result. For missing evidence write "Not supplied by relay".',
+          'Polymarket probabilities are context only and never betting advice or a trading instruction.',
+          'Return strict JSON only with this shape: {"matchId":"string","homeTeam":"string","awayTeam":"string","coverage":{"label":"string","score":0,"sources":["string"]},"parameterMatrix":[{"label":"string","home":"string","away":"string","status":"verified|partial|not supplied"}],"tacticalFriction":{"homeAdvantages":["string"],"awayAdvantages":["string"]},"structuralXFactors":["string"],"progression":[{"phase":"0–30|31–60|61–90|Extra time (if required)","probabilities":{"home":0,"draw":0,"away":0},"tacticalPlan":"string","adjustment":"string"}],"prediction":{"winner":"string","method":"Win by goals|Win after extra time|Win on penalties|Draw","target":"string","confidence":0,"rationale":"string"},"explainer":"string"}.'
+        ].join(' ')
+      },
+      {
+        role: 'user',
+        content: core.canonicalJson({
+          task: 'generate_grounded_football_expert_analysis',
+          requiredEvidence: ['match identity', 'score/status', 'recent events', 'recent form when supplied', 'strength of schedule when supplied', 'tactical metrics when supplied', 'availability when supplied', 'environment when supplied', 'public odds when supplied'],
+          evidencePacket: context
+        })
+      }
+    ]
+  }
+
+  function normalizeFootballAnalysisOutput (input, fallbackInput = {}, meta = {}) {
+    const fallback = footballAnalysisFallback(fallbackInput)
+    const parsed = extractJsonObject(input)
+    if (!parsed || !Object.keys(parsed).length) return { ...fallback, modelId: meta.modelId || null, source: meta.source || fallback.source, analysisId: core.deterministicHash({ ...fallback, modelId: meta.modelId || null }) }
+    const context = footballContext(fallbackInput)
+    const probabilityFallback = fallback.progression[0].probabilities
+    const progressionSource = Array.isArray(parsed.progression) ? parsed.progression : []
+    const progression = fallback.progression.map((row, index) => {
+      const candidate = progressionSource[index] || {}
+      return {
+        phase: row.phase,
+        probabilities: normalizeProbabilityTriplet(candidate.probabilities, probabilityFallback),
+        tacticalPlan: typeof candidate.tacticalPlan === 'string' && candidate.tacticalPlan.trim() ? candidate.tacticalPlan.trim().slice(0, 320) : row.tacticalPlan,
+        adjustment: typeof candidate.adjustment === 'string' && candidate.adjustment.trim() ? candidate.adjustment.trim().slice(0, 320) : row.adjustment
+      }
+    })
+    const winner = typeof parsed.prediction?.winner === 'string' && parsed.prediction.winner.trim() ? parsed.prediction.winner.trim().slice(0, 80) : fallback.prediction.winner
+    const validWinner = [context.home.name, context.away.name, 'Draw'].includes(winner) ? winner : fallback.prediction.winner
+    const method = FOOTBALL_ANALYSIS_METHODS.includes(parsed.prediction?.method) ? parsed.prediction.method : fallback.prediction.method
+    const confidence = normalizePercent(parsed.prediction?.confidence, fallback.prediction.confidence)
+    const parameterMatrix = Array.isArray(parsed.parameterMatrix) && parsed.parameterMatrix.length
+      ? fallback.parameterMatrix.map((row, index) => {
+        const candidate = parsed.parameterMatrix[index] || {}
+        return {
+          label: row.label,
+          home: typeof candidate.home === 'string' && candidate.home.trim() ? candidate.home.trim().slice(0, 180) : row.home,
+          away: typeof candidate.away === 'string' && candidate.away.trim() ? candidate.away.trim().slice(0, 180) : row.away,
+          status: ['verified', 'partial', 'not supplied'].includes(candidate.status) ? candidate.status : row.status
+        }
+      })
+      : fallback.parameterMatrix
+    const analysis = {
+      ...fallback,
+      homeTeam: context.home.name,
+      awayTeam: context.away.name,
+      coverage: parsed.coverage && typeof parsed.coverage === 'object' ? {
+        label: typeof parsed.coverage.label === 'string' && parsed.coverage.label.trim() ? parsed.coverage.label.trim().slice(0, 80) : fallback.coverage.label,
+        score: normalizePercent(parsed.coverage.score, fallback.coverage.score),
+        sources: Array.isArray(parsed.coverage.sources) && parsed.coverage.sources.length ? parsed.coverage.sources.slice(0, 6).map(value => String(value).slice(0, 100)) : fallback.coverage.sources
+      } : fallback.coverage,
+      parameterMatrix,
+      tacticalFriction: {
+        homeAdvantages: Array.isArray(parsed.tacticalFriction?.homeAdvantages) && parsed.tacticalFriction.homeAdvantages.length ? parsed.tacticalFriction.homeAdvantages.slice(0, 4).map(value => String(value).slice(0, 220)) : fallback.tacticalFriction.homeAdvantages,
+        awayAdvantages: Array.isArray(parsed.tacticalFriction?.awayAdvantages) && parsed.tacticalFriction.awayAdvantages.length ? parsed.tacticalFriction.awayAdvantages.slice(0, 4).map(value => String(value).slice(0, 220)) : fallback.tacticalFriction.awayAdvantages
+      },
+      structuralXFactors: Array.isArray(parsed.structuralXFactors) && parsed.structuralXFactors.length ? parsed.structuralXFactors.slice(0, 5).map(value => String(value).slice(0, 240)) : fallback.structuralXFactors,
+      progression,
+      prediction: {
+        winner: validWinner,
+        method,
+        target: typeof parsed.prediction?.target === 'string' && parsed.prediction.target.trim() ? parsed.prediction.target.trim().slice(0, 100) : fallback.prediction.target,
+        confidence,
+        rationale: typeof parsed.prediction?.rationale === 'string' && parsed.prediction.rationale.trim() ? parsed.prediction.rationale.trim().slice(0, 360) : fallback.prediction.rationale
+      },
+      explainer: typeof parsed.explainer === 'string' && parsed.explainer.trim() ? parsed.explainer.trim().slice(0, 480) : fallback.explainer,
+      modelId: meta.modelId || null,
+      source: meta.source || 'QVAC local model'
+    }
+    analysis.analysisId = core.deterministicHash({ ...analysis, modelId: analysis.modelId })
+    return analysis
+  }
+
   function triviaPrompt (input = {}) {
     const candidates = triviaCandidates(input)
     return [
@@ -724,6 +1069,13 @@
           modelId,
           hostId: commentatorId
         })
+      },
+      async generateFootballAnalysis (input = {}) {
+        const raw = await runCompletion(client, footballAnalysisPrompt(input), modelId)
+        return normalizeFootballAnalysisOutput(raw, input, {
+          modelId,
+          source: 'QVAC local model'
+        })
       }
     }
   }
@@ -742,6 +1094,11 @@
     normalizeTriviaRound,
     triviaPrompt,
     createTriviaRound,
+    FOOTBALL_ANALYSIS_METHODS,
+    footballContext,
+    footballAnalysisFallback,
+    footballAnalysisPrompt,
+    normalizeFootballAnalysisOutput,
     roundReviewPrompt,
     poolReviewPrompt
   }

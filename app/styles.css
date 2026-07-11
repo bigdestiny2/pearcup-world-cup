@@ -4441,6 +4441,79 @@ h2 {
 .trivia-foot { color: var(--muted); font-size: 12px; font-weight: 720; }
 .trivia-explanation { padding: 10px 12px; border-radius: 11px; background: var(--green-soft); color: var(--green-deep); font-size: 12px; font-weight: 720; }
 
+/* ============ QVAC expert football analysis ============ */
+.qvac-analysis-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 15px;
+  border: 1px solid rgba(32, 167, 121, .24);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, rgba(255, 255, 255, .98), rgba(237, 249, 244, .9));
+  box-shadow: 0 6px 0 rgba(32, 167, 121, .08);
+}
+
+.qvac-analysis-head,
+.qvac-analysis-title,
+.qvac-analysis-prediction,
+.qvac-analysis-meta,
+.qvac-analysis-actions,
+.qvac-analysis-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.qvac-analysis-title { min-width: 0; justify-content: flex-start; }
+.qvac-analysis-title .eyebrow { margin: 0 0 2px; }
+.qvac-analysis-title strong { display: block; color: var(--ink); font-family: var(--display); font-size: 16px; line-height: 1.15; }
+.qvac-analysis-title small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; font-weight: 740; }
+.qvac-analysis-status { flex: 0 0 auto; padding: 4px 8px; border-radius: 999px; background: var(--green-soft); color: var(--green-deep); font-size: 10px; font-weight: 860; white-space: nowrap; }
+.qvac-analysis-status.is-loading { background: #fff1cf; color: var(--lemon-deep); }
+.qvac-analysis-status.is-limited { background: var(--surface-3); color: var(--muted); }
+.qvac-analysis-explainer { margin: 0; color: var(--muted); font-size: 11px; font-weight: 670; line-height: 1.45; }
+.qvac-analysis-prediction { align-items: stretch; padding: 11px 12px; border: 1px solid rgba(32, 167, 121, .2); border-radius: 12px; background: rgba(255, 255, 255, .78); }
+.qvac-analysis-prediction > div { min-width: 0; }
+.qvac-analysis-prediction-label { display: block; color: var(--muted); font-size: 10px; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
+.qvac-analysis-prediction strong { display: block; overflow: hidden; color: var(--ink); font-family: var(--display); font-size: 18px; text-overflow: ellipsis; white-space: nowrap; }
+.qvac-analysis-prediction small { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; font-weight: 730; }
+.qvac-analysis-confidence { display: grid; place-items: center; min-width: 56px; height: 56px; border: 3px solid var(--green); border-radius: 50%; color: var(--green-deep); font-family: var(--display); font-size: 16px; font-weight: 900; }
+.qvac-analysis-confidence small { margin: 0; color: var(--green-deep); font-size: 9px; font-weight: 900; }
+.qvac-analysis-details { border-top: 1px solid rgba(185, 197, 192, .55); padding-top: 9px; }
+.qvac-analysis-details summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; color: var(--ink); font-size: 12px; font-weight: 840; list-style: none; }
+.qvac-analysis-details summary::-webkit-details-marker { display: none; }
+.qvac-analysis-details summary::after { content: '⌄'; color: var(--muted); font-size: 16px; transition: transform .15s ease; }
+.qvac-analysis-details[open] summary::after { transform: rotate(180deg); }
+.qvac-analysis-section { display: grid; gap: 7px; margin-top: 12px; }
+.qvac-analysis-section h3 { margin: 0; color: var(--ink); font-size: 11px; font-weight: 880; letter-spacing: .05em; text-transform: uppercase; }
+.qvac-analysis-bullets { display: grid; gap: 5px; margin: 0; padding-left: 17px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.qvac-analysis-bullets li::marker { color: var(--green); }
+.qvac-analysis-matrix { display: grid; gap: 5px; }
+.qvac-analysis-row { display: grid; grid-template-columns: minmax(120px, .9fr) minmax(0, 1fr) minmax(0, 1fr); gap: 7px; padding: 8px; border: 1px solid rgba(185, 197, 192, .52); border-radius: 9px; background: rgba(255, 255, 255, .68); }
+.qvac-analysis-row-head { grid-column: 1 / -1; justify-content: flex-start; color: var(--ink); font-size: 10px; font-weight: 840; }
+.qvac-analysis-row-head span { color: var(--muted); font-size: 9px; font-weight: 760; }
+.qvac-analysis-cell { min-width: 0; color: var(--muted); font-size: 10px; line-height: 1.35; }
+.qvac-analysis-cell b { display: block; margin-bottom: 2px; color: var(--ink); font-size: 9px; font-weight: 860; letter-spacing: .04em; text-transform: uppercase; }
+.qvac-analysis-phase { display: grid; gap: 5px; padding: 8px; border: 1px solid rgba(185, 197, 192, .52); border-radius: 9px; background: rgba(255, 255, 255, .68); }
+.qvac-analysis-phase strong { color: var(--ink); font-size: 11px; }
+.qvac-analysis-phase p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
+.qvac-analysis-phase-meta { display: flex; flex-wrap: wrap; gap: 5px; color: var(--green-deep); font-size: 9px; font-weight: 850; }
+.qvac-analysis-meta { justify-content: flex-start; flex-wrap: wrap; color: var(--muted); font-size: 10px; font-weight: 700; }
+.qvac-analysis-meta span { padding: 3px 6px; border-radius: 999px; background: rgba(32, 167, 121, .08); }
+.qvac-analysis-actions { justify-content: flex-end; }
+.qvac-analysis-actions button { min-height: 30px; }
+.qvac-analysis-error { margin: 0; color: var(--lemon-deep); font-size: 10px; font-weight: 760; }
+
+@media (max-width: 600px) {
+  .qvac-analysis-panel { padding: 12px; }
+  .qvac-analysis-head { align-items: flex-start; }
+  .qvac-analysis-status { white-space: normal; text-align: right; }
+  .qvac-analysis-row { grid-template-columns: 1fr 1fr; }
+  .qvac-analysis-row-head { grid-column: 1 / -1; }
+  .qvac-analysis-row .qvac-analysis-cell:first-of-type { grid-column: 1 / -1; }
+}
+
 /* ============ Public market-implied odds ============ */
 .polymarket-panel {
   display: grid;

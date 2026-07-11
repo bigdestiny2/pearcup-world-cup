@@ -3370,6 +3370,140 @@ function renderWatchStats (st) {
     meter('Threat', st.threat, threatLabel)
 }
 
+// ---- QVAC expert football analysis ----------------------------------------
+// Analysis is keyed to match/score/status/phase so live polling never causes a
+// completion request on every render. The verified local fallback is rendered
+// immediately; a configured local QVAC model can refine it asynchronously.
+let watchExpertAnalysis = null
+let watchExpertAnalysisKey = ''
+let watchExpertAnalysisPromise = null
+let watchExpertAnalysisError = ''
+
+function qvacFootballAnalysisInput (st = feedState()) {
+  let odds = []
+  try {
+    const selectedId = String(st && st.matchId || selectedPolymarketMatchId() || '')
+    const snapshot = polymarketRegistryEntries()[selectedId]
+    odds = snapshot && snapshot.status === 'ok' && Array.isArray(snapshot.odds) ? snapshot.odds.slice(0, 3) : []
+  } catch {}
+  return {
+    matchId: st && st.matchId || `${st && st.home && st.home.name || 'home'}-${st && st.away && st.away.name || 'away'}`,
+    dataSource: st && st.dataSource,
+    match: {
+      id: st && st.matchId,
+      home: st && st.home,
+      away: st && st.away,
+      status: st && st.matchStatus,
+      stage: st && st.stage,
+      utcDate: st && st.utcDate,
+      venue: st && st.venue,
+      competition: st && st.competition,
+      score: { home: st && st.home && st.home.goals, away: st && st.away && st.away.goals }
+    },
+    currentStats: {
+      minute: st && st.minute,
+      possession: st && st.statsAvailable ? st.possession : null,
+      shots: st && st.statsAvailable ? st.shots : [null, null],
+      threat: st && st.statsAvailable ? st.threat : null,
+      score: { home: st && st.home && st.home.goals, away: st && st.away && st.away.goals }
+    },
+    recentEvents: (state.feedEvents || []).slice(0, 8).map((event, index) => ({
+      eventId: event.sourceEventId || event.workerEventId || `watch-${index}-${event.clock || 'now'}`,
+      type: event.type,
+      team: event.team,
+      clock: event.clock
+    })),
+    odds,
+    environment: { venue: st && st.venue, stage: st && st.stage }
+  }
+}
+
+function qvacExpertAnalysisKey (st) {
+  const minute = Number(st && st.minute)
+  const phase = Number.isFinite(minute) ? Math.floor(minute / 30) : 0
+  return [st && st.matchId, st && st.home && st.home.goals, st && st.away && st.away.goals, st && st.matchStatus, phase].join('|')
+}
+
+function qvacAnalysisProbabilityText (probabilities = {}) {
+  return `H ${Math.round(Number(probabilities.home) || 0)}% · D ${Math.round(Number(probabilities.draw) || 0)}% · A ${Math.round(Number(probabilities.away) || 0)}%`
+}
+
+function renderQvacExpertAnalysis () {
+  const el = $('#watchQvacAnalysis')
+  if (!el) return
+  const analysis = watchExpertAnalysis
+  if (!analysis) {
+    el.innerHTML = '<div class="qvac-analysis-head"><div class="qvac-analysis-title"><div><p class="eyebrow">QVAC</p><strong>Expert football analysis</strong><small>Waiting for the verified match snapshot…</small></div></div><span class="qvac-analysis-status is-loading">Loading</span></div>'
+    return
+  }
+  const prediction = analysis.prediction || {}
+  const coverage = analysis.coverage || {}
+  const statusClass = watchExpertAnalysisPromise ? 'is-loading' : Number(coverage.score) < 50 ? 'is-limited' : ''
+  const statusText = watchExpertAnalysisPromise ? 'Updating' : analysis.source === 'QVAC local model' ? 'QVAC local' : 'Verified fallback'
+  const matrix = Array.isArray(analysis.parameterMatrix) ? analysis.parameterMatrix : []
+  const progression = Array.isArray(analysis.progression) ? analysis.progression : []
+  const bullets = (items, empty = 'Not supplied by relay') => `<ul class="qvac-analysis-bullets">${(Array.isArray(items) && items.length ? items : [empty]).map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
+  const phaseMarkup = progression.map(row => {
+    const probabilities = row.probabilities || {}
+    return `<div class="qvac-analysis-phase"><strong>${escapeHtml(row.phase || 'Match phase')}</strong><div class="qvac-analysis-phase-meta"><span>${escapeHtml(qvacAnalysisProbabilityText(probabilities))}</span></div><p>${escapeHtml(row.tacticalPlan || 'Not supplied by relay')}</p><p>${escapeHtml(row.adjustment || 'Not supplied by relay')}</p></div>`
+  }).join('')
+  el.innerHTML = `
+    <div class="qvac-analysis-head">
+      <div class="qvac-analysis-title"><div><p class="eyebrow">QVAC</p><strong>Expert football analysis</strong><small>${escapeHtml(analysis.homeTeam || 'Home')} vs ${escapeHtml(analysis.awayTeam || 'Away')} · ${escapeHtml(analysis.modelId || 'grounded local lane')}</small></div></div>
+      <span class="qvac-analysis-status ${statusClass}">${statusText}</span>
+    </div>
+    <p class="qvac-analysis-explainer">${escapeHtml(analysis.explainer || 'QVAC uses verified match evidence only. Missing fields lower confidence; public odds are informational.')}</p>
+    <div class="qvac-analysis-prediction">
+      <div><span class="qvac-analysis-prediction-label">Predicted outcome</span><strong>${escapeHtml(prediction.winner || 'No clear edge')}</strong><small>${escapeHtml(prediction.method || 'Draw')} · ${escapeHtml(prediction.target || 'Goes to full time')}</small></div>
+      <div class="qvac-analysis-confidence"><span>${Math.round(Number(prediction.confidence) || 0)}<small>%</small></span></div>
+    </div>
+    <div class="qvac-analysis-meta"><span>Coverage ${Math.round(Number(coverage.score) || 0)}%</span>${Array.isArray(coverage.sources) ? coverage.sources.slice(0, 3).map(source => `<span>${escapeHtml(source)}</span>`).join('') : ''}</div>
+    <details class="qvac-analysis-details">
+      <summary>Open the full tactical breakdown</summary>
+      <div class="qvac-analysis-section"><h3>Conclusive algorithmic prediction</h3><p class="qvac-analysis-explainer">${escapeHtml(prediction.rationale || 'No rationale supplied by relay.')}</p></div>
+      <div class="qvac-analysis-section"><h3>Parameter matrix</h3><div class="qvac-analysis-matrix">${matrix.map(row => `<div class="qvac-analysis-row"><div class="qvac-analysis-row-head">${escapeHtml(row.label || 'Parameter')} <span>${escapeHtml(row.status || 'not supplied')}</span></div><div class="qvac-analysis-cell"><b>${escapeHtml(analysis.homeTeam || 'Home')}</b>${escapeHtml(row.home || 'Not supplied by relay')}</div><div class="qvac-analysis-cell"><b>${escapeHtml(analysis.awayTeam || 'Away')}</b>${escapeHtml(row.away || 'Not supplied by relay')}</div></div>`).join('')}</div></div>
+      <div class="qvac-analysis-section"><h3>Tactical friction · ${escapeHtml(analysis.homeTeam || 'Home')}</h3>${bullets(analysis.tacticalFriction && analysis.tacticalFriction.homeAdvantages)}</div>
+      <div class="qvac-analysis-section"><h3>Tactical friction · ${escapeHtml(analysis.awayTeam || 'Away')}</h3>${bullets(analysis.tacticalFriction && analysis.tacticalFriction.awayAdvantages)}</div>
+      <div class="qvac-analysis-section"><h3>Structural &amp; environmental X-factors</h3>${bullets(analysis.structuralXFactors)}</div>
+      <div class="qvac-analysis-section"><h3>Chronological progression matrix</h3><div class="qvac-analysis-matrix">${phaseMarkup}</div></div>
+      ${watchExpertAnalysisError ? `<p class="qvac-analysis-error">${escapeHtml(watchExpertAnalysisError)}</p>` : ''}
+      <div class="qvac-analysis-actions"><button class="secondary-button compact-action" id="refreshQvacAnalysis" type="button">Refresh analysis</button></div>
+    </details>`
+  const refresh = $('#refreshQvacAnalysis')
+  if (refresh) refresh.addEventListener('click', () => queueQvacExpertAnalysis(feedState(), true))
+}
+
+function queueQvacExpertAnalysis (st = feedState(), force = false) {
+  const key = qvacExpertAnalysisKey(st)
+  if (!force && watchExpertAnalysisKey === key && (watchExpertAnalysis || watchExpertAnalysisPromise)) return
+  watchExpertAnalysisKey = key
+  watchExpertAnalysisError = ''
+  const input = qvacFootballAnalysisInput(st)
+  const factory = window.PearCupQvacReferee
+  const fallback = factory && typeof factory.footballAnalysisFallback === 'function'
+    ? factory.footballAnalysisFallback(input)
+    : { homeTeam: st.home && st.home.name || 'Home', awayTeam: st.away && st.away.name || 'Away', prediction: { winner: 'Draw', method: 'Draw', target: 'Goes to full time', confidence: 33 }, coverage: { score: 0, sources: [] }, parameterMatrix: [], tacticalFriction: {}, structuralXFactors: [], progression: [], explainer: 'QVAC is waiting for the verified match snapshot.', source: 'QVAC verified local fallback' }
+  watchExpertAnalysis = fallback
+  renderQvacExpertAnalysis()
+  const adapter = integrationRuntime && integrationRuntime.adapters && integrationRuntime.adapters.qvacCommentary
+  if (!adapter || typeof adapter.generateFootballAnalysis !== 'function') return
+  watchExpertAnalysisPromise = Promise.resolve(adapter.generateFootballAnalysis(input))
+    .then(result => {
+      if (watchExpertAnalysisKey !== key || !result) return
+      watchExpertAnalysis = result
+    })
+    .catch(error => {
+      if (watchExpertAnalysisKey !== key) return
+      watchExpertAnalysisError = 'QVAC local refinement is unavailable; the verified relay fallback remains active.'
+      if (typeof console !== 'undefined' && console.warn) console.warn('QVAC football analysis unavailable', error)
+    })
+    .finally(() => {
+      if (watchExpertAnalysisKey !== key) return
+      watchExpertAnalysisPromise = null
+      renderQvacExpertAnalysis()
+    })
+}
+
 function flashTv () {
   const flash = $('#tvFlash')
   if (!flash) return
@@ -3394,6 +3528,7 @@ function applyFeedTick (ev, st) {
   if (board) { board.hidden = false; renderLiveBoard(st) }
   if (src) { src.hidden = false; renderLiveSource(st) }
   renderWatchStats(st)
+  queueQvacExpertAnalysis(st)
   if (isLiveApi()) renderCommentaryFeed()
   // Only log real events with a team (skip API poll 'tick' refreshes).
   if (ev && ev.type && ev.type !== 'ft' && ev.type !== 'tick' && ev.team) {

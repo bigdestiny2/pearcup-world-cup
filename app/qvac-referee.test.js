@@ -7,7 +7,10 @@ const {
   normalizeReview,
   commentaryPrompt,
   roundReviewPrompt,
-  poolReviewPrompt
+  poolReviewPrompt,
+  footballAnalysisPrompt,
+  footballAnalysisFallback,
+  normalizeFootballAnalysisOutput
 } = require('./qvac-referee.js')
 
 const gameId = 'pc-qvac-ref'
@@ -249,4 +252,94 @@ test('QVAC review normalization clamps confidence and extracts JSON from text', 
   assert.equal(missingRuling.ruling, 'disputed')
   assert.equal(missingRuling.confidence, 0.9)
   assert.equal(missingRuling.rationale, 'looks okay')
+})
+
+test('QVAC football expert prompt requires grounded tactical and environmental parameters', () => {
+  const prompt = footballAnalysisPrompt({
+    matchId: 'fixture-spain-belgium',
+    match: {
+      id: 'fixture-spain-belgium',
+      home: { name: 'Spain' },
+      away: { name: 'Belgium' },
+      status: 'TIMED',
+      stage: 'QUARTER_FINALS'
+    },
+    recentForm: { home: ['W', 'D', 'W'], away: ['L', 'W', 'D'] },
+    currentStats: { possession: 58, shots: [7, 4] },
+    odds: [{ outcome: 'Spain', probability: 0.54 }, { outcome: 'Draw', probability: 0.25 }, { outcome: 'Belgium', probability: 0.21 }]
+  })
+
+  assert.equal(prompt.length, 2)
+  assert.match(prompt[0].content, /tactical friction/)
+  assert.match(prompt[0].content, /altitude/)
+  assert.match(prompt[0].content, /extra time/)
+  assert.match(prompt[0].content, /Not supplied by relay/)
+  assert.match(prompt[1].content, /generate_grounded_football_expert_analysis/)
+  assert.match(prompt[0].content, /Polymarket probabilities/)
+})
+
+test('QVAC football fallback is honest about missing data and produces a full prediction matrix', () => {
+  const analysis = footballAnalysisFallback({
+    matchId: 'fixture-spain-belgium',
+    dataSource: 'relay',
+    match: {
+      id: 'fixture-spain-belgium',
+      home: { name: 'Spain' },
+      away: { name: 'Belgium' },
+      status: 'TIMED',
+      stage: 'QUARTER_FINALS'
+    }
+  })
+
+  assert.equal(analysis.homeTeam, 'Spain')
+  assert.equal(analysis.awayTeam, 'Belgium')
+  assert.equal(analysis.progression.length, 4)
+  assert.equal(analysis.parameterMatrix.length, 6)
+  assert.equal(analysis.parameterMatrix[0].home, 'Not supplied by relay')
+  assert.equal(analysis.parameterMatrix[2].status, 'not supplied')
+  assert.match(analysis.tacticalFriction.homeAdvantages.join(' '), /No verified tactical edge/)
+  assert.match(analysis.structuralXFactors.join(' '), /altitude|weather/i)
+  assert.ok(['Spain', 'Belgium', 'Draw'].includes(analysis.prediction.winner))
+  assert.ok(analysis.prediction.confidence <= 99)
+  assert.match(analysis.explainer, /Polymarket/)
+})
+
+test('QVAC football output normalization rejects invented teams and clamps probabilities', () => {
+  const input = {
+    matchId: 'fixture-spain-belgium',
+    match: { home: { name: 'Spain' }, away: { name: 'Belgium' }, status: 'TIMED' }
+  }
+  const normalized = normalizeFootballAnalysisOutput(JSON.stringify({
+    homeTeam: 'Spain',
+    awayTeam: 'Belgium',
+    progression: [{ probabilities: { home: 900, draw: -2, away: 1 }, tacticalPlan: 'Use only supplied events.', adjustment: 'None.' }],
+    prediction: { winner: 'Invented XI', method: 'Win by goals', confidence: 900 }
+  }), input, { modelId: 'qvac-test' })
+
+  assert.equal(normalized.homeTeam, 'Spain')
+  assert.equal(normalized.awayTeam, 'Belgium')
+  assert.notEqual(normalized.prediction.winner, 'Invented XI')
+  assert.ok(normalized.prediction.confidence <= 100)
+  assert.equal(normalized.progression[0].probabilities.home + normalized.progression[0].probabilities.draw + normalized.progression[0].probabilities.away, 100)
+  assert.equal(normalized.modelId, 'qvac-test')
+  assert.ok(normalized.analysisId)
+})
+
+test('QVAC completion commentary adapter returns a football expert analysis', async () => {
+  const adapter = createQvacCompletionCommentaryAdapter({
+    modelId: 'qvac-football-test',
+    client: async ({ history }) => {
+      assert.match(history[1].content, /generate_grounded_football_expert_analysis/)
+      return JSON.stringify({
+        prediction: { winner: 'Spain', method: 'Win by goals', target: 'Goes to full time', confidence: 61, rationale: 'Verified snapshot signals.' }
+      })
+    }
+  })
+  const analysis = await adapter.generateFootballAnalysis({
+    matchId: 'fixture-spain-belgium',
+    match: { home: { name: 'Spain' }, away: { name: 'Belgium' }, status: 'TIMED' }
+  })
+  assert.equal(analysis.prediction.winner, 'Spain')
+  assert.equal(analysis.prediction.confidence, 61)
+  assert.equal(analysis.modelId, 'qvac-football-test')
 })

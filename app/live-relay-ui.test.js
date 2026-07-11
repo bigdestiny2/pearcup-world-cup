@@ -110,10 +110,14 @@ test('a stale bundled fixture remains truthful schedule data instead of falling 
 test('watch UI uses the responsive data centre, team-matched Higgsfield portraits, and QVAC-powered product wording', () => {
   assert.doesNotMatch(htmlSource, /class="pitch"/)
   assert.match(htmlSource, /class="tv-liveboard is-loading"/)
+  assert.match(htmlSource, /id="watchQvacAnalysis"/)
+  assert.match(htmlSource, /QVAC expert football analysis/)
   assert.match(appSource, /const TEAM_AVATAR_PORTRAITS = \{/)
   assert.match(appSource, /br: 'p-rafa', jp: 'p-omar'/)
   assert.match(appSource, /<img src="\.\/\$\{escapeHtml\(portrait\)\}"/)
   assert.match(appSource, /QVAC-powered trivia/)
+  assert.match(appSource, /function queueQvacExpertAnalysis/)
+  assert.match(appSource, /Chronological progression matrix/)
   assert.doesNotMatch(appSource, /Start QVAC round|Next QVAC round|QVAC watch trivia/)
 })
 

@@ -159,6 +159,26 @@
           hostId: commentatorId
         }
         return { triviaId: core.deterministicHash(payload), ...payload }
+      },
+      generateFootballAnalysis (input = {}) {
+        const qvac = root.PearCupQvacReferee
+        if (qvac && typeof qvac.footballAnalysisFallback === 'function') {
+          return qvac.footballAnalysisFallback(input)
+        }
+        return {
+          matchId: input.matchId || 'unknown-match',
+          homeTeam: input.match && input.match.home && input.match.home.name || 'Home',
+          awayTeam: input.match && input.match.away && input.match.away.name || 'Away',
+          coverage: { label: 'Limited relay coverage', score: 0, sources: [] },
+          parameterMatrix: [],
+          tacticalFriction: { homeAdvantages: ['Not supplied by relay'], awayAdvantages: ['Not supplied by relay'] },
+          structuralXFactors: ['Not supplied by relay'],
+          progression: [],
+          prediction: { winner: 'Draw', method: 'Draw', target: 'Goes to full time', confidence: 33, rationale: 'No verified evidence packet is available.' },
+          explainer: 'QVAC is waiting for the verified match snapshot.',
+          modelId: null,
+          source: 'QVAC verified local fallback'
+        }
       }
     }
   }
@@ -185,6 +205,10 @@
       generateTriviaRound (input) {
         if (typeof sdk.generateTriviaRound === 'function') return sdk.generateTriviaRound(input)
         return createDemoQvacCommentaryAdapter({ commentatorId: id }).generateTriviaRound(input)
+      },
+      generateFootballAnalysis (input) {
+        if (typeof sdk.generateFootballAnalysis === 'function') return sdk.generateFootballAnalysis(input)
+        return createDemoQvacCommentaryAdapter({ commentatorId: id }).generateFootballAnalysis(input)
       }
     }
   }
