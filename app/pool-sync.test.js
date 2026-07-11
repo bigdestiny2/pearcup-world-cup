@@ -126,6 +126,19 @@ test('ledger rejects malformed entries and keeps one entry per player and pool',
   assert.equal(api.entriesFor('bracket:$25').length, 1)
 })
 
+test('pool sync can release its relay stream without losing the local ledger', () => {
+  const client = createClient(createBroadcastHub())
+  const api = client.context.PearCupPoolSync
+  api.start({ playerId: 'a'.repeat(32), entries: [] })
+  api.submit({ username: 'alpha', teamId: 'br', poolKey: 'bracket:$25', kind: 'bracket', tier: 25, pick: '', pickName: '' })
+  assert.equal(api.backend, 'broadcast-channel')
+  api.stop()
+  assert.equal(api.backend, 'inactive')
+  assert.equal(api.entriesFor('bracket:$25').length, 1)
+  api.start({ playerId: 'a'.repeat(32), entries: api.entries() })
+  assert.equal(api.backend, 'broadcast-channel')
+})
+
 test('playable pool UI derives its numbers from the ledger and has no seeded player fixtures', () => {
   for (const retiredFixture of ['LOBBY_PLAYERS', 'gameLeaderboardRows', 'demoBracketEntrants', 'sample: {']) {
     assert.equal(appSource.includes(retiredFixture), false, `${retiredFixture} must not remain in the playable app`)

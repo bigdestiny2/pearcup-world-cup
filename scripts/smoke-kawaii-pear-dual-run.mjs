@@ -17,6 +17,8 @@ const pear = process.env.PEAR_BIN || 'pear'
 const relay = process.env.PEARCUP_HIVERELAY_URL || 'https://relay-sg.p2phiverelay.xyz'
 const timeoutMs = Number(process.env.PEARCUP_DUAL_TIMEOUT_MS || 45_000)
 const room = `dual-${randomBytes(6).toString('hex')}`
+const hostPeerId = process.env.PEARCUP_DUAL_HOST_PEER_ID || ''
+const guestPeerId = process.env.PEARCUP_DUAL_GUEST_PEER_ID || ''
 const tempRoot = mkdtempSync(join(tmpdir(), 'pearcup-kawaii-dual-'))
 const launchRoot = join(tempRoot, 'app')
 cpSync(appRoot, launchRoot, { recursive: true, dereference: true })
@@ -27,7 +29,8 @@ const host = spawnPear('host', hostProbe.url, {
   PEARCUP_EXTERNAL_PEER_TEST: '1',
   PEARCUP_EXTERNAL_PEER_TEST_ROLE: 'host',
   PEARCUP_EXTERNAL_PEER_TEST_ROOM: room,
-  PEARCUP_EXTERNAL_PEER_TEST_AUTOPLAY: '1'
+  PEARCUP_EXTERNAL_PEER_TEST_AUTOPLAY: '1',
+  ...(hostPeerId ? { PEARCUP_EXTERNAL_PEER_TEST_PEER_ID: hostPeerId } : {})
 })
 
 let guest = null
@@ -39,7 +42,8 @@ try {
     PEARCUP_EXTERNAL_PEER_TEST_ROLE: 'guest',
     PEARCUP_EXTERNAL_PEER_TEST_JOIN: '1',
     PEARCUP_EXTERNAL_PEER_TEST_ROOM: room,
-    PEARCUP_EXTERNAL_PEER_TEST_AUTOPLAY: '1'
+    PEARCUP_EXTERNAL_PEER_TEST_AUTOPLAY: '1',
+    ...(guestPeerId ? { PEARCUP_EXTERNAL_PEER_TEST_PEER_ID: guestPeerId } : {})
   })
   await waitFor(() => observedEvents(host, hostProbe).some(event => isStartedHostEvent(event)) && observedEvents(guest, guestProbe).some(event => isStartedGuestEvent(event)), timeoutMs, 'independent peer handshake')
   await waitFor(() => observedEvents(host, hostProbe).some(event => isOverHostEvent(event)) && observedEvents(guest, guestProbe).some(event => isOverGuestEvent(event)), timeoutMs, 'independent penalty match completion')
@@ -87,6 +91,10 @@ if (failed) {
   console.error(`Kawaii independent Pear Runtime smoke failed: ${failed.message}`)
   const hostOutput = host.output().trim()
   const guestOutput = guest && guest.output().trim()
+  const hostStates = observedEvents(host, hostProbe).filter(event => event && event.event === 'pearcup:external-peer-state')
+  const guestStates = guest ? observedEvents(guest, guestProbe).filter(event => event && event.event === 'pearcup:external-peer-state') : []
+  if (hostStates.length) console.error(`\n--- host last state ---\n${JSON.stringify(hostStates.at(-1))}`)
+  if (guestStates.length) console.error(`\n--- guest last state ---\n${JSON.stringify(guestStates.at(-1))}`)
   if (hostOutput) console.error(`\n--- host output ---\n${hostOutput}`)
   if (guestOutput) console.error(`\n--- guest output ---\n${guestOutput}`)
   process.exitCode = 1

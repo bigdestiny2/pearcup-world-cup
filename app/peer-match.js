@@ -22,6 +22,7 @@
   if (!Net) { markModule('missing-peer-net'); console.warn('PearCupPeerNet missing — peer match disabled'); return }
 
   const TOTAL = 5 // rounds (each player takes 5, keeps 5)
+  const CRITICAL_RETRY_TTL_MS = 9_000
   const PM = {
     active: false, started: false, over: false,
     channel: null, code: null,
@@ -30,6 +31,12 @@
     commit: null,        // {aim, nonce, power} while I'm shooting
     remoteCommit: null,  // hash received while I'm keeping
     myDive: null,
+    autoplayTimer: null,
+    nudgeTimer: null,
+    diveReceived: false,
+    lastDives: new Map(),
+    lastReveals: new Map(),
+    retryTimers: new Map(),
     helloTimer: null,
     helloAttempts: 0
   }
@@ -66,8 +73,14 @@
           active: Boolean(PM.active),
           started: Boolean(PM.started),
           code: PM.code || '',
+          role: PM.role || '',
+          selfPeerId: PM.self && PM.self.peerId ? PM.self.peerId : '',
+          opponentPeerId: PM.opp && PM.opp.peerId ? PM.opp.peerId : '',
           channelBackend: PM.channel && PM.channel.backend ? PM.channel.backend : '',
           kickIndex: PM.kIndex,
+          phase: shootout && shootout.phase ? shootout.phase : '',
+          busy: Boolean(PM.busy),
+          remoteCommit: Boolean(PM.remoteCommit),
           score: shootout
             ? { you: Number(shootout.you) || 0, opp: Number(shootout.opp) || 0 }
             : null
@@ -78,11 +91,15 @@
 
   function reset () {
     stopAnnouncing()
+    if (PM.autoplayTimer) { try { root.clearTimeout(PM.autoplayTimer) } catch (e) {} }
+    if (PM.nudgeTimer) { try { root.clearInterval(PM.nudgeTimer) } catch (e) {} }
+    for (const timer of PM.retryTimers.values()) { try { root.clearInterval(timer) } catch (e) {} }
+    PM.retryTimers.clear()
     if (PM.channel) { try { PM.channel.close() } catch (e) {} }
     Object.assign(PM, {
       active: false, started: false, over: false, channel: null, code: null,
       self: null, opp: null, role: null, kIndex: 0, busy: false,
-      commit: null, remoteCommit: null, myDive: null, helloTimer: null, helloAttempts: 0
+      commit: null, remoteCommit: null, myDive: null, autoplayTimer: null, nudgeTimer: null, diveReceived: false, lastDives: new Map(), lastReveals: new Map(), retryTimers: new Map(), helloTimer: null, helloAttempts: 0
     })
     syncDiagnostics('idle')
   }
@@ -96,7 +113,7 @@
     reset()
     PM.active = true
     PM.code = code || Net.newRoomCode()
-    PM.self = { peerId: Net.newPeerId(), name: state.username || 'captain', team: state.team || 'br' }
+    PM.self = { peerId: externalPeerId() || Net.newPeerId(), name: state.username || 'captain', team: state.team || 'br' }
     openChannel()
     syncDiagnostics('hosting')
     if (!silent) { showToast('Room created — invite your friend'); renderInvite() }
@@ -108,7 +125,7 @@
     reset()
     PM.active = true
     PM.code = code
-    PM.self = { peerId: Net.newPeerId(), name: state.username || 'captain', team: state.team || 'br' }
+    PM.self = { peerId: externalPeerId() || Net.newPeerId(), name: state.username || 'captain', team: state.team || 'br' }
     openChannel()
     syncDiagnostics('joining')
     renderConnecting(code)
@@ -122,6 +139,43 @@
 
   function announce () { send({ t: 'hello', peer: PM.self }) }
   function send (msg) { if (PM.channel) PM.channel.send({ ...msg, room: PM.code, sender: PM.self.peerId }) }
+
+  function clearCritical (type, kickId) {
+    const key = `${type}:${kickId}`
+    const timer = PM.retryTimers.get(key)
+    if (!timer) return
+    try { root.clearInterval(timer) } catch (e) {}
+    PM.retryTimers.delete(key)
+  }
+
+  function externalPeerId () {
+    if (!externalAutoplayEnabled()) return ''
+    const env = (typeof process !== 'undefined' && process && process.env) || {}
+    const raw = String(env.PEARCUP_EXTERNAL_PEER_TEST_PEER_ID || '').trim().toLowerCase()
+    return /^[a-z0-9-]{4,64}$/.test(raw) ? raw : ''
+  }
+
+  // Relay delivery is normally acknowledged and retried by HiveRelay, but a
+  // match message may be sent while the other renderer is still attaching its
+  // event stream. Re-send critical turn messages with fresh relay envelopes
+  // for a short bounded window. The handlers are idempotent by kickId/phase,
+  // so late duplicates are ignored and cannot duplicate scoring.
+  function sendCritical (msg) {
+    const key = `${msg.t}:${msg.kickId}`
+    const expiresAt = Date.now() + CRITICAL_RETRY_TTL_MS
+    clearCritical(msg.t, msg.kickId)
+    send(msg)
+    if (typeof root.setInterval !== 'function') return
+    const timer = root.setInterval(() => {
+      if (!PM.active || PM.over || Date.now() >= expiresAt) {
+        try { root.clearInterval(timer) } catch (e) {}
+        PM.retryTimers.delete(key)
+        return
+      }
+      send(msg)
+    }, 2500)
+    PM.retryTimers.set(key, timer)
+  }
 
   function startAnnouncing () {
     stopAnnouncing()
@@ -152,6 +206,9 @@
       case 'commit': return onCommit(msg)
       case 'dive': return onDive(msg)
       case 'reveal': return onReveal(msg)
+      case 'resolved': return onResolved(msg)
+      case 'nudge': return onNudge(msg)
+      case 'dive-ack': return onDiveAck(msg)
       case 'leave': return onOppLeft()
     }
   }
@@ -210,7 +267,8 @@
     so.round = roundOf(PM.kIndex)
     so.mode = iAmShooter() ? 'shoot' : 'keep'
     so.phase = 'aim'
-    PM.busy = false; PM.myDive = null; PM.remoteCommit = null
+    PM.busy = false; PM.myDive = null; PM.remoteCommit = null; PM.diveReceived = false
+    syncDiagnostics()
 
     const me = { name: PM.self.name, team: PM.self.team }
     const opp = { name: PM.opp.name, team: PM.opp.team }
@@ -239,7 +297,25 @@
     renderShootoutHud()
 
     if (iAmShooter()) { showAimGrid(); startPowerMeter() } else { hideAimGrid(); stopPowerMeter(); showShootBanner('Keeper ready — waiting for their strike…', 'is-wait') }
+    startNudge()
     scheduleExternalAutoplay()
+  }
+
+  function startNudge () {
+    if (typeof root.setInterval !== 'function') return
+    if (PM.nudgeTimer) { try { root.clearInterval(PM.nudgeTimer) } catch (e) {} }
+    const kickId = PM.kIndex
+    PM.nudgeTimer = root.setInterval(() => {
+      if (!PM.active || PM.over || PM.kIndex !== kickId) {
+        try { root.clearInterval(PM.nudgeTimer) } catch (e) {}
+        PM.nudgeTimer = null
+        return
+      }
+      const want = iAmShooter()
+        ? (PM.commit && !PM.diveReceived ? 'dive' : '')
+        : (PM.myDive != null ? 'reveal' : 'commit')
+      if (want) send({ t: 'nudge', kickId, want })
+    }, 2500)
   }
 
   function externalAutoplayEnabled () {
@@ -247,13 +323,21 @@
     return ['1', 'true', 'yes', 'on'].includes(String(env.PEARCUP_EXTERNAL_PEER_TEST_AUTOPLAY || '').toLowerCase())
   }
 
-  function scheduleExternalAutoplay () {
+  function scheduleExternalAutoplay (attempt = 0) {
     if (!externalAutoplayEnabled() || !PM.started || PM.over || PM.busy) return
-    setTimeout(() => {
+    if (PM.autoplayTimer) { try { root.clearTimeout(PM.autoplayTimer) } catch (e) {} }
+    PM.autoplayTimer = root.setTimeout(() => {
+      PM.autoplayTimer = null
       if (!PM.active || !PM.started || PM.over || PM.busy || state.shootout && state.shootout.phase !== 'aim') return
       if (iAmShooter()) onZone('left-high')
       else if (PM.remoteCommit) onZone('right-high')
-    }, 120)
+      // A relay can deliver commit frames after the first timer tick. Keep the
+      // deterministic test driver alive for a bounded window instead of
+      // silently leaving a keeper in an unwinnable waiting state.
+      if (attempt < 12 && state.shootout && state.shootout.phase === 'aim') {
+        scheduleExternalAutoplay(attempt + 1)
+      }
+    }, attempt === 0 ? 120 : 250)
   }
 
   // Aim-grid click router (called from app.js when a peer match is active).
@@ -268,14 +352,19 @@
       so.phase = 'committed'
       hideAimGrid(); stopPowerMeter()
       showShootBanner('Struck! keeper diving…', 'is-stop')
-      send({ t: 'commit', kickId: PM.kIndex, hash: Net.commitHash(zone, nonce) })
+      sendCritical({ t: 'commit', kickId: PM.kIndex, hash: Net.commitHash(zone, nonce) })
+      syncDiagnostics()
     } else {
       if (!PM.remoteCommit) return
       PM.myDive = zone
       so.phase = 'dived'
       hideAimGrid()
       showShootBanner('Dive called…', 'is-stop')
-      send({ t: 'dive', kickId: PM.kIndex, zone })
+      const dive = { t: 'dive', kickId: PM.kIndex, zone }
+      PM.lastDives.set(PM.kIndex, dive)
+      while (PM.lastDives.size > 4) PM.lastDives.delete(PM.lastDives.keys().next().value)
+      sendCritical(dive)
+      syncDiagnostics()
     }
   }
 
@@ -284,6 +373,7 @@
     PM.remoteCommit = msg.hash
     const so = state.shootout
     if (so.phase !== 'aim') return
+    syncDiagnostics()
     showAimGrid()
     showShootBanner('Now! pick your dive', 'is-goal')
     setTimeout(() => hideShootBanner(), 700)
@@ -292,16 +382,54 @@
 
   function onDive (msg) {
     if (msg.kickId !== PM.kIndex || !iAmShooter() || !PM.commit) return
-    send({ t: 'reveal', kickId: PM.kIndex, aim: PM.commit.aim, nonce: PM.commit.nonce, power: PM.commit.power })
+    clearCritical('commit', msg.kickId)
+    PM.diveReceived = true
+    if (PM.nudgeTimer) { try { root.clearInterval(PM.nudgeTimer) } catch (e) {} PM.nudgeTimer = null }
+    send({ t: 'dive-ack', kickId: msg.kickId })
+    syncDiagnostics()
+    const reveal = { t: 'reveal', kickId: PM.kIndex, aim: PM.commit.aim, nonce: PM.commit.nonce, power: PM.commit.power }
+    PM.lastReveals.set(PM.kIndex, reveal)
+    while (PM.lastReveals.size > 4) PM.lastReveals.delete(PM.lastReveals.keys().next().value)
+    sendCritical(reveal)
     resolveKick(PM.commit.aim, msg.zone, PM.commit.power, PM.commit.nonce)
   }
 
   function onReveal (msg) {
     if (msg.kickId !== PM.kIndex || iAmShooter() || PM.myDive == null) return
+    clearCritical('dive', msg.kickId)
+    if (PM.nudgeTimer) { try { root.clearInterval(PM.nudgeTimer) } catch (e) {} PM.nudgeTimer = null }
+    syncDiagnostics()
     if (PM.remoteCommit && Net.commitHash(msg.aim, msg.nonce) !== PM.remoteCommit) {
       showToast('⚠ Opponent commitment mismatch — kick voided')
     }
+    send({ t: 'resolved', kickId: PM.kIndex })
     resolveKick(msg.aim, PM.myDive, msg.power, msg.nonce)
+  }
+
+  function onResolved (msg) {
+    if (msg.kickId !== PM.kIndex || !iAmShooter()) return
+    clearCritical('reveal', msg.kickId)
+  }
+
+  function onDiveAck (msg) {
+    if (msg.kickId !== PM.kIndex || iAmShooter()) return
+    clearCritical('dive', msg.kickId)
+  }
+
+  function onNudge (msg) {
+    const kickId = Number(msg && msg.kickId)
+    if (!Number.isInteger(kickId)) return
+    if (msg.want === 'commit' && iAmShooter() && kickId === PM.kIndex && PM.commit) {
+      sendCritical({ t: 'commit', kickId, hash: Net.commitHash(PM.commit.aim, PM.commit.nonce) })
+      return
+    }
+    const dive = PM.lastDives.get(kickId)
+    if (msg.want === 'dive' && !iAmShooter() && dive) {
+      sendCritical(dive)
+      return
+    }
+    const reveal = PM.lastReveals.get(kickId)
+    if (msg.want === 'reveal' && reveal) sendCritical(reveal)
   }
 
   async function resolveKick (aim, dive, power, nonce) {

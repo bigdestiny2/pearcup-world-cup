@@ -166,6 +166,14 @@
     return remembered
   }
 
+  // A penalty match is latency-sensitive. Keep the local ledger in memory but
+  // release its long-lived relay stream while the match channel is active; the
+  // next bracket/home render can call start() again and re-announce entries.
+  function stop () {
+    if (S.channel) { try { S.channel.close() } catch (e) {} }
+    S.channel = null
+  }
+
   function entriesFor (poolKey) {
     return listEntries().filter(entry => entry.poolKey === poolKey)
   }
@@ -174,6 +182,7 @@
     TOPIC,
     PROTOCOL,
     start,
+    stop,
     submit,
     entries: listEntries,
     entriesFor,

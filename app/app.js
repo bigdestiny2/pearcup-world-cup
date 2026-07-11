@@ -5126,8 +5126,14 @@ if (typeof window !== 'undefined') {
         code,
         active: Boolean(snapshot && snapshot.active),
         started: Boolean(snapshot && snapshot.started),
+        role: snapshot && snapshot.role || null,
+        selfPeerId: snapshot && snapshot.selfPeerId || null,
+        opponentPeerId: snapshot && snapshot.opponentPeerId || null,
         channelBackend: snapshot && snapshot.channelBackend || null,
         kickIndex: Number.isInteger(snapshot && snapshot.kickIndex) ? snapshot.kickIndex : null,
+        phase: snapshot && snapshot.phase || null,
+        busy: Boolean(snapshot && snapshot.busy),
+        remoteCommit: Boolean(snapshot && snapshot.remoteCommit),
         score: snapshot && snapshot.score || null
       })
     }
@@ -5348,6 +5354,11 @@ async function renderGames () {
   renderPolymarketOdds()
   // A live peer match owns its own turn loop.
   if (state.match && state.match.peer && window.PearCupPeerMatch) {
+    // Presence is useful in the lobby, but its heartbeat competes with the
+    // latency-sensitive match channel once a friend game is underway.
+    if (window.PearCupLobby && typeof window.PearCupLobby.leave === 'function') window.PearCupLobby.leave()
+    if (window.PearCupWatchSync && typeof window.PearCupWatchSync.leave === 'function') window.PearCupWatchSync.leave()
+    if (window.PearCupPoolSync && typeof window.PearCupPoolSync.stop === 'function') window.PearCupPoolSync.stop()
     const arena0 = document.querySelector('#games .game-arena')
     if (arena0) arena0.classList.remove('is-lobby')
     if (so.phase !== 'over') window.PearCupPeerMatch.render()

@@ -158,13 +158,19 @@ function hiveRelayOrigin () {
 }
 
 async function proxyHiveRelayRequest (req, res) {
+  const bareFetch = require('bare-fetch')
   const nativeFetch = typeof globalThis !== 'undefined' && typeof globalThis.fetch === 'function'
     ? globalThis.fetch.bind(globalThis)
     : null
-  const fetch = nativeFetch || require('bare-fetch')
   const parsed = new URL(String(req.url || ''), 'http://pearcup.local')
   const remotePath = parsed.pathname.slice(HIVERELAY_PROXY_PREFIX.length)
   if (!HIVERELAY_ALLOWED_PATHS.has(remotePath)) return writeJsonError(res, 404, 'Relay route not found')
+
+  // Keep the long-lived SSE stream on the native fetch implementation, but
+  // use Bare's short-lived HTTP client for token/join/send/leave requests. The
+  // Pear runtime's native fetch pool can otherwise let a busy SSE renderer
+  // starve a directional game send after a few turns.
+  const fetch = remotePath === '/api/swarm/events' ? (nativeFetch || bareFetch) : bareFetch
 
   const method = String(req.method || 'GET').toUpperCase()
   if (method !== 'GET' && method !== 'POST') return writeJsonError(res, 405, 'Method not allowed')

@@ -23,6 +23,7 @@
   const MAX_ATTEMPTS = 6
   const MAX_RATE_RETRIES = 3
   const MAX_CLOCK_SKEW_MS = 30 * 1000
+  const TURN_FRAME_TYPES = new Set(['commit', 'dive', 'reveal', 'nudge'])
 
   let identityPromise = null
   const relaySessionPromises = new Map()
@@ -361,7 +362,17 @@
     function flushPending () {
       const now = Date.now()
       if (now < active.backoffUntil || now - active.lastFlushAt < MIN_SEND_GAP_MS) return
-      for (const entry of pending.values()) {
+      // Presence/housekeeping frames can accumulate while a renderer is
+      // reconnecting. Always give the current penalty-turn frames the next
+      // relay slot so a stale lobby heartbeat cannot starve commit → dive →
+      // reveal delivery on a busy OutboxLog channel.
+      const entries = [...pending.values()]
+      entries.sort((a, b) => {
+        const aTurn = a.frame && a.frame.body && TURN_FRAME_TYPES.has(a.frame.body.t)
+        const bTurn = b.frame && b.frame.body && TURN_FRAME_TYPES.has(b.frame.body.t)
+        return Number(bTurn) - Number(aTurn)
+      })
+      for (const entry of entries) {
         if (entry.frame.expiresAt < now || entry.attempts >= MAX_ATTEMPTS) {
           pending.delete(entry.frame.id)
           if (entry.key && pendingByKey.get(entry.key) === entry.frame.id) pendingByKey.delete(entry.key)
@@ -590,9 +601,11 @@
           }
           if (!active.identity) throw new Error('HiveRelay identity did not initialize')
           const frame = await signFrame('data', message, '', MAX_AGE_MS)
-          const key = message && (message.t === 'hello' || message.t === 'presence')
-            ? `${message.t}:${String(message.room || topic)}:${String(message.sender || '')}`
-            : ''
+          const key = message && TURN_FRAME_TYPES.has(message.t) && Number.isInteger(Number(message.kickId))
+            ? `turn:${message.t}:${Number(message.kickId)}`
+            : message && (message.t === 'hello' || message.t === 'presence')
+              ? `${message.t}:${String(message.room || topic)}:${String(message.sender || '')}`
+              : ''
           if (key && pendingByKey.has(key)) pending.delete(pendingByKey.get(key))
           pending.set(frame.id, { frame, attempts: 0, key })
           if (key) pendingByKey.set(key, frame.id)
