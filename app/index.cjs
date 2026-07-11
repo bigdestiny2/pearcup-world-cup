@@ -151,14 +151,17 @@ function hiveRelayOrigin () {
     (typeof process !== 'undefined' && process.env) ||
     (typeof Pear !== 'undefined' && Pear.config && Pear.config.env) ||
     {}
-  const configured = env.PEARCUP_HIVERELAY_URL || 'https://pearcup-kawaii-relay.throbbing-limit-1abb.workers.dev'
+  const configured = env.PEARCUP_HIVERELAY_URL || 'https://relay-sg.p2phiverelay.xyz'
   const url = new URL(configured)
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('Invalid HiveRelay proxy origin')
   return url.href.replace(/\/+$/, '')
 }
 
 async function proxyHiveRelayRequest (req, res) {
-  const fetch = require('bare-fetch')
+  const nativeFetch = typeof globalThis !== 'undefined' && typeof globalThis.fetch === 'function'
+    ? globalThis.fetch.bind(globalThis)
+    : null
+  const fetch = nativeFetch || require('bare-fetch')
   const parsed = new URL(String(req.url || ''), 'http://pearcup.local')
   const remotePath = parsed.pathname.slice(HIVERELAY_PROXY_PREFIX.length)
   if (!HIVERELAY_ALLOWED_PATHS.has(remotePath)) return writeJsonError(res, 404, 'Relay route not found')

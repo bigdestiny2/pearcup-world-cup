@@ -44,17 +44,15 @@ browser with its passkey.
 
 ## HiveRelay boundary
 
-Cloudflare does not replace HiveRelay. The browser/Pear shared transport uses a
-dedicated, persistent HiveRelay OutboxLog node behind the narrow HTTPS Worker
-gateway at `https://pearcup-kawaii-relay.throbbing-limit-1abb.workers.dev`.
-The gateway exposes only token, status, join, send, leave, and SSE routes; it
-is not a general proxy. The node admits the `pearcup` namespace and its relay
-port accepts traffic only from Cloudflare edge ranges.
+Cloudflare does not replace HiveRelay. The browser/Pear shared transport uses
+the healthy HTTPS HiveRelay OutboxLog endpoint at
+`https://relay-sg.p2phiverelay.xyz`. It exposes only the token, status, join,
+send, leave, and SSE routes required by PearCup; it is not a general proxy.
 
 Verify the exact public endpoint before enabling it in a release:
 
 ```bash
-PEARCUP_HIVERELAY_URL=https://pearcup-kawaii-relay.throbbing-limit-1abb.workers.dev \
+PEARCUP_HIVERELAY_URL=https://relay-sg.p2phiverelay.xyz \
   npm run test:hiverelay-endpoint
 ```
 

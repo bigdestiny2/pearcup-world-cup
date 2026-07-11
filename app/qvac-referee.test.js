@@ -5,6 +5,7 @@ const {
   createQvacCompletionCommentaryAdapter,
   createQvacCompletionRefereeAdapter,
   normalizeReview,
+  normalizeCommentaryOutput,
   commentaryPrompt,
   roundReviewPrompt,
   poolReviewPrompt,
@@ -239,6 +240,40 @@ test('QVAC completion commentary adapter creates grounded segments', async () =>
   assert.equal(segment.confidence, 0.88)
   assert.deepEqual(segment.sourceEventIds, ['evt-shot'])
   assert.ok(segment.segmentId)
+})
+
+test('QVAC commentary fails closed when a local model invents a score or repeats itself', async () => {
+  const adapter = createQvacCompletionCommentaryAdapter({
+    modelId: 'qvac-commentary-grounding-test',
+    client: async () => JSON.stringify({
+      text: 'Spain lead Belgium 1-1 after a goal. Spain lead Belgium 1-1 after a goal.',
+      confidence: 0.99
+    })
+  })
+  const segment = await adapter.generateSegment({
+    matchId: 'match-grounding',
+    language: 'EN',
+    clock: "31'",
+    recentEvents: [{ eventId: 'evt-shot', type: 'shot', teamId: 'es', clock: "31'" }],
+    currentStats: { score: { home: 0, away: 0 } }
+  })
+
+  assert.match(segment.text, /create another shot|pressure is building/i)
+  assert.equal(segment.modelId, null)
+})
+
+test('QVAC commentary keeps a grounded shot-on-goal description', () => {
+  const normalized = normalizeCommentaryOutput(JSON.stringify({
+    text: 'Spain create a strong shot on goal at the 31st minute.',
+    confidence: 0.9
+  }), {
+    language: 'EN',
+    clock: "31'",
+    score: { home: 0, away: 0 },
+    recentEvents: [{ eventId: 'shot-31', type: 'shot', teamId: 'es', clock: "31'" }]
+  })
+  assert.equal(normalized.grounded, true)
+  assert.match(normalized.text, /shot on goal/)
 })
 
 test('QVAC review normalization clamps confidence and extracts JSON from text', () => {

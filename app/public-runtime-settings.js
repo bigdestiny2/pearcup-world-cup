@@ -7,12 +7,12 @@
       oddsRelayUrl: 'https://pearcup-live-data.throbbing-limit-1abb.workers.dev/v1/polymarket-odds.json',
       pollMs: 30000
     },
-    // Dedicated, verified HTTPS gateway for the PearCup OutboxLog relay. This
-    // is public routing metadata only: it never carries an operator token,
+    // Healthy HTTPS HiveRelay OutboxLog endpoint for PearCup sync. This is
+    // public routing metadata only: it never carries an operator token,
     // wallet credential, or passkey assertion.
     peerRelay: {
       enabled: true,
-      relayUrl: 'https://pearcup-kawaii-relay.throbbing-limit-1abb.workers.dev',
+      relayUrl: 'https://relay-sg.p2phiverelay.xyz',
       service: 'outboxlog',
       protocol: 'pearcup-sync-v2'
     },

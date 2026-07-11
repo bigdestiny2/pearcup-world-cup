@@ -109,19 +109,59 @@
     return `[${language}] Live match events at ${clock} are being summarized from the replayed feed.`
   }
 
+  function commentaryTextIsGrounded (text, input = {}) {
+    const value = String(text || '').trim()
+    if (!value) return false
+    // Small local models can repeat a plausible sentence until their token
+    // budget ends. Repetition is not live commentary, so fail closed to the
+    // deterministic event line.
+    const sentences = value.split(/[.!?]+/).map(sentence => sentence.trim().toLowerCase()).filter(sentence => sentence.length >= 24)
+    if (new Set(sentences).size !== sentences.length) return false
+
+    const events = Array.isArray(input.recentEvents) ? input.recentEvents : []
+    const eventTypes = new Set(events.map(event => String(event && event.type || '').toLowerCase()))
+    // "shot on goal" is a valid description of a shot event; only reject
+    // language that asserts a scored goal/equalizer or a result that is not in
+    // the deterministic event packet.
+    const goalClaimText = value.replace(/\bshot\s+on\s+goal\b/gi, '')
+    if (!eventTypes.has('goal') && /\b(?:goal|scored|scores|equalizer|draw)\b/i.test(goalClaimText)) return false
+    if (!eventTypes.has('card') && !eventTypes.has('yellow') && !eventTypes.has('red') && /\b(?:yellow card|red card|booking)\b/i.test(value)) return false
+    if (!eventTypes.has('substitution') && /\b(?:substitution|substituted|comes off|replaced)\b/i.test(value)) return false
+    if (!eventTypes.has('injury') && /\b(?:injured|injury)\b/i.test(value)) return false
+
+    const score = input.score || input.currentStats && input.currentStats.score
+    const scoreValues = score && typeof score === 'object'
+      ? Object.values(score).map(value => Number(value)).filter(value => Number.isFinite(value))
+      : []
+    const statedScores = [...value.matchAll(/\b(\d+)\s*[-–]\s*(\d+)\b/g)].map(match => [Number(match[1]), Number(match[2])])
+    if (statedScores.length && scoreValues.length >= 2) {
+      const allowed = scoreValues.slice(0, 2)
+      if (statedScores.some(([home, away]) => home !== allowed[0] || away !== allowed[1])) return false
+    } else if (statedScores.length && scoreValues.length < 2) {
+      return false
+    }
+    return true
+  }
+
   function normalizeCommentaryOutput (input, fallbackInput = {}) {
     const parsed = extractJsonObject(input)
     const rawText = typeof input === 'string' && !Object.keys(parsed).length ? input.trim() : ''
-    const text = typeof parsed.text === 'string' && parsed.text.trim()
+    const candidate = typeof parsed.text === 'string' && parsed.text.trim()
       ? parsed.text.trim().slice(0, 360)
       : rawText
         ? rawText.slice(0, 360)
-        : commentaryFallbackText(fallbackInput)
+        : ''
+    // A missing text field is an invalid model shape, but the deterministic
+    // fallback is still grounded. Reserve `grounded: false` for a non-empty
+    // model claim that contradicts the supplied evidence.
+    const grounded = candidate ? commentaryTextIsGrounded(candidate, fallbackInput) : true
+    const text = grounded ? candidate : commentaryFallbackText(fallbackInput)
     const confidence = Number(parsed.confidence)
     return {
       text,
       confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : 0.72,
-      modelId: typeof parsed.modelId === 'string' ? parsed.modelId : null
+      modelId: typeof parsed.modelId === 'string' ? parsed.modelId : null,
+      grounded
     }
   }
 
@@ -1017,7 +1057,7 @@
           input,
           text: normalized.text,
           confidence: normalized.confidence,
-          modelId: normalized.modelId || modelId,
+          modelId: normalized.modelId || (normalized.grounded === false ? null : modelId),
           commentatorId
         })
       },
@@ -1043,7 +1083,7 @@
           },
           text: normalized.text,
           confidence: normalized.confidence,
-          modelId: normalized.modelId || modelId,
+          modelId: normalized.modelId || (normalized.grounded === false ? null : modelId),
           commentatorId
         })
       },

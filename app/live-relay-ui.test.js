@@ -116,6 +116,8 @@ test('watch UI uses the responsive data centre, team-matched Higgsfield portrait
   assert.match(appSource, /br: 'p-rafa', jp: 'p-omar'/)
   assert.match(appSource, /<img src="\.\/\$\{escapeHtml\(portrait\)\}"/)
   assert.match(appSource, /QVAC-powered trivia/)
+  assert.match(appSource, /function queueQvacCommentary/)
+  assert.match(appSource, /qvacCommentaryByEvent/)
   assert.match(appSource, /function queueQvacExpertAnalysis/)
   assert.match(appSource, /Chronological progression matrix/)
   assert.doesNotMatch(appSource, /Start QVAC round|Next QVAC round|QVAC watch trivia/)

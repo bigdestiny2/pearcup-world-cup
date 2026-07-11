@@ -3249,7 +3249,7 @@ function renderCommentaryFeed () {
     feed.innerHTML = intro + goals.map(ev => `
       <div class="commentary-line is-goal">
         <time>${escapeHtml(ev.clock || 'LIVE')}</time>
-        <p>${escapeHtml(commentaryLine(ev.type, ev.team, state.language))}</p>
+        <p>${escapeHtml((qvacCommentaryByEvent.get(qvacCommentaryEventKey(ev, st)) || {}).text || commentaryLine(ev.type, ev.team, state.language))}</p>
       </div>`).join('')
     return
   }
@@ -3260,6 +3260,54 @@ function renderCommentaryFeed () {
       <p>${escapeHtml(commentaryLine(ev.type, ev.team, state.language))}</p>
     </div>
   `).join('')
+}
+
+// QVAC commentary is an asynchronous refinement of the verified event line.
+// The live feed remains playable if the local model is cold, unavailable, or
+// produces an ungrounded sentence (the adapter fails closed to the template).
+const qvacCommentaryByEvent = new Map()
+const qvacCommentaryInFlight = new Set()
+
+function qvacCommentaryEventKey (event, st = feedState()) {
+  return String(event && (event.sourceEventId || event.workerEventId || event.eventId) || `${st && st.matchId || 'match'}:${event && event.type || 'event'}:${event && event.clock || 'now'}:${event && event.team || ''}`)
+}
+
+function queueQvacCommentary (ev, st = feedState()) {
+  if (!isLiveApi() || !ev || !ev.type || ['preview', 'tick', 'ft', 'error'].includes(ev.type)) return
+  const adapter = integrationRuntime && integrationRuntime.adapters && integrationRuntime.adapters.qvacCommentary
+  if (!adapter || typeof adapter.generateSegment !== 'function') return
+  const key = qvacCommentaryEventKey(ev, st)
+  if (qvacCommentaryByEvent.has(key) || qvacCommentaryInFlight.has(key)) return
+  qvacCommentaryInFlight.add(key)
+  const recentEvents = (state.feedEvents || []).slice(0, 6).map((event, index) => ({
+    eventId: event.sourceEventId || event.workerEventId || event.eventId || `watch-${index}-${event.clock || 'now'}`,
+    type: event.type,
+    team: event.team,
+    clock: event.clock
+  }))
+  const score = { home: st.home && st.home.goals, away: st.away && st.away.goals }
+  Promise.resolve(adapter.generateSegment({
+    matchId: st.matchId,
+    language: state.language || 'EN',
+    clock: ev.clock || `${st.minute || 0}'`,
+    score,
+    recentEvents,
+    currentStats: {
+      matchId: st.matchId,
+      minute: st.minute,
+      score,
+      possession: st.statsAvailable ? st.possession : null,
+      shots: st.statsAvailable ? st.shots : [null, null]
+    },
+    roomPickDistribution: {}
+  })).then(segment => {
+    if (segment && typeof segment.text === 'string' && segment.text.trim()) {
+      qvacCommentaryByEvent.set(key, { text: segment.text, modelId: segment.modelId || null })
+      renderCommentaryFeed()
+    }
+  }).catch(error => {
+    if (typeof console !== 'undefined' && console.warn) console.warn('QVAC commentary unavailable; keeping verified event line', error)
+  }).finally(() => qvacCommentaryInFlight.delete(key))
 }
 
 function isLiveApi () { return activeFeed && activeFeed.source === 'api' }
@@ -3536,6 +3584,7 @@ function applyFeedTick (ev, st) {
     state.feedEvents.unshift({ clock: ev.clock, type: ev.type, team: ev.team })
     state.feedEvents = state.feedEvents.slice(0, 24)
     renderCommentaryFeed()
+    queueQvacCommentary(ev, st)
   }
   if (ev && ev.type === 'goal') { flashTv(); showToast(`⚽ GOAL! ${ev.team} — ${st.home.goals}-${st.away.goals}`) }
   // Keep the Home dashboard live too (hero/fixtures/timeline/stats reflect the same feed).
