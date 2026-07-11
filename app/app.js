@@ -5033,12 +5033,34 @@ function renderPeerBackendBadge () {
 function pendingFriendJoinCode () {
   const override = typeof window !== 'undefined' && window.__pearcupPendingJoinOverride
   if (override) return String(override).trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32)
+  const env = (typeof process !== 'undefined' && process && process.env) || {}
+  if (['1', 'true', 'yes', 'on'].includes(String(env.PEARCUP_EXTERNAL_PEER_TEST_JOIN || '').toLowerCase())) {
+    return String(env.PEARCUP_EXTERNAL_PEER_TEST_ROOM || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32)
+  }
   try {
     const raw = new URLSearchParams(location.search).get('join') || ''
     return raw.trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32)
   } catch (e) {
     return ''
   }
+}
+
+// Test-only host injection for the independent Pear Runtime smoke. It is
+// enabled only when the native process explicitly opts into the external peer
+// test; normal browser/PearBrowser URLs cannot create a caller-chosen room.
+function runtimeExternalPeerTestEnabled () {
+  const env = (typeof process !== 'undefined' && process && process.env) || {}
+  return ['1', 'true', 'yes', 'on'].includes(String(env.PEARCUP_EXTERNAL_PEER_TEST || '').toLowerCase())
+}
+
+function runtimeExternalHostCode () {
+  const env = (typeof process !== 'undefined' && process && process.env) || {}
+  if (!runtimeExternalPeerTestEnabled() || String(env.PEARCUP_EXTERNAL_PEER_TEST_ROLE || '').toLowerCase() !== 'host') return ''
+  let raw = env.PEARCUP_EXTERNAL_PEER_TEST_ROOM || ''
+  try {
+    raw = raw || new URLSearchParams(location.search).get('pearcupRuntimeExternalHost') || ''
+  } catch (e) {}
+  return String(raw).trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32)
 }
 
 function friendJoinCodeFromLink (value, depth = 0) {
@@ -5097,6 +5119,18 @@ function reportPearWakeup (code, status, detail = '') {
 if (typeof window !== 'undefined') {
   window.PearCupOnPeerMatchState = snapshot => {
     const code = String(snapshot && snapshot.code || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32)
+    if (runtimeExternalPeerTestEnabled() && code && typeof sendBootProbeEvent === 'function') {
+      sendBootProbeEvent({
+        event: 'pearcup:external-peer-state',
+        status: snapshot && snapshot.state || null,
+        code,
+        active: Boolean(snapshot && snapshot.active),
+        started: Boolean(snapshot && snapshot.started),
+        channelBackend: snapshot && snapshot.channelBackend || null,
+        kickIndex: Number.isInteger(snapshot && snapshot.kickIndex) ? snapshot.kickIndex : null,
+        score: snapshot && snapshot.score || null
+      })
+    }
     if (!code || !snapshot.started || snapshot.state !== 'started') return
     const pending = String(document.documentElement.dataset.pearcupPendingJoin || pendingFriendJoinCode() || '').trim().toLowerCase()
     if (pending !== code || window.__pearcupReportedStartedCode === code) return
@@ -6242,7 +6276,13 @@ function boot () {
     persist()
   }
   // Deep link: ?join=<code> auto-joins a friend's peer match, including first-run users.
-  if (!tryJoinFriendInvite()) applyStartupView()
+  // The explicit native external-peer-test host is test-only and never runs in
+  // ordinary browser/PearBrowser sessions.
+  const externalHostCode = runtimeExternalHostCode()
+  if (externalHostCode && window.PearCupPeerMatch && typeof window.PearCupPeerMatch.host === 'function') {
+    window.PearCupPeerMatch.host(externalHostCode, true)
+    setView('games')
+  } else if (!tryJoinFriendInvite()) applyStartupView()
   bindStartupRouteEvents()
   window.addEventListener('load', resetScrollPosition)
   window.addEventListener('pageshow', resetScrollPosition)

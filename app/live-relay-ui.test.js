@@ -5,6 +5,7 @@ const test = require('node:test')
 const vm = require('node:vm')
 
 const appSource = readFileSync(join(__dirname, 'app.js'), 'utf8')
+const peerMatchSource = readFileSync(join(__dirname, 'peer-match.js'), 'utf8')
 const htmlSource = readFileSync(join(__dirname, 'index.html'), 'utf8')
 
 function sourceBetween (startMarker, endMarker) {
@@ -120,6 +121,8 @@ test('watch UI uses the responsive data centre, team-matched Higgsfield portrait
   assert.match(appSource, /qvacCommentaryByEvent/)
   assert.match(appSource, /function queueQvacExpertAnalysis/)
   assert.match(appSource, /Chronological progression matrix/)
+  assert.match(appSource, /PEARCUP_EXTERNAL_PEER_TEST_ROLE/)
+  assert.match(peerMatchSource, /PEARCUP_EXTERNAL_PEER_TEST_AUTOPLAY/)
   assert.doesNotMatch(appSource, /Start QVAC round|Next QVAC round|QVAC watch trivia/)
 })
 

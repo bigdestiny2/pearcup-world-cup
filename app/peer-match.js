@@ -60,12 +60,17 @@
     // longer than a fixed polling window on first boot.
     if (typeof root.PearCupOnPeerMatchState === 'function') {
       try {
+        const shootout = typeof state !== 'undefined' && state && state.shootout ? state.shootout : null
         root.PearCupOnPeerMatchState({
           state: currentState,
           active: Boolean(PM.active),
           started: Boolean(PM.started),
           code: PM.code || '',
-          channelBackend: PM.channel && PM.channel.backend ? PM.channel.backend : ''
+          channelBackend: PM.channel && PM.channel.backend ? PM.channel.backend : '',
+          kickIndex: PM.kIndex,
+          score: shootout
+            ? { you: Number(shootout.you) || 0, opp: Number(shootout.opp) || 0 }
+            : null
         })
       } catch (err) {}
     }
@@ -234,6 +239,21 @@
     renderShootoutHud()
 
     if (iAmShooter()) { showAimGrid(); startPowerMeter() } else { hideAimGrid(); stopPowerMeter(); showShootBanner('Keeper ready — waiting for their strike…', 'is-wait') }
+    scheduleExternalAutoplay()
+  }
+
+  function externalAutoplayEnabled () {
+    const env = (typeof process !== 'undefined' && process && process.env) || {}
+    return ['1', 'true', 'yes', 'on'].includes(String(env.PEARCUP_EXTERNAL_PEER_TEST_AUTOPLAY || '').toLowerCase())
+  }
+
+  function scheduleExternalAutoplay () {
+    if (!externalAutoplayEnabled() || !PM.started || PM.over || PM.busy) return
+    setTimeout(() => {
+      if (!PM.active || !PM.started || PM.over || PM.busy || state.shootout && state.shootout.phase !== 'aim') return
+      if (iAmShooter()) onZone('left-high')
+      else if (PM.remoteCommit) onZone('right-high')
+    }, 120)
   }
 
   // Aim-grid click router (called from app.js when a peer match is active).
@@ -267,6 +287,7 @@
     showAimGrid()
     showShootBanner('Now! pick your dive', 'is-goal')
     setTimeout(() => hideShootBanner(), 700)
+    scheduleExternalAutoplay()
   }
 
   function onDive (msg) {
@@ -332,7 +353,10 @@
     PM.commit = null; PM.myDive = null; PM.remoteCommit = null; PM.busy = false
     PM.kIndex += 1
     if (PM.kIndex >= TOTAL * 2) endMatch()
-    else setupKick()
+    else {
+      syncDiagnostics('playing')
+      setupKick()
+    }
   }
 
   function endMatch () {
