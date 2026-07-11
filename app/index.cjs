@@ -238,7 +238,20 @@ function writeJsonError (res, statusCode, message) {
 function rendererRuntimeOptions () {
   const fallback = {
     source: { path: null, loaded: false, rendererSafe: true },
-    sdkPackages: {},
+    // QVAC is safe to expose to the renderer because this configuration only
+    // names a public model export. WDK custody data is intentionally absent.
+    sdkPackages: {
+      qvac: {
+        enabled: true,
+        modelExport: 'QWEN3_1_7B_INST_Q4',
+        modelId: 'qvac-kawaii-qwen3-1.7b',
+        autoUnload: true,
+        loadModelOptions: {
+          modelType: 'llamacpp-completion',
+          modelConfig: { ctx_size: 2048 }
+        }
+      }
+    },
     compliance: {
       realMoneyEnabled: false,
       kycVerified: false,
@@ -253,7 +266,21 @@ function rendererRuntimeOptions () {
     }
     // This code runs in the Pear host process. The returned object is explicitly
     // QVAC-only; the WDK seed and all payout information stay in this process.
-    const settings = runtimeSettings.toRendererRuntimeSettings(runtimeSettings.loadRuntimeSettings())
+    let hostSettings = runtimeSettings.loadRuntimeSettings()
+    // The Pear host's cwd is not guaranteed to be the packaged app root. If
+    // the operator did not provide an external config, load the portable,
+    // QVAC-only config shipped beside this entrypoint so native Pear boots in
+    // the local-model lane instead of silently falling back to demo mode.
+    if (!hostSettings.sdkPackages || !hostSettings.sdkPackages.qvac) {
+      const path = require('node:path')
+      const appConfigPath = path.join(__dirname, 'config', 'pearcup.runtime.json')
+      const packagedSettings = runtimeSettings.loadRuntimeSettings({ configPath: appConfigPath })
+      if (packagedSettings.source && packagedSettings.source.loaded === true) hostSettings = packagedSettings
+    }
+    if (!hostSettings.sdkPackages || !hostSettings.sdkPackages.qvac) {
+      hostSettings = fallback
+    }
+    const settings = runtimeSettings.toRendererRuntimeSettings(hostSettings)
     tracePearBridge('runtime-options-state', '', settings.sdkPackages && settings.sdkPackages.qvac ? 'qvac-configured' : 'qvac-unconfigured')
     return settings
   } catch (err) {

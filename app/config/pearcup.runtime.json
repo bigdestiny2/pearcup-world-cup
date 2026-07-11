@@ -1,0 +1,73 @@
+{
+  "sdkPackages": {
+    "qvac": {
+      "enabled": true,
+      "modelExport": "QWEN3_1_7B_INST_Q4",
+      "modelId": "qvac-kawaii-qwen3-1.7b",
+      "autoUnload": true,
+      "preflightLoadModel": true,
+      "loadModelOptions": {
+        "modelType": "llamacpp-completion",
+        "modelConfig": {
+          "ctx_size": 2048
+        }
+      },
+      "refereeCompletionOptions": {
+        "temperature": 0,
+        "responseFormat": {
+          "type": "json_schema",
+          "json_schema": {
+            "name": "pearcup_referee_review",
+            "strict": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "ruling": {
+                  "type": "string",
+                  "enum": ["verified", "disputed"]
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "rationale": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "required": ["ruling", "confidence", "rationale"],
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "commentaryCompletionOptions": {
+        "temperature": 0.1,
+        "responseFormat": {
+          "type": "json_schema",
+          "json_schema": {
+            "name": "pearcup_commentary_segment",
+            "strict": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "maxLength": 360
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": ["text", "confidence"],
+              "additionalProperties": false
+            }
+          }
+        }
+      }
+    }
+  }
+}
