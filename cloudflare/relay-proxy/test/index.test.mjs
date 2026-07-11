@@ -16,7 +16,7 @@ test('only exposes the HiveRelay routes PearCup actually needs', () => {
 })
 
 test('targets only the configured bare origin and retains the safe SSE query', () => {
-  const target = relayTarget('http://172.86.76.209:9100', 'https://relay.example/api/swarm/events?channelId=a&token=b')
-  assert.equal(target.href, 'http://172.86.76.209:9100/api/swarm/events?channelId=a&token=b')
+  const target = relayTarget('https://relay-sg.p2phiverelay.xyz', 'https://relay.example/api/swarm/events?channelId=a&token=b')
+  assert.equal(target.href, 'https://relay-sg.p2phiverelay.xyz/api/swarm/events?channelId=a&token=b')
   assert.throws(() => relayTarget('https://user:pass@example.com/path', 'https://relay.example/api/token'))
 })
