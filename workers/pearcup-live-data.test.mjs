@@ -50,3 +50,54 @@ test('Cloudflare live relay serves a fixture-indexed odds registry without expos
   assert.equal(health.status, 200)
   assert.equal((await health.json()).fixtureCount, 1)
 })
+
+test('a stale KV snapshot self-heals on the next request and stays readable if the provider is down', async () => {
+  const kv = memoryKv()
+  const old = {
+    schema: 'pearcup-live-v2',
+    provider: 'football-data.org',
+    generatedAt: '2026-07-10T00:00:00.000Z',
+    activeMatch: { id: 1, status: 'TIMED', homeTeam: { name: 'Old' }, awayTeam: { name: 'Snapshot' } },
+    matches: []
+  }
+  const oldOdds = {
+    schema: 'pearcup-polymarket-v2',
+    provider: 'Polymarket',
+    generatedAt: old.generatedAt,
+    matches: {}
+  }
+  await kv.put('live-match.json', JSON.stringify(old))
+  await kv.put('polymarket-odds.json', JSON.stringify(oldOdds))
+
+  let providerCalls = 0
+  const worker = createLiveDataWorker({
+    now: () => NOW,
+    fetchImpl: async (url) => {
+      providerCalls += 1
+      if (String(url).includes('football-data.org')) {
+        return response({ matches: [{ id: 2, status: 'IN_PLAY', utcDate: '2026-07-10T11:00:00Z', homeTeam: { name: 'Fresh' }, awayTeam: { name: 'Match' } }] })
+      }
+      return response({ markets: [] })
+    }
+  })
+  const env = { FOOTBALL_DATA_KEY: 'secret-never-public', LIVE_DATA: kv, PUBLIC_CORS_ORIGINS: '*', MAX_STALE_SECONDS: '300' }
+
+  const healed = await worker.fetch(new Request('https://relay.example/v1/live-match.json'), env, { waitUntil () {} })
+  assert.equal(healed.status, 200)
+  assert.equal((await healed.json()).activeMatch.id, 2)
+  assert.equal(providerCalls, 1)
+
+  const staleKv = memoryKv()
+  await staleKv.put('live-match.json', JSON.stringify(old))
+  await staleKv.put('polymarket-odds.json', JSON.stringify(oldOdds))
+  const failing = createLiveDataWorker({
+    now: () => NOW,
+    fetchImpl: async () => { throw new Error('provider unavailable') }
+  })
+  const stale = await failing.fetch(new Request('https://relay.example/v1/live-match.json'), { ...env, LIVE_DATA: staleKv }, { waitUntil () {} })
+  assert.equal(stale.status, 200)
+  assert.equal((await stale.json()).activeMatch.id, 1)
+  const health = await failing.fetch(new Request('https://relay.example/healthz'), { ...env, LIVE_DATA: staleKv }, { waitUntil () {} })
+  assert.equal(health.status, 503)
+  assert.equal((await health.json()).status, 'stale')
+})

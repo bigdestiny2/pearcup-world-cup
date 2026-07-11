@@ -101,6 +101,12 @@ function snapshotFresh (snapshot, now, maxStaleMs) {
 }
 
 export function createLiveDataWorker ({ fetchImpl = fetch, now = () => new Date() } = {}) {
+  // A scheduled event is the normal refresh path, but Cloudflare can delay a
+  // cron invocation during deploys or transient platform incidents. Keep the
+  // public endpoint self-healing as well: the first request after the freshness
+  // window performs one refresh, while concurrent requests share that promise.
+  let refreshInFlight = null
+
   async function getJson (env, key) {
     return env.LIVE_DATA && typeof env.LIVE_DATA.get === 'function' ? env.LIVE_DATA.get(key, 'json') : null
   }
@@ -137,8 +143,27 @@ export function createLiveDataWorker ({ fetchImpl = fetch, now = () => new Date(
 
   async function ensureSnapshots (env) {
     const [live, odds] = await Promise.all([getJson(env, LIVE_KEY), getJson(env, ODDS_KEY)])
-    if (live && odds) return { live, odds }
-    return refresh(env)
+    const maxStaleMs = integerInRange(env.MAX_STALE_SECONDS, 300, 60, 86_400) * 1000
+    const fresh = live && odds && snapshotFresh(live, now(), maxStaleMs) && snapshotFresh(odds, now(), maxStaleMs)
+    if (fresh) return { live, odds }
+
+    // If the provider is temporarily unavailable, retain the last-known-good
+    // payload so clients can still render the match and correctly label it
+    // stale via /healthz. A later request will retry after this promise settles.
+    try {
+      return await refreshGuarded(env)
+    } catch (error) {
+      if (live && odds) return { live, odds, refreshError: error }
+      throw error
+    }
+  }
+
+  async function refreshGuarded (env) {
+    if (refreshInFlight) return refreshInFlight
+    refreshInFlight = refresh(env).finally(() => {
+      refreshInFlight = null
+    })
+    return refreshInFlight
   }
 
   return {
@@ -181,9 +206,9 @@ export function createLiveDataWorker ({ fetchImpl = fetch, now = () => new Date(
       return json(request, env, { error: 'not_found' }, { status: 404 })
     },
     async scheduled (_event, env, ctx) {
-      ctx.waitUntil(refresh(env))
+      ctx.waitUntil(refreshGuarded(env))
     },
-    refresh
+    refresh: refreshGuarded
   }
 }
 
