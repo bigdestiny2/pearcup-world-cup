@@ -271,7 +271,11 @@
       current.error = ''
     } catch (error) {
       // An unsigned first visit is normal; show an invitation, not an error.
-      current.error = error && error.status === 401 ? '' : (error && error.message ? error.message : '')
+      if (error && error.status === 401) current.error = ''
+      // A raw fetch failure has no HTTP status: the service is unreachable.
+      // Passkey sync is optional, so say that instead of leaking "Failed to fetch".
+      else if (!error || !error.status) current.error = 'Passkey sync is offline right now. It is optional — everything else works without it.'
+      else current.error = error.message || ''
     }
     notify()
     return status()
