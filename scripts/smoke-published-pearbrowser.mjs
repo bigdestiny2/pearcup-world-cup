@@ -305,7 +305,7 @@ function checkWatchSync (watchSync) {
   if (!watchSync.includes('PearCupPeerNet')) errors.push('published watch-sync.js does not use shared PearCup peer transport')
   if (!watchSync.includes('pearcupWatchSyncModule')) errors.push('published watch-sync.js does not mark module readiness')
   for (const [needle, message] of [
-    ['function challenge (peerId)', 'published watch-sync.js does not expose same-room watcher challenges'],
+    ['function challenge (peerId', 'published watch-sync.js does not expose same-room watcher challenges'],
     ['function acceptChallenge', 'published watch-sync.js cannot accept same-room watcher challenges'],
     ['function declineChallenge', 'published watch-sync.js cannot decline same-room watcher challenges'],
     ['function renderChallengeList', 'published watch-sync.js cannot render challengeable watchers'],
