@@ -7,20 +7,25 @@ const vm = require('node:vm')
 const hiveRelaySource = readFileSync(join(__dirname, 'peer-hiverelay.js'), 'utf8')
 const peerNetSource = readFileSync(join(__dirname, 'peer-net.js'), 'utf8')
 
-function waitFor (predicate, label = 'condition') {
+function waitFor (predicate, label = 'condition', timeoutMs = 2500) {
   return new Promise((resolve, reject) => {
     const started = Date.now()
     const tick = () => {
       if (predicate()) return resolve()
-      if (Date.now() - started > 2500) return reject(new Error(`timed out waiting for ${label}`))
+      if (Date.now() - started > timeoutMs) return reject(new Error(`timed out waiting for ${label}`))
       setTimeout(tick, 10)
     }
     tick()
   })
 }
 
-function jsonResponse (body, status = 200) {
-  return { ok: status >= 200 && status < 300, status, json: async () => body }
+function jsonResponse (body, status = 200, headers = {}) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: { get: name => headers[String(name).toLowerCase()] || null },
+    json: async () => body
+  }
 }
 
 function base64 (value) {
@@ -34,6 +39,7 @@ function createOutboxLogFixture () {
   const channels = new Map()
   const descriptors = new Map()
   const calls = []
+  const rateLimits = new Map()
   let nextChannel = 0
   let nextToken = 0
 
@@ -71,6 +77,11 @@ function createOutboxLogFixture () {
       const path = parsed.pathname
       const method = (init.method || 'GET').toUpperCase()
       calls.push({ path, method, body: init.body || '' })
+      const remaining = rateLimits.get(path) || 0
+      if (remaining > 0) {
+        rateLimits.set(path, remaining - 1)
+        return jsonResponse({ error: 'rate limited by test fixture' }, 429, { 'retry-after': '0' })
+      }
       if (path === '/api/token' && method === 'POST') return jsonResponse({ token: `token-${++nextToken}` })
       if (path === '/api/bridge/status' && method === 'GET') return jsonResponse({ ready: true, service: 'outboxlog' })
       if (path === '/api/swarm/join' && method === 'POST') {
@@ -91,6 +102,11 @@ function createOutboxLogFixture () {
                 if (this.closed) return
                 this.closed = true
                 leave(channelId)
+                try { controller.close() } catch {}
+              },
+              disconnect () {
+                if (this.closed) return
+                this.closed = true
                 try { controller.close() } catch {}
               }
             }
@@ -135,6 +151,35 @@ function createOutboxLogFixture () {
     inject (channelId, frame) {
       const channel = channels.get(channelId)
       if (channel && channel.source) event(channel.source, { type: 'message', peerId: 'attacker', data: base64(frame) })
+    },
+    drop (channelId) {
+      const channel = channels.get(channelId)
+      if (channel && channel.source) {
+        channel.source.close()
+        return true
+      }
+      return false
+    },
+    dropFirstOpen () {
+      for (const [channelId, channel] of channels) {
+        if (channel.source) {
+          channel.source.close()
+          return channelId
+        }
+      }
+      return ''
+    },
+    dropStreamWithoutLeaving () {
+      for (const [channelId, channel] of channels) {
+        if (channel.source && typeof channel.source.disconnect === 'function') {
+          channel.source.disconnect()
+          return channelId
+        }
+      }
+      return ''
+    },
+    rateLimit (path, count = 1) {
+      rateLimits.set(path, Math.max(0, Number(count) || 0))
     },
     channelIds () { return [...channels.keys()] }
   }
@@ -207,6 +252,47 @@ test('HiveRelay transport delivers a signed queued message between isolated brow
   guestChannel.close()
 })
 
+test('HiveRelay backs off a transient 429 and still delivers the queued turn frame', async () => {
+  const relay = createOutboxLogFixture()
+  const host = createClient(relay)
+  const guest = createClient(relay)
+  const topic = host.context.PearCupPeerNet.GAME_TOPIC('relay-rate-limit-room')
+  const hostChannel = host.context.PearCupPeerNet.createChannel(topic)
+  const guestChannel = guest.context.PearCupPeerNet.createChannel(topic)
+  const received = []
+  guestChannel.onMessage(message => received.push(message))
+
+  await Promise.all([hostChannel.ready, guestChannel.ready])
+  await waitFor(() => relay.channelIds().length === 2, 'rate-limit fixture channels')
+  relay.rateLimit('/api/swarm/send', 1)
+  hostChannel.send({ t: 'commit', kickId: 0, hash: 'rate-limit-proof', room: 'relay-rate-limit-room', sender: 'host' })
+
+  await waitFor(() => received.some(message => message && message.t === 'commit'), 'delivery after transient 429', 5_000)
+  assert.ok(relay.calls.filter(call => call.path === '/api/swarm/send').length >= 2)
+  hostChannel.close()
+  guestChannel.close()
+})
+
+test('HiveRelay advisory bursts cannot starve a newer critical turn frame', async () => {
+  const relay = createOutboxLogFixture()
+  const host = createClient(relay)
+  const guest = createClient(relay)
+  const topic = host.context.PearCupPeerNet.GAME_TOPIC('relay-priority-room')
+  const hostChannel = host.context.PearCupPeerNet.createChannel(topic)
+  const guestChannel = guest.context.PearCupPeerNet.createChannel(topic)
+  const received = []
+  guestChannel.onMessage(message => received.push(message))
+
+  await Promise.all([hostChannel.ready, guestChannel.ready])
+  await waitFor(() => relay.channelIds().length === 2, 'priority fixture channels')
+  for (let i = 0; i < 20; i++) hostChannel.send({ t: 'nudge', kickId: 0, want: 'dive' })
+  hostChannel.send({ t: 'commit', kickId: 1, hash: 'priority-proof', room: 'relay-priority-room', sender: 'host' })
+
+  await waitFor(() => received.some(message => message && message.t === 'commit' && message.kickId === 1), 'critical frame after advisory burst', 5_000)
+  hostChannel.close()
+  guestChannel.close()
+})
+
 test('HiveRelay replay descriptors never become live recipients or generate replay ACKs', async () => {
   const relay = createOutboxLogFixture()
   const host = createClient(relay)
@@ -240,6 +326,36 @@ test('HiveRelay replay descriptors never become live recipients or generate repl
   lateChannel.close()
 })
 
+test('HiveRelay match peer limit replaces a stale native channel mapping', async () => {
+  const relay = createOutboxLogFixture()
+  const host = createClient(relay, { fetchEvents: true })
+  const topic = host.context.PearCupPeerNet.GAME_TOPIC('runtime-stale-peer-room')
+  const makeChannel = (peerLimit = 0) => host.context.PearCupHiveRelay.createChannel(topic, {
+    rootObject: host.context,
+    ...(peerLimit ? { peerLimit } : {})
+  })
+  const hostChannel = makeChannel(1)
+  const firstChannel = makeChannel()
+  const secondChannel = makeChannel()
+  const receivedBySecond = []
+  secondChannel.onMessage(message => receivedBySecond.push(message))
+
+  await Promise.all([hostChannel.ready, firstChannel.ready, secondChannel.ready])
+  await waitFor(() => relay.calls.filter(call => call.path === '/api/swarm/join').length === 3, 'stale-peer fixture joins')
+  await waitFor(() => relay.channelIds().length === 3, `stale-peer fixture channels (${relay.channelIds().length})`)
+  await new Promise(resolve => setTimeout(resolve, 300))
+  hostChannel.send({ t: 'commit', kickId: 0, hash: 'fresh-peer-proof' })
+  await waitFor(() => receivedBySecond.some(message => message && message.t === 'commit'), 'fresh peer delivery', 5_000)
+
+  const sendCalls = relay.calls.filter(call => call.path === '/api/swarm/send')
+  const targets = new Set(sendCalls.map(call => JSON.parse(call.body || '{}').peerId).filter(Boolean))
+  assert.equal(targets.has(relay.channelIds()[1]), false, 'host must stop targeting the stale first peer')
+  assert.ok(targets.has(relay.channelIds()[2]), 'host must target the newest live peer')
+  hostChannel.close()
+  firstChannel.close()
+  secondChannel.close()
+})
+
 test('HiveRelay fetch-based SSE path delivers between Pear Runtime clients without EventSource', async () => {
   const relay = createOutboxLogFixture()
   const host = createClient(relay, { fetchEvents: true })
@@ -258,6 +374,101 @@ test('HiveRelay fetch-based SSE path delivers between Pear Runtime clients witho
     t: 'hello', room: 'runtime-fetch-sse-room', sender: 'native-host'
   })
   assert.ok(relay.calls.some(call => call.path === '/api/swarm/events' && call.method === 'GET'))
+  hostChannel.close()
+  guestChannel.close()
+})
+
+test('HiveRelay re-joins a stalled runtime stream before retrying a critical turn frame', async () => {
+  const relay = createOutboxLogFixture()
+  const host = createClient(relay, { fetchEvents: true })
+  const guest = createClient(relay, { fetchEvents: true })
+  const topic = host.context.PearCupPeerNet.GAME_TOPIC('runtime-rejoin-room')
+  const hostChannel = host.context.PearCupPeerNet.createChannel(topic)
+  const guestChannel = guest.context.PearCupPeerNet.createChannel(topic)
+  const received = []
+  guestChannel.onMessage(message => received.push(message))
+
+  await Promise.all([hostChannel.ready, guestChannel.ready])
+  await waitFor(() => relay.channelIds().length === 2, 'initial runtime relay channels')
+  await waitFor(() => Boolean(relay.dropFirstOpen()), 'open runtime relay stream')
+  assert.equal(relay.channelIds().length, 1)
+  await new Promise(resolve => setTimeout(resolve, 50))
+  assert.equal(received.length, 0)
+  hostChannel.send({ t: 'commit', kickId: 0, hash: 'rejoin-proof', room: 'runtime-rejoin-room', sender: 'host' })
+  guestChannel.send({ t: 'dive', kickId: 0, zone: 'right-high', room: 'runtime-rejoin-room', sender: 'guest' })
+
+  await waitFor(() => received.some(message => message && message.t === 'commit' && message.kickId === 0), 'critical frame after relay rejoin', 16_000)
+  assert.equal(relay.channelIds().length, 2)
+  hostChannel.close()
+  guestChannel.close()
+})
+
+test('HiveRelay exposes an explicit recovery hook for a keeper-side stalled stream', async () => {
+  const relay = createOutboxLogFixture()
+  const host = createClient(relay, { fetchEvents: true })
+  const guest = createClient(relay, { fetchEvents: true })
+  const topic = host.context.PearCupPeerNet.GAME_TOPIC('runtime-explicit-recovery-room')
+  const hostChannel = host.context.PearCupPeerNet.createChannel(topic)
+  const guestChannel = guest.context.PearCupPeerNet.createChannel(topic)
+  const received = []
+  guestChannel.onMessage(message => received.push(message))
+
+  await Promise.all([hostChannel.ready, guestChannel.ready])
+  const initialIds = relay.channelIds()
+  assert.equal(initialIds.length, 2)
+  await hostChannel.requestRecovery('keeper-side test recovery')
+  await waitFor(() => relay.channelIds().length === 2, 'explicit recovery channels')
+  hostChannel.send({ t: 'commit', kickId: 0, hash: 'explicit-recovery-proof', room: 'runtime-explicit-recovery-room', sender: 'host' })
+  await waitFor(() => received.some(message => message && message.t === 'commit' && message.kickId === 0), 'critical frame after explicit recovery', 4_000)
+  assert.notDeepEqual(relay.channelIds(), initialIds)
+  hostChannel.close()
+  guestChannel.close()
+})
+
+test('HiveRelay does not churn healthy match streams during quiet play', async () => {
+  const relay = createOutboxLogFixture()
+  const host = createClient(relay, { fetchEvents: true })
+  const guest = createClient(relay, { fetchEvents: true })
+  const topic = host.context.PearCupPeerNet.GAME_TOPIC('runtime-idle-refresh-room')
+  const hostChannel = host.context.PearCupPeerNet.createChannel(topic)
+  const guestChannel = guest.context.PearCupPeerNet.createChannel(topic)
+  const received = []
+  guestChannel.onMessage(message => received.push(message))
+  hostChannel.setRefreshEnabled(true)
+  guestChannel.setRefreshEnabled(true)
+
+  await Promise.all([hostChannel.ready, guestChannel.ready])
+  await waitFor(() => relay.channelIds().length === 2, 'initial idle-refresh channels')
+  await waitFor(() => relay.calls.filter(call => call.path === '/api/swarm/events').length === 2, 'open quiet-play streams')
+  const joinsBeforeQuietPeriod = relay.calls.filter(call => call.path === '/api/swarm/join').length
+  await new Promise(resolve => setTimeout(resolve, 8_500))
+  assert.equal(relay.calls.filter(call => call.path === '/api/swarm/join').length, joinsBeforeQuietPeriod)
+  hostChannel.send({ t: 'commit', kickId: 0, hash: 'idle-refresh-proof', room: 'runtime-idle-refresh-room', sender: 'host' })
+
+  await waitFor(() => received.some(message => message && message.t === 'commit' && message.kickId === 0), 'critical frame after quiet period', 4_000)
+  hostChannel.close()
+  guestChannel.close()
+})
+
+test('HiveRelay reopens a dropped fetch SSE stream without changing its channel', async () => {
+  const relay = createOutboxLogFixture()
+  const host = createClient(relay, { fetchEvents: true })
+  const guest = createClient(relay, { fetchEvents: true })
+  const topic = host.context.PearCupPeerNet.GAME_TOPIC('runtime-sse-reconnect-room')
+  const hostChannel = host.context.PearCupPeerNet.createChannel(topic)
+  const guestChannel = guest.context.PearCupPeerNet.createChannel(topic)
+  const received = []
+  guestChannel.onMessage(message => received.push(message))
+
+  await Promise.all([hostChannel.ready, guestChannel.ready])
+  await waitFor(() => relay.calls.filter(call => call.path === '/api/swarm/events').length === 2, 'initial reconnect streams')
+  const channelIdsBefore = relay.channelIds().sort()
+  await waitFor(() => Boolean(relay.dropStreamWithoutLeaving()), 'open stream to disconnect', 2_000)
+  await waitFor(() => relay.calls.filter(call => call.path === '/api/swarm/events').length >= 3, 'automatic fetch SSE reconnect', 4_000)
+  assert.deepEqual(relay.channelIds().sort(), channelIdsBefore)
+
+  hostChannel.send({ t: 'commit', kickId: 0, hash: 'sse-reconnect-proof', room: 'runtime-sse-reconnect-room', sender: 'host' })
+  await waitFor(() => received.some(message => message && message.t === 'commit' && message.kickId === 0), 'delivery after fetch SSE reconnect', 4_000)
   hostChannel.close()
   guestChannel.close()
 })

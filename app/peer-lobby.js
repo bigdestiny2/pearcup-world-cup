@@ -47,8 +47,8 @@
     if (!L.sweeper) L.sweeper = setInterval(sweep, HEARTBEAT_MS)
   }
 
-  function leave () {
-    send({ t: 'gone' })
+  function leave (silent = false) {
+    if (!silent) send({ t: 'gone' })
     if (L.heartbeat) { clearInterval(L.heartbeat); L.heartbeat = null }
     if (L.sweeper) { clearInterval(L.sweeper); L.sweeper = null }
     if (L.channel) { try { L.channel.close() } catch (e) {} L.channel = null }

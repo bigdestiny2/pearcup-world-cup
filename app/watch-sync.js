@@ -330,6 +330,10 @@
     if (!pending || (m.challengeId && pending.challengeId !== m.challengeId)) return
     pending.status = 'accepted'
     clearChallengeTimer(m.from, pending.challengeId)
+    // The match stream is authoritative now. Close the watch transport after
+    // the ACK has been applied, but retain the accepted record long enough for
+    // the shell/audit surface to show the transition.
+    leave(true, true)
     if (typeof showToast === 'function') showToast(`${esc(m.name || pending.name || 'Watcher')} accepted - opening Penalty Clash.`)
     renderChallengeList()
   }
@@ -401,10 +405,17 @@
       btn.addEventListener('click', () => declineChallenge(btn.dataset.watchDecline)))
   }
 
-  function leave () {
-    send({ t: 'bye' })
+  function leave (silent = false, preserveAccepted = false) {
+    if (!silent) send({ t: 'bye' })
     if (WS.channel) { try { WS.channel.close() } catch (e) {} }
-    clearChallenges()
+    if (preserveAccepted) {
+      WS.timers.forEach(timer => clearTimeout(timer))
+      WS.timers.clear()
+      WS.incoming.clear()
+      for (const [peerId, pending] of WS.outgoing) {
+        if (!pending || pending.status !== 'accepted') WS.outgoing.delete(peerId)
+      }
+    } else clearChallenges()
     if (WS.heartbeat) { clearInterval(WS.heartbeat); WS.heartbeat = null }
     clearPeers('leave')
     WS.channel = null; WS.topic = null

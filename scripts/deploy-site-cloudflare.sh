@@ -6,16 +6,21 @@ set -euo pipefail
 
 PROJECT="${1:-pearcup-kawaii}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SITE_DIR="$ROOT/site"
+DIST_DIR="$ROOT/cloudflare/pages-dist"
 
-echo "→ Deploying $SITE_DIR to Cloudflare Pages project '$PROJECT'"
+if [[ ! -f "$DIST_DIR/index.html" || ! -f "$DIST_DIR/play/index.html" ]]; then
+  echo "→ Building the combined marketing + browser game artifact"
+  (cd "$ROOT" && npm run build:cloudflare-pages)
+fi
+
+echo "→ Deploying $DIST_DIR to Cloudflare Pages project '$PROJECT'"
 
 # Create the Pages project if it doesn't exist yet (ignore 'already exists').
 npx wrangler pages project create "$PROJECT" --production-branch main 2>/dev/null \
   || echo "  (project already exists — reusing)"
 
 # Upload the static site. Prints the deployment URL on success.
-npx wrangler pages deploy "$SITE_DIR" \
+npx wrangler pages deploy "$DIST_DIR" \
   --project-name "$PROJECT" \
   --branch main \
   --commit-dirty=true

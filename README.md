@@ -12,6 +12,8 @@ pear run pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo
 
 **Production link:** `pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo` — seeded / HiveRelay‑pinned, shipping the **live 2026 World Cup knockout bracket**, the watch party, and the P2P penalty minigame. No Pear yet? Grab it at [pears.com](https://docs.pears.com/), or run it [locally](#run-locally).
 
+**Play in a normal browser:** [pearcup-kawaii.pages.dev/play/#home](https://pearcup-kawaii.pages.dev/play/#home) — the same PearCup shell with portable identity, live data, demo pools, brackets, watch rooms, and cross-platform friend matches.
+
 [▶ Watch the 2:20 demo](site/assets/demo.mp4) · [View the press kit](site/assets/press/) · [Open the marketing site](https://pearcup-kawaii.pages.dev)
 
 ![PearCup current match-day home screen](site/assets/shots/current-home.jpg)
@@ -23,6 +25,8 @@ pear run pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo
 - **🎮 P2P penalty minigame** — real peer‑to‑peer penalty shootouts (Penalty Clash) over the swarm, with matchmaking, invites, and hidden‑guest handshakes.
 - **💸 Safe money boundary** — the local demo wallet supports play testing; no pool entry sends wallet material, starts a WDK payment, or creates a cash payout. QVAC remains available for game evidence.
 - **🌐 Cross-platform multiplayer** — normal browsers, PearBrowser, and Pear Runtime can share signed `pearcup-sync-v2` rooms through a dedicated HiveRelay OutboxLog endpoint; direct Holepunch remains an optional fast path/fallback.
+
+The release gate currently covers **414 automated checks**, plus the Pear Runtime, PearBrowser/Hyper, live HiveRelay, and dual-client match smoke tests.
 
 ## Repository scope
 

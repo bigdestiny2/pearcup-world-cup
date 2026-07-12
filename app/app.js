@@ -131,6 +131,8 @@ try {
 }
 let bracketRenderSequence = 0
 let gameRenderSequence = 0
+let liveBracketFixtures = []
+let liveBracketSnapshotKey = ''
 
 const pools = [
   { tier: 10, max: 256, heat: 'Open' },
@@ -702,6 +704,12 @@ function setView (view) {
   const nextView = normalizeStartupView(view)
   if (!nextView) return
   state.view = nextView
+  // A penalty match intentionally pauses the pool/lobby/watch relay streams to
+  // protect turn latency. Re-open the pool ledger when the user navigates back
+  // to a non-game surface instead of leaving the live pools permanently stale.
+  if (nextView !== 'games' && window.PearCupPoolSync && window.PearCupPoolSync._state && !window.PearCupPoolSync._state.channel) {
+    startPoolSync()
+  }
   syncLocationHashForView(nextView)
   persist()
   renderView(nextView)
@@ -845,7 +853,7 @@ function applyPortableIdentity (account) {
   state.username = String(account.displayName || state.username || 'captain').slice(0, 18)
   state.team = teams.some(team => team.id === account.team) ? account.team : state.team
   persist()
-  if (changed) startPoolSync()
+  if (changed && !pendingFriendJoinCode()) startPoolSync()
   renderTeams()
   renderProfile()
   showToast('PearCup account linked on this device')
@@ -2549,8 +2557,93 @@ function getPick (matchId) {
   return state.picks[matchId] || null
 }
 
-function makeMatch (id, time, status, slots, score = [null, null]) {
-  return { id, time, status, slots, score }
+function makeMatch (id, time, status, slots, score = [null, null], winner = null) {
+  return { id, time, status, slots, score, winner }
+}
+
+const FOOTBALL_TEAM_IDS = {
+  ARG: 'ar', AUS: 'au', AUT: 'at', BEL: 'be', BIH: 'ba', BRA: 'br', CAN: 'ca', CIV: 'ci', CMR: 'cm',
+  COD: 'cd', COL: 'co', CPV: 'cv', CRO: 'hr', ECU: 'ec', EGY: 'eg', ENG: 'eng', ESP: 'es', FRA: 'fr',
+  GER: 'de', GHA: 'gh', JPN: 'jp', MAR: 'ma', MEX: 'mx', NED: 'nl', NOR: 'no', PAR: 'py', POR: 'pt',
+  SEN: 'sn', SUI: 'ch', SWE: 'se', USA: 'us', RSA: 'za', ALG: 'dz'
+}
+
+const BRACKET_STAGE = {
+  LAST_32: { prefix: 'r32', count: 16 },
+  ROUND_OF_32: { prefix: 'r32', count: 16 },
+  LAST_16: { prefix: 'r16', count: 8 },
+  ROUND_OF_16: { prefix: 'r16', count: 8 },
+  QUARTER_FINALS: { prefix: 'qf', count: 4 },
+  SEMI_FINALS: { prefix: 'sf', count: 2 },
+  FINAL: { prefix: 'final', count: 1 }
+}
+
+function footballTeamId (providerTeam) {
+  if (!providerTeam) return null
+  const tla = String(providerTeam.tla || '').toUpperCase()
+  if (FOOTBALL_TEAM_IDS[tla] && teams.some(team => team.id === FOOTBALL_TEAM_IDS[tla])) return FOOTBALL_TEAM_IDS[tla]
+  const name = String(providerTeam.shortName || providerTeam.name || '').trim().toLowerCase()
+  const aliases = { 'united states of america': 'united states', usa: 'united states', 'côte d’ivoire': 'ivory coast', 'côte d\'ivoire': 'ivory coast', 'congo dr': 'dr congo', 'bosnia-herzegovina': 'bosnia and herzegovina', 'cape verde islands': 'cabo verde' }
+  const canonical = aliases[name] || name
+  const team = teams.find(candidate => candidate.name.toLowerCase() === canonical)
+  return team ? team.id : null
+}
+
+function providerBracketMatch (fixture, id, fallbackTime = '') {
+  const home = footballTeamId(fixture && fixture.homeTeam)
+  const away = footballTeamId(fixture && fixture.awayTeam)
+  if (!home || !away) return null
+  const rawStatus = String(fixture.status || '').toUpperCase()
+  const scoreData = fixture.score || {}
+  const score = scoreData.fullTime || scoreData.regularTime || {}
+  const decided = rawStatus === 'FINISHED'
+  const status = decided
+    ? (scoreData.duration === 'PENALTY_SHOOTOUT' ? 'PEN' : scoreData.duration === 'EXTRA_TIME' ? 'AET' : 'FT')
+    : ['IN_PLAY', 'LIVE'].includes(rawStatus)
+      ? (fixture.minute ? `${fixture.minute}'` : 'LIVE')
+      : rawStatus === 'PAUSED' ? 'HT' : 'Picks open'
+  const winner = scoreData.winner === 'HOME_TEAM' ? home : scoreData.winner === 'AWAY_TEAM' ? away : null
+  let time = fallbackTime
+  if (fixture.utcDate) {
+    const parsed = new Date(fixture.utcDate)
+    if (!Number.isNaN(parsed.getTime())) time = parsed.toLocaleString([], { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+  }
+  return makeMatch(id, time, status, [home, away], [score.home ?? null, score.away ?? null], winner)
+}
+
+function setBracketFixturesFromSnapshot (snapshot) {
+  const fixtures = snapshot && Array.isArray(snapshot.matches) ? snapshot.matches : []
+  const usable = fixtures.filter(fixture => BRACKET_STAGE[String(fixture && fixture.stage || '').toUpperCase()])
+  const key = JSON.stringify(usable.map(fixture => [fixture.id, fixture.stage, fixture.status, fixture.utcDate, fixture.lastUpdated, fixture.homeTeam, fixture.awayTeam, fixture.score]))
+  if (key === liveBracketSnapshotKey) return false
+  liveBracketSnapshotKey = key
+  liveBracketFixtures = usable
+  return true
+}
+
+function liveMatchesForStage (stageNames, prefix, count, fallbacks = [], nextStageNames = [], orderedNextMatches = []) {
+  const accepted = new Set(stageNames)
+  let fixtures = liveBracketFixtures
+    .filter(fixture => accepted.has(String(fixture.stage || '').toUpperCase()))
+    .sort((left, right) => Date.parse(left.utcDate || '') - Date.parse(right.utcDate || '') || Number(left.id || 0) - Number(right.id || 0))
+  if (nextStageNames.length && fixtures.length === count) {
+    const nextAccepted = new Set(nextStageNames)
+    const nextFixtures = liveBracketFixtures
+      .filter(fixture => nextAccepted.has(String(fixture.stage || '').toUpperCase()))
+      .sort((left, right) => Date.parse(left.utcDate || '') - Date.parse(right.utcDate || '') || Number(left.id || 0) - Number(right.id || 0))
+    const ordered = []
+    const targetTeamIds = orderedNextMatches.length
+      ? orderedNextMatches.flatMap(match => match.slots)
+      : nextFixtures.flatMap(fixture => [footballTeamId(fixture.homeTeam), footballTeamId(fixture.awayTeam)])
+    for (const teamId of targetTeamIds) {
+        const feeder = teamId && fixtures.find(fixture => !ordered.includes(fixture) && [footballTeamId(fixture.homeTeam), footballTeamId(fixture.awayTeam)].includes(teamId))
+        if (feeder) ordered.push(feeder)
+    }
+    if (ordered.length === count) fixtures = ordered
+  }
+  return fixtures.slice(0, count)
+    .map((fixture, index) => providerBracketMatch(fixture, `${prefix}-${index + 1}`, fallbacks[index] && fallbacks[index].time || ''))
+    .filter(Boolean)
 }
 
 // Rolling round-by-round pools: the tree advances on ACTUAL results, not the
@@ -2563,6 +2656,7 @@ function matchDecided (status) {
 
 function actualWinner (match) {
   if (!match || !matchDecided(match.status)) return null
+  if (match.winner && match.slots.includes(match.winner)) return match.winner
   const [home, away] = match.slots
   if (!home || !away) return null
   const [sa, sb] = match.score
@@ -2582,7 +2676,10 @@ function canPickMatch (match) {
 }
 
 function buildRounds () {
-  const round32 = round32Matches.map(match => makeMatch(match.id, match.time, match.status, match.slots, match.score))
+  const staticRound32 = round32Matches.map(match => makeMatch(match.id, match.time, match.status, match.slots, match.score))
+  const liveRound16Seed = liveMatchesForStage(['LAST_16', 'ROUND_OF_16'], 'r16', 8, [], ['QUARTER_FINALS'])
+  const liveRound32 = liveMatchesForStage(['LAST_32', 'ROUND_OF_32'], 'r32', 16, staticRound32, ['LAST_16', 'ROUND_OF_16'], liveRound16Seed)
+  const round32 = liveRound32.length === 16 ? liveRound32 : staticRound32
   const byId = new Map(round32.map(m => [m.id, m]))
   const winOf = id => actualWinner(byId.get(id))
   const synth = (id, time) => {
@@ -2602,19 +2699,27 @@ function buildRounds () {
     synth('r16-7', 'Tue, 07/07, 00:00'),
     synth('r16-8', 'Tue, 07/07, 04:00')
   ]
+  const liveRound16 = liveRound16Seed.length === 8 ? liveRound16Seed : liveMatchesForStage(['LAST_16', 'ROUND_OF_16'], 'r16', 8, round16, ['QUARTER_FINALS'])
+  if (liveRound16.length === 8) liveRound16.forEach((match, index) => { round16[index] = match; byId.set(match.id, match) })
   const qf = [
     synth('qf-1', 'Thu, 07/09, 00:00'),
     synth('qf-2', 'Fri, 07/10, 00:00'),
     synth('qf-3', 'Fri, 07/10, 04:00'),
     synth('qf-4', 'Sat, 07/11, 00:00')
   ]
+  const liveQf = liveMatchesForStage(['QUARTER_FINALS'], 'qf', 4, qf, ['SEMI_FINALS'])
+  if (liveQf.length === 4) liveQf.forEach((match, index) => { qf[index] = match; byId.set(match.id, match) })
   const semi = [
     synth('sf-1', 'Tue, 07/14, 00:00'),
     synth('sf-2', 'Wed, 07/15, 00:00')
   ]
+  const liveSemi = liveMatchesForStage(['SEMI_FINALS'], 'sf', 2, semi, ['FINAL'])
+  if (liveSemi.length === 2) liveSemi.forEach((match, index) => { semi[index] = match; byId.set(match.id, match) })
   const final = [
     synth('final-1', 'Sun, 07/19, 01:00')
   ]
+  const liveFinal = liveMatchesForStage(['FINAL'], 'final', 1, final)
+  if (liveFinal.length === 1) liveFinal.forEach((match, index) => { final[index] = match; byId.set(match.id, match) })
 
   return [
     { key: 'round32', label: 'Round of 32', matches: round32 },
@@ -3110,6 +3215,7 @@ function mapFeed (st, provider, data) {
     // The worker relay ships a v2 snapshot (`activeMatch` plus the full fixture
     // list). Direct Football-Data responses remain supported for operator testing.
     const snapshot = data && data.activeMatch ? data : null
+    if (snapshot) setBracketFixturesFromSnapshot(snapshot)
     const m = snapshot ? snapshot.activeMatch : (Array.isArray(data.matches) ? data.matches[0] : data)
     if (!m) throw new Error('No live match found')
     st.matchId = m.id || null
@@ -3615,6 +3721,7 @@ async function detectLiveRelay () {
     if (!res.ok) return
     const snapshot = await res.json()
     if (!snapshot || snapshot.schema !== 'pearcup-live-v2') throw new Error('Unsupported live relay snapshot')
+    const bracketChanged = setBracketFixturesFromSnapshot(snapshot)
     const match = snapshot.activeMatch || snapshot
     const stamp = Date.parse(snapshot.generatedAt || match.lastUpdated || match.utcDate || 0) || 0
     const maximumAge = productionLiveData ? Math.max(120_000, productionLiveData.pollMs * 4) : 5 * 60 * 1000
@@ -3630,6 +3737,7 @@ async function detectLiveRelay () {
       relayGeneratedAt: snapshot.generatedAt || match.lastUpdated || null
     }
     startLiveFeed()
+    if (bracketChanged && document.querySelector('#bracket')?.classList.contains('is-active')) renderBracket()
     if (document.querySelector('#watch')?.classList.contains('is-active')) renderWatch()
   } catch { /* no relay yet — stay on the simulated feed */ }
 }
@@ -4766,8 +4874,33 @@ function renderShootoutHud () {
   }
 }
 
-function showAimGrid () { const g = $('#aimGrid'); if (g) g.classList.add('is-live') }
-function hideAimGrid () { const g = $('#aimGrid'); if (g) g.classList.remove('is-live') }
+function setAimGridEnabled (enabled) {
+  const grid = $('#aimGrid')
+  if (!grid) return
+  grid.setAttribute('aria-hidden', enabled ? 'false' : 'true')
+  grid.querySelectorAll('.aim-zone').forEach(button => { button.disabled = !enabled })
+}
+function showAimGrid () {
+  const g = $('#aimGrid')
+  if (!g) return
+  g.classList.add('is-live')
+  setAimGridEnabled(true)
+}
+function hideAimGrid () {
+  const g = $('#aimGrid')
+  if (!g) return
+  g.classList.remove('is-live')
+  setAimGridEnabled(false)
+}
+function setAimGridLabels (isShoot) {
+  const grid = $('#aimGrid')
+  if (!grid) return
+  grid.setAttribute('aria-label', isShoot ? 'Pick where to shoot' : 'Pick where to dive')
+  grid.querySelectorAll('.aim-zone').forEach(button => {
+    const zone = button.dataset.zone || ''
+    button.setAttribute('aria-label', `${isShoot ? 'Aim' : 'Dive'} ${zone.replace('-', ' ')}`)
+  })
+}
 function startPowerMeter () { const f = $('#shootPowerFill'); if (f) f.classList.add('is-live') }
 function stopPowerMeter () { const f = $('#shootPowerFill'); if (f) f.classList.remove('is-live') }
 function hideOverlay () { const o = $('#shootoutOver'); if (o) o.hidden = true }
@@ -4828,6 +4961,11 @@ function startAimPhase () {
     const label = dock.querySelector('.power-label')
     if (label) label.innerHTML = isShoot ? 'Power — sweet spot is safe, full blast can burst through… or balloon over' : 'Watch the run-up — the striker leans before the strike (don\'t trust every lean)'
   }
+  // The same six-zone grid is used for shooting and keeping. Keep the controls
+  // physically identical so the two peers can submit a choice at the same
+  // protocol boundary, but change the accessible name and visible prompt so a
+  // keeper never sees a misleading "Aim" action while defending a kick.
+  setAimGridLabels(isShoot)
   hideShootBanner()
   showAimGrid()
   if (isShoot) startPowerMeter(); else stopPowerMeter()
@@ -5134,6 +5272,11 @@ if (typeof window !== 'undefined') {
         phase: snapshot && snapshot.phase || null,
         busy: Boolean(snapshot && snapshot.busy),
         remoteCommit: Boolean(snapshot && snapshot.remoteCommit),
+        sent: snapshot && snapshot.sent || null,
+        received: snapshot && snapshot.received || null,
+        lastMessage: snapshot && snapshot.lastMessage || null,
+        recoveryRequests: Number(snapshot && snapshot.recoveryRequests) || 0,
+        lastRecoveryReason: snapshot && snapshot.lastRecoveryReason || null,
         score: snapshot && snapshot.score || null
       })
     }
@@ -5356,8 +5499,8 @@ async function renderGames () {
   if (state.match && state.match.peer && window.PearCupPeerMatch) {
     // Presence is useful in the lobby, but its heartbeat competes with the
     // latency-sensitive match channel once a friend game is underway.
-    if (window.PearCupLobby && typeof window.PearCupLobby.leave === 'function') window.PearCupLobby.leave()
-    if (window.PearCupWatchSync && typeof window.PearCupWatchSync.leave === 'function') window.PearCupWatchSync.leave()
+    if (window.PearCupLobby && typeof window.PearCupLobby.leave === 'function') window.PearCupLobby.leave(true)
+    if (window.PearCupWatchSync && typeof window.PearCupWatchSync.leave === 'function') window.PearCupWatchSync.leave(true)
     if (window.PearCupPoolSync && typeof window.PearCupPoolSync.stop === 'function') window.PearCupPoolSync.stop()
     const arena0 = document.querySelector('#games .game-arena')
     if (arena0) arena0.classList.remove('is-lobby')
@@ -6266,10 +6409,11 @@ function boot () {
   bindCoreFallbackEvents()
   window.addEventListener('pearcup:p2p-backend', renderPeerBackendBadge)
   assertP2PModulesReady()
-  // A real app instance always joins pool sync. The hidden same-process
-  // readiness guest isolates the match transport so two embedded clients do
-  // not consume every long-lived SSE slot before their handshake begins.
-  if (!isRuntimeSelfTestGuest()) startPoolSync()
+  // A normal app instance joins pool sync, but a deep-linked friend match
+  // should reserve the relay budget for its latency-sensitive turn channel.
+  // The pool ledger is restarted automatically when the user navigates back to
+  // Home/Bracket after the match.
+  if (!isRuntimeSelfTestGuest() && !pendingFriendJoinCode()) startPoolSync()
   sendBootCheckpoint('boot:p2p-ready')
   bindEvents()
   sendBootCheckpoint('boot:events-bound')

@@ -16,17 +16,40 @@
   const MAX_MESSAGE_BYTES = 12 * 1024
   const MAX_PENDING = 16
   const MAX_SEEN = 512
-  const MAX_AGE_MS = 90 * 1000
+  const MAX_AGE_MS = 180 * 1000
   const ACK_AGE_MS = 30 * 1000
-  const RESEND_MS = 1500
-  const MIN_SEND_GAP_MS = 900
-  const MAX_ATTEMPTS = 6
+  // The public relay protects /api/swarm/send with a conservative per-client
+  // budget. A 300ms client gap was safe in a two-peer fixture but became a
+  // burst once ACKs, nudges, and recovery retries shared one IP bucket. Keep a
+  // single transport-wide budget so a match cannot self-rate-limit.
+  const RESEND_MS = 2000
+  const MIN_SEND_GAP_MS = 2000
+  const MAX_ATTEMPTS = 40
   const MAX_RATE_RETRIES = 3
   const MAX_CLOCK_SKEW_MS = 30 * 1000
-  const TURN_FRAME_TYPES = new Set(['commit', 'dive', 'reveal', 'nudge'])
+  const TURN_FRAME_TYPES = new Set(['commit', 'dive', 'reveal', 'resolved', 'nudge'])
+  const DELIVERY_FRAME_TYPES = new Set(['commit', 'dive', 'reveal', 'resolved'])
+  const DELIVERY_WATCHDOG_MS = 3_000
+  const DELIVERY_TIMEOUT_MS = 6_000
+  const REJOIN_COOLDOWN_MS = 8_000
+
+
 
   let identityPromise = null
   const relaySessionPromises = new Map()
+  const relayControlQueues = new Map()
+
+  function enqueueRelayControl (relayUrl, task) {
+    const previous = relayControlQueues.get(relayUrl) || Promise.resolve()
+    const next = previous.catch(() => {}).then(async () => {
+      await new Promise(resolve => setTimeout(resolve, MIN_SEND_GAP_MS))
+      return task()
+    }).finally(() => {
+      if (relayControlQueues.get(relayUrl) === next) relayControlQueues.delete(relayUrl)
+    })
+    relayControlQueues.set(relayUrl, next)
+    return next
+  }
 
   function localHttpHost (host) {
     return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1'
@@ -259,7 +282,16 @@
     const peers = new Set()
     const pending = new Map()
     const seen = new Map()
-    const active = { token: '', channelId: '', relayUrl: '', eventSource: null, identity: null, closed: false, fallback: null, seq: 0, resendTimer: null, lastFlushAt: 0, backoffUntil: 0 }
+    // A penalty match is exactly two endpoints. When one native renderer
+    // rebuilds its relay channel, the peer-leave event can be lost with the
+    // old SSE stream; retaining that dead channel ID makes every retry spend
+    // a slot on a recipient that no longer exists. Match channels opt into a
+    // one-peer limit so the newest live mapping wins and invalidates queued
+    // sends aimed at the stale mapping.
+    const peerLimit = Number.isInteger(Number(opts.peerLimit)) && Number(opts.peerLimit) > 0
+      ? Number(opts.peerLimit)
+      : 0
+    const active = { token: '', channelId: '', topicHex: '', protocol: PROTOCOL, relayUrl: '', identity: null, closed: false, fallback: null, status: 'idle', seq: 0, resendTimer: null, deliveryWatchdog: null, eventReconnectTimer: null, eventReconnectAttempt: 0, usingFetchEvents: false, rejoinPromise: null, refreshEnabled: false, recoveryOwner: false, sendQueue: Promise.resolve(), sendQueueDepth: 0, sendEpoch: 0, lastSendAt: 0, lastRejoinAt: 0, lastFlushAt: 0, backoffUntil: 0, peerLimit }
     const pendingByKey = new Map()
 
     function emit (message) {
@@ -267,9 +299,9 @@
     }
 
     function setStatus (state, detail) {
+      active.status = state
       try { onStatus({ state, detail: detail || null, backend: active.fallback ? active.fallback.backend : BACKEND }) } catch (err) {}
     }
-
     function rememberSeen (id) {
       if (seen.has(id)) return true
       seen.set(id, Date.now())
@@ -349,10 +381,28 @@
       return frame
     }
 
-    async function sendToPeer (peerId, frame) {
-      if (!active.channelId || !peerId || active.closed || active.fallback) return
-      const encoded = bytesToBase64(encoderFor(rootObject).encode(JSON.stringify(frame)), rootObject)
-      await post('/api/swarm/send', { channelId: active.channelId, peerId, data: encoded })
+    function sendToPeer (peerId, frame) {
+      const bodyType = frame && frame.kind === 'data' && frame.body && frame.body.t
+      const lowPriority = frame && (frame.kind === 'ack' || bodyType === 'nudge')
+      // ACKs and nudges are recoverable: the sender retries the authoritative
+      // frame and the next nudge supersedes the previous one. Never let an
+      // advisory burst build an unbounded FIFO ahead of commit/dive/reveal.
+      if (lowPriority && active.sendQueueDepth >= 2) return Promise.resolve()
+      active.sendQueueDepth += 1
+      const epoch = active.sendEpoch
+      const operation = active.sendQueue.then(async () => {
+        if (epoch !== active.sendEpoch || !active.channelId || !peerId || active.closed || active.fallback) return
+        const now = Date.now()
+        const gapWait = Math.max(0, MIN_SEND_GAP_MS - (now - active.lastSendAt))
+        const backoffWait = Math.max(0, active.backoffUntil - now)
+        if (gapWait || backoffWait) await wait(Math.max(gapWait, backoffWait))
+        if (epoch !== active.sendEpoch || !active.channelId || !peerId || active.closed || active.fallback) return
+        const encoded = bytesToBase64(encoderFor(rootObject).encode(JSON.stringify(frame)), rootObject)
+        active.lastSendAt = Date.now()
+        await post('/api/swarm/send', { channelId: active.channelId, peerId, data: encoded })
+      }).finally(() => { active.sendQueueDepth = Math.max(0, active.sendQueueDepth - 1) })
+      active.sendQueue = operation.catch(() => {})
+      return operation
     }
 
     function broadcastFrame (frame) {
@@ -368,8 +418,22 @@
       // reveal delivery on a busy OutboxLog channel.
       const entries = [...pending.values()]
       entries.sort((a, b) => {
-        const aTurn = a.frame && a.frame.body && TURN_FRAME_TYPES.has(a.frame.body.t)
-        const bTurn = b.frame && b.frame.body && TURN_FRAME_TYPES.has(b.frame.body.t)
+        const aBody = a.frame && a.frame.body
+        const bBody = b.frame && b.frame.body
+        // Nudges are advisory. A queued commit/dive/reveal is the authoritative
+        // state transition and must always get the next relay slot, otherwise a
+        // busy retry loop can delay the frame that the nudge is asking for.
+        const aCritical = aBody && DELIVERY_FRAME_TYPES.has(aBody.t)
+        const bCritical = bBody && DELIVERY_FRAME_TYPES.has(bBody.t)
+        if (aCritical !== bCritical) return Number(bCritical) - Number(aCritical)
+        const aKick = aBody && Number.isInteger(Number(aBody.kickId)) ? Number(aBody.kickId) : -1
+        const bKick = bBody && Number.isInteger(Number(bBody.kickId)) ? Number(bBody.kickId) : -1
+        // A lost ACK on an old kick must not monopolize the bounded retry
+        // queue after the match has advanced. Newer authoritative state wins;
+        // the receiver still ignores late old frames by kick index.
+        if (aCritical && bCritical && aKick !== bKick) return bKick - aKick
+        const aTurn = aBody && TURN_FRAME_TYPES.has(aBody.t)
+        const bTurn = bBody && TURN_FRAME_TYPES.has(bBody.t)
         return Number(bTurn) - Number(aTurn)
       })
       for (const entry of entries) {
@@ -402,6 +466,108 @@
       active.resendTimer = null
     }
 
+    function startDeliveryWatchdog () {
+      if (active.deliveryWatchdog || typeof rootObject.setInterval !== 'function') return
+      active.deliveryWatchdog = rootObject.setInterval(() => {
+        // During a live penalty match only deterministic role A owns transport
+        // recovery; keeping role B passive prevents both peers from rejoining
+        // the same room simultaneously. A live match normally enables refresh
+        // to keep a relay stream open.
+        // Its deterministic role-A endpoint is still allowed to own transport
+        // recovery; otherwise a background/headless native renderer can pause
+        // the app-level nudge timer and strand a keeper waiting for reveal.
+        if (active.closed || active.fallback || active.rejoinPromise || (active.refreshEnabled && !active.recoveryOwner)) return
+        const now = Date.now()
+        let overdue = null
+        for (const entry of pending.values()) {
+          const body = entry && entry.frame && entry.frame.body
+          if (!body || !DELIVERY_FRAME_TYPES.has(body.t) || !Number.isInteger(Number(body.kickId))) continue
+          const since = Number(entry.firstQueuedAt || entry.queuedAt || 0)
+          if (since > 0 && now - since >= DELIVERY_TIMEOUT_MS) {
+            overdue = entry
+            break
+          }
+        }
+        if (!overdue || now - active.lastRejoinAt < REJOIN_COOLDOWN_MS) return
+        rejoinChannel('critical turn delivery stalled')
+      }, DELIVERY_WATCHDOG_MS)
+    }
+
+    function stopDeliveryWatchdog () {
+      if (!active.deliveryWatchdog) return
+      try { rootObject.clearInterval(active.deliveryWatchdog) } catch (err) {}
+      active.deliveryWatchdog = null
+    }
+
+    function stopEventReconnect () {
+      if (!active.eventReconnectTimer) return
+      try { rootObject.clearTimeout(active.eventReconnectTimer) } catch (err) {}
+      active.eventReconnectTimer = null
+    }
+
+    function scheduleEventReconnect () {
+      if (active.closed || active.fallback || active.rejoinPromise || !active.usingFetchEvents || !active.channelId || active.eventReconnectTimer) return
+      const attempt = active.eventReconnectAttempt++
+      const delay = Math.min(4_000, 250 * Math.pow(2, Math.min(attempt, 4)))
+      active.eventReconnectTimer = rootObject.setTimeout(() => {
+        active.eventReconnectTimer = null
+        if (active.closed || active.fallback || active.rejoinPromise || !active.channelId) return
+        openEvents()
+      }, delay)
+    }
+
+    async function rejoinChannel (reason) {
+      if (active.closed || active.fallback || active.rejoinPromise) return
+      const startedAt = Date.now()
+      if (startedAt - active.lastRejoinAt < REJOIN_COOLDOWN_MS) return
+      active.lastRejoinAt = startedAt
+      active.rejoinPromise = (async () => {
+        const oldChannelId = active.channelId
+        setStatus('reconnecting', reason)
+        // HiveRelay's peer IDs are ephemeral channel IDs, not stable user
+        // identities. Drop them while rebuilding; the fresh `peer` event
+        // supplies the only valid target after the new channel is linked.
+        peers.clear()
+        active.sendEpoch += 1
+        stopEventReconnect()
+        try { if (active.eventSource) active.eventSource.close() } catch (err) {}
+        active.eventSource = null
+        active.channelId = ''
+        if (oldChannelId) {
+          try { await post('/api/swarm/leave', { channelId: oldChannelId }) } catch (err) {}
+        }
+        if (active.closed || active.fallback) return
+        const joined = await post('/api/swarm/join', {
+          topicHex: active.topicHex,
+          protocol: active.protocol,
+          version: ENVELOPE_VERSION,
+          server: true,
+          client: true,
+          appName: 'PearCup',
+          reason: 'Recover a stalled PearCup relay event stream.'
+        })
+        if (!joined || typeof joined.channelId !== 'string' || !joined.channelId) throw new Error('HiveRelay did not recreate the room channel')
+        if (active.closed || active.fallback) {
+          try { await post('/api/swarm/leave', { channelId: joined.channelId }) } catch (err) {}
+          return
+        }
+        active.channelId = joined.channelId
+        for (const entry of pending.values()) {
+          const body = entry && entry.frame && entry.frame.body
+          if (body && TURN_FRAME_TYPES.has(body.t)) entry.attempts = 0
+        }
+        openEvents()
+        setStatus('connected')
+        active.lastFlushAt = 0
+        flushPending()
+      })().catch(err => {
+        if (!active.closed && !active.fallback) setStatus('reconnecting', err && err.message ? err.message : 'relay channel recovery failed')
+      }).finally(() => {
+        active.rejoinPromise = null
+      })
+      return active.rejoinPromise
+    }
+
     async function acknowledge (peerId, id) {
       const ack = await signFrame('ack', null, id, ACK_AGE_MS)
       await sendToPeer(peerId, ack)
@@ -420,27 +586,40 @@
         return
       }
       if (!isReplayPeer(peerId)) acknowledge(peerId, frame.id).catch(() => {})
-      if (!wasSeen) emit(frame.body)
+      if (!wasSeen) {
+        emit(frame.body)
+      }
     }
 
     function handleRelayEvent (event) {
-        let message
-        try { message = JSON.parse(event.data) } catch (err) { return }
-        if (!message || active.closed || active.fallback) return
-        if (message.type === 'peer' && message.peerId && !isReplayPeer(message.peerId)) {
-          peers.add(message.peerId)
-          flushPending()
-        } else if (message.type === 'peer-leave' && message.peerId) {
-          peers.delete(message.peerId)
-        } else if (message.type === 'message' && message.peerId && message.data) {
-          handleEnvelope(message.peerId, message.data).catch(() => {})
-        } else if (message.type === 'closed') {
-          setStatus('reconnecting', 'relay stream closed')
+      let message
+      try { message = JSON.parse(event.data) } catch (err) { return }
+      if (!message || active.closed || active.fallback) return
+      if (message.type === 'peer' && message.peerId && !isReplayPeer(message.peerId)) {
+        if (active.peerLimit && !peers.has(message.peerId)) {
+          while (peers.size >= active.peerLimit) peers.delete(peers.values().next().value)
+          // Cancel any queued POST targeted at the old channel. The next
+          // flush will use only the freshly announced live peer ID.
+          active.sendEpoch += 1
+          active.lastSendAt = 0
         }
+        peers.add(message.peerId)
+        flushPending()
+      } else if (message.type === 'peer-leave' && message.peerId) {
+        peers.delete(message.peerId)
+      } else if (message.type === 'message' && message.peerId && message.data) {
+        handleEnvelope(message.peerId, message.data).catch(() => {})
+      } else if (message.type === 'closed') {
+        setStatus('reconnecting', 'relay stream closed')
+        scheduleEventReconnect()
       }
+    }
     function handleRelayError () {
-        if (!active.closed && !active.fallback) setStatus('reconnecting', 'relay event stream reconnecting')
+      if (!active.closed && !active.fallback) {
+        setStatus('reconnecting', 'relay event stream reconnecting')
+        scheduleEventReconnect()
       }
+    }
 
     // Pear Runtime's web view does not provide EventSource, but it does provide
     // fetch() and a streaming response body. Consume the same SSE contract over
@@ -464,6 +643,7 @@
           if (!response || !response.ok || !response.body || typeof response.body.getReader !== 'function') {
             throw new Error('relay SSE streaming is unavailable')
           }
+          active.eventReconnectAttempt = 0
           const reader = response.body.getReader()
           const decoder = decoderFor(rootObject)
           let buffer = ''
@@ -494,9 +674,11 @@
       const eventUrl = withQuery(endpoint('/api/swarm/events'), { channelId: active.channelId, token: active.token })
       const EventSourceCtor = opts.EventSource || rootObject.EventSource
       if (typeof EventSourceCtor !== 'function') {
+        active.usingFetchEvents = true
         openFetchEvents(eventUrl)
         return
       }
+      active.usingFetchEvents = false
       const source = new EventSourceCtor(eventUrl)
       active.eventSource = source
       source.onmessage = handleRelayEvent
@@ -568,9 +750,12 @@
           try { await post('/api/swarm/leave', { channelId: joined.channelId }) } catch (err) {}
           return false
         }
+        active.topicHex = joined.topicHex || await topicHex(topic, active.identity, rootObject)
+        active.protocol = configured.protocol || PROTOCOL
         active.channelId = joined.channelId
         openEvents()
         startResendLoop()
+        startDeliveryWatchdog()
         setStatus('connected')
         flushPending()
         return true
@@ -606,8 +791,16 @@
             : message && (message.t === 'hello' || message.t === 'presence')
               ? `${message.t}:${String(message.room || topic)}:${String(message.sender || '')}`
               : ''
-          if (key && pendingByKey.has(key)) pending.delete(pendingByKey.get(key))
-          pending.set(frame.id, { frame, attempts: 0, key })
+          const previousId = key && pendingByKey.get(key)
+          const previous = previousId ? pending.get(previousId) : null
+          if (previousId) pending.delete(previousId)
+          pending.set(frame.id, {
+            frame,
+            attempts: 0,
+            key,
+            queuedAt: Date.now(),
+            firstQueuedAt: previous && previous.firstQueuedAt ? previous.firstQueuedAt : Date.now()
+          })
           if (key) pendingByKey.set(key, frame.id)
           while (pending.size > MAX_PENDING) {
             const oldest = pending.keys().next().value
@@ -622,15 +815,42 @@
         if (typeof listener === 'function') listeners.add(listener)
         return () => listeners.delete(listener)
       },
+      setRefreshEnabled (enabled) {
+        active.refreshEnabled = Boolean(enabled)
+        if (active.refreshEnabled && active.channelId) startDeliveryWatchdog()
+      },
+      setRecoveryOwner (enabled) {
+        active.recoveryOwner = Boolean(enabled)
+        if (active.recoveryOwner && active.channelId) startDeliveryWatchdog()
+      },
+      requestRecovery (reason = 'relay delivery recovery requested') {
+        return rejoinChannel(String(reason).slice(0, 160))
+      },
+      isConnected () {
+        return active.status === 'connected'
+      },
+      hasPendingCritical () {
+        for (const entry of pending.values()) {
+          const body = entry && entry.frame && entry.frame.body
+          if (body && DELIVERY_FRAME_TYPES.has(body.t) && Number.isInteger(Number(body.kickId))) return true
+        }
+        return false
+      },
       close () {
         if (active.closed) return
         active.closed = true
         stopResendLoop()
+        stopDeliveryWatchdog()
+        stopEventReconnect()
         pending.clear()
         pendingByKey.clear()
         peers.clear()
         try { if (active.eventSource) active.eventSource.close() } catch (err) {}
-        if (active.channelId && active.token) post('/api/swarm/leave', { channelId: active.channelId }).catch(() => {})
+        if (active.channelId && active.token && !rootObject.PearCupRelaySkipLeaves) {
+          const relayUrl = active.relayUrl
+          const channelId = active.channelId
+          enqueueRelayControl(relayUrl, () => post('/api/swarm/leave', { channelId })).catch(() => {})
+        }
         try { if (active.fallback) active.fallback.close() } catch (err) {}
         listeners.clear()
       }

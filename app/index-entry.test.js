@@ -5,6 +5,7 @@ const { test } = require('node:test')
 const vm = require('node:vm')
 
 const entrySource = readFileSync(join(__dirname, 'index.cjs'), 'utf8')
+const rendererHtml = readFileSync(join(__dirname, 'index.html'), 'utf8')
 
 function sliceFunctionBlock (startName, endName) {
   const start = entrySource.indexOf(`function ${startName}`)
@@ -85,6 +86,12 @@ test('Pear entry exposes only the safe renderer-runtime options route', () => {
   assert.equal(shouldServeRendererRuntimeOptions('/config/pearcup.runtime.json'), false)
 })
 
+test('renderer loads public relay settings before the async boot bundle', () => {
+  const publicSettings = rendererHtml.indexOf('src="./public-runtime-settings.js"')
+  const bootBundle = rendererHtml.indexOf('src="./pearcup-boot.js"')
+  assert.ok(publicSettings >= 0 && bootBundle > publicSettings, 'public runtime settings must precede the boot bundle')
+})
+
 test('Pear entry HiveRelay proxy is restricted to the exact public OutboxLog routes', () => {
   const start = entrySource.indexOf("const HIVERELAY_PROXY_PREFIX = '/pearcup-hiverelay'")
   const end = entrySource.indexOf('function hiveRelayOrigin', start)
@@ -112,6 +119,19 @@ test('Pear entry HiveRelay proxy is restricted to the exact public OutboxLog rou
     '/pearcup-hiverelay/../config/pearcup.runtime.json',
     '/config/pearcup.runtime.json'
   ]) assert.equal(context.shouldProxyHiveRelay(path), false, path)
+})
+
+test('Pear entry aborts upstream SSE when the renderer stream closes', () => {
+  assert.match(entrySource, /const upstreamController = remotePath === '\/api\/swarm\/events'/)
+  assert.match(entrySource, /res\.once\('close', abortUpstream\)/)
+  assert.match(entrySource, /upstreamController\.abort\(\)/)
+  assert.match(entrySource, /upstreamReader\.cancel\(\)/)
+})
+
+test('Pear entry treats renderer SSE cancellation as normal teardown', () => {
+  assert.match(entrySource, /function isBenignRelayStreamCancellation \(req, res, err\)/)
+  assert.match(entrySource, /stream\\s\+was\\s\+cancelled|aborterror|cancelled|canceled/)
+  assert.match(entrySource, /!isBenignRelayStreamCancellation\(req, res, err\)/)
 })
 
 test('Pear entry normalizes IPC root file lookups to index.html', () => {
@@ -158,4 +178,10 @@ test('Pear entry installs bridge shims before the renderer runtime starts', () =
   assert.ok(ipcPatch >= 0 && ipcPatch < runtimeRequire, 'IPC root lookup patch must run before pear-electron loads')
   assert.ok(bridgeRequire >= 0 && bridgeRequire < bridgeLookupPatch, 'bridge lookup patch must run after pear-bridge loads')
   assert.ok(bridgeLookupPatch < entrySource.indexOf('async function main'), 'bridge lookup patch must install before main starts')
+})
+
+test('Pear entry teardown tolerates runtime pipes without an end method', () => {
+  assert.match(entrySource, /typeof pipe\.end === 'function'/)
+  assert.match(entrySource, /typeof pipe\.destroy === 'function'/)
+  assert.match(entrySource, /typeof pipe\.close === 'function'/)
 })

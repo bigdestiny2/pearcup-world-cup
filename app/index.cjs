@@ -34,7 +34,9 @@ function patchPearBridgeRootRequests () {
         if (shouldProxyHiveRelay(req.url)) {
           tracePearBridge('hiverelay-proxy', originalUrl, req.url)
           proxyHiveRelayRequest(req, res).catch(err => {
-            tracePearBridge('hiverelay-proxy-error', req.url, err && err.message ? err.message : String(err))
+            if (!isBenignRelayStreamCancellation(req, res, err)) {
+              tracePearBridge('hiverelay-proxy-error', req.url, err && err.message ? err.message : String(err))
+            }
             if (!res.headersSent) writeJsonError(res, 502, 'HiveRelay proxy request failed')
             else { try { res.end() } catch (endErr) {} }
           })
@@ -181,11 +183,37 @@ async function proxyHiveRelayRequest (req, res) {
   if (token) headers['x-pear-token'] = String(token)
   const body = method === 'POST' ? await readRequestBody(req) : undefined
   const target = hiveRelayOrigin() + remotePath + parsed.search
-  const response = await fetch(target, { method, headers, body })
+  const AbortCtor = typeof AbortController === 'function' ? AbortController : null
+  const upstreamController = remotePath === '/api/swarm/events' && AbortCtor ? new AbortCtor() : null
+  let upstreamReader = null
+  let clientClosed = false
+  const abortUpstream = () => {
+    clientClosed = true
+    try { if (upstreamController) upstreamController.abort() } catch (err) {}
+    try { if (upstreamReader) upstreamReader.cancel() } catch (err) {}
+  }
+  if (remotePath === '/api/swarm/events') {
+    if (typeof res.once === 'function') res.once('close', abortUpstream)
+    if (typeof req.once === 'function') req.once('aborted', abortUpstream)
+  }
+  const response = await fetch(target, {
+    method,
+    headers,
+    body,
+    ...(upstreamController ? { signal: upstreamController.signal } : {})
+  })
   const responseHeaders = {
     'content-type': response.headers.get('content-type') || 'application/json; charset=utf-8',
     'cache-control': 'no-store',
     'x-content-type-options': 'nosniff'
+  }
+  if (remotePath === '/api/swarm/events') {
+    // Keep Pear Runtime's native renderer connection in SSE mode through the
+    // narrow proxy. Cloudflare/bare-http may omit this hop-by-hop header when
+    // forwarding; explicitly restoring it prevents idle event streams from
+    // being treated as short-lived HTTP responses by the runtime.
+    responseHeaders.connection = 'keep-alive'
+    responseHeaders['x-accel-buffering'] = 'no'
   }
   const retryAfter = response.headers.get('retry-after')
   if (retryAfter) responseHeaders['retry-after'] = retryAfter
@@ -197,16 +225,25 @@ async function proxyHiveRelayRequest (req, res) {
 
   if (remotePath === '/api/swarm/events' && response.body && typeof response.body.getReader === 'function') {
     const reader = response.body.getReader()
+    upstreamReader = reader
     try {
       while (true) {
         const chunk = await reader.read()
-        if (!chunk || chunk.done) break
+        if (!chunk || chunk.done || clientClosed) break
         if (chunk.value && chunk.value.byteLength) {
-          res.write(Buffer.from(chunk.value))
+          // bare-http1 can apply backpressure to a long-lived SSE response.
+          // Do not pull the next upstream chunk until the renderer socket has
+          // drained; otherwise its single pending write slot can be replaced,
+          // permanently stalling one direction of a live match.
+          const flushed = res.write(Buffer.from(chunk.value))
+          if (flushed === false) await waitForResponseDrain(res)
         }
       }
     } finally {
       try { await reader.cancel() } catch (err) {}
+      upstreamReader = null
+      if (typeof res.removeListener === 'function') res.removeListener('close', abortUpstream)
+      if (typeof req.removeListener === 'function') req.removeListener('aborted', abortUpstream)
       res.end()
     }
     return
@@ -214,6 +251,36 @@ async function proxyHiveRelayRequest (req, res) {
 
   const bytes = response.body ? Buffer.from(await response.arrayBuffer()) : Buffer.alloc(0)
   res.end(bytes)
+}
+
+// A renderer closing its long-lived SSE connection aborts the upstream fetch.
+// Bare's fetch reports that normal teardown as "Stream was cancelled" (or an
+// AbortError). It is not a relay outage and should not fail the friend-ready
+// smoke check or pollute production diagnostics with a false error.
+function isBenignRelayStreamCancellation (req, res, err) {
+  const url = String(req && req.url ? req.url : '')
+  if (!url.includes('/api/swarm/events')) return false
+  const message = String(err && (err.message || err.name) ? (err.message || err.name) : err || '')
+  if (!/(stream\s+was\s+cancelled|aborted|aborterror|cancelled|canceled)/i.test(message)) return false
+  return Boolean(
+    (res && (res.headersSent || res.writableEnded)) ||
+    (req && (req.destroyed || req.aborted))
+  )
+}
+
+function waitForResponseDrain (res) {
+  if (!res || typeof res.once !== 'function') return Promise.resolve()
+  return new Promise(resolve => {
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      resolve()
+    }
+    res.once('drain', finish)
+    res.once('close', finish)
+    res.once('error', finish)
+  })
 }
 
 function readRequestBody (req) {
@@ -340,7 +407,13 @@ async function main () {
 
   const pipe = runtime.start({ bridge })
   if (typeof Pear !== 'undefined' && Pear.teardown) {
-    Pear.teardown(() => pipe.end())
+    Pear.teardown(() => {
+      try {
+        if (pipe && typeof pipe.end === 'function') pipe.end()
+        else if (pipe && typeof pipe.destroy === 'function') pipe.destroy()
+        else if (pipe && typeof pipe.close === 'function') pipe.close()
+      } catch (err) {}
+    })
   }
 }
 

@@ -22,7 +22,15 @@
   if (!Net) { markModule('missing-peer-net'); console.warn('PearCupPeerNet missing — peer match disabled'); return }
 
   const TOTAL = 5 // rounds (each player takes 5, keeps 5)
-  const CRITICAL_RETRY_TTL_MS = 9_000
+  // HiveRelay is enqueue-based and can briefly be rate-limited while a peer
+  // stream reconnects. Keep authoritative turn frames alive long enough for
+  // the bounded transport replay/rejoin path to deliver them; stale kick IDs
+  // are still ignored by the receiver, so this cannot rewind a match.
+  // A public relay can apply a short per-client send budget while two native
+  // renderers are both reconnecting. Keep each authoritative frame replayable
+  // for the whole bounded recovery window instead of expiring a reveal while
+  // the peer is rebuilding its SSE channel.
+  const CRITICAL_RETRY_TTL_MS = 120_000
   const PM = {
     active: false, started: false, over: false,
     channel: null, code: null,
@@ -34,8 +42,17 @@
     autoplayTimer: null,
     nudgeTimer: null,
     diveReceived: false,
+    awaitingResolved: false,
+    resolvedReceived: false,
     lastDives: new Map(),
     lastReveals: new Map(),
+    lastResolved: new Map(),
+    futureMessages: new Map(),
+    sentCounts: new Map(),
+    receivedCounts: new Map(),
+    lastMessage: null,
+    recoveryRequests: 0,
+    lastRecoveryReason: null,
     retryTimers: new Map(),
     helloTimer: null,
     helloAttempts: 0
@@ -81,6 +98,11 @@
           phase: shootout && shootout.phase ? shootout.phase : '',
           busy: Boolean(PM.busy),
           remoteCommit: Boolean(PM.remoteCommit),
+          sent: Object.fromEntries(PM.sentCounts),
+          received: Object.fromEntries(PM.receivedCounts),
+          lastMessage: PM.lastMessage,
+          recoveryRequests: PM.recoveryRequests,
+          lastRecoveryReason: PM.lastRecoveryReason,
           score: shootout
             ? { you: Number(shootout.you) || 0, opp: Number(shootout.opp) || 0 }
             : null
@@ -99,7 +121,7 @@
     Object.assign(PM, {
       active: false, started: false, over: false, channel: null, code: null,
       self: null, opp: null, role: null, kIndex: 0, busy: false,
-      commit: null, remoteCommit: null, myDive: null, autoplayTimer: null, nudgeTimer: null, diveReceived: false, lastDives: new Map(), lastReveals: new Map(), retryTimers: new Map(), helloTimer: null, helloAttempts: 0
+      commit: null, remoteCommit: null, myDive: null, autoplayTimer: null, nudgeTimer: null, diveReceived: false, awaitingResolved: false, resolvedReceived: false, lastDives: new Map(), lastReveals: new Map(), lastResolved: new Map(), futureMessages: new Map(), sentCounts: new Map(), receivedCounts: new Map(), lastMessage: null, recoveryRequests: 0, lastRecoveryReason: null, retryTimers: new Map(), helloTimer: null, helloAttempts: 0
     })
     syncDiagnostics('idle')
   }
@@ -108,9 +130,38 @@
   function iAmShooter () { return shooterRoleForKick(PM.kIndex) === PM.role }
   function roundOf (k) { return Math.floor(k / 2) }
 
+  function releaseBackgroundChannels () {
+    // Pool, lobby, and watch streams are useful around the game shell but add
+    // replay/backpressure load to the same finite relay connection budget. A
+    // live penalty match has one latency-sensitive topic; release the others
+    // before opening it and they are restarted on the next shell render.
+    const priorSkipLeave = root.PearCupRelaySkipLeaves
+    root.PearCupRelaySkipLeaves = true
+    try { if (root.PearCupLobby && typeof root.PearCupLobby.leave === 'function') root.PearCupLobby.leave(true) } catch (err) {}
+    try {
+      const watchState = root.PearCupWatchSync && root.PearCupWatchSync._state
+      const challengePending = watchState && watchState.outgoing && watchState.outgoing.size > 0
+      if (!challengePending && root.PearCupWatchSync && typeof root.PearCupWatchSync.leave === 'function') root.PearCupWatchSync.leave(true)
+    } catch (err) {}
+    try { if (root.PearCupPoolSync && typeof root.PearCupPoolSync.stop === 'function') root.PearCupPoolSync.stop() } catch (err) {}
+    if (priorSkipLeave === undefined) delete root.PearCupRelaySkipLeaves
+    else root.PearCupRelaySkipLeaves = priorSkipLeave
+  }
+
+  function releaseBackgroundChannelsForRelay () {
+    // PearBrowser's native swarm test/adapter does not share the HTTP relay
+    // budget and its lobby challenge handshake still needs the lobby channel
+    // alive until the invite is accepted. Only apply the stream pause to the
+    // configured HiveRelay path used by ordinary browser/Pear Runtime clients.
+    try {
+      if (root.PearCupHiveRelay && typeof root.PearCupHiveRelay.isConfigured === 'function' && root.PearCupHiveRelay.isConfigured(root)) releaseBackgroundChannels()
+    } catch (err) {}
+  }
+
   // ---- lifecycle ----
   function host (code, silent) {
     reset()
+    releaseBackgroundChannelsForRelay()
     PM.active = true
     PM.code = code || Net.newRoomCode()
     PM.self = { peerId: externalPeerId() || Net.newPeerId(), name: state.username || 'captain', team: state.team || 'br' }
@@ -123,6 +174,7 @@
 
   function join (code) {
     reset()
+    releaseBackgroundChannelsForRelay()
     PM.active = true
     PM.code = code
     PM.self = { peerId: externalPeerId() || Net.newPeerId(), name: state.username || 'captain', team: state.team || 'br' }
@@ -133,12 +185,21 @@
   }
 
   function openChannel () {
-    PM.channel = Net.createChannel(Net.GAME_TOPIC(PM.code))
+    // The match room has exactly one opponent. Replacing stale relay peer
+    // mappings after a native SSE rejoin prevents retries from targeting the
+    // previous channel ID and stranding a reveal on the next kick.
+    PM.channel = Net.createChannel(Net.GAME_TOPIC(PM.code), { peerLimit: 1 })
     PM.channel.onMessage(onMessage)
   }
 
   function announce () { send({ t: 'hello', peer: PM.self }) }
-  function send (msg) { if (PM.channel) PM.channel.send({ ...msg, room: PM.code, sender: PM.self.peerId }) }
+  function recordMessage (map, type) { if (!type) return; map.set(type, (map.get(type) || 0) + 1) }
+  function send (msg) {
+    if (!PM.channel) return
+    recordMessage(PM.sentCounts, msg && msg.t)
+    PM.lastMessage = `sent:${msg && msg.t}:${msg && msg.kickId != null ? msg.kickId : ''}`
+    PM.channel.send({ ...msg, room: PM.code, sender: PM.self.peerId })
+  }
 
   function clearCritical (type, kickId) {
     const key = `${type}:${kickId}`
@@ -172,7 +233,11 @@
         PM.retryTimers.delete(key)
         return
       }
-      send(msg)
+      // HiveRelay already retries the signed envelope with ACK/backoff. Do
+      // not manufacture another envelope while that transport entry is live;
+      // otherwise a busy peer stream can spend every slot on duplicates.
+      const transportPending = PM.channel && typeof PM.channel.hasPendingCritical === 'function' && PM.channel.hasPendingCritical()
+      if (!transportPending) send(msg)
     }, 2500)
     PM.retryTimers.set(key, timer)
   }
@@ -201,6 +266,27 @@
 
   function onMessage (msg) {
     if (!msg || msg.room !== PM.code || msg.sender === PM.self.peerId) return
+    recordMessage(PM.receivedCounts, msg.t)
+    PM.lastMessage = `received:${msg.t}:${msg.kickId != null ? msg.kickId : ''}`
+    const kickId = Number(msg.kickId)
+    if (['commit', 'dive', 'reveal', 'resolved', 'nudge', 'dive-ack'].includes(msg.t) && Number.isInteger(kickId)) {
+      if (kickId > PM.kIndex) {
+        const key = `${msg.t}:${kickId}`
+        PM.futureMessages.set(key, msg)
+        while (PM.futureMessages.size > 32) PM.futureMessages.delete(PM.futureMessages.keys().next().value)
+        return
+      }
+      // A stale nudge is still useful: the peer may have advanced locally
+      // after resolving a kick while this renderer missed the reveal. Allow
+      // onNudge() to replay its bounded lastDives/lastReveals cache. All other
+      // stale turn frames remain ignored so an old state transition cannot
+      // rewind the match.
+      if (kickId < PM.kIndex && msg.t !== 'nudge') return
+    }
+    return dispatchMessage(msg)
+  }
+
+  function dispatchMessage (msg) {
     switch (msg.t) {
       case 'hello': return onHello(msg.peer)
       case 'commit': return onCommit(msg)
@@ -223,6 +309,10 @@
   function maybeStart () {
     if (PM.started || !PM.opp) return
     PM.started = true
+    // Keep a watch challenge channel only while its acceptance ACK is still
+    // outstanding; ordinary matches release all background streams now.
+    releaseBackgroundChannels()
+    if (PM.channel && typeof PM.channel.setRefreshEnabled === 'function') PM.channel.setRefreshEnabled(true)
     stopAnnouncing()
     PM.role = PM.self.peerId < PM.opp.peerId ? 'A' : 'B'
     // Both players on default names would read "captain vs captain" — disambiguate the
@@ -267,7 +357,11 @@
     so.round = roundOf(PM.kIndex)
     so.mode = iAmShooter() ? 'shoot' : 'keep'
     so.phase = 'aim'
-    PM.busy = false; PM.myDive = null; PM.remoteCommit = null; PM.diveReceived = false
+    PM.busy = false; PM.myDive = null; PM.remoteCommit = null; PM.diveReceived = false; PM.awaitingResolved = false; PM.resolvedReceived = false
+    // Only the current shooter owns transport-level recovery for this kick;
+    // the owner alternates with the turn so a lost reveal on either side is
+    // repaired without both native renderers rejoining at once.
+    if (PM.channel && typeof PM.channel.setRecoveryOwner === 'function') PM.channel.setRecoveryOwner(iAmShooter())
     syncDiagnostics()
 
     const me = { name: PM.self.name, team: PM.self.team }
@@ -296,15 +390,32 @@
     hideShootBanner()
     renderShootoutHud()
 
+    if (typeof setAimGridLabels === 'function') setAimGridLabels(iAmShooter())
     if (iAmShooter()) { showAimGrid(); startPowerMeter() } else { hideAimGrid(); stopPowerMeter(); showShootBanner('Keeper ready — waiting for their strike…', 'is-wait') }
     startNudge()
     scheduleExternalAutoplay()
+    drainFutureMessages()
+  }
+
+  function drainFutureMessages () {
+    const pending = []
+    for (const [key, msg] of PM.futureMessages) {
+      if (Number(msg && msg.kickId) === PM.kIndex) {
+        pending.push([key, msg])
+      }
+    }
+    for (const [key, msg] of pending) {
+      PM.futureMessages.delete(key)
+      dispatchMessage(msg)
+    }
   }
 
   function startNudge () {
     if (typeof root.setInterval !== 'function') return
     if (PM.nudgeTimer) { try { root.clearInterval(PM.nudgeTimer) } catch (e) {} }
     const kickId = PM.kIndex
+    const nudgeIntervalMs = PM.channel && PM.channel.backend === 'hiverelay-outboxlog-v2' ? 5000 : 2500
+    let waitingTicks = 0
     PM.nudgeTimer = root.setInterval(() => {
       if (!PM.active || PM.over || PM.kIndex !== kickId) {
         try { root.clearInterval(PM.nudgeTimer) } catch (e) {}
@@ -312,10 +423,55 @@
         return
       }
       const want = iAmShooter()
-        ? (PM.commit && !PM.diveReceived ? 'dive' : '')
+        ? (PM.awaitingResolved ? 'resolved' : PM.commit && !PM.diveReceived ? 'dive' : '')
         : (PM.myDive != null ? 'reveal' : 'commit')
-      if (want) send({ t: 'nudge', kickId, want })
-    }, 2500)
+      // A keeper has no actionable recovery before the shooter's first
+      // commitment arrives; waiting for a friend to choose a shot is normal,
+      // not a dead relay. Likewise, only recover a shooter after a commit (or
+      // a pending resolution) exists. This prevents idle rooms from both
+      // rejoining on a timer and invalidating the peer mapping before play.
+      const canRecover = iAmShooter()
+        ? Boolean(PM.commit || PM.awaitingResolved)
+        : Boolean(PM.remoteCommit || PM.myDive)
+      if (want && canRecover) waitingTicks += 1
+      else waitingTicks = 0
+      // Either endpoint may repair a stalled route. Do not rely only on the
+      // relay's connected bit: a native SSE proxy can stay logically connected
+      // while its peer route is stale. The transport cooldown prevents churn,
+      // while bounded turn ownership lets the current shooter repair a lost
+      // commit/dive/reveal without both peers rejoining simultaneously. A
+      // keeper can still repair a lost reveal when it is the only endpoint
+      // holding actionable state.
+      const relayRecoveryDelay = PM.channel && PM.channel.backend === 'hiverelay-outboxlog-v2'
+      const recoveryAfterTicks = relayRecoveryDelay && PM.role === 'B' && want === 'reveal' ? 6 : 3
+      const nudgeDue = want && canRecover && waitingTicks >= recoveryAfterTicks && waitingTicks % recoveryAfterTicks === 0
+      const recoveryOwner = want === 'reveal' || iAmShooter()
+      if (nudgeDue && recoveryOwner && PM.channel && typeof PM.channel.requestRecovery === 'function') {
+        PM.recoveryRequests += 1
+        PM.lastRecoveryReason = `${PM.role || 'peer'} turn delivery stalled`
+        syncDiagnostics('playing')
+        PM.channel.requestRecovery(`${PM.role || 'peer'} turn delivery stalled`)
+      }
+      // Nudges are a last-resort hint, not a heartbeat. Sending one on every
+      // timer tick consumed the relay's per-client budget alongside ACKs and
+      // caused otherwise healthy turns to self-rate-limit. Emit only at the
+      // recovery boundary; the transport's signed critical retry handles the
+      // normal case.
+      if (nudgeDue) send({ t: 'nudge', kickId, want })
+    }, nudgeIntervalMs)
+  }
+
+  function advanceKick () {
+    if (PM.over) return
+    PM.awaitingResolved = false
+    PM.resolvedReceived = false
+    PM.commit = null; PM.myDive = null; PM.remoteCommit = null; PM.busy = false
+    PM.kIndex += 1
+    if (PM.kIndex >= TOTAL * 2) endMatch()
+    else {
+      syncDiagnostics('playing')
+      setupKick()
+    }
   }
 
   function externalAutoplayEnabled () {
@@ -374,6 +530,7 @@
     const so = state.shootout
     if (so.phase !== 'aim') return
     syncDiagnostics()
+    if (typeof setAimGridLabels === 'function') setAimGridLabels(false)
     showAimGrid()
     showShootBanner('Now! pick your dive', 'is-goal')
     setTimeout(() => hideShootBanner(), 700)
@@ -384,8 +541,6 @@
     if (msg.kickId !== PM.kIndex || !iAmShooter() || !PM.commit) return
     clearCritical('commit', msg.kickId)
     PM.diveReceived = true
-    if (PM.nudgeTimer) { try { root.clearInterval(PM.nudgeTimer) } catch (e) {} PM.nudgeTimer = null }
-    send({ t: 'dive-ack', kickId: msg.kickId })
     syncDiagnostics()
     const reveal = { t: 'reveal', kickId: PM.kIndex, aim: PM.commit.aim, nonce: PM.commit.nonce, power: PM.commit.power }
     PM.lastReveals.set(PM.kIndex, reveal)
@@ -402,13 +557,14 @@
     if (PM.remoteCommit && Net.commitHash(msg.aim, msg.nonce) !== PM.remoteCommit) {
       showToast('⚠ Opponent commitment mismatch — kick voided')
     }
-    send({ t: 'resolved', kickId: PM.kIndex })
     resolveKick(msg.aim, PM.myDive, msg.power, msg.nonce)
   }
 
   function onResolved (msg) {
     if (msg.kickId !== PM.kIndex || !iAmShooter()) return
     clearCritical('reveal', msg.kickId)
+    PM.resolvedReceived = true
+    if (PM.awaitingResolved && !PM.busy) advanceKick()
   }
 
   function onDiveAck (msg) {
@@ -430,6 +586,8 @@
     }
     const reveal = PM.lastReveals.get(kickId)
     if (msg.want === 'reveal' && reveal) sendCritical(reveal)
+    const resolved = PM.lastResolved.get(kickId)
+    if (msg.want === 'resolved' && resolved) sendCritical(resolved)
   }
 
   async function resolveKick (aim, dive, power, nonce) {
@@ -478,17 +636,18 @@
     if (ballEl) ballEl.classList.remove('is-kicking')
     if (keeperEl) keeperEl.classList.remove('dive-left', 'dive-right', 'dive-mid')
 
-    PM.commit = null; PM.myDive = null; PM.remoteCommit = null; PM.busy = false
-    PM.kIndex += 1
-    if (PM.kIndex >= TOTAL * 2) endMatch()
-    else {
-      syncDiagnostics('playing')
-      setupKick()
-    }
+    // Both peers now hold the same committed aim, keeper dive, nonce, and
+    // power, so the deterministic outcome is already resolved locally. Do not
+    // gate the next kick on a second `resolved` ACK: that ACK is useful
+    // evidence/replay material, but making it authoritative creates a second
+    // delivery dependency after the reveal itself has been verified.
+    advanceKick()
   }
 
   function endMatch () {
     PM.over = true
+    if (PM.channel && typeof PM.channel.setRefreshEnabled === 'function') PM.channel.setRefreshEnabled(false)
+    if (PM.channel && typeof PM.channel.setRecoveryOwner === 'function') PM.channel.setRecoveryOwner(false)
     const so = state.shootout
     so.phase = 'over'
     hideAimGrid(); stopPowerMeter()

@@ -3,9 +3,9 @@
 // room. This deliberately does not use the hidden iframe self-test: each side
 // has its own process, Pear store, renderer, identity, and SSE connection.
 
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { createServer } from 'node:http'
-import { cpSync, mkdtempSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs'
 import { randomBytes } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -21,7 +21,18 @@ const hostPeerId = process.env.PEARCUP_DUAL_HOST_PEER_ID || ''
 const guestPeerId = process.env.PEARCUP_DUAL_GUEST_PEER_ID || ''
 const tempRoot = mkdtempSync(join(tmpdir(), 'pearcup-kawaii-dual-'))
 const launchRoot = join(tempRoot, 'app')
-cpSync(appRoot, launchRoot, { recursive: true, dereference: true })
+// Do not duplicate the 5+ GB app/node_modules tree for every native smoke.
+// The normal Pear dev launcher uses the same durable dependency directory via
+// a symlink; keeping the dual-run harness consistent makes cold boot fast and
+// prevents a failed run from exhausting the temporary volume before the Pear
+// renderer can emit its boot-ready probe.
+cpSync(appRoot, launchRoot, {
+  recursive: true,
+  dereference: true,
+  filter: path => !path.endsWith('/node_modules')
+})
+const nodeModules = join(appRoot, 'node_modules')
+if (existsSync(nodeModules)) symlinkSync(nodeModules, join(launchRoot, 'node_modules'), 'dir')
 
 const hostProbe = await createProbe()
 const guestProbe = await createProbe()
@@ -36,7 +47,10 @@ const host = spawnPear('host', hostProbe.url, {
 let guest = null
 let failed = null
 try {
-  await waitFor(() => observedEvents(host, hostProbe).some(event => event && event.event === 'pearcup:boot-ready'), 12_000, 'host boot-ready')
+  // Cold Pear installs can spend ~15s opening a fresh temporary store before
+  // the renderer makes its first probe request. Keep this separate from the
+  // match timeout so startup jitter is not misreported as a relay failure.
+  await waitFor(() => observedEvents(host, hostProbe).some(event => event && event.event === 'pearcup:boot-ready'), 90_000, 'host boot-ready')
   guest = spawnPear('guest', guestProbe.url, {
     PEARCUP_EXTERNAL_PEER_TEST: '1',
     PEARCUP_EXTERNAL_PEER_TEST_ROLE: 'guest',
@@ -82,9 +96,20 @@ try {
 } finally {
   await stop(host.child)
   if (guest) await stop(guest.child)
+  // `pear run` can leave its GUI/runtime child detached from the CLI wrapper
+  // after a timeout. Reap only processes whose command line contains this
+  // run's unique temporary app path, otherwise a failed smoke poisons the
+  // relay quota and the next test appears flaky.
+  reapLaunchProcesses()
   await hostProbe.close()
   await guestProbe.close()
   rmSync(tempRoot, { recursive: true, force: true })
+}
+
+function reapLaunchProcesses () {
+  for (const signal of ['TERM', 'KILL']) {
+    try { spawnSync('pkill', [`-${signal}`, '-f', launchRoot], { stdio: 'ignore' }) } catch {}
+  }
 }
 
 if (failed) {
@@ -93,8 +118,8 @@ if (failed) {
   const guestOutput = guest && guest.output().trim()
   const hostStates = observedEvents(host, hostProbe).filter(event => event && event.event === 'pearcup:external-peer-state')
   const guestStates = guest ? observedEvents(guest, guestProbe).filter(event => event && event.event === 'pearcup:external-peer-state') : []
-  if (hostStates.length) console.error(`\n--- host last state ---\n${JSON.stringify(hostStates.at(-1))}`)
-  if (guestStates.length) console.error(`\n--- guest last state ---\n${JSON.stringify(guestStates.at(-1))}`)
+  if (hostStates.length) console.error(`\n--- host last states ---\n${JSON.stringify(hostStates.slice(-8))}`)
+  if (guestStates.length) console.error(`\n--- guest last states ---\n${JSON.stringify(guestStates.slice(-8))}`)
   if (hostOutput) console.error(`\n--- host output ---\n${hostOutput}`)
   if (guestOutput) console.error(`\n--- guest output ---\n${guestOutput}`)
   process.exitCode = 1
@@ -110,7 +135,7 @@ function spawnPear (label, probeUrl, extraEnv) {
       PEARCUP_HIVERELAY_URL: relay,
       PEARCUP_BOOT_PROBE_URL: probeUrl,
       PEARCUP_DISABLE_RUNTIME_SELF_TEST: '1',
-      PEARCUP_TRACE_BRIDGE: '1',
+      ...(process.env.PEARCUP_TRACE_BRIDGE ? { PEARCUP_TRACE_BRIDGE: process.env.PEARCUP_TRACE_BRIDGE } : {}),
       ...extraEnv
     },
     stdio: ['ignore', 'pipe', 'pipe']

@@ -870,8 +870,12 @@
         scheduleFallback()
       })()
     </script>
-    <!-- PearCup boot bundle loads ./peer-hiverelay.js, ./peer-net.js, ./peer-match.js, ./peer-lobby.js, ./watch-sync.js, and ./app.js. -->
+    <!-- Load public routing metadata before the boot bundle. The boot loader can
+         fetch/apply runtime settings immediately; placing this first prevents a
+         fast PearBrowser/localhost boot from racing past the HiveRelay config and
+         silently falling back to same-origin BroadcastChannel transport. -->
   <script src="./public-runtime-settings.js"></script>
+  <!-- PearCup boot bundle loads ./peer-hiverelay.js, ./peer-net.js, ./peer-match.js, ./peer-lobby.js, ./watch-sync.js, and ./app.js. -->
   <script src="./pearcup-boot.js"></script>
   </body>
 </html>

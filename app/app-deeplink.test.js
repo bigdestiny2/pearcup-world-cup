@@ -298,7 +298,7 @@ test('boot gives friend invite deep links priority over hash startup views', () 
 })
 
 test('runtime self-test guest isolates its friend match from background relay streams', () => {
-  assert.match(appSource, /if \(!isRuntimeSelfTestGuest\(\)\) startPoolSync\(\)/)
+  assert.match(appSource, /if \(!isRuntimeSelfTestGuest\(\) && !pendingFriendJoinCode\(\)\) startPoolSync\(\)/)
   assert.match(appSource, /window\.PearCupLobby && !isRuntimeSelfTestGuest\(\)/)
 })
 

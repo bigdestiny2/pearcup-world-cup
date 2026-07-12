@@ -6,16 +6,18 @@ const vm = require('node:vm')
 
 const peerMatchSource = readFileSync(join(__dirname, 'peer-match.js'), 'utf8')
 
-function createHub () {
+function createHub ({ drop } = {}) {
   const topics = new Map()
   return {
-    join (topic) {
+    join (topic, peerId = '') {
       const listeners = new Set()
       const endpoint = {
         topic,
+        peerId,
         send (msg) {
           setTimeout(() => {
             for (const peer of topics.get(topic) || []) {
+              if (peer !== endpoint && typeof drop === 'function' && drop(msg, endpoint, peer)) continue
               for (const listener of peer.listeners) listener({ ...msg })
             }
           }, 0)
@@ -161,6 +163,12 @@ function createClient ({ hub, peerId, name, team, href = 'http://127.0.0.1:4186/
     navigator: {},
     setTimeout: browserSetTimeout,
     clearTimeout,
+    setInterval: (fn, ms, ...args) => {
+      const timer = setInterval(fn, ms, ...args)
+      if (timer && typeof timer.unref === 'function') timer.unref()
+      return timer
+    },
+    clearInterval,
     requestAnimationFrame: fn => setTimeout(fn, 0),
     state: { username: name, team },
     PearCupPeerNet: {
@@ -169,7 +177,7 @@ function createClient ({ hub, peerId, name, team, href = 'http://127.0.0.1:4186/
       newPeerId: () => peerId,
       newNonce: () => `${peerId}-nonce`,
       commitHash: (aim, nonce) => `${aim}|${nonce}`,
-      createChannel: topic => hub.join(topic)
+    createChannel: topic => hub.join(topic, peerId)
     },
     showToast: message => { toasts.push(message) },
     setView: view => { views.push(view) },
@@ -211,12 +219,12 @@ function createClient ({ hub, peerId, name, team, href = 'http://127.0.0.1:4186/
   return { context, document, toasts, views }
 }
 
-function waitFor (predicate, label) {
+function waitFor (predicate, label, timeoutMs = 1000) {
   return new Promise((resolve, reject) => {
     const started = Date.now()
     const tick = () => {
       if (predicate()) return resolve()
-      if (Date.now() - started > 1000) return reject(new Error(`timed out waiting for ${label}`))
+      if (Date.now() - started > timeoutMs) return reject(new Error(`timed out waiting for ${label}`))
       setTimeout(tick, 5)
     }
     tick()
@@ -364,6 +372,39 @@ test('Penalty Clash peers resolve a shot and advance both clients to the next ki
   assert.deepEqual(Array.from(guest.context.state.shootout.oppDots), ['goal'])
   assert.equal(guest.context.state.shootout.mode, 'shoot')
   assert.equal(guest.context.state.shootout.phase, 'aim')
+})
+
+test('Penalty Clash replays a reveal after the shooter advances and the first delivery is lost', async () => {
+  let droppedReveals = 0
+  let nudgeSeen = false
+  const hub = createHub({
+    drop (msg, sender, recipient) {
+      // Force the keeper to rely on a stale nudge. The shooter has already
+      // advanced locally by the time the nudge arrives, so this specifically
+      // exercises the cached reveal replay path rather than a fresh retry.
+      if (msg.t === 'nudge' && msg.kickId === 0 && msg.want === 'reveal') {
+        nudgeSeen = true
+        return false
+      }
+      if (msg.t === 'reveal' && msg.kickId === 0 && sender.peerId === 'a-host' && recipient.peerId === 'b-guest' && !nudgeSeen) {
+        droppedReveals += 1
+        return true
+      }
+      return false
+    }
+  })
+  const host = createClient({ hub, peerId: 'a-host', name: 'Host', team: 'br' })
+  const guest = createClient({ hub, peerId: 'b-guest', name: 'Guest', team: 'jp' })
+  host.context.PearCupPeerMatch.host('room42')
+  guest.context.PearCupPeerMatch.join('room42')
+  await waitFor(() => host.context.PearCupPeerMatch._state.started && guest.context.PearCupPeerMatch._state.started, 'peer match start')
+
+  host.context.PearCupPeerMatch.onZone('left-high')
+  await waitFor(() => guest.context.PearCupPeerMatch._state.remoteCommit, 'keeper receives commit')
+  guest.context.PearCupPeerMatch.onZone('right-high')
+  await waitFor(() => host.context.PearCupPeerMatch._state.kIndex === 1 && guest.context.PearCupPeerMatch._state.kIndex === 1, 'stale reveal replay', 12000)
+  assert.ok(droppedReveals >= 1)
+  assert.equal(nudgeSeen, true)
 })
 
 test('Penalty Clash peers complete best of five without turn desync', async () => {

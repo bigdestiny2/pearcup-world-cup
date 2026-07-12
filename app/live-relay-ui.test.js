@@ -63,6 +63,8 @@ test('production relay selection overrides any locally saved provider key', asyn
       }
     },
     startLiveFeed: () => { calls.start += 1 },
+    setBracketFixturesFromSnapshot: () => true,
+    renderBracket: () => {},
     document: { querySelector: () => null }
   }
   context.globalThis = context
@@ -95,6 +97,8 @@ test('a stale bundled fixture remains truthful schedule data instead of falling 
       })
     }),
     startLiveFeed: () => { calls.start += 1 },
+    setBracketFixturesFromSnapshot: () => true,
+    renderBracket: () => {},
     document: { querySelector: () => null }
   }
   context.globalThis = context
@@ -124,6 +128,63 @@ test('watch UI uses the responsive data centre, team-matched Higgsfield portrait
   assert.match(appSource, /PEARCUP_EXTERNAL_PEER_TEST_ROLE/)
   assert.match(peerMatchSource, /PEARCUP_EXTERNAL_PEER_TEST_AUTOPLAY/)
   assert.doesNotMatch(appSource, /Start QVAC round|Next QVAC round|QVAC watch trivia/)
+})
+
+test('football relay fixtures are mapped into live bracket matches', () => {
+  const teamsSource = sourceBetween('const teams = [', '// Runtime modules attach')
+  const helpersSource = sourceBetween('function makeMatch', '// Rolling round-by-round pools')
+  const context = { Date, Number, Set, JSON }
+  context.globalThis = context
+  vm.createContext(context)
+  vm.runInContext(teamsSource + helpersSource, context)
+
+  const match = context.providerBracketMatch({
+    id: 537384,
+    utcDate: '2026-07-10T19:00:00Z',
+    status: 'FINISHED',
+    stage: 'QUARTER_FINALS',
+    homeTeam: { name: 'Spain', tla: 'ESP' },
+    awayTeam: { name: 'Belgium', tla: 'BEL' },
+    score: { winner: 'AWAY_TEAM', duration: 'REGULAR', fullTime: { home: 1, away: 2 } }
+  }, 'qf-2')
+
+  assert.equal(match.id, 'qf-2')
+  assert.deepEqual([...match.slots], ['es', 'be'])
+  assert.deepEqual([...match.score], [1, 2])
+  assert.equal(match.status, 'FT')
+  assert.equal(match.winner, 'be')
+})
+
+test('relay polling refreshes the visible bracket when fixture data changes', async () => {
+  const calls = { bracketSnapshot: 0, bracketRender: 0 }
+  const context = {
+    Date,
+    state: { liveConfig: {} },
+    productionLiveData: { relayUrl: 'https://data.example.test/v1/live-match.json', pollMs: 30_000 },
+    RELAY_FILE: 'live-match.json',
+    withRelayCacheBust: value => value,
+    fetch: async () => ({
+      ok: true,
+      json: async () => ({
+        schema: 'pearcup-live-v2',
+        generatedAt: new Date().toISOString(),
+        activeMatch: { id: 1, status: 'FINISHED' },
+        matches: [{ id: 1, stage: 'QUARTER_FINALS', status: 'FINISHED' }]
+      })
+    }),
+    setBracketFixturesFromSnapshot: () => { calls.bracketSnapshot += 1; return true },
+    startLiveFeed: () => {},
+    renderBracket: () => { calls.bracketRender += 1 },
+    renderWatch: () => {},
+    document: { querySelector: selector => selector === '#bracket' ? { classList: { contains: () => true } } : null }
+  }
+  context.globalThis = context
+  vm.createContext(context)
+  vm.runInContext(detectRelaySource, context)
+  await context.detectLiveRelay()
+
+  assert.equal(calls.bracketSnapshot, 1)
+  assert.equal(calls.bracketRender, 1)
 })
 
 test('CSP permits the keyless HTTPS relay and approved Football-Data crests only', () => {

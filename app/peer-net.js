@@ -245,7 +245,7 @@
     }
   }
 
-  function createChannel (topic) {
+  function createChannel (topic, opts = {}) {
     // HiveRelay is the one transport shared by a normal browser, PearBrowser,
     // and Pear Runtime. It is deliberately opt-in through public runtime
     // settings: a release cannot accidentally point friends at a relay.
@@ -254,6 +254,7 @@
       setBackendLabel(HiveRelay.BACKEND || 'hiverelay-outboxlog-v2')
       return HiveRelay.createChannel(topic, {
         rootObject: root,
+        ...opts,
         fallback: () => createLegacyChannel(topic),
         onStatus: setBackendStatus
       })
