@@ -3703,6 +3703,11 @@ function applyFeedTick (ev, st) {
   // Watch room key follows the current match — re-join if it changed (e.g. sim → live).
   if (window.PearCupWatchSync && document.querySelector('#watch')?.classList.contains('is-active')) {
     window.PearCupWatchSync.ensureRoom()
+    // The first relay poll replaces the API feed's Home/Away placeholders with
+    // the authoritative fixture. Re-render the watch shell on that event so
+    // couches, challenge targets, odds selection, and the match header cannot
+    // briefly show different fixtures during a cold start or fixture switch.
+    if (ev) renderWatch()
   }
 }
 
