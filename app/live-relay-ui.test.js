@@ -187,7 +187,12 @@ test('relay polling refreshes the visible bracket when fixture data changes', as
   assert.equal(calls.bracketRender, 1)
   // The first API tick must also repaint the Watch shell: its couches and
   // odds picker are derived from the same authoritative fixture as the title.
-  assert.match(appSource, /if \(ev\) renderWatch\(\)/)
+  // The repaint is keyed on fixture identity — steady-state ticks must NOT
+  // re-enter renderWatch, whose startLiveFeed resubscribe mid-emit made
+  // Set.forEach revisit the listener forever and freeze the Watch screen.
+  assert.match(appSource, /if \(ev && shellFixture !== lastWatchShellFixture\)/)
+  assert.match(appSource, /lastWatchShellFixture = shellFixture/)
+  assert.doesNotMatch(appSource, /if \(ev\) renderWatch\(\)/)
 })
 
 test('CSP permits the keyless HTTPS relay and approved Football-Data crests only', () => {

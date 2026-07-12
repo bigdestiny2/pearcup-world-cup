@@ -3182,7 +3182,9 @@ function createSimLiveFeed () {
   st.dataSource = 'preview'
   st.dataFresh = false
   st.statsAvailable = false
-  const emit = ev => listeners.forEach(fn => fn(ev, st))
+  // Iterate a snapshot: a listener that unsubscribes/resubscribes mid-emit
+  // (startLiveFeed does) would otherwise be revisited by Set.forEach forever.
+  const emit = ev => [...listeners].forEach(fn => fn(ev, st))
   function tick () {
     if (st.matchStatus === 'TIMED' || st.matchStatus === 'SCHEDULED') {
       emit({ type: 'preview', team: 'Spain vs Belgium room is open. Kickoff is 15:00 ET.', clock: 'Soon', minute: 0 })
@@ -3295,7 +3297,9 @@ function createApiLiveFeed (config) {
     possession: 50, shots: [0, 0], threat: 50, matchStatus: 'connecting',
     dataSource: 'relay', dataFresh: config.relayFresh !== false, statsAvailable: false
   }
-  const emit = ev => listeners.forEach(fn => fn(ev, st))
+  // Iterate a snapshot: a listener that unsubscribes/resubscribes mid-emit
+  // (startLiveFeed does) would otherwise be revisited by Set.forEach forever.
+  const emit = ev => [...listeners].forEach(fn => fn(ev, st))
   async function poll () {
     try {
       const data = await apiRequest(config)
@@ -3669,6 +3673,7 @@ function flashTv () {
 }
 
 let lastLiveMatchKey = ''
+let lastWatchShellFixture = ''
 function applyFeedTick (ev, st) {
   // Clear commentary when the live match changes (or on entering live mode).
   if (isLiveApi()) {
@@ -3713,10 +3718,16 @@ function applyFeedTick (ev, st) {
   if (window.PearCupWatchSync && document.querySelector('#watch')?.classList.contains('is-active')) {
     window.PearCupWatchSync.ensureRoom()
     // The first relay poll replaces the API feed's Home/Away placeholders with
-    // the authoritative fixture. Re-render the watch shell on that event so
-    // couches, challenge targets, odds selection, and the match header cannot
-    // briefly show different fixtures during a cold start or fixture switch.
-    if (ev) renderWatch()
+    // the authoritative fixture. Re-render the watch shell when the fixture
+    // identity changes so couches, challenge targets, odds selection, and the
+    // match header cannot briefly show different fixtures during a cold start
+    // or fixture switch. Keying on identity (not every event) keeps steady-state
+    // ticks from re-entering renderWatch -> startLiveFeed mid-emit.
+    const shellFixture = `${st.matchId ?? ''}|${st.home && st.home.name || ''}|${st.away && st.away.name || ''}`
+    if (ev && shellFixture !== lastWatchShellFixture) {
+      lastWatchShellFixture = shellFixture
+      renderWatch()
+    }
   }
 }
 
