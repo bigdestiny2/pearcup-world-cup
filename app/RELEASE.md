@@ -31,7 +31,7 @@ relay, real P2P penalty matches, and watch-party sync.
 - `pear stage` bundles the whole app (UI, all runtime modules, `peer-net.js` /
   `peer-match.js` / `watch-sync.js`, assets, avatars, crests, `live-match.json`).
 - Last public Pear runtime link:
-  `pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo` (native release `10125`).
+  `pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo` (native release `10132`).
   The current PearBrowser/Hyperdrive payload is
   `hyper://0b3eb6272b00ab58f17844bd6cb3452145ffa7da6bd2283aa2590033ae83af0e/`.
   Treat that as the last released pointer, not as evidence that the latest checked
@@ -277,7 +277,7 @@ so use `--force` only when intentionally replacing stale or incorrect evidence.
 The latest local candidate is verified by the repo scripts above. The last released
 Pear runtime pointer is still
 `pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo` with pear-electron,
-pear-bridge, hyperswarm and the swarm worker all bundled. Native release `10125` is
+pear-bridge, hyperswarm and the swarm worker all bundled. Native release `10132` is
 the current public release pointer; `pear run <link>` uses whatever has been released there,
 so do not use it as a freshness check for a new PearBrowser bundle unless a new
 release/pin has just been approved and run. Earlier bugs that blocked the original
