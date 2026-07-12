@@ -3187,7 +3187,7 @@ function createSimLiveFeed () {
   const emit = ev => [...listeners].forEach(fn => fn(ev, st))
   function tick () {
     if (st.matchStatus === 'TIMED' || st.matchStatus === 'SCHEDULED') {
-      emit({ type: 'preview', team: 'Spain vs Belgium room is open. Kickoff is 15:00 ET.', clock: 'Soon', minute: 0 })
+      emit({ type: 'preview', team: `${st.home.name} vs ${st.away.name} room is open — live tracking starts at kickoff.`, clock: 'Soon', minute: 0 })
       return
     }
     st.minute += 1
@@ -3208,7 +3208,26 @@ function createSimLiveFeed () {
   }
   function start () { if (!timer) timer = setInterval(tick, 3400) }
   function stop () { if (timer) { clearInterval(timer); timer = null } }
-  return { start, stop, subscribe (fn) { listeners.add(fn); return () => listeners.delete(fn) }, state () { return st }, source: 'sim' }
+  // Replace the placeholder pairing with a real known fixture (bundled or
+  // last-fetched snapshot) so an offline install previews the actual upcoming
+  // match instead of a hardcoded past one. Never reseeds mid-simulation.
+  function seedFixture (match) {
+    if (!match || (st.matchStatus !== 'TIMED' && st.matchStatus !== 'SCHEDULED')) return
+    const homeName = match.homeTeam && (match.homeTeam.shortName || match.homeTeam.name) || ''
+    const awayName = match.awayTeam && (match.awayTeam.shortName || match.awayTeam.name) || ''
+    if (!homeName || !awayName) return
+    st.matchId = `preview-${match.id || 'fixture'}`
+    st.home.name = homeName
+    st.away.name = awayName
+    st.home.teamId = watchTeamId({ name: homeName }, st.home.teamId)
+    st.away.teamId = watchTeamId({ name: awayName }, st.away.teamId)
+    st.home.flag = teamById(st.home.teamId).flag
+    st.away.flag = teamById(st.away.teamId).flag
+    if (match.stage) st.stage = match.stage
+    if (match.utcDate) st.utcDate = match.utcDate
+    if (match.status === 'TIMED' || match.status === 'SCHEDULED') st.matchStatus = match.status
+  }
+  return { start, stop, seedFixture, subscribe (fn) { listeners.add(fn); return () => listeners.delete(fn) }, state () { return st }, source: 'sim' }
 }
 // Real live feed — fetches a football data API and maps it to the same interface.
 // NOTE: browsers can't call these APIs directly (no CORS). In the Pear runtime a
@@ -3766,7 +3785,23 @@ async function detectLiveRelay () {
     startLiveFeed()
     if (bracketChanged && document.querySelector('#bracket')?.classList.contains('is-active')) renderBracket()
     if (document.querySelector('#watch')?.classList.contains('is-active')) renderWatch()
-  } catch { /* no relay yet — stay on the simulated feed */ }
+  } catch {
+    // No live relay — stay on the simulated preview, but seed it from the
+    // bundled snapshot so an offline install previews the real upcoming
+    // fixture instead of the placeholder pairing.
+    try {
+      if (relayUrl !== RELAY_FILE) {
+        const res = await fetch(RELAY_FILE, { cache: 'no-store' })
+        if (res.ok) {
+          const snapshot = await res.json()
+          if (snapshot && snapshot.schema === 'pearcup-live-v2' && snapshot.activeMatch) {
+            simFeed.seedFixture(snapshot.activeMatch)
+            setBracketFixturesFromSnapshot(snapshot)
+          }
+        }
+      }
+    } catch { /* fully offline without a bundled snapshot — keep the placeholder */ }
+  }
 }
 
 function startLiveFeed () {
