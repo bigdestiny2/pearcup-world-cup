@@ -21,6 +21,8 @@ echo "→ Deploying $DIST_DIR to Cloudflare Pages project '$PROJECT'"
 export PEARCUP_IDENTITY_API_URL="${PEARCUP_IDENTITY_API_URL:-https://pearcup-kawaii-identity.throbbing-limit-1abb.workers.dev}"
 export PEARCUP_HIVERELAY_URL="${PEARCUP_HIVERELAY_URL:-https://relay-sg.p2phiverelay.xyz}"
 export PEARCUP_LIVE_DATA_RELAY_URL="${PEARCUP_LIVE_DATA_RELAY_URL:-https://pearcup-live-data.throbbing-limit-1abb.workers.dev/v1/live-match.json}"
+# Never let an offline/local override leak into a production Pages upload.
+unset PEARCUP_ALLOW_EMPTY_PUBLIC_SETTINGS
 (cd "$ROOT" && npm run build:cloudflare-pages && npm run check:cloudflare-pages)
 
 # Create the Pages project if it doesn't exist yet (ignore 'already exists').
