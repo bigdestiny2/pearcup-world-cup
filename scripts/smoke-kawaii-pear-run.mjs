@@ -10,7 +10,11 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const args = parseArgs(process.argv.slice(2))
 const appRoot = args.appRoot ? resolve(args.appRoot) : join(root, 'app')
 const smokeLabel = args.label || 'Kawaii Pear run smoke'
-const durationMs = Number(args.duration || 10_000)
+// Keep the default long enough for a cold Pear Runtime renderer and its
+// same-runtime hidden guest to complete the native HiveRelay invite handshake.
+// A shorter smoke can report a false failure while both renderers are still
+// booting and the relay is completing its first SSE join/backoff cycle.
+const durationMs = Number(args.duration || 40_000)
 const pear = args.pear || 'pear'
 
 if (!existsSync(appRoot)) throw new Error(`Pear app root does not exist: ${appRoot}`)

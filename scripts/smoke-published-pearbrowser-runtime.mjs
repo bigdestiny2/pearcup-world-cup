@@ -9,7 +9,10 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const sourceAppRoot = join(root, 'app')
 const args = parseArgs(process.argv.slice(2))
 const bundle = resolveBundle(args)
-const duration = String(args.duration || 10_000)
+// The exact published bundle must get the same cold-start budget as the
+// source Pear smoke. Native Pear can spend several seconds opening its relay
+// proxy and the hidden guest needs a complete SSE join before it can answer.
+const duration = String(args.duration || 40_000)
 const pear = args.pear || 'pear'
 const tmpAppRoot = mkdtempSync(join(tmpdir(), 'pearcup-exact-bundle-pear-'))
 

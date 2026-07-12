@@ -6176,7 +6176,12 @@ function runRuntimePeerHandshakeSelfTest (code) {
         return
       }
       if (guest) last = { started: false, reason: 'waiting for peer handshake', guest }
-      if (Date.now() - startedAt > 8000) {
+      // Native Pear renderers can take several relay reconnect/backoff cycles
+      // before the hidden same-runtime guest receives its first live peer
+      // event. Keep this gate bounded, but give the real transport enough
+      // time to complete the invite handshake instead of reporting a false
+      // release failure during a cold boot.
+      if (Date.now() - startedAt > 30000) {
         finish(last)
         return
       }
