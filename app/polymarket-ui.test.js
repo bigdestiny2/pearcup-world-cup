@@ -21,3 +21,9 @@ test('Polymarket odds are rendered from a switchable fixture registry on Home an
   assert.match(app, /renderPolymarketOdds\(\)\n  renderWatchStats/)
   assert.match(app, /Informational only · no wallet or trading connection/)
 })
+
+test('first live relay tick replaces the provisional preview odds selection', () => {
+  assert.match(app, /provisional selection to the live match/)
+  assert.match(app, /\/\^world-cup-\/i\.test\(String\(state\.selectedOddsMatchId \|\| ''\)\)/)
+  assert.match(app, /void detectPolymarketOdds\(state\.selectedOddsMatchId\)/)
+})

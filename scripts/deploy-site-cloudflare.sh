@@ -15,6 +15,14 @@ fi
 
 echo "→ Deploying $DIST_DIR to Cloudflare Pages project '$PROJECT'"
 
+# Always rebuild from the production-safe public settings before uploading.
+# Without this, a previously generated Pages artifact can retain a null
+# content-addressed settings file and silently fall back to bundled fixtures.
+export PEARCUP_IDENTITY_API_URL="${PEARCUP_IDENTITY_API_URL:-https://pearcup-kawaii-identity.throbbing-limit-1abb.workers.dev}"
+export PEARCUP_HIVERELAY_URL="${PEARCUP_HIVERELAY_URL:-https://relay-sg.p2phiverelay.xyz}"
+export PEARCUP_LIVE_DATA_RELAY_URL="${PEARCUP_LIVE_DATA_RELAY_URL:-https://pearcup-live-data.throbbing-limit-1abb.workers.dev/v1/live-match.json}"
+(cd "$ROOT" && npm run build:cloudflare-pages && npm run check:cloudflare-pages)
+
 # Create the Pages project if it doesn't exist yet (ignore 'already exists').
 npx wrangler pages project create "$PROJECT" --production-branch main 2>/dev/null \
   || echo "  (project already exists — reusing)"

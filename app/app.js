@@ -3676,6 +3676,15 @@ function applyFeedTick (ev, st) {
     if (key !== lastLiveMatchKey) { lastLiveMatchKey = key; state.feedEvents = [] }
   }
   const title = $('#watchTitle'); if (title) title.textContent = `${st.home.name} vs ${st.away.name}`
+  // The first odds request can race the live relay and select the simulated
+  // world-cup-* fixture. Once an authoritative numeric fixture arrives, move
+  // that provisional selection to the live match and fetch its market. Keep a
+  // real user-selected fixture (for example, the next semifinal) untouched.
+  if (isLiveApi() && st.matchId != null && /^world-cup-/i.test(String(state.selectedOddsMatchId || ''))) {
+    state.selectedOddsMatchId = String(st.matchId)
+    persist()
+    void detectPolymarketOdds(state.selectedOddsMatchId)
+  }
   // The match centre always renders from feed state; it never substitutes a
   // decorative fake pitch when provider data is stale or pre-match.
   const tv = document.querySelector('#watch .stadium-tv')
