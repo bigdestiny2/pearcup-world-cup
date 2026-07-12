@@ -3841,6 +3841,17 @@ h2 {
   padding: 0 9%; pointer-events: none;
 }
 .seated { display: grid; justify-items: center; margin: 0 -8px; animation: seatBob 3.4s ease-in-out infinite; }
+.watch-party-player {
+  pointer-events: auto;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.watch-party-player:focus-visible { outline: 3px solid var(--pink); outline-offset: 4px; border-radius: 10px; }
+.watch-party-player:hover .seated-av { transform: translateY(-4px) scale(1.04); }
 .seated:nth-child(2) { animation-delay: .4s; }
 .seated:nth-child(3) { animation-delay: .8s; }
 .seated:nth-child(4) { animation-delay: 1.2s; }
@@ -3862,9 +3873,39 @@ h2 {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 .watch-challenge-head .eyebrow { margin: 0; }
 .watch-challenge-head strong { font-family: var(--display); font-size: 15px; }
+.watch-challenge-stake-picker {
+  display: grid;
+  grid-template-columns: auto minmax(145px, auto);
+  align-items: center;
+  gap: 3px 8px;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: right;
+}
+.watch-challenge-stake-picker span { white-space: nowrap; }
+.watch-challenge-stake-picker select {
+  min-height: 32px;
+  padding: 5px 26px 5px 9px;
+  border: 1px solid rgba(63,196,168,.42);
+  border-radius: 9px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.watch-challenge-stake-picker small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
 .watch-challenge-list { display: grid; gap: 8px; }
 .watch-challenge-card {
   display: grid;
@@ -3885,6 +3926,13 @@ h2 {
 .watch-challenge-card span { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .watch-challenge-card strong { font-family: var(--display); font-size: 14px; }
 .watch-challenge-card span { color: var(--muted); font-size: 12px; font-weight: 700; }
+.watch-challenge-card .watch-challenge-stake-hint {
+  display: block;
+  margin-top: 3px;
+  color: var(--pink-deep);
+  font-size: 10px;
+  font-weight: 800;
+}
 .watch-challenge-actions { display: flex; gap: 8px; align-items: center; justify-content: flex-end; }
 .watch-peer-waiting:disabled { opacity: .72; cursor: wait; box-shadow: 0 3px 0 var(--line); }
 .watch-challenge-empty {
@@ -3898,6 +3946,7 @@ h2 {
 .watch-challenge-empty strong { color: var(--ink); font-family: var(--display); font-size: 14px; }
 .watch-challenge-empty .compact-action { justify-self: start; margin-top: 6px; }
 @media (max-width: 560px) {
+  .watch-challenge-stake-picker { width: 100%; margin-left: 0; grid-template-columns: auto minmax(0, 1fr); text-align: left; }
   .watch-challenge-card { grid-template-columns: 40px minmax(0, 1fr); }
   .watch-challenge-card .watch-peer-challenge,
   .watch-challenge-card .watch-peer-waiting,

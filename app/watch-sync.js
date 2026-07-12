@@ -17,6 +17,8 @@
   if (!Net) { markModule('missing-peer-net'); console.warn('PearCupPeerNet missing — watch sync disabled'); return }
 
   const CHALLENGE_TIMEOUT_MS = 45000
+  const CHALLENGE_STAKES = [0, 5, 10, 25, 50, 100]
+  const DEFAULT_CHALLENGE_STAKE = 10
   const WS = {
     channel: null,
     topic: null,
@@ -35,6 +37,52 @@
   function selfName () { return (typeof state !== 'undefined' && state.username) || 'guest' }
   function selfTeam () { return (typeof state !== 'undefined' && state.team) || 'br' }
   function selfPick () { return typeof root.currentWatchPick === 'function' ? root.currentWatchPick() : '' }
+
+  // Challenge amounts are demo USDT today, but they still use the same wallet
+  // debit/credit seam as pool entries. Keeping the allowed values small and
+  // canonical prevents a crafted peer frame from smuggling a fractional or
+  // unexpectedly large amount into the match state.
+  function normalizeStake (value) {
+    const amount = Number(value)
+    if (!Number.isFinite(amount)) return 0
+    const rounded = Math.round(amount * 100) / 100
+    return CHALLENGE_STAKES.includes(rounded) ? rounded : 0
+  }
+
+  function stakeLabel (value) {
+    const amount = normalizeStake(value)
+    return amount > 0 ? `${amount} demo USDT` : 'bragging rights'
+  }
+
+  function selectedStake () {
+    const picker = $('#watchChallengeStake')
+    return normalizeStake(picker ? picker.value : DEFAULT_CHALLENGE_STAKE)
+  }
+
+  function walletBalance () {
+    return typeof state !== 'undefined' && state.wallet ? Number(state.wallet.balance) || 0 : Infinity
+  }
+
+  function reserveStake (amount, memo) {
+    const stake = normalizeStake(amount)
+    if (!stake) return true
+    if (typeof root.debitWallet === 'function') return Boolean(root.debitWallet(stake, memo || 'Penalty Clash stake'))
+    if (typeof state === 'undefined' || !state.wallet) return true
+    if (walletBalance() < stake) return false
+    state.wallet.balance -= stake
+    return true
+  }
+
+  function refundStake (pending, label) {
+    if (!pending || pending.refunded || !pending.debited) return
+    pending.refunded = true
+    const stake = normalizeStake(pending.stake)
+    if (!stake) return
+    if (typeof state !== 'undefined' && state.wallet) state.wallet.balance += stake
+    if (typeof root.walletLog === 'function') root.walletLog(label || 'Penalty Clash stake returned', stake, 'credit')
+    if (typeof root.persist === 'function') root.persist()
+    if (typeof root.refreshWallet === 'function') root.refreshWallet()
+  }
 
   function matchKey () {
     try {
@@ -224,6 +272,7 @@
   }
 
   function clearChallenges () {
+    WS.outgoing.forEach(pending => refundStake(pending, 'Penalty Clash stake returned'))
     WS.timers.forEach(timer => clearTimeout(timer))
     WS.timers.clear()
     WS.incoming.clear()
@@ -235,6 +284,7 @@
     const outgoing = WS.outgoing.get(peerId)
     if (incoming) clearChallengeTimer(peerId, incoming.challengeId)
     if (outgoing) clearChallengeTimer(peerId, outgoing.challengeId)
+    if (outgoing && outgoing.status === 'sent') refundStake(outgoing, 'Penalty Clash stake returned')
     WS.incoming.delete(peerId)
     WS.outgoing.delete(peerId)
   }
@@ -255,6 +305,7 @@
       if (!pending || pending.challengeId !== challengeId || pending.status !== 'sent') return
       WS.outgoing.delete(peerId)
       WS.timers.delete(key)
+      refundStake(pending, 'Penalty Clash stake returned')
       resetSilentHostedMatch(code)
       if (typeof showToast === 'function') showToast(`${esc(pending.name || 'Watcher')} did not answer the Penalty Clash challenge.`)
       renderChallengeList()
@@ -262,31 +313,51 @@
     WS.timers.set(key, timer)
   }
 
-  function challenge (peerId) {
+  function challenge (peerId, requestedStake) {
     const peer = WS.peers.get(peerId)
     if (!peer) return
+    if (WS.outgoing.has(peerId)) {
+      if (typeof showToast === 'function') showToast(`A Penalty Clash challenge is already waiting for ${esc(peer.name || 'this watcher')}.`)
+      return
+    }
     if (!root.PearCupPeerMatch) {
       if (typeof showToast === 'function') showToast('Penalty Clash is still loading.')
       return
     }
     const code = Net.newRoomCode()
     const challengeId = challengeIdFor(peerId, code)
+    const stake = normalizeStake(requestedStake == null ? selectedStake() : requestedStake)
+    if (!reserveStake(stake, `Penalty Clash stake vs ${peer.name || 'watcher'}`)) {
+      if (typeof showToast === 'function') showToast(`You need ${stakeLabel(stake)} available to send this challenge.`)
+      return
+    }
     WS.outgoing.set(peerId, {
       peerId,
       challengeId,
       code,
       name: peer.name,
       team: peer.team,
+      stake,
+      debited: stake > 0,
+      refunded: false,
       status: 'sent'
     })
-    root.PearCupPeerMatch.host(code, true)
-    send({ t: 'challenge', to: peerId, challengeId, code, name: selfName(), team: selfTeam() })
+    // Record the pending invite before opening the match: the peer-match
+    // module uses this as the signal to keep the watch-room relay alive until
+    // the recipient's accept/deny event arrives.
+    root.PearCupPeerMatch.host(code, true, { stake })
+    send({ t: 'challenge', to: peerId, challengeId, code, name: selfName(), team: selfTeam(), stake, expiresAt: Date.now() + CHALLENGE_TIMEOUT_MS })
     armChallengeTimeout(peerId, challengeId, code)
     renderChallengeList()
   }
 
   function receiveChallenge (m) {
     if (!m || !m.code) return
+    const stake = normalizeStake(m.stake)
+    if (m.expiresAt && Number(m.expiresAt) <= Date.now()) {
+      send({ t: 'challenge-decline', to: m.from, challengeId: m.challengeId, code: m.code, name: selfName(), reason: 'expired' })
+      return
+    }
     const busy = root.PearCupPeerMatch && root.PearCupPeerMatch._state && root.PearCupPeerMatch._state.active
     if (busy) {
       send({ t: 'challenge-decline', to: m.from, challengeId: m.challengeId, code: m.code, name: selfName(), reason: 'busy' })
@@ -298,9 +369,24 @@
       challengeId: m.challengeId || `${m.from}-${m.code}`,
       code: m.code,
       name: m.name || 'A watcher',
-      team: m.team || 'br'
+      team: m.team || 'br',
+      stake,
+      expiresAt: Number(m.expiresAt) || Date.now() + CHALLENGE_TIMEOUT_MS
     })
-    if (typeof showToast === 'function') showToast(`${esc(m.name || 'A watcher')} challenged you to Penalty Clash.`)
+    const remaining = Math.max(1000, (Number(m.expiresAt) || (Date.now() + CHALLENGE_TIMEOUT_MS)) - Date.now())
+    clearChallengeTimer(m.from, m.challengeId || `${m.from}-${m.code}`)
+    const incomingKey = challengeTimerKey(m.from, m.challengeId || `${m.from}-${m.code}`)
+    const incomingTimer = setTimeout(() => {
+      const invite = WS.incoming.get(m.from)
+      if (!invite || invite.challengeId !== (m.challengeId || `${m.from}-${m.code}`)) return
+      WS.incoming.delete(m.from)
+      WS.timers.delete(incomingKey)
+      send({ t: 'challenge-decline', to: m.from, challengeId: invite.challengeId, code: invite.code, name: selfName(), reason: 'expired' })
+      if (typeof showToast === 'function') showToast(`The ${esc(invite.name || 'watcher')} Penalty Clash challenge expired.`)
+      renderChallengeList()
+    }, remaining)
+    WS.timers.set(incomingKey, incomingTimer)
+    if (typeof showToast === 'function') showToast(`${esc(m.name || 'A watcher')} challenged you for ${stakeLabel(stake)} in Penalty Clash.`)
     renderChallengeList()
   }
 
@@ -308,26 +394,55 @@
     const invite = WS.incoming.get(peerId)
     if (!invite) return
     if (!root.PearCupPeerMatch) return
+    if (invite.expiresAt && invite.expiresAt <= Date.now()) {
+      WS.incoming.delete(peerId)
+      clearChallengeTimer(peerId, invite.challengeId)
+      send({ t: 'challenge-decline', to: peerId, challengeId: invite.challengeId, code: invite.code, name: selfName(), reason: 'expired' })
+      if (typeof showToast === 'function') showToast('That Penalty Clash challenge expired.')
+      renderChallengeList()
+      return
+    }
+    if (!reserveStake(invite.stake, `Penalty Clash stake vs ${invite.name || 'watcher'}`)) {
+      WS.incoming.delete(peerId)
+      clearChallengeTimer(peerId, invite.challengeId)
+      send({ t: 'challenge-decline', to: peerId, challengeId: invite.challengeId, code: invite.code, name: selfName(), reason: 'insufficient-funds' })
+      if (typeof showToast === 'function') showToast(`You need ${stakeLabel(invite.stake)} available to accept this challenge.`)
+      renderChallengeList()
+      return
+    }
+    invite.debited = invite.stake > 0
     WS.incoming.delete(peerId)
-    send({ t: 'challenge-accept', to: peerId, challengeId: invite.challengeId, code: invite.code, name: selfName(), team: selfTeam() })
+    clearChallengeTimer(peerId, invite.challengeId)
+    send({ t: 'challenge-accept', to: peerId, challengeId: invite.challengeId, code: invite.code, name: selfName(), team: selfTeam(), stake: invite.stake })
     if (typeof showToast === 'function') showToast(`Joining ${esc(invite.name || 'watcher')} for Penalty Clash.`)
     if (typeof setView === 'function') setView('games')
-    root.PearCupPeerMatch.join(invite.code)
+    root.PearCupPeerMatch.join(invite.code, { stake: invite.stake })
     renderChallengeList()
   }
 
-  function declineChallenge (peerId) {
+  function declineChallenge (peerId, reason = 'declined') {
     const invite = WS.incoming.get(peerId)
     if (!invite) return
     WS.incoming.delete(peerId)
-    send({ t: 'challenge-decline', to: peerId, challengeId: invite.challengeId, code: invite.code, name: selfName(), reason: 'declined' })
-    if (typeof showToast === 'function') showToast(`Declined ${esc(invite.name || 'watcher')}'s Penalty Clash challenge.`)
+    clearChallengeTimer(peerId, invite.challengeId)
+    send({ t: 'challenge-decline', to: peerId, challengeId: invite.challengeId, code: invite.code, name: selfName(), reason })
+    if (typeof showToast === 'function') showToast(`Denied ${esc(invite.name || 'watcher')}'s Penalty Clash challenge.`)
     renderChallengeList()
   }
 
   function challengeAccepted (m) {
     const pending = WS.outgoing.get(m.from)
     if (!pending || (m.challengeId && pending.challengeId !== m.challengeId)) return
+    const acceptedStake = normalizeStake(m.stake)
+    if (acceptedStake !== normalizeStake(pending.stake)) {
+      refundStake(pending, 'Penalty Clash stake returned')
+      WS.outgoing.delete(m.from)
+      clearChallengeTimer(m.from, pending.challengeId)
+      resetSilentHostedMatch(pending.code)
+      if (typeof showToast === 'function') showToast('Challenge amount changed before the match could start.')
+      renderChallengeList()
+      return
+    }
     pending.status = 'accepted'
     clearChallengeTimer(m.from, pending.challengeId)
     // The match stream is authoritative now. Close the watch transport after
@@ -335,6 +450,17 @@
     // the shell/audit surface to show the transition.
     leave(true, true)
     if (typeof showToast === 'function') showToast(`${esc(m.name || pending.name || 'Watcher')} accepted - opening Penalty Clash.`)
+    // Keep the accepted transition visible briefly for diagnostics, then let
+    // the same watcher challenge again after this match or a later return to
+    // the watch room.
+    const acceptedKey = challengeTimerKey(m.from, pending.challengeId)
+    const acceptedTimer = setTimeout(() => {
+      const current = WS.outgoing.get(m.from)
+      if (current && current.challengeId === pending.challengeId && current.status === 'accepted') WS.outgoing.delete(m.from)
+      WS.timers.delete(acceptedKey)
+      renderChallengeList()
+    }, 15000)
+    WS.timers.set(acceptedKey, acceptedTimer)
     renderChallengeList()
   }
 
@@ -343,8 +469,9 @@
     if (!pending || (m.challengeId && pending.challengeId !== m.challengeId)) return
     WS.outgoing.delete(m.from)
     clearChallengeTimer(m.from, pending.challengeId)
+    refundStake(pending, 'Penalty Clash stake returned')
     resetSilentHostedMatch(pending.code)
-    const reason = m.reason === 'busy' ? 'is already in a match' : 'declined'
+    const reason = m.reason === 'busy' ? 'is already in a match' : m.reason === 'insufficient-funds' ? 'does not have enough demo USDT' : m.reason === 'expired' ? 'let the challenge expire' : 'denied'
     if (typeof showToast === 'function') showToast(`${esc(m.name || pending.name || 'Watcher')} ${reason} the Penalty Clash challenge.`)
     renderChallengeList()
   }
@@ -368,31 +495,34 @@
       if (invite) invite.addEventListener('click', () => toggleInviteBar())
       return
     }
+    const chosenStake = selectedStake()
     host.innerHTML = peers.map(peer => {
       const team = typeof teamById === 'function' ? teamById(peer.team) : { flag: '⚽', name: peer.team || 'team' }
       const incoming = WS.incoming.get(peer.peerId)
       const outgoing = WS.outgoing.get(peer.peerId)
+      const stake = incoming ? incoming.stake : outgoing ? outgoing.stake : chosenStake
       const detail = incoming
-        ? 'challenged you to Penalty Clash'
+        ? `challenged you for ${stakeLabel(stake)}`
         : outgoing && outgoing.status === 'accepted'
-          ? 'accepted - opening game'
+          ? `accepted · ${stakeLabel(stake)} · opening game`
           : outgoing
-            ? 'waiting for accept'
+            ? `waiting for accept · ${stakeLabel(stake)}`
             : `${esc(team.flag || '⚽')} watching with you`
       const actions = incoming
         ? `<div class="watch-challenge-actions">
-            <button class="primary-button compact-action watch-peer-accept" data-watch-accept="${esc(peer.peerId)}" type="button">Accept</button>
-            <button class="secondary-button compact-action watch-peer-decline" data-watch-decline="${esc(peer.peerId)}" type="button">Decline</button>
+            <button class="primary-button compact-action watch-peer-accept" data-watch-accept="${esc(peer.peerId)}" type="button">Accept · ${stake > 0 ? `$${stake}` : 'Free'}</button>
+            <button class="secondary-button compact-action watch-peer-decline" data-watch-decline="${esc(peer.peerId)}" type="button">Deny</button>
           </div>`
         : outgoing
-          ? '<button class="secondary-button compact-action watch-peer-waiting" type="button" disabled>Waiting</button>'
-          : `<button class="primary-button compact-action watch-peer-challenge" data-watch-peer="${esc(peer.peerId)}" type="button">Challenge</button>`
+          ? `<button class="secondary-button compact-action watch-peer-waiting" type="button" disabled>Waiting · ${stake > 0 ? `$${stake}` : 'Free'}</button>`
+          : `<button class="primary-button compact-action watch-peer-challenge" data-watch-peer="${esc(peer.peerId)}" type="button">Challenge · ${chosenStake > 0 ? `$${chosenStake}` : 'Free'}</button>`
       return `
         <div class="watch-challenge-card ${incoming ? 'is-incoming' : outgoing ? 'is-pending' : ''}">
           ${typeof avatarSvg === 'function' ? avatarSvg(peer.name, team, true) : ''}
           <div>
             <strong>${esc(peer.name)}</strong>
             <span>${detail}</span>
+            ${!incoming && !outgoing ? `<small class="watch-challenge-stake-hint">Your selected stake: ${stakeLabel(chosenStake)}</small>` : ''}
           </div>
           ${actions}
         </div>`
@@ -431,6 +561,6 @@
     })
   }
 
-  root.PearCupWatchSync = { ensureRoom, broadcastChat, react, bindReactionBar, updatePresence, renderChallengeList, challenge, acceptChallenge, declineChallenge, leave, peerCount: () => WS.peers.size + 1, broadcastScreen, onScreenShare, onPeerJoined, onPeerLeft, screenShareState, broadcastTrivia, onTrivia, broadcastVoice, onVoice, _state: WS }
+  root.PearCupWatchSync = { ensureRoom, broadcastChat, react, bindReactionBar, updatePresence, renderChallengeList, challenge, acceptChallenge, declineChallenge, leave, peerCount: () => WS.peers.size + 1, broadcastScreen, onScreenShare, onPeerJoined, onPeerLeft, screenShareState, broadcastTrivia, onTrivia, broadcastVoice, onVoice, challengeStakes: CHALLENGE_STAKES.slice(), _state: WS }
   markModule('ready')
 })(typeof window !== 'undefined' ? window : globalThis)

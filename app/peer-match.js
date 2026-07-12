@@ -103,6 +103,7 @@
           lastMessage: PM.lastMessage,
           recoveryRequests: PM.recoveryRequests,
           lastRecoveryReason: PM.lastRecoveryReason,
+          stake: Number(PM.stake) || 0,
           score: shootout
             ? { you: Number(shootout.you) || 0, opp: Number(shootout.opp) || 0 }
             : null
@@ -121,6 +122,7 @@
     Object.assign(PM, {
       active: false, started: false, over: false, channel: null, code: null,
       self: null, opp: null, role: null, kIndex: 0, busy: false,
+      stake: 0,
       commit: null, remoteCommit: null, myDive: null, autoplayTimer: null, nudgeTimer: null, diveReceived: false, awaitingResolved: false, resolvedReceived: false, lastDives: new Map(), lastReveals: new Map(), lastResolved: new Map(), futureMessages: new Map(), sentCounts: new Map(), receivedCounts: new Map(), lastMessage: null, recoveryRequests: 0, lastRecoveryReason: null, retryTimers: new Map(), helloTimer: null, helloAttempts: 0
     })
     syncDiagnostics('idle')
@@ -159,11 +161,17 @@
   }
 
   // ---- lifecycle ----
-  function host (code, silent) {
+  function normalizeStake (value) {
+    const amount = Number(value)
+    return Number.isFinite(amount) && amount >= 0 && amount <= 100 ? Math.round(amount * 100) / 100 : 0
+  }
+
+  function host (code, silent, options = {}) {
     reset()
     releaseBackgroundChannelsForRelay()
     PM.active = true
     PM.code = code || Net.newRoomCode()
+    PM.stake = normalizeStake(options && options.stake)
     PM.self = { peerId: externalPeerId() || Net.newPeerId(), name: state.username || 'captain', team: state.team || 'br' }
     openChannel()
     syncDiagnostics('hosting')
@@ -172,11 +180,12 @@
     startAnnouncing()
   }
 
-  function join (code) {
+  function join (code, options = {}) {
     reset()
     releaseBackgroundChannelsForRelay()
     PM.active = true
     PM.code = code
+    PM.stake = normalizeStake(options && options.stake)
     PM.self = { peerId: externalPeerId() || Net.newPeerId(), name: state.username || 'captain', team: state.team || 'br' }
     openChannel()
     syncDiagnostics('joining')
@@ -192,7 +201,7 @@
     PM.channel.onMessage(onMessage)
   }
 
-  function announce () { send({ t: 'hello', peer: PM.self }) }
+  function announce () { send({ t: 'hello', peer: { ...PM.self, stake: PM.stake } }) }
   function recordMessage (map, type) { if (!type) return; map.set(type, (map.get(type) || 0) + 1) }
   function send (msg) {
     if (!PM.channel) return
@@ -302,6 +311,15 @@
   function onHello (peer) {
     if (PM.started || !peer) return
     if (!PM.opp) { PM.opp = peer; announce() } // re-announce so a late joiner learns me
+    // The watch-room challenge carries the stake to both clients. Refuse to
+    // silently start a match if one side has a different amount; otherwise a
+    // stale/forged invite could make the two wallets settle different values.
+    const peerStake = peer.stake == null ? PM.stake : normalizeStake(peer.stake)
+    if (peer.stake != null && peerStake !== PM.stake) {
+      showToast('Challenge amount changed before the match could start.')
+      reset()
+      return
+    }
     syncDiagnostics(PM.role ? undefined : 'connected')
     maybeStart()
   }
@@ -318,7 +336,7 @@
     // Both players on default names would read "captain vs captain" — disambiguate the
     // opponent (they also get a distinct pool avatar from the new name).
     if ((PM.opp.name || '').toLowerCase() === (PM.self.name || '').toLowerCase()) PM.opp.name = 'Rival'
-    state.match = { opponent: { name: PM.opp.name, team: PM.opp.team }, stake: 0, peer: true }
+    state.match = { opponent: { name: PM.opp.name, team: PM.opp.team }, stake: PM.stake, peer: true }
     state.shootout = { round: 0, mode: 'shoot', you: 0, opp: 0, youDots: [], oppDots: [], phase: 'aim', busy: false, lastResult: null, peer: true }
     closeModal()
     showToast(`Connected to ${PM.opp.name} — best of five!`)

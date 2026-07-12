@@ -287,6 +287,7 @@ function loadState () {
     selectedGamePool: '',
     selectedOddsMatchId: '',
     gamePoolDraft: { matchId: '', pick: '', tier: 10 },
+    challengeStake: 10,
     triviaScore: 0,
     liveConfig: { enabled: false, provider: 'football-data', apiKey: '', matchId: '', proxy: '', pollSec: 30 },
     theme: 'kawaii',
@@ -3122,8 +3123,9 @@ function watchParticipants () {
   const peers = typeof window !== 'undefined' && window.PearCupWatchSync && window.PearCupWatchSync._state && window.PearCupWatchSync._state.peers
   const remote = peers && typeof peers.values === 'function' ? [...peers.values()] : []
   return [
-    { name: state.username || 'captain', team: state.team, pick: livePick, role: 'you' },
+    { peerId: state.playerId || 'local-player', name: state.username || 'captain', team: state.team, pick: livePick, role: 'you' },
     ...remote.map(peer => ({
+      peerId: peer.peerId,
       name: peer.name || 'guest',
       team: peer.team || 'br',
       pick: peer.pick === homeTeamId || peer.pick === awayTeamId ? peer.pick : '',
@@ -4283,6 +4285,8 @@ function renderWatch () {
     const picked = room.filter(person => person.pick === teamId)
     return { team: teamById(teamId), picked }
   })
+  const challengeStakes = [0, 5, 10, 25, 50, 100]
+  const challengeStake = challengeStakes.includes(Number(state.challengeStake)) ? Number(state.challengeStake) : 10
 
   $('#watchPickBoard').innerHTML = `
     <p class="party-label"><span class="party-dot"></span>Watch party · ${room.length} on the couch</p>
@@ -4297,10 +4301,10 @@ function renderWatch () {
           <div class="couch-scene">
             <div class="couch-seated">
               ${group.picked.map(person => `
-                <span class="seated">
+                <${person.role === 'watcher' ? 'button' : 'span'} class="seated ${person.role === 'watcher' ? 'watch-party-player' : ''}" ${person.role === 'watcher' ? `data-watch-peer="${escapeHtml(person.peerId || '')}" type="button" aria-label="Challenge ${escapeHtml(person.name)} to Penalty Clash"` : ''}>
                   <span class="seated-av">${avatarSvg(person.name, group.team, true)}</span>
                   <em>${escapeHtml(person.name)}</em>
-                </span>`).join('')}
+                </${person.role === 'watcher' ? 'button' : 'span'}>`).join('')}
             </div>
             <img class="couch-img" src="assets/${gi === 0 ? 'couch' : 'couch2'}.png" alt="">
           </div>
@@ -4308,11 +4312,33 @@ function renderWatch () {
     </div>
     <div class="watch-challenge-panel">
       <div class="watch-challenge-head">
-        <p class="eyebrow">Penalty Clash</p>
-        <strong>Challenge watchers</strong>
+        <div>
+          <p class="eyebrow">Penalty Clash</p>
+          <strong>Challenge watchers</strong>
+        </div>
+        <label class="watch-challenge-stake-picker" for="watchChallengeStake">
+          <span>Demo stake</span>
+          <select id="watchChallengeStake" aria-label="Penalty challenge demo stake">
+            <option value="0" ${challengeStake === 0 ? 'selected' : ''}>Free · bragging rights</option>
+            <option value="5" ${challengeStake === 5 ? 'selected' : ''}>5 demo USDT</option>
+            <option value="10" ${challengeStake === 10 ? 'selected' : ''}>10 demo USDT</option>
+            <option value="25" ${challengeStake === 25 ? 'selected' : ''}>25 demo USDT</option>
+            <option value="50" ${challengeStake === 50 ? 'selected' : ''}>50 demo USDT</option>
+            <option value="100" ${challengeStake === 100 ? 'selected' : ''}>100 demo USDT</option>
+          </select>
+          <small>Held when you send; returned if denied or expired.</small>
+        </label>
       </div>
-      <div class="watch-challenge-list" id="watchChallengeList"></div>
+      <div class="watch-challenge-list" id="watchChallengeList" aria-live="assertive" aria-atomic="false"></div>
     </div>`
+
+  $$('.watch-party-player').forEach(button => {
+    button.addEventListener('click', () => {
+      if (window.PearCupWatchSync && typeof window.PearCupWatchSync.challenge === 'function') {
+        window.PearCupWatchSync.challenge(button.dataset.watchPeer)
+      }
+    })
+  })
 
   $('#languageTabs').innerHTML = WATCH_LANGS.map(language => `
     <button type="button" class="${language === state.language ? 'is-active' : ''}" data-language="${language}">
@@ -4346,6 +4372,15 @@ function renderWatch () {
     window.PearCupWatchSync.ensureRoom()
     window.PearCupWatchSync.bindReactionBar()
     window.PearCupWatchSync.updatePresence()
+    const stakePicker = $('#watchChallengeStake')
+    if (stakePicker && !stakePicker.dataset.bound) {
+      stakePicker.dataset.bound = '1'
+      stakePicker.addEventListener('change', () => {
+        state.challengeStake = Number(stakePicker.value)
+        persist()
+        window.PearCupWatchSync.renderChallengeList()
+      })
+    }
     if (typeof window.PearCupWatchSync.renderChallengeList === 'function') window.PearCupWatchSync.renderChallengeList()
     bindTriviaSync()
   }

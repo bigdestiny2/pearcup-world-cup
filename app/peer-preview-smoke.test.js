@@ -283,7 +283,13 @@ function createClient ({ BroadcastChannel, pear, name, team, href = 'http://127.
     setInterval: browserSetInterval,
     clearInterval,
     requestAnimationFrame: fn => setTimeout(fn, 0),
-    state: { username: name, team, chat: [], spectators: 1 },
+    state: {
+      username: name,
+      team,
+      chat: [],
+      spectators: 1,
+      wallet: { balance: 500, currency: 'USDT', ledger: [] }
+    },
     showToast: message => { toasts.push(message) },
     setView: view => { views.push(view) },
     ensureShootoutDom () {},
@@ -548,12 +554,14 @@ test('PearBrowser swarm watch room challenges wait for a friend response', async
 
   const guestPeerId = host.context.PearCupWatchSync._state.peers.values().next().value.peerId
   const hostPeerId = guest.context.PearCupWatchSync._state.peers.values().next().value.peerId
-  host.context.PearCupWatchSync.challenge(guestPeerId)
+  host.context.PearCupWatchSync.challenge(guestPeerId, 25)
   await waitFor(() => {
     return guest.context.PearCupWatchSync._state.incoming.has(hostPeerId) &&
       /Accept/.test(guest.document.querySelector('#watchChallengeList').innerHTML)
   }, 'watch room challenge request')
   assert.match(host.document.querySelector('#watchChallengeList').innerHTML, /waiting for accept/)
+  assert.match(host.document.querySelector('#watchChallengeList').innerHTML, /25 demo USDT/)
+  assert.equal(host.context.state.wallet.balance, 475)
   assert.equal(host.context.PearCupPeerMatch._state.active, true)
   assert.equal(host.context.PearCupPeerMatch._state.started, false)
 
@@ -562,7 +570,8 @@ test('PearBrowser swarm watch room challenges wait for a friend response', async
     return host.context.PearCupWatchSync._state.outgoing.size === 0 &&
       host.context.PearCupPeerMatch._state.active === false
   }, 'declined watch challenge reset')
-  assert.ok(host.toasts.some(message => /declined/.test(message)))
+  assert.ok(host.toasts.some(message => /denied|declined/.test(message)))
+  assert.equal(host.context.state.wallet.balance, 500)
 
   host.context.PearCupWatchSync.leave()
   guest.context.PearCupWatchSync.leave()
@@ -585,11 +594,13 @@ test('PearBrowser swarm watch room challenge requests can be accepted into Penal
 
   const guestPeerId = host.context.PearCupWatchSync._state.peers.values().next().value.peerId
   const hostPeerId = guest.context.PearCupWatchSync._state.peers.values().next().value.peerId
-  host.context.PearCupWatchSync.challenge(guestPeerId)
+  host.context.PearCupWatchSync.challenge(guestPeerId, 25)
   await waitFor(() => guest.context.PearCupWatchSync._state.incoming.has(hostPeerId), 'incoming watch challenge')
-  assert.match(guest.document.querySelector('#watchChallengeList').innerHTML, /challenged you to Penalty Clash/)
-  assert.match(guest.document.querySelector('#watchChallengeList').innerHTML, /Decline/)
+  assert.match(guest.document.querySelector('#watchChallengeList').innerHTML, /challenged you for 25 demo USDT/)
+  assert.match(guest.document.querySelector('#watchChallengeList').innerHTML, /Deny/)
   assert.match(host.document.querySelector('#watchChallengeList').innerHTML, /waiting for accept/)
+  assert.equal(host.context.state.wallet.balance, 475)
+  assert.equal(guest.context.state.wallet.balance, 500)
   guest.context.PearCupWatchSync.acceptChallenge(hostPeerId)
 
   await waitFor(() => {
@@ -597,7 +608,10 @@ test('PearBrowser swarm watch room challenge requests can be accepted into Penal
   }, 'accepted watch challenge acknowledgement')
   assert.ok(guest.toasts.some(message => /challenged you/.test(message)))
   assert.ok(host.toasts.some(message => /accepted/.test(message)))
+  assert.equal(guest.context.state.wallet.balance, 475)
   await waitForStartedMatch(host, guest)
+  assert.equal(host.context.state.match.stake, 25)
+  assert.equal(guest.context.state.match.stake, 25)
   await driveFirstKick(host, guest)
 
   host.context.PearCupWatchSync.leave()
