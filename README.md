@@ -12,7 +12,7 @@ pear run pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo
 
 **Production links:**
 
-- Pear Runtime: `pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo` (native release `10132`, seeded)
+- Pear Runtime: `pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo` (native release `10136`, seeded)
 - PearBrowser / Hyperdrive: `hyper://0b3eb6272b00ab58f17844bd6cb3452145ffa7da6bd2283aa2590033ae83af0e/` (published and HiveRelay-pinned)
 
 These are the two official launch surfaces for judging. Both ship the **live 2026 World Cup knockout bracket**, watch party, and P2P penalty minigame. The Cloudflare browser page is a support/preview surface, not the launch target.
