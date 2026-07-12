@@ -10,7 +10,13 @@ Pick the knockout bracket, drop into a live watch room, and play real peer‑to�
 pear run pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo
 ```
 
-**Production link:** `pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo` — seeded / HiveRelay‑pinned, shipping the **live 2026 World Cup knockout bracket**, the watch party, and the P2P penalty minigame. No Pear yet? Grab it at [pears.com](https://docs.pears.com/), or run it [locally](#run-locally).
+**Production links:**
+
+- Pear Runtime: `pear://ky9s3jx178s4cdsnkke4cpxmk9jx93eeb99q8aa5dnrjancirdeo` (native release `10125`, seeded)
+- PearBrowser / Hyperdrive: `hyper://0b3eb6272b00ab58f17844bd6cb3452145ffa7da6bd2283aa2590033ae83af0e/` (published and HiveRelay-pinned)
+- Normal browser: [Play the live game](https://pearcup-kawaii.pages.dev/play/#home)
+
+All three surfaces ship the **live 2026 World Cup knockout bracket**, watch party, and P2P penalty minigame. No Pear yet? Grab it at [pears.com](https://docs.pears.com/), or run it [locally](#run-locally).
 
 **Play in a normal browser:** [pearcup-kawaii.pages.dev/play/#home](https://pearcup-kawaii.pages.dev/play/#home) — the same PearCup shell with portable identity, live data, demo pools, brackets, watch rooms, and cross-platform friend matches.
 
