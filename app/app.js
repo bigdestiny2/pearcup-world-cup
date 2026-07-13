@@ -3558,6 +3558,37 @@ let watchExpertAnalysisKey = ''
 let watchExpertAnalysisPromise = null
 let watchExpertAnalysisError = ''
 
+// Tournament evidence derived from the verified fixture list: each team's
+// latest finished results and the opponents behind them. Nothing is invented —
+// only FINISHED fixtures with a provider-recorded winner count.
+function teamTournamentEvidence (teamName, fixtures) {
+  const name = String(teamName || '').trim().toLowerCase()
+  if (!name || !Array.isArray(fixtures)) return null
+  const matchesTeam = team => [team && team.name, team && team.shortName]
+    .some(candidate => String(candidate || '').trim().toLowerCase() === name)
+  const played = fixtures
+    .filter(match => match && match.status === 'FINISHED' && match.score && match.score.winner && match.homeTeam && match.awayTeam)
+    .filter(match => matchesTeam(match.homeTeam) || matchesTeam(match.awayTeam))
+    .sort((a, b) => (Date.parse(b.utcDate || 0) || 0) - (Date.parse(a.utcDate || 0) || 0))
+    .slice(0, 3)
+  if (!played.length) return null
+  const rows = played.map(match => {
+    const isHome = matchesTeam(match.homeTeam)
+    const winner = match.score.winner
+    const result = winner === 'DRAW' ? 'D' : (winner === 'HOME_TEAM') === isHome ? 'W' : 'L'
+    const opponentTeam = isHome ? match.awayTeam : match.homeTeam
+    const opponent = opponentTeam.shortName || opponentTeam.name || 'opponent'
+    const ft = match.score.fullTime || {}
+    const scoreText = ft.home != null && ft.away != null ? (isHome ? `${ft.home}–${ft.away}` : `${ft.away}–${ft.home}`) : ''
+    const stage = String(match.stage || '').replace(/_/g, ' ').toLowerCase()
+    return { result, line: `${result}${scoreText ? ` ${scoreText}` : ''} vs ${opponent}${stage ? ` (${stage})` : ''}` }
+  })
+  return {
+    results: rows.map(row => row.result),
+    schedule: rows.map(row => row.line).join(' · ')
+  }
+}
+
 function qvacFootballAnalysisInput (st = feedState()) {
   let odds = []
   try {
@@ -3565,6 +3596,8 @@ function qvacFootballAnalysisInput (st = feedState()) {
     const snapshot = polymarketRegistryEntries()[selectedId]
     odds = snapshot && snapshot.status === 'ok' && Array.isArray(snapshot.odds) ? snapshot.odds.slice(0, 3) : []
   } catch {}
+  const homeEvidence = teamTournamentEvidence(st && st.home && st.home.name, st && st.fixtures)
+  const awayEvidence = teamTournamentEvidence(st && st.away && st.away.name, st && st.fixtures)
   return {
     matchId: st && st.matchId || `${st && st.home && st.home.name || 'home'}-${st && st.away && st.away.name || 'away'}`,
     dataSource: st && st.dataSource,
@@ -3593,6 +3626,14 @@ function qvacFootballAnalysisInput (st = feedState()) {
       clock: event.clock
     })),
     odds,
+    recentForm: {
+      home: homeEvidence ? homeEvidence.results : null,
+      away: awayEvidence ? awayEvidence.results : null
+    },
+    strengthOfSchedule: {
+      home: homeEvidence ? homeEvidence.schedule : null,
+      away: awayEvidence ? awayEvidence.schedule : null
+    },
     environment: { venue: st && st.venue, stage: st && st.stage }
   }
 }
@@ -3600,7 +3641,15 @@ function qvacFootballAnalysisInput (st = feedState()) {
 function qvacExpertAnalysisKey (st) {
   const minute = Number(st && st.minute)
   const phase = Number.isFinite(minute) ? Math.floor(minute / 30) : 0
-  return [st && st.matchId, st && st.home && st.home.goals, st && st.away && st.away.goals, st && st.matchStatus, phase].join('|')
+  // Evidence arriving later than the first tick must re-key the analysis, or
+  // the matrix keeps saying "not supplied" after odds and fixtures land.
+  let market = 0
+  try {
+    const entry = polymarketRegistryEntries()[String(st && st.matchId || '')]
+    market = entry && entry.status === 'ok' && Array.isArray(entry.odds) ? entry.odds.length : 0
+  } catch {}
+  const fixturesKnown = st && Array.isArray(st.fixtures) ? st.fixtures.length : 0
+  return [st && st.matchId, st && st.home && st.home.goals, st && st.away && st.away.goals, st && st.matchStatus, phase, market, fixturesKnown].join('|')
 }
 
 function qvacAnalysisProbabilityText (probabilities = {}) {

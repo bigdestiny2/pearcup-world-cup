@@ -719,6 +719,10 @@
     const probabilities = footballProbabilities(context)
     const homeForm = formSummary(context.recentForm.home)
     const awayForm = formSummary(context.recentForm.away)
+    const homeSchedule = describeObject(context.strengthOfSchedule.home)
+    const awaySchedule = describeObject(context.strengthOfSchedule.away)
+    const scheduleSupplied = [homeSchedule, awaySchedule].filter(value => value !== 'Not supplied by relay').length
+    const scheduleStatus = scheduleSupplied === 2 ? 'verified' : scheduleSupplied === 1 ? 'partial' : 'not supplied'
     const homePossession = context.possession == null ? 'Not supplied by relay' : `${Math.round(context.possession)}% in the current snapshot`
     const awayPossession = context.possession == null ? 'Not supplied by relay' : `${Math.round(100 - context.possession)}% in the current snapshot`
     const homeShots = context.shots[0] == null ? 'Not supplied by relay' : `${context.shots[0]} recorded`
@@ -729,6 +733,7 @@
     const sources = [context.source]
     if (context.recentEvents.length) sources.push('Synced watch-room events')
     if (context.odds.length) sources.push('Polymarket public odds relay')
+    if (formPoints(context.recentForm.home) != null || formPoints(context.recentForm.away) != null) sources.push('Verified tournament results')
     const coverageScore = Math.min(1, sources.length / 4)
     const coverage = {
       label: coverageScore >= 0.75 ? 'Multi-signal snapshot' : 'Limited relay coverage',
@@ -757,7 +762,7 @@
       coverage,
       parameterMatrix: [
         { label: 'Recent form · last 24 months / 3 matches', home: homeForm, away: awayForm, status: homeForm === 'Not supplied by relay' && awayForm === 'Not supplied by relay' ? 'not supplied' : 'partial' },
-        { label: 'Strength of schedule', home: describeObject(context.strengthOfSchedule.home), away: describeObject(context.strengthOfSchedule.away), status: 'not supplied' },
+        { label: 'Strength of schedule', home: homeSchedule, away: awaySchedule, status: scheduleStatus },
         { label: 'Tactical signals', home: `${homePossession} · ${homeShots}`, away: `${awayPossession} · ${awayShots}`, status: context.possession != null || context.shots.some(value => value != null) ? 'partial' : 'not supplied' },
         { label: 'Lineup / availability', home: describeAvailability(context.availability.home), away: describeAvailability(context.availability.away), status: 'not supplied' },
         { label: 'Environment', home: venueText, away: venueText, status: context.venue ? 'partial' : 'not supplied' },
