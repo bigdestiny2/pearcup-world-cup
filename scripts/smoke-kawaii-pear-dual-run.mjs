@@ -5,7 +5,7 @@
 
 import { spawn, spawnSync } from 'node:child_process'
 import { createServer } from 'node:http'
-import { cpSync, existsSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs'
 import { randomBytes } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -32,7 +32,25 @@ cpSync(appRoot, launchRoot, {
   filter: path => !path.endsWith('/node_modules')
 })
 const nodeModules = join(appRoot, 'node_modules')
-if (existsSync(nodeModules)) symlinkSync(nodeModules, join(launchRoot, 'node_modules'), 'dir')
+if (existsSync(nodeModules)) {
+  const destModules = join(launchRoot, 'node_modules')
+  // The Pear runtime resolves the project/module paths as file:// URLs, so a
+  // space anywhere in the REAL path (e.g. ".../pear sports/...") is encoded to
+  // %20 and resolution fails ("ERR_INVALID_PROJECT_DIR"); the renderer then
+  // hangs until the boot-ready probe times out. A symlink does NOT help — Pear
+  // realpath()s it straight back to the space. So when the app's real path
+  // contains a space, materialize node_modules as a REAL directory under the
+  // (space-free) tmp launch root instead of symlinking back into the space
+  // path. APFS copy-on-write clone (cp -c) makes this ~free on macOS; elsewhere
+  // fall back to a recursive copy. A space-free checkout keeps the fast symlink.
+  if (/\s/.test(realpathSync(nodeModules))) {
+    const cloned = process.platform === 'darwin' &&
+      spawnSync('cp', ['-c', '-R', nodeModules, destModules], { stdio: 'ignore' }).status === 0
+    if (!cloned) cpSync(nodeModules, destModules, { recursive: true, dereference: true })
+  } else {
+    symlinkSync(nodeModules, destModules, 'dir')
+  }
+}
 
 const hostProbe = await createProbe()
 const guestProbe = await createProbe()
